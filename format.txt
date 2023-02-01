@@ -1,0 +1,4 @@
+Uniform Locations
+-(Model-View-
+
+Per-Vertex Locations

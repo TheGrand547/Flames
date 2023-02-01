@@ -1,3 +1,8 @@
+# Visual studio
+.vs/
+x64/
+*.bak
+
 # Prerequisites
 *.d
 
