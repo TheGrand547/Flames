@@ -140,7 +140,8 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Shader.cpp" />
-    <ClCompile Include="Texture.cpp" />
+    <ClCompile Include="stbWrangler.cpp" />
+    <ClCompile Include="Texture2D.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\School\Autumn 2022\CSE 5442\Lab 5\stb_image.h" />
@@ -151,7 +152,8 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Shader.h" />
-    <ClInclude Include="Texture.h" />
+    <ClInclude Include="stbWrangler.h" />
+    <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
   </ItemGroup>
   <ItemGroup>

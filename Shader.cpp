@@ -15,12 +15,16 @@ static GLuint CompileShader(GLenum type, const char* data)
 	glCompileShader(vertex);
 	int success;
 
-	char infoLog[512];
 	glGetShaderiv(vertex, GL_COMPILE_STATUS, &success);
 	if (!success)
 	{
-		glGetShaderInfoLog(vertex, 512, NULL, infoLog);
+		GLint length;
+		glGetShaderiv(vertex, GL_INFO_LOG_LENGTH, &length);
+		char* infoLog = new char[length + 1];
+		infoLog[length] = '\0';
+		glGetShaderInfoLog(vertex, length, NULL, infoLog);
 		std::cout << "Compilation of Shader failed\n" << infoLog << std::endl;
+		delete[] infoLog;
 		return 0; // Error Code
 	}
 	return vertex;
@@ -38,9 +42,13 @@ Shader::Shader(const std::string& name, bool recompile) : compiled(false), preco
 	this->Compile(name, recompile);
 }
 
+Shader::Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile) : compiled(false), precompiled(false), name(""), program(0)
+{
+	this->Compile(vertex, fragment, forceRecompile);
+}
 Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0)
 {
-	this->Compile(vertex, fragment);
+	this->CompileExplicit(vertex, fragment);
 }
 
 Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0)
@@ -70,11 +78,18 @@ Shader& Shader::operator=(Shader&& other) noexcept
 
 bool Shader::Compile(const std::string& name, bool recompile)
 {
+	return this->Compile(name, name, recompile);
+}
+
+bool Shader::Compile(const std::string& vertex, const std::string& frag, bool recompile)
+{
 	this->CleanUp();
 
-	std::filesystem::path compiledPath(name + ".csp");
-	std::filesystem::path vertexPath(name + "v.glsl");
-	std::filesystem::path fragmentPath(name + "f.glsl");
+	std::string combined = (vertex == frag) ? vertex : vertex + frag;
+
+	std::filesystem::path compiledPath(combined + ".csp");
+	std::filesystem::path vertexPath(vertex + "v.glsl");
+	std::filesystem::path fragmentPath(frag + "f.glsl");
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
@@ -82,14 +97,14 @@ bool Shader::Compile(const std::string& name, bool recompile)
 		return false;
 	}
 
-	this->name = name;
+	this->name = combined;
 
 	std::ifstream input;
 	if (!recompile || (std::filesystem::exists(compiledPath) && \
-		(std::filesystem::last_write_time(compiledPath) < std::filesystem::last_write_time(fragmentPath) 
+		(std::filesystem::last_write_time(compiledPath) < std::filesystem::last_write_time(fragmentPath)
 			|| std::filesystem::last_write_time(compiledPath) < std::filesystem::last_write_time(vertexPath)))) // Attempt to read precompiled shader file
 	{
-		input.open(name + ".csp", std::ios::binary);
+		input.open(compiledPath.string(), std::ios::binary);
 		if (input.is_open())
 		{
 			GLint length = 0;
@@ -122,8 +137,8 @@ bool Shader::Compile(const std::string& name, bool recompile)
 		}
 	}
 
-	std::ifstream vertexFile(name + "v.glsl", std::ifstream::in);
-	std::ifstream fragmentFile(name + "f.glsl", std::ifstream::in);
+	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
+	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
@@ -159,7 +174,7 @@ bool Shader::Compile(const std::string& name, bool recompile)
 	return this->compiled;
 }
 
-bool Shader::Compile(const char* vertex, const char* fragment)
+bool Shader::CompileExplicit(const char* vertex, const char* fragment)
 {
 	this->precompiled = false;
 	GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
@@ -184,9 +199,9 @@ bool Shader::Compile(const char* vertex, const char* fragment)
 		}
 		glDeleteShader(vShader);
 		glDeleteShader(fShader);
+		this->compiled = true;
 	}
-	this->compiled = true;
-	return true;
+	return this->compiled;
 }
 
 
@@ -244,4 +259,9 @@ void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const
 void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 {
 	glUniformMatrix4fv(this->uniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+void Shader::SetTextureUnit(const std::string& name, const unsigned int unit) const
+{
+	glUniform1ui(this->uniformIndex(name), unit);
 }

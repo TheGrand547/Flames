@@ -13,7 +13,8 @@ private:
 	std::string name;
 public:
 	Shader();
-	Shader(const std::string& name, bool recompile = false);
+	Shader(const std::string& name, bool forceRecompile = false);
+	Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile = false);
 	Shader(const char* vertex, const char* fragment);
 	Shader(const Shader& other) = delete;
 	Shader(Shader&& other) noexcept;
@@ -23,7 +24,8 @@ public:
 	Shader& operator=(Shader&& other) noexcept;
 
 	bool Compile(const std::string& name, bool recompile = false);
-	bool Compile(const char* vertex, const char* fragment);
+	bool Compile(const std::string& vertex, const std::string& frag, bool recompile = false);
+	bool CompileExplicit(const char* vertex, const char* fragment);
 
 	GLuint index(const std::string& name) const;
 	GLuint uniformIndex(const std::string& name) const;
@@ -35,6 +37,7 @@ public:
 
 	void SetVec3(const std::string& name, const glm::vec3& vec) const;
 	void SetMat4(const std::string& name, const glm::mat4& mat) const;
+	void SetTextureUnit(const std::string& name, const unsigned int unit) const;
 };
 
 #endif // FLAMES_SHADER_H
