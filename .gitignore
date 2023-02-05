@@ -3,6 +3,9 @@
 x64/
 *.bak
 
+# My own filenames
+*.csp
+
 # Prerequisites
 *.d
 

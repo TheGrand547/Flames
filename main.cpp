@@ -12,6 +12,7 @@
 #include "glmHelp.h"
 #include "Model.h"
 #include "Texture2D.h"
+#include "stbWrangler.h"
 
 #define CheckError() CheckErrors(__LINE__);
 
@@ -156,6 +157,8 @@ static const char dither16[16][16] = { {0, 191, 48, 239, 12, 203, 60, 251, 3, 19
 { 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212 },
 { 169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85} };
 
+static const float perlin[16 * 16];
+
 const int ditherSize = 16;
 
 GLuint ditherTexture;
@@ -273,7 +276,7 @@ void display()
 	dammit.SetMat4("mvp", pog * m22.GetModelMatrix());
 	dammit.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
-	
+
 	/*
 	m22.translation = glm::vec3(0, 0.001f, 2);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -416,6 +419,23 @@ void mouseFunc(int x, int y)
 
 int main(int argc, char** argv)
 {
+	float pMin = 100, pMax = -100, sum = 0;
+	for (int i = 0; i < 160; i++)
+	{
+		for (int j = 0; j < 160; j++)
+		{
+			float c = stb_perlin_noise3(i * 0.352f, j * 0.432f, (i + j) * 0.7945f, 0, 0, 0);
+			sum += c;
+			if (pMin > c)
+				pMin = c;
+			if (pMax < c)
+				pMax = c;
+		}
+	}
+	std::cout << pMin << std::endl;
+	std::cout << pMax << std::endl;
+	std::cout << sum / (160.f * 160.f) << std::endl;
+
 	int error = 0;
 
 	// Glut
@@ -523,6 +543,11 @@ int main(int argc, char** argv)
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	glTexImage2D(GL_TEXTURE_2D, 0, 1, 16, 16, 0, GL_RED, GL_UNSIGNED_BYTE, dither16);
 	glGenerateMipmap(GL_TEXTURE_2D);
+
+
+	// TODO: Add perlin noise thingy
+
+
 
 	CheckError();
 

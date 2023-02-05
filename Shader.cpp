@@ -81,14 +81,13 @@ bool Shader::Compile(const std::string& name, bool recompile)
 	return this->Compile(name, name, recompile);
 }
 
-bool Shader::Compile(const std::string& vertex, const std::string& frag, bool recompile)
+bool Shader::Compile(const std::string& vert, const std::string& frag, bool recompile)
 {
 	this->CleanUp();
 
-	std::string combined = (vertex == frag) ? vertex : vertex + frag;
-
+	std::string combined = (vert == frag) ? vert : vert + frag;
 	std::filesystem::path compiledPath(combined + ".csp");
-	std::filesystem::path vertexPath(vertex + "v.glsl");
+	std::filesystem::path vertexPath(vert + "v.glsl");
 	std::filesystem::path fragmentPath(frag + "f.glsl");
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
@@ -165,11 +164,11 @@ bool Shader::Compile(const std::string& vertex, const std::string& frag, bool re
 			}
 			glDeleteShader(vShader);
 			glDeleteShader(fShader);
+			this->compiled = true;
+			this->ExportCompiled();
 		}
 		vertexFile.close();
 		fragmentFile.close();
-		this->ExportCompiled();
-		this->compiled = true;
 	}
 	return this->compiled;
 }

@@ -4,6 +4,8 @@
 #include <glew.h>
 #include <glm.hpp>
 #include <string>
+#include <array>
+#include <vector>
 
 enum TextureMagFilter
 {
@@ -44,12 +46,29 @@ public:
 	Texture2D(const std::string& filename);
 	~Texture2D();
 
+	void CleanUp();
+
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
 	inline void SetWrapBehaviorS(TextureWrapping value) const;
 	inline void SetWrapBehaviorT(TextureWrapping value) const;
+
 	void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
+	template <class T> void Load(const std::vector<T>& data);
+	template <class T, std::size_t L> void Load(const std::array<T, L>& data);
 };
+
+
+template<class T> inline void Texture2D::Load(const std::vector<T>& data)
+{
+
+}
+
+template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data)
+{
+
+}
+
 
 #endif TEXTURE_H

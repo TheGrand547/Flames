@@ -153,6 +153,8 @@
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="stbWrangler.h" />
+    <ClInclude Include="stb_perlin.h" />
+    <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
   </ItemGroup>

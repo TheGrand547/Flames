@@ -30,6 +30,7 @@ Texture2D::~Texture2D()
 	if (this->texture)
 	{
 		glDeleteTextures(1, &this->texture);
+		this->texture = 0;
 	}
 	if (this->data)
 	{
@@ -63,6 +64,7 @@ void Texture2D::Bind(GLuint slot) const
 	glActiveTexture(GL_TEXTURE0 + slot);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 }
+
 // TODO: might have to do some gfunky stuff for this given differet types of data but you know
 void Texture2D::Load(const std::string& filename)
 {
