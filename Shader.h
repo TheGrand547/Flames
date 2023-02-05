@@ -23,7 +23,7 @@ public:
 	Shader& operator=(const Shader& other) = delete;
 	Shader& operator=(Shader&& other) noexcept;
 
-	bool Compile(const std::string& name, bool recompile = false);
+	bool CompileSimple(const std::string& name, bool recompile = false);
 	bool Compile(const std::string& vertex, const std::string& frag, bool recompile = false);
 	bool CompileExplicit(const char* vertex, const char* fragment);
 

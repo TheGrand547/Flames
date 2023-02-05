@@ -34,13 +34,8 @@ void main()
 	
 	// Dither stuff
 	
-	float dither = texture(ditherMap, gl_FragCoord.xy / 8).r;
-	const float maxVal = 255;
-	vec3 scaled = result * maxVal;
-	vec3 floored = floor(scaled);
-	vec3 delta = scaled - floored;
-		
-	result = (floored + step(dither, delta)) / maxVal;
+	float dither = texture(ditherMap, gl_FragCoord.xy / 160.).r;
+	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	
 	fColor = vec4(result, 1.0);
 }

@@ -27,6 +27,11 @@ Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channel
 
 Texture2D::~Texture2D()
 {
+	this->CleanUp();
+}
+
+void Texture2D::CleanUp()
+{
 	if (this->texture)
 	{
 		glDeleteTextures(1, &this->texture);
@@ -37,6 +42,9 @@ Texture2D::~Texture2D()
 		stbi_image_free(this->data);
 		this->data = nullptr;
 	}
+	this->width = 0;
+	this->height = 0;
+	this->channels = 0;
 }
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const

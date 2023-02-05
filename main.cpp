@@ -140,30 +140,33 @@ static const char ditherKernel[] =
 	63, 31, 55, 23, 61, 29, 53, 21
 };
 
-static const char dither16[16][16] = { {0, 191, 48, 239, 12, 203, 60, 251, 3, 194, 51, 242, 15, 206, 63, 254  },
-{ 127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127 },
-{ 32, 223,  16, 207,  44, 235,  28, 219,  35, 226,  19, 210,  47, 238,  31, 222 },
-{ 159,  96, 143,  80, 171, 108, 155,  92, 162,  99, 146,  83, 174, 111, 158,  95 },
-{ 8, 199,  56, 247,   4, 195,  52, 243,  11, 202,  59, 250,   7, 198,  55, 246 },
-{ 135,  72, 183, 120, 131,  68, 179, 116, 138,  75, 186, 123, 134,  71, 182, 119 },
-{ 40, 231,  24, 215,  36, 227,  20, 211,  43, 234,  27, 218,  39, 230,  23, 214 },
-{ 167, 104, 151,  88, 163, 100, 147,  84, 170, 107, 154,  91, 166, 103, 150,  87 },
-{ 2, 193,  50, 241,  14, 205,  62, 253,   1, 192,  49, 240,  13, 204,  61, 252 },
-{ 129,  66, 177, 114, 141,  78, 189, 126, 128,  65, 176, 113, 140,  77, 188, 125 },
-{ 34, 225,  18, 209,  46, 237,  30, 221,  33, 224,  17, 208,  45, 236,  29, 220 },
-{ 161,  98, 145,  82, 173, 110, 157,  94, 160,  97, 144,  81, 172, 109, 156,  93 },
-{ 10, 201,  58, 249,   6, 197,  54, 245,   9, 200,  57, 248,   5, 196,  53, 244 },
-{ 137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117 },
-{ 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212 },
-{ 169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85} };
-
-static const float perlin[16 * 16];
+static const unsigned char dither16[16 * 16] = 
+{
+	0,   191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254,
+	127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127,
+	 32, 223,  16, 207,  44, 235,  28, 219,  35, 226,  19, 210,  47, 238,  31, 222,
+	159,  96, 143,  80, 171, 108, 155,  92, 162,  99, 146,  83, 174, 111, 158,  95,
+	  8, 199,  56, 247,   4, 195,  52, 243,  11, 202,  59, 250,   7, 198,  55, 246,
+	135,  72, 183, 120, 131,  68, 179, 116, 138,  75, 186, 123, 134,  71, 182, 119,
+	 40, 231,  24, 215,  36, 227,  20, 211,  43, 234,  27, 218,  39, 230,  23, 214,
+	167, 104, 151,  88, 163, 100, 147,  84, 170, 107, 154,  91, 166, 103, 150,  87,
+	  2, 193,  50, 241,  14, 205,  62, 253,   1, 192,  49, 240,  13, 204,  61, 252,
+	129,  66, 177, 114, 141,  78, 189, 126, 128,  65, 176, 113, 140,  77, 188, 125,
+	 34, 225,  18, 209,  46, 237,  30, 221,  33, 224,  17, 208,  45, 236,  29, 220,
+	161,  98, 145,  82, 173, 110, 157,  94, 160,  97, 144,  81, 172, 109, 156,  93,
+	 10, 201,  58, 249,   6, 197,  54, 245,   9, 200,  57, 248,   5, 196,  53, 244,
+	137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117,
+	 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212,
+	169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85
+};
 
 const int ditherSize = 16;
 
 GLuint ditherTexture;
 Shader dither;
 bool flop = false;
+Texture2D perlinTexture;
+Shader perlinShader;
 
 
 enum GeometryThing : unsigned char
@@ -225,25 +228,18 @@ void display()
 
 	pog = projection * view * pog;
 	
-	/*
-	light.SetActive();
-	glm::vec3 colors(.5f, .5f, .5f);
-	light.SetVec3("color", colors);
-	light.SetVec3("lightColor", glm::vec3(1.f, 0.95f, 0.95f));
-	light.SetVec3("lightPos", glm::vec3(0.f, 1.5f, 0.f));
-	light.SetMat4("vp", pog);
-	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
-	*/
-
 	if (flop)
-		lightTextured.SetActive();
+	{
+		perlinShader.SetActive();
+		perlinTexture.Bind(1);
+	}
 	else
+	{
 		dither.SetActive();
+		glActiveTexture(GL_TEXTURE1);
+		glBindTexture(GL_TEXTURE_2D, ditherTexture);
+	}
 	wallTexture.Bind(0);
-
-	// TEMP
-	glActiveTexture(GL_TEXTURE1);
-	glBindTexture(GL_TEXTURE_2D, ditherTexture);
 
 	glBindBuffer(GL_ARRAY_BUFFER, smile);
 	glm::vec3 colors(.5f, .5f, .5f);
@@ -277,18 +273,6 @@ void display()
 	dammit.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	/*
-	m22.translation = glm::vec3(0, 0.001f, 2);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glBindBuffer(GL_ARRAY_BUFFER, smile);
-	textures.SetActive();
-	texture.Bind();
-	textures.SetMat4("mvp", pog * m22.GetModelMatrix());
-	glBindVertexArray(smileVAO);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
-	*/
 	/*
 	other.SetActive();
 	buffer.BindBuffer();
@@ -359,7 +343,11 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	if (key == 'g')
 	{
+		std::cout << "Switched!";
 		flop = !flop;
+		if (flop)
+			std::cout << "to perlin!";
+		std::cout << std::endl;
 	}
 	/*
 	glm::vec3 yRotation = glm::eulerAngles(rotation);
@@ -419,23 +407,6 @@ void mouseFunc(int x, int y)
 
 int main(int argc, char** argv)
 {
-	float pMin = 100, pMax = -100, sum = 0;
-	for (int i = 0; i < 160; i++)
-	{
-		for (int j = 0; j < 160; j++)
-		{
-			float c = stb_perlin_noise3(i * 0.352f, j * 0.432f, (i + j) * 0.7945f, 0, 0, 0);
-			sum += c;
-			if (pMin > c)
-				pMin = c;
-			if (pMax < c)
-				pMax = c;
-		}
-	}
-	std::cout << pMin << std::endl;
-	std::cout << pMax << std::endl;
-	std::cout << sum / (160.f * 160.f) << std::endl;
-
 	int error = 0;
 
 	// Glut
@@ -451,14 +422,15 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	dammit.Compile("uniform");
-	light.Compile("light");
-	lightTextured.Compile("lighttex");
-	dither.Compile("light_text_dither");
+	dammit.CompileSimple("uniform");
+	light.CompileSimple("light");
+	lightTextured.CompileSimple("lighttex");
+	dither.CompileSimple("light_text_dither");
+	perlinShader.Compile("light_text_dither", "light_text_perlin");
 
-	other.Compile("test");
+	other.CompileSimple("test");
 
-	textures.Compile("texture");
+	textures.CompileSimple("texture");
 
 	texture.Load("test.png");
 	wallTexture.Load("wall2.png");
@@ -544,9 +516,19 @@ int main(int argc, char** argv)
 	glTexImage2D(GL_TEXTURE_2D, 0, 1, 16, 16, 0, GL_RED, GL_UNSIGNED_BYTE, dither16);
 	glGenerateMipmap(GL_TEXTURE_2D);
 
-
+	CheckError();
 	// TODO: Add perlin noise thingy
-
+	{
+		std::array<float, 160 * 160> perlinArray{};
+		for (std::size_t i = 0; i < 160; i++)
+		{
+			for (std::size_t j = 0; j < 160; j++)
+			{
+				perlinArray[i * 160 + j] = stb_perlin_noise3(i * 0.352f, j * 0.432f, (i + j) * 0.7945f, 0, 0, 0) / 2.0f + 0.5f;
+			}
+		}
+		perlinTexture.Load(perlinArray);
+	}
 
 
 	CheckError();

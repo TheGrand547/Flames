@@ -39,7 +39,7 @@ Shader::Shader() : compiled(false), precompiled(false), program(0)
 // Takes name for a shader, and reads the files 'namev.glsl' and 'namef.glsl'
 Shader::Shader(const std::string& name, bool recompile) : compiled(false), precompiled(false), name(name), program(0)
 {
-	this->Compile(name, recompile);
+	this->CompileSimple(name, recompile);
 }
 
 Shader::Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile) : compiled(false), precompiled(false), name(""), program(0)
@@ -76,7 +76,7 @@ Shader& Shader::operator=(Shader&& other) noexcept
 	return *this;
 }
 
-bool Shader::Compile(const std::string& name, bool recompile)
+bool Shader::CompileSimple(const std::string& name, bool recompile)
 {
 	return this->Compile(name, name, recompile);
 }
@@ -84,7 +84,6 @@ bool Shader::Compile(const std::string& name, bool recompile)
 bool Shader::Compile(const std::string& vert, const std::string& frag, bool recompile)
 {
 	this->CleanUp();
-
 	std::string combined = (vert == frag) ? vert : vert + frag;
 	std::filesystem::path compiledPath(combined + ".csp");
 	std::filesystem::path vertexPath(vert + "v.glsl");
@@ -99,9 +98,9 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	this->name = combined;
 
 	std::ifstream input;
-	if (!recompile || (std::filesystem::exists(compiledPath) && \
-		(std::filesystem::last_write_time(compiledPath) < std::filesystem::last_write_time(fragmentPath)
-			|| std::filesystem::last_write_time(compiledPath) < std::filesystem::last_write_time(vertexPath)))) // Attempt to read precompiled shader file
+	if (!recompile && (std::filesystem::exists(compiledPath) && \
+		(std::filesystem::last_write_time(compiledPath) > std::filesystem::last_write_time(fragmentPath)
+			|| std::filesystem::last_write_time(compiledPath) > std::filesystem::last_write_time(vertexPath)))) // Attempt to read precompiled shader file
 	{
 		input.open(compiledPath.string(), std::ios::binary);
 		if (input.is_open())

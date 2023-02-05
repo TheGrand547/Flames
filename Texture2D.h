@@ -6,6 +6,7 @@
 #include <string>
 #include <array>
 #include <vector>
+#include <math.h>
 
 enum TextureMagFilter
 {
@@ -56,7 +57,7 @@ public:
 	void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
 	template <class T> void Load(const std::vector<T>& data);
-	template <class T, std::size_t L> void Load(const std::array<T, L>& data);
+	template <class T, std::size_t L> void Load(const std::array<T, L>& data, std::size_t width = 0, std::size_t height = 0);
 };
 
 
@@ -65,9 +66,25 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data)
 
 }
 
-template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data)
+template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data, std::size_t width, std::size_t height)
 {
-
+	this->CleanUp();
+	glGenTextures(1, &this->texture);
+	if (!width && !height)
+	{
+		width = height = (std::size_t) sqrt(L);
+	}
+	if (this->texture)
+	{
+		glBindTexture(GL_TEXTURE_2D, this->texture);
+		// TODO: Don't just assume a single channel
+		glTexImage2D(GL_TEXTURE_2D, 0, 1, (GLsizei) width, (GLsizei) height, 0, GL_RED, GL_FLOAT, data.data());
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
+		glGenerateMipmap(GL_TEXTURE_2D);
+	}
 }
 
 
