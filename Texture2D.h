@@ -53,20 +53,45 @@ public:
 	inline void SetMinFilter(TextureMinFilter value) const;
 	inline void SetWrapBehaviorS(TextureWrapping value) const;
 	inline void SetWrapBehaviorT(TextureWrapping value) const;
+	inline void GenerateMipmap() const;
 
 	void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
 	template <class T> void Load(const std::vector<T>& data);
-	template <class T, std::size_t L> void Load(const std::array<T, L>& data, std::size_t width = 0, std::size_t height = 0);
+	template <class T, GLenum type = GL_FLOAT, std::size_t L> void Load(const std::array<T, L>& data, std::size_t width = 0, std::size_t height = 0);
 };
 
+inline void Texture2D::GenerateMipmap() const
+{
+	glGenerateMipmap(this->texture);
+}
+
+inline void Texture2D::SetMagFilter(TextureMagFilter value) const
+{
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)value);
+}
+
+inline void Texture2D::SetMinFilter(TextureMinFilter value) const
+{
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)value);
+}
+
+inline void Texture2D::SetWrapBehaviorS(TextureWrapping value) const
+{
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)value);
+}
+
+inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
+{
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)value);
+}
 
 template<class T> inline void Texture2D::Load(const std::vector<T>& data)
 {
 
 }
 
-template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data, std::size_t width, std::size_t height)
+template<class T, GLenum type, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data, std::size_t width, std::size_t height)
 {
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
@@ -78,14 +103,13 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		// TODO: Don't just assume a single channel
-		glTexImage2D(GL_TEXTURE_2D, 0, 1, (GLsizei) width, (GLsizei) height, 0, GL_RED, GL_FLOAT, data.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, 1, (GLsizei) width, (GLsizei) height, 0, GL_RED, type, data.data());
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-		glGenerateMipmap(GL_TEXTURE_2D);
 	}
 }
 
 
-#endif TEXTURE_H
+#endif //TEXTURE_H

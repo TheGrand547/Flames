@@ -127,20 +127,8 @@ glm::vec3 angles;
 
 GLuint smile, smileVAO;
 
-
-static const char ditherKernel[] =
-{
-	0,  32,  8, 40,  2, 34, 10, 42,  
-	48, 16, 56, 24, 50, 18, 58, 26, 
-	12, 44,  4, 36, 14, 46,  6, 38, 
-	60, 28, 52, 20, 62, 30, 54, 22,  
-	3,  35, 11, 43,  1, 33,  9, 41, 
-	51, 19, 59, 27, 49, 17, 57, 25,
-	15, 47,  7, 39, 13, 45,  5, 37,
-	63, 31, 55, 23, 61, 29, 53, 21
-};
-
-static const unsigned char dither16[16 * 16] = 
+//static const unsigned char dither16[16 * 16] = 
+static const std::array<const unsigned char, 16 * 16> dither16 = {
 {
 	0,   191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254,
 	127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127,
@@ -158,15 +146,12 @@ static const unsigned char dither16[16 * 16] =
 	137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117,
 	 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212,
 	169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85
-};
+} };
 
 const int ditherSize = 16;
 
-GLuint ditherTexture;
+Texture2D ditherTexture;
 Shader dither;
-bool flop = false;
-Texture2D perlinTexture;
-Shader perlinShader;
 
 
 enum GeometryThing : unsigned char
@@ -210,8 +195,7 @@ void display()
 	dammit.SetActive();
 	glBindVertexArray(vertexVAO);
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
-	//glm::mat4 pog = RotateY(RotationX(glm::radians(angleX)), glm::radians(angleY));
-	glm::mat4 pog = glm::mat4(1.0f);
+	glm::mat4 projectionView = glm::mat4(1.0f);
 
 	//glm::vec3 normal = ((glm::mat4) rotation) * glm::vec3(1, 0, 0);
 	glm::vec3 normal = rotation * glm::vec3(1, 0, 0);
@@ -226,29 +210,21 @@ void display()
 
 	// MVP = model
 
-	pog = projection * view * pog;
-	
-	if (flop)
-	{
-		perlinShader.SetActive();
-		perlinTexture.Bind(1);
-	}
-	else
-	{
-		dither.SetActive();
-		glActiveTexture(GL_TEXTURE1);
-		glBindTexture(GL_TEXTURE_2D, ditherTexture);
-	}
+	projectionView = projection * view;
+
+
+	dither.SetActive();
 	wallTexture.Bind(0);
+	ditherTexture.Bind(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, smile);
 	glm::vec3 colors(.5f, .5f, .5f);
-	lightTextured.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	lightTextured.SetVec3("lightPos", glm::vec3(0.f, 1.5f, 0.f));
-	lightTextured.SetVec3("viewPos", offset);
-	lightTextured.SetMat4("vp", pog);
-	lightTextured.SetTextureUnit("textureIn", 0);
-	lightTextured.SetTextureUnit("ditherMap", 1);
+	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+	dither.SetVec3("lightPos", glm::vec3(0.f, 1.5f, 0.f));
+	dither.SetVec3("viewPos", offset);
+	dither.SetMat4("vp", projectionView);
+	dither.SetTextureUnit("textureIn", 0);
+	dither.SetTextureUnit("ditherMap", 1);
 	//glBindBuffer(GL_ARRAY_BUFFER, planeBO);
 	glBindVertexArray(smileVAO);
 
@@ -261,7 +237,7 @@ void display()
 
 		color = glm::vec3(1, 1, 1);
 		lightTextured.SetVec3("color", color);
-		glDrawElements(GL_LINE_STRIP, sizeof(planeOutline), GL_UNSIGNED_BYTE, planeOutline);
+		//glDrawElements(GL_LINE_STRIP, sizeof(planeOutline), GL_UNSIGNED_BYTE, planeOutline);
 	}
 
 	dammit.SetActive();
@@ -269,7 +245,7 @@ void display()
 	glBindVertexArray(stickVAO);
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(0, 0, 10), glm::vec3(0, 90.f, 0));
-	dammit.SetMat4("mvp", pog * m22.GetModelMatrix());
+	dammit.SetMat4("mvp", projectionView * m22.GetModelMatrix());
 	dammit.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
@@ -341,33 +317,6 @@ void keyboard(unsigned char key, int x, int y)
 		std::cout << offset.x << ", " << offset.y << ", " << offset.z << std::endl;
 		offset = glm::vec3(0, 1.5f, 0);
 	}
-	if (key == 'g')
-	{
-		std::cout << "Switched!";
-		flop = !flop;
-		if (flop)
-			std::cout << "to perlin!";
-		std::cout << std::endl;
-	}
-	/*
-	glm::vec3 yRotation = glm::eulerAngles(rotation);
-	yRotation.x = yRotation.z = 0;
-	glm::vec3 forward = (glm::vec3) (((glm::mat4) glm::quat(yRotation)) * glm::vec4(1, 0, 0, 0));
-	glm::vec3 right = glm::cross(forward, glm::vec3(0, 1, 0));
-	switch (key)
-	{
-	case 'q': case 'Q':
-		glutLeaveMainLoop();
-		break;
-	case 's': case 'S':
-		offset -= forward; break;
-	case 'w': case 'W':
-		offset += forward; break;
-	case 'a': case 'A':
-		offset -= right; break;
-	case 'd': case 'D':
-		offset += right; break;
-	}*/
 }
 
 void keyboardOff(unsigned char key, int x, int y)
@@ -426,7 +375,6 @@ int main(int argc, char** argv)
 	light.CompileSimple("light");
 	lightTextured.CompileSimple("lighttex");
 	dither.CompileSimple("light_text_dither");
-	perlinShader.Compile("light_text_dither", "light_text_perlin");
 
 	other.CompileSimple("test");
 
@@ -434,6 +382,8 @@ int main(int argc, char** argv)
 
 	texture.Load("test.png");
 	wallTexture.Load("wall2.png");
+	wallTexture.SetMinFilter(NearestLinear);
+	wallTexture.SetMagFilter(MagNearest);
 
 	// Set up VBO/VAO
 	glGenVertexArrays(1, &vertexVAO);
@@ -505,31 +455,13 @@ int main(int argc, char** argv)
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
 	
+	ditherTexture.Load(dither16);
+	ditherTexture.SetWrapBehaviorS(Repeat);
+	ditherTexture.SetWrapBehaviorT(Repeat);
+	ditherTexture.SetMagFilter(MagNearest);
+	ditherTexture.SetMinFilter(MinNearest);
 
-
-	glGenTextures(1, &ditherTexture);
-	glBindTexture(GL_TEXTURE_2D, ditherTexture);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-	glTexImage2D(GL_TEXTURE_2D, 0, 1, 16, 16, 0, GL_RED, GL_UNSIGNED_BYTE, dither16);
 	glGenerateMipmap(GL_TEXTURE_2D);
-
-	CheckError();
-	// TODO: Add perlin noise thingy
-	{
-		std::array<float, 160 * 160> perlinArray{};
-		for (std::size_t i = 0; i < 160; i++)
-		{
-			for (std::size_t j = 0; j < 160; j++)
-			{
-				perlinArray[i * 160 + j] = stb_perlin_noise3(i * 0.352f, j * 0.432f, (i + j) * 0.7945f, 0, 0, 0) / 2.0f + 0.5f;
-			}
-		}
-		perlinTexture.Load(perlinArray);
-	}
-
 
 	CheckError();
 

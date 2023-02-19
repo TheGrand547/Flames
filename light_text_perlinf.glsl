@@ -34,7 +34,7 @@ void main()
 	
 	// Dither stuff
 	
-	float dither = texture(ditherMap, gl_FragCoord.xy / 160.).r;
+	float dither = texture(ditherMap, gl_FragCoord.xy).r;
 	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	
 	fColor = vec4(result, 1.0);

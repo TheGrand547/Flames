@@ -47,26 +47,6 @@ void Texture2D::CleanUp()
 	this->channels = 0;
 }
 
-inline void Texture2D::SetMagFilter(TextureMagFilter value) const
-{
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint) value);
-}
-
-inline void Texture2D::SetMinFilter(TextureMinFilter value) const
-{
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)value);
-}
-
-inline void Texture2D::SetWrapBehaviorS(TextureWrapping value) const
-{
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint) value);
-}
-
-inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
-{
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)value);
-}
-
 void Texture2D::Bind(GLuint slot) const
 {
 	glActiveTexture(GL_TEXTURE0 + slot);
@@ -90,7 +70,7 @@ void Texture2D::Load(const std::string& filename)
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_NEAREST);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST_MIPMAP_LINEAR);
 	}
 	else
 	{
