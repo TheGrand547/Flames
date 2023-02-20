@@ -40,7 +40,7 @@ void main()
 	vec3 floored = floor(scaled);
 	vec3 delta = scaled - floored;
 		
-	result = (floored + step(delta, dither)) / maxVal;
+	result = (floored + step(dither, delta)) / maxVal;
 	
 	fColor = vec4(result, 1.0);
 }

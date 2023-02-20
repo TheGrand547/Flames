@@ -103,7 +103,8 @@ template<class T, GLenum type, std::size_t L> inline void Texture2D::Load(const 
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		// TODO: Don't just assume a single channel
-		glTexImage2D(GL_TEXTURE_2D, 0, 1, (GLsizei) width, (GLsizei) height, 0, GL_RED, type, data.data());
+		// TODO: Think this is wrong and stuff but i'm not sure
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, (GLsizei) width, (GLsizei) height, 0, GL_RED, type, data.data());
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);

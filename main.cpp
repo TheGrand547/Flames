@@ -13,6 +13,7 @@
 #include "Model.h"
 #include "Texture2D.h"
 #include "stbWrangler.h"
+#include "Plane.h"
 
 #define CheckError() CheckErrors(__LINE__);
 
@@ -274,6 +275,7 @@ void display()
 
 bool spin = false;
 std::vector<bool> keyState(UCHAR_MAX);
+Plane barrier(glm::vec3(0, 0, 1), -1);
 
 void idle()
 {
@@ -294,6 +296,7 @@ void idle()
 	glm::vec3 right   = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 	forward = speed * glm::normalize(forward);
 	right   = speed * glm::normalize(right);
+	glm::vec3 previous = offset;
 	if (keyState['w'] || keyState['W'])
 		offset += forward;
 	if (keyState['s'] || keyState['S'])
@@ -302,7 +305,10 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
-
+	if (barrier.Intersects(previous, offset))
+	{
+		offset = previous;
+	}
 	lastFrame = now;
 	glutPostRedisplay();
 }
@@ -361,7 +367,7 @@ int main(int argc, char** argv)
 	// Glut
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
-	glutInitWindowSize(512, 512);
+	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("Wowie a window");
 
 	// Glew
