@@ -5,7 +5,7 @@
 #include <iostream>
 #include <iterator>
 #include <vector>
-#include <gtc/type_ptr.hpp>
+#include <glm/gtc/type_ptr.hpp>
 
 static GLuint CompileShader(GLenum type, const char* data)
 {

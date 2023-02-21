@@ -3,7 +3,7 @@
 #define FLAMES_SHADER_H
 #include <glew.h>
 #include <string>
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 class Shader
 {

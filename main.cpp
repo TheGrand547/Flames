@@ -1,11 +1,11 @@
 #include <iostream>
 #include <glew.h>
-#include <glm.hpp>
+#include <glm/glm.hpp>
 // These are also glm I don't know why they're weird
-#include <gtc/matrix_transform.hpp>
-#include <gtc/quaternion.hpp>
-#include <gtc/type_ptr.hpp>
-#include <gtx/euler_angles.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/euler_angles.hpp>
 #include <freeglut.h>
 #include "Buffer.h"
 #include "Shader.h"

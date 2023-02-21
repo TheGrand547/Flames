@@ -1,8 +1,9 @@
 #pragma once
 #ifndef PLANE_H
 #define PLANE_H
-#include <glm.hpp>
-#include <ext/scalar_constants.hpp>
+#include <glm/glm.hpp>
+#include <glm/ext/scalar_constants.hpp>
+// glm::gtc::ext::intersection
 
 
 // TODO: move to doubles?

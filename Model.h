@@ -1,7 +1,7 @@
 #pragma once
 #ifndef MODEL_H
 #define MODEL_H
-#include <glm.hpp>
+#include <glm/glm.hpp>
 
 struct Model
 {

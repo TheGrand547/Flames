@@ -1,8 +1,8 @@
 #pragma once
 #ifndef GLM_HELP_H
 #define GLM_HELP_H
-#include <glm.hpp>
-#include <gtc/matrix_transform.hpp>
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
 
 #define RotateX(matrix, radians) glm::rotate(matrix, radians, glm::vec3(1.f, 0.f, 0.f))
 #define RotationX(radians) RotateX(glm::mat4(1.0f), radians)
