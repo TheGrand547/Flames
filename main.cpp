@@ -1,7 +1,6 @@
 #include <iostream>
 #include <glew.h>
 #include <glm/glm.hpp>
-// These are also glm I don't know why they're weird
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -49,36 +48,23 @@ struct TextureVertex
 	glm::vec2 coordinates;
 };
 
-ColoredVertex generic[] =
-{
-	{{-1, -1, -1}, {1, 0, 0}},
-	{{ 1, -1, -1}, {1, 1, 1}},
-	{{ 1,  1, -1}, {0, 1, 0}},
-	{{-1,  1, -1}, {1, 1, 0}},
+std::array<ColoredVertex, 8> coloredCubeVertex {
+	{
+		{{-1, -1, -1}, {1, 1, 1}},
+		{{ 1, -1, -1}, {0, 1, 1}},
+		{{ 1,  1, -1}, {0, 0, 1}},
+		{{-1,  1, -1}, {1, 0, 1}},
 
-	{{-1, -1,  1}, {1, 0, 1}},
-	{{ 1, -1,  1}, {1, 1, 0}},
-	{{ 1,  1,  1}, {0, 0, 1}},
-	{{-1,  1,  1}, {1, 1, 0}},
-};
-
-std::array<ColoredVertex, 8> generic2 {
-{
-	{{-1, -1, -1}, {1, 1, 1}},
-	{{ 1, -1, -1}, {0, 1, 1}},
-	{{ 1,  1, -1}, {0, 0, 1}},
-	{{-1,  1, -1}, {1, 0, 1}},
-
-	{{-1, -1,  1}, {1, 1, 0}},
-	{{ 1, -1,  1}, {0, 1, 0}},
-	{{ 1,  1,  1}, {0, 0, 0}},
-	{{-1,  1,  1}, {1, 0, 0}},
-} 
+		{{-1, -1,  1}, {1, 1, 0}},
+		{{ 1, -1,  1}, {0, 1, 0}},
+		{{ 1,  1,  1}, {0, 0, 0}},
+		{{-1,  1,  1}, {1, 0, 0}},
+	} 
 };
 
 // This has one redundant triangle but I can't seem to find it so whatever
 // 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
-GLubyte index[] =
+GLubyte cubeIndex[] =
 {
 	2, 7, 6, 4, 5, 1, 6, 2, 7, 3, 4, 0, 1, 3, 2
 };
@@ -123,7 +109,6 @@ static int angle = 0;
 static float angleX = 0.f, angleY = 0.f;
 
 glm::vec3 offset(0, 1.5f, 0);
-glm::quat rotation(glm::vec3(0, -glm::pi<float>(), 0));
 glm::vec3 angles;
 
 GLuint smile, smileVAO;
@@ -188,7 +173,7 @@ std::vector<Model> planes;
 
 void display()
 {
-	// FORWARD IS (0, 0, 1)
+	// FORWARD IS (1, 0, 0)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -198,16 +183,11 @@ void display()
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
 	glm::mat4 projectionView = glm::mat4(1.0f);
 
-	//glm::vec3 normal = ((glm::mat4) rotation) * glm::vec3(1, 0, 0);
-	glm::vec3 normal = rotation * glm::vec3(1, 0, 0);
-
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(angles);//glm::eulerAngles(rotation);
 
-	//glm::mat4 view = glm::lookAt(offset, offset + Vec4to3(normal), glm::vec3(0, 1, 0));
-	//glm::mat4 view = glm::translate((glm::mat4)rotation, -offset);
-	// Adding pi is necessary because the default camera is facing -z
-	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::pi<float>(), angles2.z), -offset);
+	// Adding pi/2 is necessary because the default camera is facing -z
+	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
 
 	// MVP = model
 
@@ -221,7 +201,7 @@ void display()
 	glBindBuffer(GL_ARRAY_BUFFER, smile);
 	glm::vec3 colors(.5f, .5f, .5f);
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	dither.SetVec3("lightPos", glm::vec3(0.f, 1.5f, 0.f));
+	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", offset);
 	dither.SetMat4("vp", projectionView);
 	dither.SetTextureUnit("textureIn", 0);
@@ -235,47 +215,23 @@ void display()
 		lightTextured.SetMat4("model", model.GetModelMatrix());
 		lightTextured.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-		color = glm::vec3(1, 1, 1);
-		lightTextured.SetVec3("color", color);
-		//glDrawElements(GL_LINE_STRIP, sizeof(planeOutline), GL_UNSIGNED_BYTE, planeOutline);
 	}
 
 	dammit.SetActive();
 	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	glBindVertexArray(stickVAO);
 	colors = glm::vec3(1, 0, 0);
-	Model m22(glm::vec3(0, 0, 10), glm::vec3(0, 90.f, 0));
+	Model m22(glm::vec3(10, 0, 0));
 	dammit.SetMat4("mvp", projectionView * m22.GetModelMatrix());
 	dammit.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	/*
-	other.SetActive();
-	buffer.BindBuffer();
-	pog = projection * view * RotateY(RotationX(glm::radians(angleX)), glm::radians(angleY)) * 
-		glm::scale(glm::mat4(1.f), glm::vec3(0.2, 0.2, 0.2)) * glm::translate(glm::mat4(1.f), glm::vec3(0, .4, 0));
-	glUniformMatrix4fv(other.uniformIndex("mvp"), 1, GL_FALSE, glm::value_ptr(pog));
-	glBindVertexArray(otherVAO);
-	//glDrawElements(GL_TRIANGLE_STRIP, sizeof(index), GL_UNSIGNED_BYTE, index);
-	CheckError();
-
-	// I don't know what the hell I'm doing
-	glm::mat4 t = glm::translate(glm::mat4(1.0f), glm::vec3(0, -1, 0));
-
-	glm::mat4 s = glm::scale(glm::mat4(1.0f), glm::vec3(1, 1.f / 2.f, 5));
-	glm::mat4 r = RotateY(RotationX(glm::radians(angleX)), glm::radians(angleY));
-
-	pog = projection * view * (s * r * t);
-	//glUniformMatrix4fv(dammit.uniformIndex("rotation"), 1, GL_FALSE, glm::value_ptr(pog));
-	//glDrawElements(GL_TRIANGLE_STRIP, 14, GL_UNSIGNED_BYTE, index);
-	*/
 	glutSwapBuffers();
 }
 
 bool spin = false;
 std::vector<bool> keyState(UCHAR_MAX);
-Plane barrier(glm::vec3(0, 0, 1), -1);
+Plane barrier(glm::vec3(0, 0, 1), -.75f);
 
 void idle()
 {
@@ -286,13 +242,9 @@ void idle()
 	if (spin)
 		angle += 1;
 
-	glm::vec3 yRotation = glm::eulerAngles(rotation);
-	yRotation.x = yRotation.z = 0;
-
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
-	//glm::vec3 forward = (glm::vec3)(((glm::mat4)glm::quat(yRotation)) * glm::vec4(1, 0, 0, 0));
-	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(0, 0, 1, 0);
+	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right   = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 	forward = speed * glm::normalize(forward);
 	right   = speed * glm::normalize(right);
@@ -305,7 +257,7 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
-	if (barrier.Intersects(previous, offset))
+	if (barrier.IntersectsNormal(previous, offset) && (offset.x > 1 || offset.x < -1))
 	{
 		offset = previous;
 	}
@@ -342,20 +294,10 @@ void mouseFunc(int x, int y)
 		yDif = 0;
 	float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
 	float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
-	glm::quat delta(glm::radians(glm::vec3(zDelta, yDelta, 0)));
 
 	angles.x += zDelta;
 	angles.y += yDelta;
 
-	//glm::quat delta(glm::radians(glm::vec3(0, yDelta, zDelta) / 1.f));
-	//glm::quat delta(glm::radians(glm::vec3(0, yDelta, zDelta)));
-	//rotation = (-delta) * rotation * delta;
-	//glm::eua
-	rotation = rotation * delta;
-	//glm::vec3 goop = glm::eulerAngles(rotation);
-	/*
-	goop.x = 0;
-	rotation = glm::quat(goop);*/
 	previousX = x;
 	previousY = y;
 }
@@ -442,7 +384,7 @@ int main(int argc, char** argv)
 
 
 	buffer.Generate(GL_ARRAY_BUFFER);
-	buffer.BufferData(generic2, GL_STATIC_DRAW);
+	buffer.BufferData(coloredCubeVertex, GL_STATIC_DRAW);
 	buffer.BindBuffer();
 	glBindVertexArray(otherVAO);
 	glVertexAttribPointer(other.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), nullptr);

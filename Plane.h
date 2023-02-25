@@ -24,6 +24,7 @@ public:
 
 	inline float Facing(const glm::vec3& vector) const noexcept;
 	inline bool Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept;
+	inline bool IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept;
 	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
 };
 
@@ -52,6 +53,13 @@ inline bool Plane::Intersects(const glm::vec3& pointA, const glm::vec3& pointB) 
 	float left = this->Facing(pointA);
 	float right = this->Facing(pointB);
 	return (left > 0) != (right > 0); // Can't be on the same side 
+}
+
+inline bool Plane::IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept
+{
+	float left = this->Facing(start);
+	float right = this->Facing(end);
+	return (left > 0) && (right <= 0); // Allow movement from out to inbounds
 }
 
 inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const

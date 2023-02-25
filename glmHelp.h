@@ -3,6 +3,7 @@
 #define GLM_HELP_H
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <iostream>
 
 #define RotateX(matrix, radians) glm::rotate(matrix, radians, glm::vec3(1.f, 0.f, 0.f))
 #define RotationX(radians) RotateX(glm::mat4(1.0f), radians)
@@ -15,5 +16,7 @@
 
 #define Vec4to3(vec4) glm::vec3(vec4.x, vec4.y, vec4.z)
 #define Vec3to4(vec3) glm::vec4(vec3.x, vec3.y, vec3.z, 1.f)
+
+std::ostream& operator<<(std::ostream& os, const glm::vec3& vec);
 
 #endif // GLM_HELP_H
