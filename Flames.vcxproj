@@ -136,12 +136,14 @@
     <ClCompile Include="ArrayObject.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Cube.cpp" />
+    <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="Wall.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\School\Autumn 2022\CSE 5442\Lab 5\stb_image.h" />
@@ -157,6 +159,7 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
+    <ClInclude Include="Wall.h" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Flames.rc" />

@@ -98,40 +98,45 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	this->name = combined;
 
 	std::ifstream input;
-	if (!recompile && (std::filesystem::exists(compiledPath) && \
-		(std::filesystem::last_write_time(compiledPath) > std::filesystem::last_write_time(fragmentPath)
-			|| std::filesystem::last_write_time(compiledPath) > std::filesystem::last_write_time(vertexPath)))) // Attempt to read precompiled shader file
+	if (!recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
 	{
-		input.open(compiledPath.string(), std::ios::binary);
-		if (input.is_open())
+		auto compiledTime = std::filesystem::last_write_time(compiledPath).time_since_epoch().count();
+		auto vertexTime   = std::filesystem::last_write_time(vertexPath).time_since_epoch().count();
+		auto fragmentTime = std::filesystem::last_write_time(fragmentPath).time_since_epoch().count();
+		if (compiledTime > vertexTime && compiledTime > fragmentTime)
 		{
-			GLint length = 0;
-			GLenum format = 0;
-			input.read((char*)&length, sizeof(GLint));
-			input.read((char*)&format, sizeof(GLenum));
-			char* data = new char[length];
-			input.read(data, length);
-			this->program = glCreateProgram();
-			glProgramBinary(this->program, format, reinterpret_cast<void*>(data), length);
-			delete[] data;
-			input.close();
-
-			int result;
-			glGetProgramiv(this->program, GL_LINK_STATUS, &result);
-			if (result)
+			input.open(compiledPath.string(), std::ios::binary);
+			if (input.is_open())
 			{
-				this->compiled = true;
-				this->precompiled = true;
-				return true;
+				std::cout << "Reading '" << this->name << "' from compiled shader file." << std::endl;
+				GLint length = 0;
+				GLenum format = 0;
+				input.read((char*)&length, sizeof(GLint));
+				input.read((char*)&format, sizeof(GLenum));
+				char* data = new char[length];
+				input.read(data, length);
+				this->program = glCreateProgram();
+				glProgramBinary(this->program, format, reinterpret_cast<void*>(data), length);
+				delete[] data;
+				input.close();
+
+				int result;
+				glGetProgramiv(this->program, GL_LINK_STATUS, &result);
+				if (result)
+				{
+					this->compiled = true;
+					this->precompiled = true;
+					return true;
+				}
+				GLint logSize;
+				glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &logSize);
+				char* logMsg = new char[logSize];
+				glGetProgramInfoLog(this->program, logSize, NULL, logMsg);
+				std::cerr << "Error reading compiled shader from file '" << name << ".csp'" << std::endl << logMsg << std::endl;
+				delete[] logMsg;
+				input.close();
+				this->program = 0;
 			}
-			GLint logSize;
-			glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &logSize);
-			char* logMsg = new char[logSize];
-			glGetProgramInfoLog(this->program, logSize, NULL, logMsg);
-			std::cerr << "Error reading compiled shader from file '" << name << ".csp'" << std::endl << logMsg << std::endl;
-			delete[] logMsg;
-			input.close();
-			this->program = 0;
 		}
 	}
 
@@ -139,6 +144,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
+		std::cout << "Compiling Shader from '" << vertexPath << "' and '" << fragmentPath << "'" << std::endl;
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
 		std::string fragment(std::istreambuf_iterator<char>{fragmentFile}, {});
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex.c_str());
@@ -245,6 +251,10 @@ void Shader::ExportCompiled()
 		output.write(reinterpret_cast<char*> (&length), sizeof(length));
 		output.write(reinterpret_cast<char*> (&format), sizeof(format));
 		output.write(buffer.data(), buffer.size());
+	}
+	else
+	{
+		std::cout << "Failed to save Shader '" << this->name << "' to precompiled binary." << std::endl;
 	}
 	output.close();
 }

@@ -15,6 +15,12 @@ uniform sampler2D ditherMap;
 void main()
 {
 	float ambient = 0.2f; // TODO: material setting
+	
+	// TODO: light settings
+	float constant = 1.0f;
+	float linear = 0.0f;
+	float quadratic = 0.0f;
+	
 	vec3 ambientColor = lightColor * ambient;
 	
 	vec3 norm = normal;
@@ -22,15 +28,20 @@ void main()
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
 	vec3 diffuseColor = diffuse * lightColor;
-	
+		
 	vec3 viewDirection = normalize(viewPos - fragPos);
 	vec3 reflected = reflect(-lightDir, norm);
 
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
+	float distance = length(lightPos - fragPos);
+	float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
+
 	vec3 colorOut = vec3(texture(textureIn, tex));
-	vec3 result = colorOut * (ambientColor + diffuseColor + specularOut);
+	
+	
+	vec3 result = colorOut * (ambientColor + diffuseColor + specularOut) * attenuation;
 	
 	// Dither stuff
 	

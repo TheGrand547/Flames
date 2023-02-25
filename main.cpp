@@ -13,6 +13,7 @@
 #include "Texture2D.h"
 #include "stbWrangler.h"
 #include "Plane.h"
+#include "Wall.h"
 
 #define CheckError() CheckErrors(__LINE__);
 
@@ -21,7 +22,7 @@ void CheckErrors(int line)
 	GLenum e;
 	while ((e = glGetError()))
 	{
-		std::string given((char *) gluErrorString(e));
+		std::string given((char*)gluErrorString(e));
 		std::cout << "Line " << line << ": " << given << std::endl;
 	}
 }
@@ -48,7 +49,7 @@ struct TextureVertex
 	glm::vec2 coordinates;
 };
 
-std::array<ColoredVertex, 8> coloredCubeVertex {
+std::array<ColoredVertex, 8> coloredCubeVertex{
 	{
 		{{-1, -1, -1}, {1, 1, 1}},
 		{{ 1, -1, -1}, {0, 1, 1}},
@@ -59,12 +60,12 @@ std::array<ColoredVertex, 8> coloredCubeVertex {
 		{{ 1, -1,  1}, {0, 1, 0}},
 		{{ 1,  1,  1}, {0, 0, 0}},
 		{{-1,  1,  1}, {1, 0, 0}},
-	} 
+	}
 };
 
 // This has one redundant triangle but I can't seem to find it so whatever
 // 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
-GLubyte cubeIndex[] =
+GLubyte cubeIndicies[] =
 {
 	2, 7, 6, 4, 5, 1, 6, 2, 7, 3, 4, 0, 1, 3, 2
 };
@@ -73,8 +74,8 @@ GLubyte cubeIndex[] =
 GLubyte index2[] =
 {
 	//2, 3, 1, 0, 4, 5, 6, 7, 8, 6, 4, 3, 2, 1
-	0, 3, 1, 2, 5, 6, 4, 7, 3, 6, 2 
-};*/ 
+	0, 3, 1, 2, 5, 6, 4, 7, 3, 6, 2
+};*/
 
 glm::vec3 plane[] =
 {
@@ -99,10 +100,10 @@ std::array<glm::vec3, 10> stick{
 	}
 };
 
-GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3};
+GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
 GLuint stickBuf, stickVAO;
 
-GLubyte planeOutline[] = { 0, 1, 3, 2, 0};
+GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
 Texture2D texture, wallTexture;
 
 static int angle = 0;
@@ -111,7 +112,7 @@ static float angleX = 0.f, angleY = 0.f;
 glm::vec3 offset(0, 1.5f, 0);
 glm::vec3 angles;
 
-GLuint smile, smileVAO;
+GLuint texturedPlane, texturedVAO;
 
 //static const unsigned char dither16[16 * 16] = 
 static const std::array<const unsigned char, 16 * 16> dither16 = {
@@ -142,26 +143,26 @@ Shader dither;
 
 enum GeometryThing : unsigned char
 {
-	PlusX  = 0x01,
+	PlusX = 0x01,
 	MinusX = 0x02,
-	PlusZ  = 0x04,
+	PlusZ = 0x04,
 	MinusZ = 0x08,
-	PlusY  = 0x10,
+	PlusY = 0x10,
 	MinusY = 0x20,
-	WallX  = PlusX | MinusX,
-	WallZ  = PlusZ | MinusZ,
-	All    = 0xFF,
+	WallX = PlusX | MinusX,
+	WallZ = PlusZ | MinusZ,
+	All = 0xFF,
 };
 
 std::vector<Model> GetPlaneSegment(const glm::vec3& base, unsigned char flags)
 {
 	std::vector<Model> results;
 	if (flags & PlusX)  results.push_back({ base + glm::vec3(-1, 1,  0), glm::vec3(0, 0, -90.f) });
-	if (flags & MinusX) results.push_back({ base + glm::vec3( 1, 1,  0), glm::vec3(0, 0, 90.f) });
-	if (flags & PlusZ)  results.push_back({ base + glm::vec3( 0, 1, -1), glm::vec3(90, 0, 0) });
-	if (flags & MinusZ) results.push_back({ base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0, 0) });
+	if (flags & MinusX) results.push_back({ base + glm::vec3(1, 1,  0), glm::vec3(0, 0, 90.f) });
+	if (flags & PlusZ)  results.push_back({ base + glm::vec3(0, 1, -1), glm::vec3(90, 0, 0) });
+	if (flags & MinusZ) results.push_back({ base + glm::vec3(0, 1,  1), glm::vec3(-90, 0, 0) });
 	if (flags & PlusY)  results.push_back({ base });
-	if (flags & MinusY) results.push_back({ base + glm::vec3( 0, 2,  0), glm::vec3(180, 0, 0)});
+	if (flags & MinusY) results.push_back({ base + glm::vec3(0, 2,  0), glm::vec3(180, 0, 0) });
 	return results;
 }
 
@@ -198,7 +199,7 @@ void display()
 	wallTexture.Bind(0);
 	ditherTexture.Bind(1);
 
-	glBindBuffer(GL_ARRAY_BUFFER, smile);
+	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
 	glm::vec3 colors(.5f, .5f, .5f);
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -207,7 +208,7 @@ void display()
 	dither.SetTextureUnit("textureIn", 0);
 	dither.SetTextureUnit("ditherMap", 1);
 	//glBindBuffer(GL_ARRAY_BUFFER, planeBO);
-	glBindVertexArray(smileVAO);
+	glBindVertexArray(texturedVAO);
 
 	for (Model& model : planes)
 	{
@@ -231,6 +232,7 @@ void display()
 
 bool spin = false;
 std::vector<bool> keyState(UCHAR_MAX);
+std::vector<Wall> walls;
 Plane barrier(glm::vec3(0, 0, 1), -.75f);
 
 void idle()
@@ -242,12 +244,12 @@ void idle()
 	if (spin)
 		angle += 1;
 
-	float speed = 3 * ((float) elapsed) / 1000.f;
+	float speed = 3 * ((float)elapsed) / 1000.f;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
-	glm::vec3 right   = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
+	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 	forward = speed * glm::normalize(forward);
-	right   = speed * glm::normalize(right);
+	right = speed * glm::normalize(right);
 	glm::vec3 previous = offset;
 	if (keyState['w'] || keyState['W'])
 		offset += forward;
@@ -257,10 +259,20 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
+	for (const auto& wall : walls)
+	{
+		if (wall.Intersection(previous, offset))
+		{
+			offset = previous;
+			break;
+		}
+	}
+	/*
 	if (barrier.IntersectsNormal(previous, offset) && (offset.x > 1 || offset.x < -1))
 	{
+		std::cout << barrier.PointOfIntersection(glm::normalize(previous - offset), previous) << std::endl;
 		offset = previous;
-	}
+	}*/
 	lastFrame = now;
 	glutPostRedisplay();
 }
@@ -286,8 +298,8 @@ void keyboardOff(unsigned char key, int x, int y)
 void mouseFunc(int x, int y)
 {
 	static int previousX, previousY;
-	float xDif = (float) x - previousX;
-	float yDif = (float) y - previousY;
+	float xDif = (float)x - previousX;
+	float yDif = (float)y - previousY;
 	if (abs(xDif) > 20)
 		xDif = 0;
 	if (abs(yDif) > 20)
@@ -337,12 +349,12 @@ int main(int argc, char** argv)
 	glGenVertexArrays(1, &vertexVAO);
 	glGenVertexArrays(1, &otherVAO);
 	glGenVertexArrays(1, &stickVAO);
-	glGenVertexArrays(1, &smileVAO);
+	glGenVertexArrays(1, &texturedVAO);
 
 	glGenBuffers(1, &triVBO);
 	glGenBuffers(1, &planeBO);
 	glGenBuffers(1, &stickBuf);
-	glGenBuffers(1, &smile);
+	glGenBuffers(1, &texturedPlane);
 	ColoredVertex data[] = {
 		{{-0.5, -0.5, 0}, {1, 0, 0}},
 		{{0.5, -0.5, 0}, {0, 1, 0}},
@@ -358,7 +370,7 @@ int main(int argc, char** argv)
 	glEnableVertexArrayAttrib(stickVAO, dammit.index("pos"));
 
 
-	glBindBuffer(GL_ARRAY_BUFFER, smile);
+	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
 	TextureVertex verts[4] = {};
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
@@ -368,11 +380,11 @@ int main(int argc, char** argv)
 	verts[3].coordinates = glm::vec2(0, 0);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
 
-	glBindVertexArray(smileVAO);
-	glVertexAttribPointer(textures.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), nullptr);
+	glBindVertexArray(texturedVAO);
+	glVertexAttribPointer(textures.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (const void*) nullptr);
 	glVertexAttribPointer(textures.index("tex"), 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (const void*) offsetof(TextureVertex, coordinates));
-	glEnableVertexArrayAttrib(smileVAO, textures.index("pos"));
-	glEnableVertexArrayAttrib(smileVAO, textures.index("tex"));
+	glEnableVertexArrayAttrib(texturedVAO, textures.index("pos"));
+	glEnableVertexArrayAttrib(texturedVAO, textures.index("tex"));
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
@@ -389,8 +401,8 @@ int main(int argc, char** argv)
 	glBindVertexArray(otherVAO);
 	glVertexAttribPointer(other.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), nullptr);
 	glEnableVertexArrayAttrib(otherVAO, other.index("pos"));
-	
-	glVertexAttribPointer(other.index("color"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), (const void*) offsetof(ColoredVertex, color));
+
+	glVertexAttribPointer(other.index("color"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), (const void*)offsetof(ColoredVertex, color));
 	glEnableVertexArrayAttrib(otherVAO, other.index("color"));
 
 	glm::vec3 origin(0, 0, 0);
@@ -402,7 +414,11 @@ int main(int argc, char** argv)
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
-	
+	walls.push_back(planes[planes.size() / 2 + 1]);
+	Model oops = planes[planes.size() / 2 + 1];
+	planes.clear();
+	planes.push_back(oops);
+
 	ditherTexture.Load(dither16);
 	ditherTexture.SetWrapBehaviorS(Repeat);
 	ditherTexture.SetWrapBehaviorT(Repeat);
