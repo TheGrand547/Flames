@@ -20,7 +20,7 @@ public:
 	Plane(const glm::vec3& normal, const glm::vec3& point) noexcept;
 
 	~Plane() noexcept = default;
-	Plane(const Plane& other) noexcept = default;
+	Plane(const Plane& other) noexcept;
 	Plane(Plane&& other) noexcept = default;
 
 	inline Plane& operator=(const Plane& other) noexcept;
@@ -41,7 +41,7 @@ inline Plane::Plane(const glm::vec3& vector, float f) noexcept : normal(vector),
 	// Point should be a point in the Plane
 }
 
-inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point) noexcept : normal(normal), point(point), constant(glm::dot(normal, point))
+inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point) noexcept : normal(glm::normalize(normal)), point(point), constant(glm::dot(normal, point))
 {
 
 }
@@ -75,7 +75,7 @@ inline bool Plane::IntersectsNormal(const glm::vec3& start, const glm::vec3& end
 
 inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const
 {
-	float dot = glm::dot(direction, this->normal);
+	float dot = glm::dot(direction, glm::normalize(this->normal));
 	if (glm::abs(dot) < glm::epsilon<float>())
 	{
 		return glm::vec3(NAN, NAN, NAN);

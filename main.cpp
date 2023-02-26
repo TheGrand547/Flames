@@ -143,14 +143,14 @@ Shader dither;
 
 enum GeometryThing : unsigned char
 {
-	PlusX = 0x01,
-	MinusX = 0x02,
-	PlusZ = 0x04,
-	MinusZ = 0x08,
-	PlusY = 0x10,
-	MinusY = 0x20,
-	WallX = PlusX | MinusX,
-	WallZ = PlusZ | MinusZ,
+	PlusX  = 1 << 1,
+	MinusX = 1 << 2,
+	PlusZ  = 1 << 3,
+	MinusZ = 1 << 4,
+	PlusY  = 1 << 5,
+	MinusY = 1 << 6,
+	WallX  = PlusX | MinusX,
+	WallZ  = PlusZ | MinusZ,
 	All = 0xFF,
 };
 
@@ -414,10 +414,14 @@ int main(int argc, char** argv)
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
-	walls.push_back(planes[planes.size() / 2 + 1]);
+	//walls.push_back(planes[planes.size() / 2 + 1]);
+	for (const auto& ref : planes)
+	{
+		walls.push_back(Wall(ref));
+	}
 	Model oops = planes[planes.size() / 2 + 1];
-	planes.clear();
-	planes.push_back(oops);
+	//planes.clear();
+	//planes.push_back(oops);
 
 	ditherTexture.Load(dither16);
 	ditherTexture.SetWrapBehaviorS(Repeat);
