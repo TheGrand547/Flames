@@ -261,7 +261,7 @@ void idle()
 		offset -= right;
 	for (const auto& wall : walls)
 	{
-		if (wall.Intersection(previous, offset))
+		if (wall.Intersection(previous, offset + glm::normalize(forward) * 0.5f))
 		{
 			offset = previous;
 			break;

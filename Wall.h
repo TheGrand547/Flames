@@ -11,12 +11,13 @@ class Wall
 {
 private:
 	glm::mat4 model, normal;
-	glm::vec3 lowerBound, upperBound;
 	Plane plane;
 public:
-	Wall(const Model& model);
+	Wall(const Model& model) noexcept;
 	Wall(const Wall& other) noexcept = default;
 	~Wall();
+
+	Wall& operator=(const Wall& other) noexcept = default;
 
 	bool Intersection(const glm::vec3& start, const glm::vec3& end) const;
 };
