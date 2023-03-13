@@ -106,6 +106,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -123,6 +124,7 @@
       <ConformanceMode>true</ConformanceMode>
       <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -133,7 +135,10 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="AABB.cpp" />
+    <ClCompile Include="AABB.cpp">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClCompile>
     <ClCompile Include="ArrayObject.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Cube.cpp" />
@@ -149,7 +154,10 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\..\School\Autumn 2022\CSE 5442\Lab 5\stb_image.h" />
-    <ClInclude Include="AABB.h" />
+    <ClInclude Include="AABB.h">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+    </ClInclude>
     <ClInclude Include="ArrayObject.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Cube.h" />

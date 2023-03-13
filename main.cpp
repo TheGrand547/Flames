@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <freeglut.h>
+#include "AABB.h"
 #include "Buffer.h"
 #include "Shader.h"
 #include "glmHelp.h"
@@ -174,6 +175,8 @@ std::vector<Model> planes;
 
 void display()
 {
+	AABB bound;
+	bound.PointInside(glm::vec3(0, 0, 0));
 	// FORWARD IS (1, 0, 0)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 

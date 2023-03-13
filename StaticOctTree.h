@@ -12,7 +12,7 @@ protected:
 	std::vector<void*> pointers;
 	AABB bounds;
 public:
-	constexpr StaticOctTree(const glm::vec3& negativeBound, const glm::vec3& positiveBound);
+	 StaticOctTree(const glm::vec3& negativeBound, const glm::vec3& positiveBound);
 	~StaticOctTree();
 
 };

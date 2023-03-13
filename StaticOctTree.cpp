@@ -1,6 +1,6 @@
 #include "StaticOctTree.h"
 
-constexpr StaticOctTree::StaticOctTree(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : bounds(negativeBound, positiveBound)
+ StaticOctTree::StaticOctTree(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : bounds(negativeBound, positiveBound)
 {
 
 }
