@@ -17,6 +17,10 @@ public:
 
 	AABB& operator=(const AABB& other) noexcept;
 
+	constexpr void Center(const glm::vec3& point);
+	constexpr void Scale(const glm::vec3& factor);
+	constexpr void Scale(float x, float y = 1.0f, float z = 1.0f);
+
 	inline constexpr bool PointInside(const glm::vec3& point) const;
 	inline constexpr bool Overlap(const AABB& other) const;
 	static constexpr AABB GetAABC(const glm::vec3& left, const glm::vec3& right);
@@ -38,6 +42,26 @@ constexpr AABB::AABB(const AABB& other)
 	this->negativeBound = other.negativeBound;
 	this->positiveBound = other.positiveBound;
 }
+
+constexpr void AABB::Center(const glm::vec3& point)
+{
+	glm::vec3 delta = (this->positiveBound - this->negativeBound) / 2.0f;
+	this->negativeBound = point - delta;
+	this->positiveBound = point + delta;
+}
+
+constexpr void AABB::Scale(const glm::vec3& scale)
+{
+	glm::vec3 center = (this->positiveBound + this->negativeBound) / 2.0f;
+	this->positiveBound = (this->positiveBound - this->negativeBound) * scale;
+	this->Center(center);
+}
+
+constexpr void AABB::Scale(float x, float y, float z)
+{
+	this->Scale(glm::vec3(x, y, z));
+}
+
 
 inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {

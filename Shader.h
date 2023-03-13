@@ -7,7 +7,7 @@
 
 class Shader
 {
-private:
+protected:
 	bool compiled, precompiled;
 	GLuint program;
 	std::string name;
@@ -27,6 +27,8 @@ public:
 	bool Compile(const std::string& vertex, const std::string& frag, bool recompile = false);
 	bool CompileExplicit(const char* vertex, const char* fragment);
 
+	constexpr bool Compiled() const;
+
 	GLuint index(const std::string& name) const;
 	GLuint uniformIndex(const std::string& name) const;
 
@@ -39,6 +41,11 @@ public:
 	void SetMat4(const std::string& name, const glm::mat4& mat) const;
 	void SetTextureUnit(const std::string& name, const unsigned int unit) const;
 };
+
+constexpr bool Shader::Compiled() const
+{
+	return this->compiled;
+}
 
 #endif // FLAMES_SHADER_H
 

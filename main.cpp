@@ -107,7 +107,6 @@ GLuint stickBuf, stickVAO;
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
 Texture2D texture, wallTexture;
 
-static int angle = 0;
 static float angleX = 0.f, angleY = 0.f;
 
 glm::vec3 offset(0, 1.5f, 0);
@@ -175,8 +174,6 @@ std::vector<Model> planes;
 
 void display()
 {
-	AABB bound;
-	bound.PointInside(glm::vec3(0, 0, 0));
 	// FORWARD IS (1, 0, 0)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
@@ -233,7 +230,6 @@ void display()
 	glutSwapBuffers();
 }
 
-bool spin = false;
 std::vector<bool> keyState(UCHAR_MAX);
 std::vector<Wall> walls;
 Plane barrier(glm::vec3(0, 0, 1), -.75f);
@@ -243,9 +239,6 @@ void idle()
 	static int lastFrame = 0;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
-
-	if (spin)
-		angle += 1;
 
 	float speed = 3 * ((float)elapsed) / 1000.f;
 
@@ -262,6 +255,11 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
+
+	AABB bounds(glm::vec3(-1, -1, -1), glm::vec3(1, 2, 1));
+	if ((keyState['c'] || keyState['C']) && bounds.PointInside(offset))
+		std::cout << "Collision!" << std::endl;
+
 	for (const auto& wall : walls)
 	{
 		if (wall.Intersection(previous, offset + glm::normalize(forward) * 0.5f))
@@ -270,12 +268,7 @@ void idle()
 			break;
 		}
 	}
-	/*
-	if (barrier.IntersectsNormal(previous, offset) && (offset.x > 1 || offset.x < -1))
-	{
-		std::cout << barrier.PointOfIntersection(glm::normalize(previous - offset), previous) << std::endl;
-		offset = previous;
-	}*/
+
 	lastFrame = now;
 	glutPostRedisplay();
 }
