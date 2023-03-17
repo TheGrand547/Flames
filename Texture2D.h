@@ -54,6 +54,8 @@ public:
 	inline void SetWrapBehaviorS(TextureWrapping value) const;
 	inline void SetWrapBehaviorT(TextureWrapping value) const;
 	inline void GenerateMipmap() const;
+	inline void SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
+		TextureWrapping sWrapping, TextureWrapping tWrapping) const;
 
 	void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
@@ -86,9 +88,18 @@ inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
 	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)value);
 }
 
+inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
+									TextureWrapping sWrapping, TextureWrapping tWrapping) const
+{
+	this->SetMinFilter(minFilter);
+	this->SetMagFilter(magFilter);
+	this->SetWrapBehaviorS(sWrapping);
+	this->SetWrapBehaviorT(tWrapping);
+}
+
 template<class T> inline void Texture2D::Load(const std::vector<T>& data)
 {
-
+	// BAD
 }
 
 template<class T, GLenum type, std::size_t L> inline void Texture2D::Load(const std::array<T, L>& data, std::size_t width, std::size_t height)

@@ -23,6 +23,8 @@ public:
 	Plane(const Plane& other) noexcept;
 	Plane(Plane&& other) noexcept = default;
 
+	inline glm::vec3 GetNormal() const;
+
 	inline Plane& operator=(const Plane& other) noexcept;
 
 	inline float Facing(const glm::vec3& vector) const noexcept;
@@ -44,6 +46,11 @@ inline Plane::Plane(const glm::vec3& vector, float f) noexcept : normal(vector),
 inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point) noexcept : normal(glm::normalize(normal)), point(point), constant(glm::dot(normal, point))
 {
 
+}
+
+inline glm::vec3 Plane::GetNormal() const
+{
+	return this->normal;
 }
 
 inline Plane& Plane::operator=(const Plane& other) noexcept

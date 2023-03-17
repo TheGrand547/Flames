@@ -34,8 +34,8 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 }
 
 // Cringe globals
-GLuint triVBO, planeBO, cubeIndex, vertexVAO, otherVAO;
-Shader dammit, other, textures, light, lightTextured;
+GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
+Shader dammit, aabbShader, textures, light, lightTextured;
 Buffer buffer;
 
 struct ColoredVertex
@@ -61,6 +61,19 @@ std::array<ColoredVertex, 8> coloredCubeVertex{
 		{{ 1, -1,  1}, {0, 1, 0}},
 		{{ 1,  1,  1}, {0, 0, 0}},
 		{{-1,  1,  1}, {1, 0, 0}},
+	}
+};
+
+std::array<glm::vec3, 8> plainCubeVerts{
+	{
+		{-1, -1, -1},
+		{ 1, -1, -1},
+		{ 1,  1, -1},
+		{-1,  1, -1},
+		{-1, -1,  1},
+		{ 1, -1,  1},
+		{ 1,  1,  1},
+		{-1,  1,  1},
 	}
 };
 
@@ -171,6 +184,8 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 	return GetPlaneSegment(base, openZ ? PlusX | MinusX | PlusY : PlusZ | MinusZ | PlusY);
 }
 std::vector<Model> planes;
+std::vector<AxisAlignedBox> boxes;
+
 
 void display()
 {
@@ -215,7 +230,7 @@ void display()
 		glm::vec3 color(.5f, .5f, .5f);
 		lightTextured.SetMat4("model", model.GetModelMatrix());
 		lightTextured.SetVec3("color", color);
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		//glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 
 	dammit.SetActive();
@@ -227,6 +242,18 @@ void display()
 	dammit.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
+
+	aabbShader.SetActive();
+	aabbShader.SetVec3("color", colors);
+	buffer.BindBuffer();
+	glBindVertexArray(aabbVAO);
+	glPolygonMode(GL_FRONT, GL_LINE);
+	for (const AABB& box : boxes)
+	{
+		glm::mat4 boxMat = projectionView * box.GetModel().GetModelMatrix();
+		aabbShader.SetMat4("mvp", boxMat);
+		glDrawElements(GL_TRIANGLE_STRIP, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+	}
 	glutSwapBuffers();
 }
 
@@ -255,17 +282,29 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
-
-	AABB bounds(glm::vec3(-1, -1, -1), glm::vec3(1, 2, 1));
-	if ((keyState['c'] || keyState['C']) && bounds.PointInside(offset))
-		std::cout << "Collision!" << std::endl;
-
-	for (const auto& wall : walls)
+	if (offset != previous)
 	{
-		if (wall.Intersection(previous, offset + glm::normalize(forward) * 0.5f))
+		AABB bounds(glm::vec3(-1, -1, -1), glm::vec3(1, 2, 1));
+		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+		playerBounds.Center(offset);
+		if ((keyState['c'] || keyState['C']) && bounds.Overlap(playerBounds))
+			std::cout << "Collision!" << std::endl;
+		/*
+		for (const auto& wall : walls)
 		{
-			offset = previous;
-			break;
+			if (wall.Intersection(previous, offset + glm::normalize(forward) * 0.5f))
+			{
+				offset = previous;
+				break;
+			}
+		}*/
+		for (const auto& wall : boxes)
+		{
+			if (wall.Overlap(playerBounds))
+			{
+				offset = previous;
+				break;
+			}
 		}
 	}
 
@@ -332,7 +371,7 @@ int main(int argc, char** argv)
 	lightTextured.CompileSimple("lighttex");
 	dither.CompileSimple("light_text_dither");
 
-	other.CompileSimple("test");
+	aabbShader.CompileSimple("uniform");
 
 	textures.CompileSimple("texture");
 
@@ -343,7 +382,7 @@ int main(int argc, char** argv)
 
 	// Set up VBO/VAO
 	glGenVertexArrays(1, &vertexVAO);
-	glGenVertexArrays(1, &otherVAO);
+	glGenVertexArrays(1, &aabbVAO);
 	glGenVertexArrays(1, &stickVAO);
 	glGenVertexArrays(1, &texturedVAO);
 
@@ -392,14 +431,12 @@ int main(int argc, char** argv)
 
 
 	buffer.Generate(GL_ARRAY_BUFFER);
-	buffer.BufferData(coloredCubeVertex, GL_STATIC_DRAW);
+	buffer.BufferData(plainCubeVerts, GL_STATIC_DRAW);
 	buffer.BindBuffer();
-	glBindVertexArray(otherVAO);
-	glVertexAttribPointer(other.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), nullptr);
-	glEnableVertexArrayAttrib(otherVAO, other.index("pos"));
+	glBindVertexArray(aabbVAO);
+	glVertexAttribPointer(aabbShader.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(aabbVAO, aabbShader.index("pos"));
 
-	glVertexAttribPointer(other.index("color"), 3, GL_FLOAT, GL_FALSE, sizeof(ColoredVertex), (const void*)offsetof(ColoredVertex, color));
-	glEnableVertexArrayAttrib(otherVAO, other.index("color"));
 
 	glm::vec3 origin(0, 0, 0);
 	CombineVector(planes, GetPlaneSegment(origin, PlusY));
@@ -416,14 +453,14 @@ int main(int argc, char** argv)
 		walls.push_back(Wall(ref));
 	}
 	Model oops = planes[planes.size() / 2 + 1];
-	//planes.clear();
-	//planes.push_back(oops);
+
+	boxes.push_back(AABB(glm::vec3(1, 0, 1), glm::vec3(10, 2, 10)));
+	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0, -1), glm::vec3(-10, 2, -10)}));
+	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0,  1), glm::vec3(-10, 2,  10)}));
+	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3( 1, 0, -1), glm::vec3( 10, 2, -10)}));
 
 	ditherTexture.Load(dither16);
-	ditherTexture.SetWrapBehaviorS(Repeat);
-	ditherTexture.SetWrapBehaviorT(Repeat);
-	ditherTexture.SetMagFilter(MagNearest);
-	ditherTexture.SetMinFilter(MinNearest);
+	ditherTexture.SetFilters(MinNearest, MagNearest, Repeat, Repeat);
 
 	glGenerateMipmap(GL_TEXTURE_2D);
 
