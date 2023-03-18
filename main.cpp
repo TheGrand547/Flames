@@ -81,8 +81,20 @@ std::array<glm::vec3, 8> plainCubeVerts{
 // 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
 GLubyte cubeIndicies[] =
 {
-	2, 7, 6, 4, 5, 1, 6, 2, 7, 3, 4, 0, 1, 3, 2
+	0, 1, 4,
+	1, 5, 4,
+	4, 3, 0,
+	3, 4, 7,
+	7, 4, 6,
+	4, 5, 6,
+	6, 5, 2,
+	2, 5, 1,
+	2, 1, 0,
+	2, 0, 3,
+	6, 2, 7,
+	2, 3, 7
 };
+// I don't know what's goign on with this but I didn't like the old thing
 
 /*
 GLubyte index2[] =
@@ -120,14 +132,13 @@ GLuint stickBuf, stickVAO;
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
 Texture2D texture, wallTexture;
 
-static float angleX = 0.f, angleY = 0.f;
+bool outlineBoxes = false;
 
 glm::vec3 offset(0, 1.5f, 0);
 glm::vec3 angles;
 
 GLuint texturedPlane, texturedVAO;
 
-//static const unsigned char dither16[16 * 16] = 
 static const std::array<const unsigned char, 16 * 16> dither16 = {
 {
 	0,   191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254,
@@ -186,7 +197,7 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 std::vector<Model> planes;
 std::vector<AxisAlignedBox> boxes;
 
-
+bool dummyFlag = false;
 void display()
 {
 	// FORWARD IS (1, 0, 0)
@@ -243,23 +254,38 @@ void display()
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
 
-	aabbShader.SetActive();
-	aabbShader.SetVec3("color", colors);
-	buffer.BindBuffer();
-	glBindVertexArray(aabbVAO);
-	glPolygonMode(GL_FRONT, GL_LINE);
-	for (const AABB& box : boxes)
+	if (outlineBoxes)
 	{
-		glm::mat4 boxMat = projectionView * box.GetModel().GetModelMatrix();
-		aabbShader.SetMat4("mvp", boxMat);
-		glDrawElements(GL_TRIANGLE_STRIP, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+		aabbShader.SetActive();
+		aabbShader.SetVec3("color", colors);
+		glm::vec3 blue(0, 0, 1);
+		//buffer.BindBuffer();
+		glBindVertexArray(aabbVAO);
+
+		if (dummyFlag)
+			glDisable(GL_CULL_FACE);
+		
+		for (const AABB& box : boxes)
+		{
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			aabbShader.SetVec3("color", colors);
+			glm::mat4 boxMat = projectionView * box.GetModel().GetModelMatrix();
+			aabbShader.SetMat4("mvp", boxMat);
+			glDrawElements(GL_TRIANGLES, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+			aabbShader.SetVec3("color", blue);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			glDrawElements(GL_TRIANGLES, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+		}
+		glEnable(GL_CULL_FACE);
 	}
+
 	glutSwapBuffers();
 }
 
 std::vector<bool> keyState(UCHAR_MAX);
 std::vector<Wall> walls;
-Plane barrier(glm::vec3(0, 0, 1), -.75f);
+
+// To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
 
 void idle()
 {
@@ -274,6 +300,8 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = offset;
+	if (keyState['p'] || keyState['P'])
+		std::cout << previous << std::endl;
 	if (keyState['w'] || keyState['W'])
 		offset += forward;
 	if (keyState['s'] || keyState['S'])
@@ -282,22 +310,15 @@ void idle()
 		offset += right;
 	if (keyState['a'] || keyState['A'])
 		offset -= right;
+	if (keyState['k'])
+		offset.y = -10;
+	if (keyState['b'])
+		offset.y = 10;
 	if (offset != previous)
 	{
-		AABB bounds(glm::vec3(-1, -1, -1), glm::vec3(1, 2, 1));
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 		playerBounds.Center(offset);
-		if ((keyState['c'] || keyState['C']) && bounds.Overlap(playerBounds))
-			std::cout << "Collision!" << std::endl;
-		/*
-		for (const auto& wall : walls)
-		{
-			if (wall.Intersection(previous, offset + glm::normalize(forward) * 0.5f))
-			{
-				offset = previous;
-				break;
-			}
-		}*/
+
 		for (const auto& wall : boxes)
 		{
 			if (wall.Overlap(playerBounds))
@@ -317,10 +338,14 @@ void keyboard(unsigned char key, int x, int y)
 	keyState[key] = true;
 	if (key == 'q' || key == 'Q')
 		glutLeaveMainLoop();
+	if (key == 't' || key == 'T')
+		outlineBoxes = !outlineBoxes;
+	if (key == 'g' || key == 'G')
+		dummyFlag = !dummyFlag;
 	if (key == 'f')
 	{
 		std::cout << offset.x << ", " << offset.y << ", " << offset.z << std::endl;
-		offset = glm::vec3(0, 1.5f, 0);
+		offset = glm::vec3(1, 1.5f, 1);
 	}
 }
 
@@ -447,7 +472,6 @@ int main(int argc, char** argv)
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
-	//walls.push_back(planes[planes.size() / 2 + 1]);
 	for (const auto& ref : planes)
 	{
 		walls.push_back(Wall(ref));
@@ -461,28 +485,26 @@ int main(int argc, char** argv)
 
 	ditherTexture.Load(dither16);
 	ditherTexture.SetFilters(MinNearest, MagNearest, Repeat, Repeat);
-
-	glGenerateMipmap(GL_TEXTURE_2D);
+	ditherTexture.GenerateMipmap();
 
 	CheckError();
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	// Not indexed color, irrelevant
-	//glEnable(GL_DITHER);
-
 	glDisable(GL_LINE_SMOOTH);
 	glDisable(GL_POLYGON_SMOOTH);
-
 
 	glDepthFunc(GL_LESS);
 	glClearColor(0, 0, 0, 1);
 	glLineWidth(5);
 
+	glFrontFace(GL_CCW);
+
 	glutDisplayFunc(display);
 	glutIdleFunc(idle);
 
+	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
 	glutKeyboardFunc(keyboard);
 	glutKeyboardUpFunc(keyboardOff);
 

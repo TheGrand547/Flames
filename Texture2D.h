@@ -65,7 +65,7 @@ public:
 
 inline void Texture2D::GenerateMipmap() const
 {
-	glGenerateMipmap(this->texture);
+	glGenerateMipmap(GL_TEXTURE_2D);
 }
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const
