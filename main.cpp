@@ -79,22 +79,38 @@ std::array<glm::vec3, 8> plainCubeVerts{
 
 // This has one redundant triangle but I can't seem to find it so whatever
 // 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
-GLubyte cubeIndicies[] =
+std::array<GLubyte, 36> cubeIndicies =
 {
 	0, 1, 4,
 	1, 5, 4,
+
 	4, 3, 0,
 	3, 4, 7,
+
 	7, 4, 6,
 	4, 5, 6,
+
 	6, 5, 2,
 	2, 5, 1,
+
 	2, 1, 0,
 	2, 0, 3,
+
 	6, 2, 7,
 	2, 3, 7
 };
 // I don't know what's goign on with this but I didn't like the old thing
+
+std::array<glm::vec3, sizeof(cubeIndicies)> texturedCubeVerts = 
+	[](auto verts, auto index) constexpr
+	{
+		std::array<glm::vec3, index.size()> temp{};
+		for (int i = 0; i < temp.size(); i++)
+		{
+			temp[i] = verts[i];
+		}
+		return temp;
+	} (plainCubeVerts, cubeIndicies);
 
 /*
 GLubyte index2[] =
@@ -175,24 +191,26 @@ enum GeometryThing : unsigned char
 	MinusY = 1 << 6,
 	WallX  = PlusX | MinusX,
 	WallZ  = PlusZ | MinusZ,
+	HallwayZ = PlusX | MinusX | PlusY,
+	HallwayX = PlusZ | MinusZ | PlusY,
 	All = 0xFF,
 };
 
-std::vector<Model> GetPlaneSegment(const glm::vec3& base, unsigned char flags)
+std::vector<Model> GetPlaneSegment(const glm::vec3& base, GeometryThing flags)
 {
 	std::vector<Model> results;
-	if (flags & PlusX)  results.push_back({ base + glm::vec3(-1, 1,  0), glm::vec3(0, 0, -90.f) });
-	if (flags & MinusX) results.push_back({ base + glm::vec3(1, 1,  0), glm::vec3(0, 0, 90.f) });
-	if (flags & PlusZ)  results.push_back({ base + glm::vec3(0, 1, -1), glm::vec3(90, 0, 0) });
-	if (flags & MinusZ) results.push_back({ base + glm::vec3(0, 1,  1), glm::vec3(-90, 0, 0) });
+	if (flags & PlusX)  results.push_back({ base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f) });
+	if (flags & MinusX) results.push_back({ base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f) });
+	if (flags & PlusZ)  results.push_back({ base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0) });
+	if (flags & MinusZ) results.push_back({ base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0) });
 	if (flags & PlusY)  results.push_back({ base });
-	if (flags & MinusY) results.push_back({ base + glm::vec3(0, 2,  0), glm::vec3(180, 0, 0) });
+	if (flags & MinusY) results.push_back({ base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0) });
 	return results;
 }
 
 std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 {
-	return GetPlaneSegment(base, openZ ? PlusX | MinusX | PlusY : PlusZ | MinusZ | PlusY);
+	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
 }
 std::vector<Model> planes;
 std::vector<AxisAlignedBox> boxes;
@@ -271,10 +289,10 @@ void display()
 			aabbShader.SetVec3("color", colors);
 			glm::mat4 boxMat = projectionView * box.GetModel().GetModelMatrix();
 			aabbShader.SetMat4("mvp", boxMat);
-			glDrawElements(GL_TRIANGLES, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+			glDrawElements(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data());
 			aabbShader.SetVec3("color", blue);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glDrawElements(GL_TRIANGLES, sizeof(cubeIndicies), GL_UNSIGNED_BYTE, cubeIndicies);
+			glDrawElements(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data());
 		}
 		glEnable(GL_CULL_FACE);
 	}
