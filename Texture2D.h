@@ -47,6 +47,8 @@ public:
 	Texture2D(const std::string& filename);
 	~Texture2D();
 
+	inline GLuint GetGLTexture() const;
+
 	void CleanUp();
 
 	inline void SetMagFilter(TextureMagFilter value) const;
@@ -57,11 +59,23 @@ public:
 	inline void SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
 		TextureWrapping sWrapping, TextureWrapping tWrapping) const;
 
-	void Bind(GLuint slot = 0) const;
+	inline void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
+	void CreateEmpty(std::size_t width, std::size_t height, GLenum type, GLint level = 0);
 	template <class T> void Load(const std::vector<T>& data);
 	template <class T, GLenum type = GL_FLOAT, std::size_t L> void Load(const std::array<T, L>& data, std::size_t width = 0, std::size_t height = 0);
 };
+
+inline GLuint Texture2D::GetGLTexture() const
+{
+	return this->texture;
+}
+
+void Texture2D::Bind(GLuint slot) const
+{
+	glActiveTexture(GL_TEXTURE0 + slot);
+	glBindTexture(GL_TEXTURE_2D, this->texture);
+}
 
 inline void Texture2D::GenerateMipmap() const
 {

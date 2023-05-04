@@ -48,12 +48,12 @@ template<class T> inline void Buffer::BufferData(const std::vector<T>& data, GLe
 	}
 }
 
-
 template<class T, int i> inline void Buffer::BufferData(const std::array<T, i>& data, GLenum usage)
 {
 	if (this->buffer)
 	{
-		glNamedBufferData(this->buffer, i * sizeof(T), data.data(), usage);
+		glBindBuffer(this->bufferType, this->buffer);
+		glBufferData(this->bufferType, i * sizeof(T), data.data(), usage);
 		this->length += i * sizeof(T);
 	}
 }

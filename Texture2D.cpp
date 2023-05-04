@@ -47,12 +47,6 @@ void Texture2D::CleanUp()
 	this->channels = 0;
 }
 
-void Texture2D::Bind(GLuint slot) const
-{
-	glActiveTexture(GL_TEXTURE0 + slot);
-	glBindTexture(GL_TEXTURE_2D, this->texture);
-}
-
 // TODO: might have to do some gfunky stuff for this given differet types of data but you know
 void Texture2D::Load(const std::string& filename)
 {
@@ -78,4 +72,15 @@ void Texture2D::Load(const std::string& filename)
 		this->data = nullptr;
 		glDeleteTextures(1, &this->texture);
 	}
+}
+
+void Texture2D::CreateEmpty(std::size_t width, std::size_t height, GLenum type, GLint level)
+{
+	if (this->texture)
+		this->CleanUp();
+	glGenTextures(1, &this->texture);
+	glBindTexture(GL_TEXTURE_2D, this->texture);
+	glTexImage2D(GL_TEXTURE_2D, level, type, (GLsizei) width, (GLsizei) height, 0, type, GL_UNSIGNED_BYTE, nullptr);
+	glBindTexture(GL_TEXTURE_2D, 0);
+
 }

@@ -144,7 +144,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
-		std::cout << "Compiling Shader from '" << vertexPath << "' and '" << fragmentPath << "'" << std::endl;
+		std::cout << "Compiling Shader from " << vertexPath << " and " << fragmentPath << std::endl;
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
 		std::string fragment(std::istreambuf_iterator<char>{fragmentFile}, {});
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex.c_str());
@@ -271,5 +271,5 @@ void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 
 void Shader::SetTextureUnit(const std::string& name, const unsigned int unit) const
 {
-	glUniform1ui(this->uniformIndex(name), unit);
+	glUniform1i(this->uniformIndex(name), unit);
 }
