@@ -199,12 +199,16 @@ enum GeometryThing : unsigned char
 GLuint framebuffer, frameVAO, FRAMEBUFFER; 
 Texture2D framebufferColor, framebufferDepth, framebufferNormal;
 Buffer framebufferBuffer;
-static std::array<glm::vec4, 4> FrameBufferVerts = {
+
+// I do not like this personally tbqh
+static std::array<glm::vec4, 6> FrameBufferVerts = {
 {
-	{-1.f, -1.f, 0.f, 0.f},
-	{ 1.f, -1.f, 1.f, 0.f},
-	{ 1.f, -1.f, 1.f, 0.f},
-	{ 1.f,  1.f, 1.f, 1.f}
+	{-1.0f,  1.0f, 0.0f, 1.0f},
+	{-1.0f, -1.0f, 0.0f, 0.0f},
+	{ 1.0f, -1.0f, 1.0f, 0.0f},
+	{-1.0f,  1.0f, 0.0f, 1.0f},
+	{ 1.0f, -1.0f, 1.0f, 0.0f},
+	{ 1.0f,  1.0f, 1.0f, 1.0f}
 }};
 Shader frameShader;
 
@@ -231,9 +235,10 @@ std::vector<AxisAlignedBox> boxes;
 bool dummyFlag = false;
 void display()
 {
-	//glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
 
 	// FORWARD IS (1, 0, 0)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -309,20 +314,19 @@ void display()
 		}
 		glEnable(GL_CULL_FACE);
 	}
-	/*
+	
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glClear(GL_COLOR_BUFFER_BIT);*/
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glClear(GL_COLOR_BUFFER_BIT);
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	frameShader.SetActive();
 	framebufferColor.Bind(0);
-	wallTexture.Bind(0);
+	//wallTexture.Bind(0);
 	frameShader.SetTextureUnit("screen", 0);
 	glBindVertexArray(frameVAO);
-	glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 
 	glutSwapBuffers();
@@ -560,7 +564,7 @@ int main(int argc, char** argv)
 	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
 
 	// Framebuffer stuff
-	framebufferColor.CreateEmpty(1000, 1000, GL_RGBA);
+	framebufferColor.CreateEmpty(1000, 1000, GL_RGB);
 	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	framebufferDepth.CreateEmpty(1000, 1000, GL_DEPTH_COMPONENT);
 	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
@@ -571,10 +575,12 @@ int main(int argc, char** argv)
 	// TODO: Renderbuffer for buffers that don't need to be directly read
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	glBindTexture(GL_TEXTURE_2D, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferColor.GetGLTexture(), 0);
 	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferDepth.GetGLTexture(), 0);
-	std::cout << glCheckFramebufferStatus(GL_FRAMEBUFFER) << ":" << GL_FRAMEBUFFER_COMPLETE << std::endl;
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	
@@ -584,13 +590,9 @@ int main(int argc, char** argv)
 	framebufferBuffer.BufferData(FrameBufferVerts, GL_STATIC_DRAW);
 	framebufferBuffer.BindBuffer();
 	CheckError();
-	glGenBuffers(1, &FRAMEBUFFER);
-	glBindBuffer(GL_ARRAY_BUFFER, FRAMEBUFFER);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(FrameBufferVerts), FrameBufferVerts.data(), GL_STATIC_DRAW);
 	glBindVertexArray(frameVAO);
 	glVertexAttribPointer(frameShader.index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
 	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
-
 	glutMainLoop();
 
 	glDeleteFramebuffers(1, &framebuffer);

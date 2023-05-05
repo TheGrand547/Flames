@@ -105,6 +105,7 @@ inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
 inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
 									TextureWrapping sWrapping, TextureWrapping tWrapping) const
 {
+	glBindTexture(GL_TEXTURE_2D, this->texture);
 	this->SetMinFilter(minFilter);
 	this->SetMagFilter(magFilter);
 	this->SetWrapBehaviorS(sWrapping);
