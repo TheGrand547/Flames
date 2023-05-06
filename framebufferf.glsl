@@ -31,15 +31,6 @@ void main()
 	{
 		fColor += vec4(vec3(texture(screen, textureCoords + offsets[i])) * kernel[i], 0);
 	}
-	fColor = 1 - vec4(1, 1, 1, 0) * step(0.125, max(fColor.x, max(fColor.y, fColor.z)));
-	/*
-	if (length(fColor) > 0.9)
-	{
-		fColor = vec4(1, 1, 1, 1);
-	}
-	else
-	{
-		fColor = vec4(0, 0, 0, 1);
-	}
-	*/
+	fColor = 1 - vec4(1, 1, 1, 0) * step(0.25, max(fColor.x, max(fColor.y, fColor.z)));
+	//fColor = texture(screen, textureCoords);
 }

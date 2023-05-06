@@ -14,6 +14,7 @@
 #include "Texture2D.h"
 #include "stbWrangler.h"
 #include "Plane.h"
+#include "Sphere.h"
 #include "Wall.h"
 
 #define CheckError() CheckErrors(__LINE__);
@@ -37,6 +38,9 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
 Shader dammit, aabbShader, textures, light, lightTextured;
 Buffer buffer;
+
+GLuint sphereBuf, sphereIndex, sphereVAO, sphereCount;
+Shader sphereShader;
 
 struct ColoredVertex
 {
@@ -281,8 +285,8 @@ void display()
 	for (Model& model : planes)
 	{
 		glm::vec3 color(.5f, .5f, .5f);
-		lightTextured.SetMat4("model", model.GetModelMatrix());
-		lightTextured.SetVec3("color", color);
+		dither.SetMat4("model", model.GetModelMatrix());
+		dither.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 	dammit.SetActive();
@@ -317,6 +321,24 @@ void display()
 		}
 		glEnable(GL_CULL_FACE);
 	}
+
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDisable(GL_CULL_FACE);
+	sphereShader.SetActive();
+	glBindVertexArray(sphereVAO);
+	Model sphereModel(glm::vec3(3.f, .5f, 0.f));
+	sphereModel.scale = glm::vec3(0.5f);
+	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	sphereShader.SetVec3("viewPos", offset);
+	sphereShader.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
+	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
+	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
+	sphereShader.SetMat4("viewProjMat", projectionView);
+	// Doing this while letting the normal be the color will create a cool effect
+	//glDrawArrays(GL_TRIANGLES, 0, 1836);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
+	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 	
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -457,8 +479,10 @@ int main(int argc, char** argv)
 
 	textures.CompileSimple("texture");
 
+	sphereShader.CompileSimple("lightflat");
+
 	texture.Load("test.png");
-	wallTexture.Load("wall.png");
+	wallTexture.Load("wall2.png");
 	wallTexture.SetMinFilter(NearestLinear);
 	wallTexture.SetMagFilter(MagNearest);
 
@@ -598,6 +622,21 @@ int main(int argc, char** argv)
 	glBindVertexArray(frameVAO);
 	glVertexAttribPointer(frameShader.index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
 	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
+
+	
+	auto stuff = GenerateSphere(30, 30);
+	sphereBuf = std::get<0>(stuff);
+	sphereIndex = std::get<1>(stuff);
+	sphereCount = (GLuint) std::get<2>(stuff);
+
+	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
+	glGenVertexArrays(1, &sphereVAO);
+	glBindVertexArray(sphereVAO);
+	glVertexAttribPointer(sphereShader.index("vPos"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vPos"));
+	glVertexAttribPointer(sphereShader.index("vNorm"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), (const void*) sizeof(glm::vec3));
+	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vNorm"));
+
 	glutMainLoop();
 
 	glDeleteFramebuffers(1, &framebuffer);

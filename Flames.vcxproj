@@ -149,6 +149,7 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="StaticOctTree.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture2D.cpp" />
@@ -169,6 +170,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="Sphere.h" />
     <ClInclude Include="StaticOctTree.h" />
     <ClInclude Include="stbWrangler.h" />
     <ClInclude Include="stb_perlin.h" />
