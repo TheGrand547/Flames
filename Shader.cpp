@@ -34,6 +34,7 @@ Shader::Shader() : compiled(false), precompiled(false), program(0)
 {
 
 }
+// TODO: Thingy to make sure that gaming happens
 
 // If force is not set it will first check if a 'name.csp' (compiled shader program? no clue what industry standard is)
 // Takes name for a shader, and reads the files 'namev.glsl' and 'namef.glsl'
@@ -254,7 +255,9 @@ void Shader::ExportCompiled()
 	}
 	else
 	{
+#ifndef RELEASE
 		std::cout << "Failed to save Shader '" << this->name << "' to precompiled binary." << std::endl;
+#endif
 	}
 	output.close();
 }

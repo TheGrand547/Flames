@@ -236,6 +236,9 @@ bool dummyFlag = false;
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
+	glDrawBuffers(2, buffers);
+	CheckError();
 	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -319,10 +322,12 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
+	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	frameShader.SetActive();
 	framebufferColor.Bind(0);
+	framebufferNormal.Bind(0);
 	//wallTexture.Bind(0);
 	frameShader.SetTextureUnit("screen", 0);
 	glBindVertexArray(frameVAO);
@@ -453,7 +458,7 @@ int main(int argc, char** argv)
 	textures.CompileSimple("texture");
 
 	texture.Load("test.png");
-	wallTexture.Load("wall2.png");
+	wallTexture.Load("wall.png");
 	wallTexture.SetMinFilter(NearestLinear);
 	wallTexture.SetMagFilter(MagNearest);
 
@@ -577,7 +582,7 @@ int main(int argc, char** argv)
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferColor.GetGLTexture(), 0);
-	//glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferDepth.GetGLTexture(), 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;

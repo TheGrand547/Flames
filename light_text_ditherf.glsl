@@ -3,7 +3,8 @@
 in vec3 normal;
 in vec3 fragPos;
 in vec2 tex;
-out vec4 fColor;
+layout(location = 0) out vec4 fColor;
+layout(location = 1) out vec4 fNormal;
 
 uniform vec3 lightColor;
 uniform vec3 lightPos;
@@ -43,6 +44,9 @@ void main()
 	
 	vec3 result = colorOut * (ambientColor + diffuseColor + specularOut) * attenuation;
 	
+	fColor = vec4(result, 1);
+	fNormal = vec4(abs(normal), 1);
+	
 	// Dither stuff
 	
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
@@ -53,5 +57,5 @@ void main()
 		
 	result = (floored + step(dither, delta)) / maxVal;
 	
-	fColor = vec4(result, 1.0);
+	//fColor = vec4(result, 1.0);
 }
