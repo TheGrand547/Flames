@@ -215,7 +215,7 @@ static std::array<glm::vec4, 6> FrameBufferVerts = {
 	{ 1.0f,  1.0f, 1.0f, 1.0f}
 }};
 Shader frameShader;
-
+Texture2D hatching;
 
 std::vector<Model> GetPlaneSegment(const glm::vec3& base, GeometryThing flags)
 {
@@ -237,6 +237,7 @@ std::vector<Model> planes;
 std::vector<AxisAlignedBox> boxes;
 
 bool dummyFlag = false;
+bool clear = false;
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -323,11 +324,14 @@ void display()
 	}
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDisable(GL_CULL_FACE);
+	glEnable(GL_CULL_FACE);
 	sphereShader.SetActive();
 	glBindVertexArray(sphereVAO);
-	Model sphereModel(glm::vec3(3.f, .5f, 0.f));
+	Model sphereModel(glm::vec3(3.f, 1.5f, 0.f));
 	sphereModel.scale = glm::vec3(0.5f);
+	//sphereModel.rotation = glm::vec3(0.f, 90.f, 0.f);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	hatching.Bind(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	sphereShader.SetVec3("viewPos", offset);
@@ -335,11 +339,14 @@ void display()
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	sphereShader.SetMat4("viewProjMat", projectionView);
+	sphereShader.SetTextureUnit("hatching", 0);
+
 	// Doing this while letting the normal be the color will create a cool effect
 	//glDrawArrays(GL_TRIANGLES, 0, 1836);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
+	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
-	
+
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -349,7 +356,8 @@ void display()
 	glDisable(GL_CULL_FACE);
 	frameShader.SetActive();
 	framebufferColor.Bind(0);
-	framebufferNormal.Bind(0);
+	if (clear)
+		framebufferNormal.Bind(0);
 	//wallTexture.Bind(0);
 	frameShader.SetTextureUnit("screen", 0);
 	glBindVertexArray(frameVAO);
@@ -420,6 +428,8 @@ void keyboard(unsigned char key, int x, int y)
 		outlineBoxes = !outlineBoxes;
 	if (key == 'g' || key == 'G')
 		dummyFlag = !dummyFlag;
+	if (key == 'h' || key == 'H')
+		clear = !clear;
 	if (key == 'f')
 	{
 		std::cout << offset.x << ", " << offset.y << ", " << offset.z << std::endl;
@@ -624,7 +634,7 @@ int main(int argc, char** argv)
 	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
 
 	
-	auto stuff = GenerateSphere(30, 30);
+	auto stuff = GenerateSphere(7, 7);
 	sphereBuf = std::get<0>(stuff);
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
@@ -636,6 +646,9 @@ int main(int argc, char** argv)
 	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vPos"));
 	glVertexAttribPointer(sphereShader.index("vNorm"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), (const void*) sizeof(glm::vec3));
 	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vNorm"));
+
+	hatching.Load("hatching.png");
+	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
 	glutMainLoop();
 

@@ -1,14 +1,7 @@
 #include "Texture2D.h"
 #include "stb_image.h"
-// TODO: Move all stb header implementations to a single file
-/*
-#pragma warning (push)
-#pragma warning (disable: 26451 26453 6001 6262 26819)
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
-#pragma warning (pop)
-*/
 
+// TODO: General texture class thingy
 
 inline constexpr GLenum Texture2D::TextureType()
 {

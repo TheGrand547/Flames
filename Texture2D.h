@@ -58,6 +58,7 @@ public:
 	inline void GenerateMipmap() const;
 	inline void SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
 		TextureWrapping sWrapping, TextureWrapping tWrapping) const;
+	inline void SetAnisotropy(const float value);
 
 	inline void Bind(GLuint slot = 0) const;
 	void Load(const std::string& filename);
@@ -110,6 +111,13 @@ inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter m
 	this->SetMagFilter(magFilter);
 	this->SetWrapBehaviorS(sWrapping);
 	this->SetWrapBehaviorT(tWrapping);
+}
+
+inline void Texture2D::SetAnisotropy(const float value)
+{
+	float max;
+	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max);
+	glTexParameterf(GL_TEXTURE_2D, GL_ARB_texture_filter_anisotropic, (value > max) ? max : value);
 }
 
 template<class T> inline void Texture2D::Load(const std::vector<T>& data)

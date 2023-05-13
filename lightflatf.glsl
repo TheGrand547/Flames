@@ -1,6 +1,7 @@
 #version 440 core
 
-flat in vec4 fNorm;
+in vec3 color;
+in vec4 fNorm;
 in vec3 fPos;
 
 layout(location = 0) out vec4 fColor;
@@ -10,6 +11,8 @@ uniform vec3 lightColor;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
 uniform vec3 shapeColor;
+
+uniform sampler2D hatching;
 
 void main()
 {
@@ -31,5 +34,29 @@ void main()
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
 	vec3 result = shapeColor * (ambientColor + diffuseColor + specularOut);
-	fColor = vec4(result, 1.0);
+	
+	// TODO: specular thing
+	float effect = 1 - (ambient + diffuse);
+	vec4 hatch = texture(hatching, gl_FragCoord.xy / 1000);
+	if (hatch.w == 0 && hatch.w != 0)
+	{
+		float hatchVal = 0;
+		if (effect > 0.5)
+		{
+			hatchVal = hatch.r;
+		}
+		else if (effect > 0.25)
+		{
+			hatchVal = hatch.g;
+		}
+		else
+		{
+			hatchVal = hatch.b;
+		}
+		fColor = vec4(hatchVal * result, 1);
+	}
+	else
+	{
+		fColor = vec4(result, 1.0);
+	}
 }

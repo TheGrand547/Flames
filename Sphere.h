@@ -10,7 +10,7 @@ class Sphere
 {
 };
 
-std::tuple<GLuint, GLuint, std::size_t> GenerateSphere(const int latitudeSlices = 18, const int longitudeSlices = 18);
+std::tuple<GLuint, GLuint, std::size_t> GenerateSphere(const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
 
 #endif // SPHERE_H
 
