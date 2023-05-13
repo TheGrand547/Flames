@@ -3,7 +3,8 @@
 in vec2 textureCoords;
 out vec4 fColor;
 
-uniform sampler2D screen;
+layout(location = 0) uniform sampler2D screen;
+layout(location = 1) uniform sampler2D normal;
 
 void main()
 {
@@ -20,17 +21,28 @@ void main()
 		vec2( offset, -offset)	// bottom-right
 	);
 	
+	
 	float kernel[9] = float[](
 		-1, -1, -1,
 		-1,	 8, -1,
 		-1, -1, -1
 	);
-	
+
 	fColor = vec4(0, 0, 0, 1);
 	for(int i = 0; i < 9; i++)
 	{
-		fColor += vec4(vec3(texture(screen, textureCoords + offsets[i])) * kernel[i], 0);
+		fColor += vec4(vec3(texture(normal, textureCoords + offsets[i])) * kernel[i], 0);
 	}
-	fColor = 1 - vec4(1, 1, 1, 0) * step(0.125, max(fColor.x, max(fColor.y, fColor.z)));
-	fColor = texture(screen, textureCoords);
+	float large = max(abs(fColor.x), max(abs(fColor.y), abs(fColor.z)));
+	
+	fColor = 1 - vec4(step(0.25, large));
+	fColor.w = 1;
+	
+	//	fColor = 1 - vec4(1, 1, 1, 0) * max(fColor.x, max(fColor.y, fColor.z));
+	//fColor = fColor * texture(screen, textureCoords);
+	//fColor = fColor + texture(screen, textureCoords);
+	//fColor = 1 - vec4(1, 1, 1, 0) * step(0.125, max(fColor.x, max(fColor.y, fColor.z)));
+	// Leads to the cool "dark world" effect
+	//fColor = 1 - vec4(1, 1, 1, 0) * step(0.125, max(fColor.x, max(fColor.y, fColor.z)));
+	//fColor = fColor + texture(screen, textureCoords);
 }

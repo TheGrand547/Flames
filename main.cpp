@@ -357,10 +357,9 @@ void display()
 	glDisable(GL_CULL_FACE);
 	frameShader.SetActive();
 	framebufferColor.Bind(0);
-	if (clear)
-		framebufferNormal.Bind(0);
-	//wallTexture.Bind(0);
+	framebufferNormal.Bind(1);
 	frameShader.SetTextureUnit("screen", 0);
+	frameShader.SetTextureUnit("normal", 1);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -410,7 +409,7 @@ void idle()
 		{
 			if (wall.Overlap(playerBounds))
 			{
-				//offset = previous;
+				offset = previous;
 				break;
 			}
 		}
@@ -493,7 +492,7 @@ int main(int argc, char** argv)
 	sphereShader.CompileSimple("lightflat");
 
 	texture.Load("test.png");
-	wallTexture.Load("wall2.png");
+	wallTexture.Load("weird.png");
 	wallTexture.SetMinFilter(NearestLinear);
 	wallTexture.SetMagFilter(MagNearest);
 
@@ -605,11 +604,11 @@ int main(int argc, char** argv)
 
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, GL_RGB);
-	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	framebufferColor.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 	framebufferDepth.CreateEmpty(1000, 1000, GL_DEPTH_COMPONENT);
-	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	framebufferDepth.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 	framebufferNormal.CreateEmpty(1000, 1000, GL_RGBA);
-	framebufferNormal.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	framebufferNormal.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 
 	// TODO: Framebuffer class to do this stuff
 	// TODO: Renderbuffer for buffers that don't need to be directly read
@@ -635,7 +634,7 @@ int main(int argc, char** argv)
 	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
 
 	
-	auto stuff = GenerateSphere(7, 7);
+	auto stuff = GenerateSphere(20, 20);
 	sphereBuf = std::get<0>(stuff);
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
@@ -650,6 +649,13 @@ int main(int argc, char** argv)
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+
+	int ins;	
+	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &ins);
+
+	std::cout << ins << std::endl;
+
+	glClearColor(1.f, 1.f, 1.f, 1.f);
 
 	glutMainLoop();
 

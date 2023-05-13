@@ -3,8 +3,8 @@
 in vec2 textureCoords;
 out vec4 fColor;
 
-uniform sampler2D screen;
-uniform sampler2D convolution;
+layout(location = 0) uniform sampler2D screen;
+layout(location = 1) uniform sampler2D convolution;
 
 void main()
 {
