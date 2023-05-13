@@ -15,8 +15,8 @@ std::tuple<GLuint, GLuint, std::size_t>  GenerateSphere(const unsigned int latit
 	std::vector<GLuint> index;
 
 	// because they're based on the other one's step
-	const float longitudeStep = std::numbers::pi_v<float> * 2.0f / longitudeSlices;
-	const float latitudeStep = std::numbers::pi_v<float> / latitudeSlices;
+	const float latitudeStep = std::numbers::pi_v<float> * 2.0f / longitudeSlices;
+	const float longitudeStep = std::numbers::pi_v<float> / latitudeSlices;
 
 	for (unsigned int i = 0; i <= longitudeSlices; i++)
 	{
@@ -44,18 +44,16 @@ std::tuple<GLuint, GLuint, std::size_t>  GenerateSphere(const unsigned int latit
 		{
 			if (i != 0)
 			{
-				index.push_back(first);
-				index.push_back(last);
 				index.push_back(first + 1);
+				index.push_back(last);
+				index.push_back(first);
 			}
-			/*
 			if (i != (longitudeSlices - 1))
 			{
-				index.push_back(first + 1);
-				index.push_back(last);
 				index.push_back(last + 1);
+				index.push_back(last);
+				index.push_back(first + 1);
 			}
-			*/
 		}
 	}
 

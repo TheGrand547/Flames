@@ -328,7 +328,7 @@ void display()
 	sphereShader.SetActive();
 	glBindVertexArray(sphereVAO);
 	Model sphereModel(glm::vec3(3.f, 1.5f, 0.f));
-	sphereModel.scale = glm::vec3(0.5f);
+	sphereModel.scale = glm::vec3(0.25f);
 	//sphereModel.rotation = glm::vec3(0.f, 90.f, 0.f);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	hatching.Bind(0);
@@ -343,6 +343,7 @@ void display()
 
 	// Doing this while letting the normal be the color will create a cool effect
 	//glDrawArrays(GL_TRIANGLES, 0, 1836);
+	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
@@ -409,7 +410,7 @@ void idle()
 		{
 			if (wall.Overlap(playerBounds))
 			{
-				offset = previous;
+				//offset = previous;
 				break;
 			}
 		}
