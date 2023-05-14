@@ -262,6 +262,11 @@ void Shader::ExportCompiled()
 	output.close();
 }
 
+void Shader::SetInt(const std::string& name, const int i) const
+{
+	glUniform1i(this->uniformIndex(name), i);
+}
+
 void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const
 {
 	glUniform3fv(this->uniformIndex(name), 1, glm::value_ptr(vec));

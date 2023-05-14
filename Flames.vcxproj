@@ -144,6 +144,7 @@
     <ClCompile Include="Collidable.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="Cylinder.cpp" />
+    <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
@@ -166,6 +167,7 @@
     <ClInclude Include="Collidable.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="Cylinder.h" />
+    <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="Plane.h" />

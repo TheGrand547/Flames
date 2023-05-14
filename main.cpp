@@ -200,9 +200,11 @@ enum GeometryThing : unsigned char
 	All = 0xFF,
 };
 
-GLuint framebuffer, frameVAO, FRAMEBUFFER; 
-Texture2D framebufferColor, framebufferDepth, framebufferNormal;
+GLuint framebuffer, framebufferMod, frameVAO; 
+Texture2D framebufferColor, framebufferDepth, framebufferNormal, normalModifier;
 Buffer framebufferBuffer;
+
+Shader expand, finalResult;
 
 // I do not like this personally tbqh
 static std::array<glm::vec4, 6> FrameBufferVerts = {
@@ -348,18 +350,33 @@ void display()
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
+
+
+	// Framebuffer stuff
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
+	glDrawBuffers(1, buffers);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
+	framebufferNormal.Bind(0);
+
 	frameShader.SetActive();
+	frameShader.SetTextureUnit("normal", 0);
+	glBindVertexArray(frameVAO);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
+
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+
 	framebufferColor.Bind(0);
-	framebufferNormal.Bind(1);
-	frameShader.SetTextureUnit("screen", 0);
-	frameShader.SetTextureUnit("normal", 1);
+	normalModifier.Bind(1);
+	expand.SetActive();
+	expand.SetTextureUnit("screen", 0);
+	expand.SetTextureUnit("edges", 1);
+	expand.SetInt("depth", 2);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -610,14 +627,23 @@ int main(int argc, char** argv)
 	framebufferNormal.CreateEmpty(1000, 1000, GL_RGBA);
 	framebufferNormal.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 
+	normalModifier.CreateEmpty(1000, 1000, GL_RGBA);
+	normalModifier.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
+
 	// TODO: Framebuffer class to do this stuff
 	// TODO: Renderbuffer for buffers that don't need to be directly read
 	glGenFramebuffers(1, &framebuffer);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-	glBindTexture(GL_TEXTURE_2D, 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferColor.GetGLTexture(), 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferDepth.GetGLTexture(), 0);
+	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
+
+
+	glGenFramebuffers(1, &framebufferMod);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
+	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, normalModifier.GetGLTexture(), 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
 		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
 
@@ -633,7 +659,8 @@ int main(int argc, char** argv)
 	glVertexAttribPointer(frameShader.index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
 	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
 
-	
+	expand.Compile("framebuffer", "expand");
+
 	auto stuff = GenerateSphere(20, 20);
 	sphereBuf = std::get<0>(stuff);
 	sphereIndex = std::get<1>(stuff);
