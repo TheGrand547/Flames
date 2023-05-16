@@ -22,12 +22,14 @@ Texture2D::~Texture2D()
 {
 	this->CleanUp();
 }
+#include <iostream>
 
 void Texture2D::CleanUp()
 {
 	if (this->texture)
 	{
 		glDeleteTextures(1, &this->texture);
+		glFinish();
 		this->texture = 0;
 	}
 	if (this->data)
@@ -43,7 +45,7 @@ void Texture2D::CleanUp()
 // TODO: might have to do some gfunky stuff for this given differet types of data but you know
 void Texture2D::Load(const std::string& filename)
 {
-	// TODO: write cleanup function
+	this->CleanUp();
 	this->data = stbi_load(filename.c_str(), &this->width, &this->height, &this->channels, 0);
 	glGenTextures(1, &this->texture);
 	if (this->data && this->texture)
@@ -69,8 +71,7 @@ void Texture2D::Load(const std::string& filename)
 
 void Texture2D::CreateEmpty(std::size_t width, std::size_t height, GLenum type, GLint level)
 {
-	if (this->texture)
-		this->CleanUp();
+	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	glTexImage2D(GL_TEXTURE_2D, level, type, (GLsizei) width, (GLsizei) height, 0, type, GL_UNSIGNED_BYTE, NULL);

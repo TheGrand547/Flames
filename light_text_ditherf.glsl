@@ -19,8 +19,8 @@ void main()
 	
 	// TODO: light settings
 	float constant = 1.0f;
-	float linear = 0.0f;
-	float quadratic = 0.0f;
+	float linear = 0;
+	float quadratic = 0;
 	
 	vec3 ambientColor = lightColor * ambient;
 	
@@ -57,5 +57,5 @@ void main()
 		
 	result = (floored + step(dither, delta)) / maxVal;
 	
-	//fColor = vec4(result, 1.0);
+	fColor = vec4(result, 1.0);
 }

@@ -325,14 +325,13 @@ void display()
 		glEnable(GL_CULL_FACE);
 	}
 
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glEnable(GL_CULL_FACE);
 	sphereShader.SetActive();
 	glBindVertexArray(sphereVAO);
 	Model sphereModel(glm::vec3(3.f, 1.5f, 0.f));
 	sphereModel.scale = glm::vec3(0.25f);
-	//sphereModel.rotation = glm::vec3(0.f, 90.f, 0.f);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+
 	hatching.Bind(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -509,8 +508,8 @@ int main(int argc, char** argv)
 	sphereShader.CompileSimple("lightflat");
 
 	texture.Load("test.png");
-	wallTexture.Load("weird.png");
-	wallTexture.SetMinFilter(NearestLinear);
+	wallTexture.Load("flowed.png");
+	wallTexture.SetMinFilter(LinearLinear);
 	wallTexture.SetMagFilter(MagNearest);
 
 	// Set up VBO/VAO
@@ -580,6 +579,7 @@ int main(int argc, char** argv)
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
+	planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
 		walls.push_back(Wall(ref));
@@ -592,7 +592,7 @@ int main(int argc, char** argv)
 	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3( 1, 0, -1), glm::vec3( 10, 2, -10)}));
 
 	ditherTexture.Load(dither16);
-	ditherTexture.SetFilters(MinNearest, MagNearest, Repeat, Repeat);
+	ditherTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	ditherTexture.GenerateMipmap();
 
 	CheckError();
