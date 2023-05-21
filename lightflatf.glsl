@@ -30,10 +30,15 @@ void main()
 	vec3 viewDirection = normalize(viewPos - fPos);
 	vec3 reflected = reflect(-lightDir, norm);
 
-	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
+	float specular = pow(max(dot(viewDirection, reflected), 0.0), 4); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
-	vec3 result = shapeColor * (ambientColor + diffuseColor + specularOut);
+	vec3 result = shapeColor * (ambientColor + diffuseColor);
+	if (specular > 0.25)
+	{
+		//fNormOut = -fNormOut;
+		result = vec3(1, 1, 1);
+	}
 	
 	// TODO: specular thing
 	float effect = 1 - (ambient + diffuse);

@@ -6,6 +6,7 @@ out vec4 fColor;
 
 layout(location = 0) uniform sampler2D screen;
 layout(location = 1) uniform sampler2D edges;
+layout(location = 2) uniform sampler2D depths;
 
 uniform int depth;
 
@@ -43,6 +44,6 @@ void main()
 		fColor = vec4(1, 1, 1, 1);
 	}
 	fColor = sampled * fColor;
-	//fColor = texture(edges, textureCoords);
+	//fColor = texture(depths, textureCoords);
 	//fColor.w = 1;
 }

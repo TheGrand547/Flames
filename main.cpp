@@ -328,8 +328,8 @@ void display()
 	glEnable(GL_CULL_FACE);
 	sphereShader.SetActive();
 	glBindVertexArray(sphereVAO);
-	Model sphereModel(glm::vec3(3.f, 1.5f, 0.f));
-	sphereModel.scale = glm::vec3(0.25f);
+	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
+	sphereModel.scale = glm::vec3(0.5f);
 
 
 	hatching.Bind(0);
@@ -362,6 +362,7 @@ void display()
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	framebufferNormal.Bind(0);
+	//framebufferDepth.Bind(0);
 
 	frameShader.SetActive();
 	frameShader.SetTextureUnit("normal", 0);
@@ -372,10 +373,12 @@ void display()
 
 	framebufferColor.Bind(0);
 	normalModifier.Bind(1);
+	framebufferDepth.Bind(2);
 	expand.SetActive();
 	expand.SetTextureUnit("screen", 0);
 	expand.SetTextureUnit("edges", 1);
-	expand.SetInt("depth", 2);
+	expand.SetTextureUnit("depths", 2);
+	expand.SetInt("depth", 1);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
@@ -585,7 +588,7 @@ int main(int argc, char** argv)
 		walls.push_back(Wall(ref));
 	}
 	Model oops = planes[planes.size() / 2 + 1];
-
+	
 	boxes.push_back(AABB(glm::vec3(1, 0, 1), glm::vec3(10, 2, 10)));
 	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0, -1), glm::vec3(-10, 2, -10)}));
 	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0,  1), glm::vec3(-10, 2,  10)}));
@@ -661,7 +664,7 @@ int main(int argc, char** argv)
 
 	expand.Compile("framebuffer", "expand");
 
-	auto stuff = GenerateSphere(20, 20);
+	auto stuff = GenerateSphere(30, 30);
 	sphereBuf = std::get<0>(stuff);
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
