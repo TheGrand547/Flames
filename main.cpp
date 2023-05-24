@@ -11,6 +11,7 @@
 #include "Shader.h"
 #include "glmHelp.h"
 #include "Model.h"
+#include "OrientedBoundingBox.h"
 #include "Texture2D.h"
 #include "stbWrangler.h"
 #include "Plane.h"
@@ -236,7 +237,7 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
 }
 std::vector<Model> planes;
-std::vector<AxisAlignedBox> boxes;
+std::vector<OBB> boxes;
 
 bool dummyFlag = false;
 bool clear = false;
@@ -311,7 +312,7 @@ void display()
 		if (dummyFlag)
 			glDisable(GL_CULL_FACE);
 		
-		for (const AABB& box : boxes)
+		for (const auto& box : boxes)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			aabbShader.SetVec3("color", colors);
@@ -424,9 +425,9 @@ void idle()
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 		playerBounds.Center(offset);
 
-		for (const auto& wall : boxes)
+		for (auto& wall : boxes)
 		{
-			if (wall.Overlap(playerBounds))
+			if (wall.Overlap(OBB(playerBounds)))
 			{
 				offset = previous;
 				break;

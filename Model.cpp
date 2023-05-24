@@ -3,15 +3,6 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/euler_angles.hpp>
 
-Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) : translation(translation), rotation(rotation), scale(scale)
-{
-
-}
-
-Model::~Model()
-{
-
-}
 
 glm::mat4 Model::GetModelMatrix() const
 {
