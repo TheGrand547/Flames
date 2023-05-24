@@ -148,6 +148,7 @@
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Sphere.cpp" />
@@ -171,6 +172,7 @@
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Sphere.h" />

@@ -22,6 +22,8 @@ public:
 
 	Model GetModel() const;
 	
+	inline constexpr glm::vec3 GetCenter() const;
+	inline constexpr glm::vec3 Deviation() const;
 
 	inline constexpr void Center(const glm::vec3& point);
 	inline constexpr void ScaleInPlace(const glm::vec3& factor);
@@ -53,6 +55,16 @@ constexpr AABB::AABB(const AABB& other)
 {
 	this->negativeBound = other.negativeBound;
 	this->positiveBound = other.positiveBound;
+}
+
+inline constexpr glm::vec3 AABB::GetCenter() const
+{
+	return (this->negativeBound + this->positiveBound) / 2.f;
+}
+
+inline constexpr glm::vec3 AABB::Deviation() const
+{
+	return glm::abs((this->positiveBound - this->negativeBound) / 2.f);
 }
 
 inline constexpr AABB AABB::operator+(const glm::vec3& point) const
