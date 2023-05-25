@@ -16,6 +16,7 @@
 #include "stbWrangler.h"
 #include "Plane.h"
 #include "Sphere.h"
+#include "Vertex.h"
 #include "Wall.h"
 
 #define CheckError() CheckErrors(__LINE__);
@@ -43,25 +44,12 @@ Buffer buffer;
 GLuint sphereBuf, sphereIndex, sphereVAO, sphereCount;
 Shader sphereShader;
 
-struct ColoredVertex
-{
-	glm::vec3 position;
-	glm::vec3 color;
-};
-
-struct TextureVertex
-{
-	glm::vec3 position;
-	glm::vec2 coordinates;
-};
-
 std::array<ColoredVertex, 8> coloredCubeVertex{
 	{
 		{{-1, -1, -1}, {1, 1, 1}},
 		{{ 1, -1, -1}, {0, 1, 1}},
 		{{ 1,  1, -1}, {0, 0, 1}},
 		{{-1,  1, -1}, {1, 0, 1}},
-
 		{{-1, -1,  1}, {1, 1, 0}},
 		{{ 1, -1,  1}, {0, 1, 0}},
 		{{ 1,  1,  1}, {0, 0, 0}},
@@ -69,7 +57,7 @@ std::array<ColoredVertex, 8> coloredCubeVertex{
 	}
 };
 
-std::array<glm::vec3, 8> plainCubeVerts{
+std::array<glm::vec3, 8> plainCubeVerts {
 	{
 		{-1, -1, -1},
 		{ 1, -1, -1},
@@ -117,19 +105,13 @@ std::array<glm::vec3, cubeIndicies.size()> texturedCubeVerts =
 		return temp;
 	} (plainCubeVerts, cubeIndicies);
 
-std::vector<GLubyte> cubeOutline =
+std::array<GLubyte, 24> cubeOutline =
 {
-	0, 1, 1, 2, 2, 3, 3, 0, // -z
-	4, 5, 5, 6, 6, 7, 7, 4, // +z
-	1, 2, 2, 6, 6, 5, 5, 1, // +x
-	0, 3, 3, 7, 7, 4, 4, 0, // -z
+	0, 1,  1, 2,  2, 3,  3, 0, 
+	4, 5,  5, 6,  6, 7,  7, 4, 
+	2, 6,  5, 1, 
+	3, 7,  4, 0, 
 };
-/*
-GLubyte index2[] =
-{
-	//2, 3, 1, 0, 4, 5, 6, 7, 8, 6, 4, 3, 2, 1
-	0, 3, 1, 2, 5, 6, 4, 7, 3, 6, 2
-};*/
 
 glm::vec3 plane[] =
 {
@@ -248,6 +230,8 @@ std::vector<OBB> boxes;
 
 bool dummyFlag = false;
 bool clear = false;
+static int counter = 0;
+
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -319,7 +303,7 @@ void display()
 		
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, 25, 0)));
+		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glm::mat4 boxMat = projectionView * goober.GetModel().GetModelMatrix();
 		aabbShader.SetMat4("mvp", boxMat);
@@ -412,6 +396,7 @@ std::vector<Wall> walls;
 void idle()
 {
 	static int lastFrame = 0;
+	counter++;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
 
@@ -445,7 +430,7 @@ void idle()
 		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
 
 		goober.Translate(glm::vec3(2, 0, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, 25, 0)));
+		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
 		for (auto& wall : boxes)
 		{
 			if (wall.Overlap(playerOb))

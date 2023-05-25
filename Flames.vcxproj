@@ -182,6 +182,7 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
+    <ClInclude Include="Vertex.h" />
     <ClInclude Include="VertexArray.h" />
     <ClInclude Include="Wall.h" />
   </ItemGroup>

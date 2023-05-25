@@ -15,12 +15,14 @@ class OrientedBoundingBox
 {
 private:
 	// These are the basis vectors
-
+	// TODO: maybe store only the euler orientation? trivial reconstruction of the basis
 	glm::vec3 center;
 	// TODO: Store these better, hack fraud
 	std::array<std::pair<glm::vec3, float>, 3> axes;
 public:
 	constexpr OrientedBoundingBox();
+	constexpr OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas = glm::vec3(1, 1, 1));
+	constexpr OrientedBoundingBox(const OrientedBoundingBox& other) = default;
 	constexpr OrientedBoundingBox(const AABB& other);
 	~OrientedBoundingBox();
 
@@ -37,6 +39,14 @@ public:
 constexpr OrientedBoundingBox::OrientedBoundingBox() : center(0, 0, 0)
 {
 
+}
+
+constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : center(0, 0, 0)
+{
+	this->axes[0] = std::make_pair(glm::vec3(1, 0, 0), deltas.x);
+	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), deltas.y);
+	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), deltas.z);
+	this->Rotate(glm::radians(euler));
 }
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other)
