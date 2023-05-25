@@ -117,6 +117,13 @@ std::array<glm::vec3, cubeIndicies.size()> texturedCubeVerts =
 		return temp;
 	} (plainCubeVerts, cubeIndicies);
 
+std::vector<GLubyte> cubeOutline =
+{
+	0, 1, 1, 2, 2, 3, 3, 0, // -z
+	4, 5, 5, 6, 6, 7, 7, 4, // +z
+	1, 2, 2, 6, 6, 5, 5, 1, // +x
+	0, 3, 3, 7, 7, 4, 4, 0, // -z
+};
 /*
 GLubyte index2[] =
 {
@@ -305,13 +312,21 @@ void display()
 	if (outlineBoxes)
 	{
 		aabbShader.SetActive();
-		aabbShader.SetVec3("color", colors);
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
 
-		if (dummyFlag)
-			glDisable(GL_CULL_FACE);
+		glDisable(GL_CULL_FACE);
 		
+		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
+		goober.Translate(glm::vec3(2, 0.1, 0));
+		goober.Rotate(glm::radians(glm::vec3(0, 25, 0)));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		glm::mat4 boxMat = projectionView * goober.GetModel().GetModelMatrix();
+		aabbShader.SetMat4("mvp", boxMat);
+
+		glDrawElements(GL_LINES, cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+
+		/*
 		for (const auto& box : boxes)
 		{
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -322,11 +337,12 @@ void display()
 			aabbShader.SetVec3("color", blue);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			glDrawElements(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data());
-		}
+		}*/
 		glEnable(GL_CULL_FACE);
 	}
 
 	glEnable(GL_CULL_FACE);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	sphereShader.SetActive();
 	glBindVertexArray(sphereVAO);
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
@@ -423,16 +439,26 @@ void idle()
 	if (offset != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
+		OBB goober(playerBounds);
 		playerBounds.Center(offset);
+		OBB playerOb(playerBounds);
+		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
 
+		goober.Translate(glm::vec3(2, 0, 0));
+		goober.Rotate(glm::radians(glm::vec3(0, 25, 0)));
 		for (auto& wall : boxes)
 		{
-			if (wall.Overlap(OBB(playerBounds)))
+			if (wall.Overlap(playerOb))
 			{
 				offset = previous;
 				break;
 			}
 		}
+		if (goober.Overlap(playerOb))
+		{
+			offset = previous;
+		}
+		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 
 	lastFrame = now;
