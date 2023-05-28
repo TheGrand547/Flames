@@ -20,26 +20,24 @@ private:
 	// TODO: Store these better, hack fraud
 	std::array<std::pair<glm::vec3, float>, 3> axes;
 public:
-	constexpr OrientedBoundingBox();
-	constexpr OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas = glm::vec3(1, 1, 1));
+	constexpr OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1));
 	constexpr OrientedBoundingBox(const OrientedBoundingBox& other) = default;
 	constexpr OrientedBoundingBox(const AABB& other);
-	~OrientedBoundingBox();
+	~OrientedBoundingBox() = default;
 
+	inline constexpr void Center(const glm::vec3& center) noexcept;
+	inline constexpr void Reorient(const glm::vec3& euler);
+	inline constexpr void Reorient(const glm::mat4& rotation);
 	inline constexpr void Rotate(const glm::vec3& euler);
 	inline constexpr void Rotate(const glm::mat4& rotation);
-	inline constexpr void Translate(const glm::vec3& distance);
+	inline constexpr void Translate(const glm::vec3& distance) noexcept;
+
 
 	constexpr bool Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
 	Model GetModel() const;
 };
-
-constexpr OrientedBoundingBox::OrientedBoundingBox() : center(0, 0, 0)
-{
-
-}
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : center(0, 0, 0)
 {
@@ -59,6 +57,24 @@ constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other)
 	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), temp.z);
 }
 
+inline constexpr void OrientedBoundingBox::Center(const glm::vec3& center) noexcept
+{
+	this->center = center;
+}
+
+inline constexpr void OrientedBoundingBox::Reorient(const glm::vec3& euler)
+{
+	this->Reorient(glm::eulerAngleXYZ(euler.x, euler.y, euler.z));
+}
+
+inline constexpr void OrientedBoundingBox::Reorient(const glm::mat4& rotation)
+{
+	this->axes[0].first = glm::vec3(1, 0, 0);
+	this->axes[1].first = glm::vec3(0, 1, 0);
+	this->axes[2].first = glm::vec3(0, 0, 1);
+	this->Rotate(rotation);
+}
+
 inline constexpr void OrientedBoundingBox::Rotate(const glm::vec3& euler)
 {
 	this->Rotate(glm::eulerAngleXYZ(euler.x, euler.y, euler.z));
@@ -72,7 +88,7 @@ inline constexpr void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
 	}
 }
 
-inline constexpr void OrientedBoundingBox::Translate(const glm::vec3& distance)
+inline constexpr void OrientedBoundingBox::Translate(const glm::vec3& distance) noexcept
 {
 	this->center += distance;
 }

@@ -1,7 +1,5 @@
 #include "OrientedBoundingBox.h"
 
-OrientedBoundingBox::~OrientedBoundingBox() {}
-
 Model OrientedBoundingBox::GetModel() const
 {
 	glm::mat4 mat(glm::vec4(this->axes[0].first, 0), glm::vec4(this->axes[1].first, 0), 

@@ -57,7 +57,7 @@ std::array<ColoredVertex, 8> coloredCubeVertex{
 	}
 };
 
-std::array<glm::vec3, 8> plainCubeVerts {
+static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
 		{-1, -1, -1},
 		{ 1, -1, -1},
@@ -72,7 +72,7 @@ std::array<glm::vec3, 8> plainCubeVerts {
 
 // This has one redundant triangle but I can't seem to find it so whatever
 // 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
-std::array<GLubyte, 36> cubeIndicies =
+static const std::array<GLubyte, 36> cubeIndicies =
 {
 	0, 1, 4,
 	1, 5, 4,
@@ -308,7 +308,7 @@ void display()
 		glm::mat4 boxMat = projectionView * goober.GetModel().GetModelMatrix();
 		aabbShader.SetMat4("mvp", boxMat);
 
-		glDrawElements(GL_LINES, cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 
 		/*
 		for (const auto& box : boxes)
@@ -350,8 +350,6 @@ void display()
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
-
-
 	// Framebuffer stuff
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -389,6 +387,7 @@ void display()
 }
 
 std::vector<bool> keyState(UCHAR_MAX);
+std::vector<bool> keyStateBackup(UCHAR_MAX);
 std::vector<Wall> walls;
 
 // To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
@@ -445,7 +444,8 @@ void idle()
 		}
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
-
+	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
+	std::swap(keyState, keyStateBackup);
 	lastFrame = now;
 	glutPostRedisplay();
 }

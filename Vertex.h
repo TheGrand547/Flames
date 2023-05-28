@@ -8,6 +8,11 @@ struct ColoredVertex
 	glm::vec3 position, color;
 };
 
+struct NormalVertex
+{
+	glm::vec3 position, normal;
+};
+
 struct TextureVertex
 {
 	glm::vec3 position;
