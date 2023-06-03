@@ -10,7 +10,7 @@ class VertexArray
 protected:
 	GLuint array;
 public:
-	constexpr VertexArray();
+	constexpr VertexArray(GLuint array = 0);
 	~VertexArray();
 
 	void CleanUp();
@@ -21,7 +21,9 @@ public:
 	template<class V> void FillArray(Shader& shader);
 };
 
-constexpr VertexArray::VertexArray() : array(0)
+typedef VertexArray VAO;
+
+constexpr VertexArray::VertexArray(GLuint array) : array(array)
 {
 
 }

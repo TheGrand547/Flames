@@ -17,6 +17,7 @@
 #include "Plane.h"
 #include "Sphere.h"
 #include "Vertex.h"
+#include "VertexArray.h"
 #include "Wall.h"
 
 #define CheckError() CheckErrors(__LINE__);
@@ -40,6 +41,8 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
 Shader dammit, aabbShader, textures, light, lightTextured;
 Buffer buffer;
+
+VAO gamerTest;
 
 GLuint sphereBuf, sphereIndex, sphereVAO, sphereCount;
 Shader sphereShader;
@@ -275,8 +278,9 @@ void display()
 	dither.SetMat4("vp", projectionView);
 	dither.SetTextureUnit("textureIn", 0);
 	dither.SetTextureUnit("ditherMap", 1);
-	glBindVertexArray(texturedVAO);
-	
+	//glBindVertexArray(texturedVAO);
+	gamerTest.Bind();
+
 	for (Model& model : planes)
 	{
 		glm::vec3 color(.5f, .5f, .5f);
@@ -567,6 +571,9 @@ int main(int argc, char** argv)
 	glVertexAttribPointer(textures.index("tex"), 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (const void*) offsetof(TextureVertex, coordinates));
 	glEnableVertexArrayAttrib(texturedVAO, textures.index("pos"));
 	glEnableVertexArrayAttrib(texturedVAO, textures.index("tex"));
+
+	gamerTest.Generate();
+	gamerTest.FillArray<TextureVertex>(dither);
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, planeBO);

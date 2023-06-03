@@ -1,10 +1,11 @@
 #version 440 core
 
-in vec3 normal;
-in vec3 fragPos;
-in vec2 tex;
-layout(location = 0) out vec4 fColor;
-layout(location = 1) out vec4 fNormal;
+in vec3 fNorm;
+in vec3 fPos;
+in vec2 fTex;
+
+layout(location = 0) out vec4 colorOut;
+layout(location = 1) out vec4 normalOut;
 
 uniform vec3 lightColor;
 uniform vec3 lightPos;
@@ -24,28 +25,28 @@ void main()
 	
 	vec3 ambientColor = lightColor * ambient;
 	
-	vec3 norm = normal;
-	vec3 lightDir = normalize(lightPos - fragPos);
+	vec3 norm = fNorm;
+	vec3 lightDir = normalize(lightPos - fPos);
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
 	vec3 diffuseColor = diffuse * lightColor;
 		
-	vec3 viewDirection = normalize(viewPos - fragPos);
+	vec3 viewDirection = normalize(viewPos - fPos);
 	vec3 reflected = reflect(-lightDir, norm);
 
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
-	float distance = length(lightPos - fragPos);
+	float distance = length(lightPos - fPos);
 	float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
 
-	vec3 colorOut = vec3(texture(textureIn, tex));
+	vec3 color = vec3(texture(textureIn, fTex));
 	
 	
-	vec3 result = colorOut * (ambientColor + diffuseColor + specularOut) * attenuation;
+	vec3 result = color * (ambientColor + diffuseColor + specularOut) * attenuation;
 	
-	fColor = vec4(result, 1);
-	fNormal = vec4(abs(normal), 1);
+	colorOut = vec4(result, 1);
+	normalOut = vec4(abs(norm), 1);
 	
 	// Dither stuff
 	
@@ -57,5 +58,5 @@ void main()
 		
 	result = (floored + step(dither, delta)) / maxVal;
 	
-	fColor = vec4(result, 1.0);
+	colorOut = vec4(result, 1.0);
 }
