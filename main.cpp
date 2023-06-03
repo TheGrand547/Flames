@@ -140,7 +140,8 @@ std::array<glm::vec3, 10> stick{
 };
 
 GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
-GLuint stickBuf, stickVAO;
+GLuint stickBuf;// , stickVAO;
+VAO stickVAO;
 
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
 Texture2D texture, wallTexture;
@@ -278,7 +279,7 @@ void display()
 	dither.SetMat4("vp", projectionView);
 	dither.SetTextureUnit("textureIn", 0);
 	dither.SetTextureUnit("ditherMap", 1);
-	//glBindVertexArray(texturedVAO);
+
 	gamerTest.Bind();
 
 	for (Model& model : planes)
@@ -290,7 +291,7 @@ void display()
 	}
 	dammit.SetActive();
 	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
-	glBindVertexArray(stickVAO);
+	stickVAO.Bind();
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
 	dammit.SetMat4("mvp", projectionView * m22.GetModelMatrix());
@@ -534,7 +535,6 @@ int main(int argc, char** argv)
 	// Set up VBO/VAO
 	glGenVertexArrays(1, &vertexVAO);
 	glGenVertexArrays(1, &aabbVAO);
-	glGenVertexArrays(1, &stickVAO);
 	glGenVertexArrays(1, &texturedVAO);
 
 	glGenBuffers(1, &triVBO);
@@ -551,9 +551,8 @@ int main(int argc, char** argv)
 
 	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
-	glBindVertexArray(stickVAO);
-	glVertexAttribPointer(dammit.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(stickVAO, dammit.index("pos"));
+	stickVAO.Generate();
+	stickVAO.FillArray<Vertex>(dammit);
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
@@ -565,12 +564,6 @@ int main(int argc, char** argv)
 	verts[2].coordinates = glm::vec2(0, 1);
 	verts[3].coordinates = glm::vec2(0, 0);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
-
-	glBindVertexArray(texturedVAO);
-	glVertexAttribPointer(textures.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (const void*) nullptr);
-	glVertexAttribPointer(textures.index("tex"), 2, GL_FLOAT, GL_FALSE, sizeof(TextureVertex), (const void*) offsetof(TextureVertex, coordinates));
-	glEnableVertexArrayAttrib(texturedVAO, textures.index("pos"));
-	glEnableVertexArrayAttrib(texturedVAO, textures.index("tex"));
 
 	gamerTest.Generate();
 	gamerTest.FillArray<TextureVertex>(dither);

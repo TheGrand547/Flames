@@ -3,6 +3,8 @@
 #define VERTEX_H
 #include <glm/glm.hpp>
 
+typedef glm::vec3 Vertex;
+
 struct ColoredVertex
 {
 	glm::vec3 position, color;

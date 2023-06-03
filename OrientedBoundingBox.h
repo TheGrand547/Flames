@@ -30,8 +30,8 @@ public:
 	inline constexpr void Reorient(const glm::mat4& rotation);
 	inline constexpr void Rotate(const glm::vec3& euler);
 	inline constexpr void Rotate(const glm::mat4& rotation);
+	inline constexpr void Scale(const glm::vec3& scale);
 	inline constexpr void Translate(const glm::vec3& distance) noexcept;
-
 
 	constexpr bool Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
@@ -85,6 +85,14 @@ inline constexpr void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
 	for (auto& each : this->axes)
 	{
 		each.first = rotation * glm::vec4(each.first, 0);
+	}
+}
+
+inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
+{
+	for (int i = 0; i < 3; i++)
+	{
+		this->axes[i].second *= scale[i];
 	}
 }
 

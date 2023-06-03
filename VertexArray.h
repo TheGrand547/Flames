@@ -46,6 +46,14 @@ inline void VertexArray::FillArray(Shader& shader)
 }
 
 template<>
+inline void VertexArray::FillArray<Vertex>(Shader& shader)
+{
+	glBindVertexArray(this->array);
+	glVertexAttribPointer(shader.index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*) nullptr);
+	glEnableVertexArrayAttrib(this->array, shader.index("vPos"));
+}
+
+template<>
 inline void VertexArray::FillArray<TextureVertex>(Shader& shader)
 {
 	glBindVertexArray(this->array);
