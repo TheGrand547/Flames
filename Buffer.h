@@ -3,7 +3,10 @@
 #define BUFFER_H
 #include <array>
 #include <glew.h>
+#include <map>
 #include <vector>
+
+// TODO: Paranoia checks removal in release, ie if RELEASE then don't do a bunch of checks with error messages
 
 enum BufferAccess
 {
@@ -54,14 +57,20 @@ public:
 	void BindBuffer() const;
 	void Reserve(GLsizeiptr size) const;
 
+
 	template <class T> Buffer(GLenum type, BufferAccess usage, const std::vector<T>& data);
 	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage);
 	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);
 	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage);
-	template<class T> void BufferSubData(const std::vector<T>& data, GLintptr offset);
-	template<class T, std::size_t i> void BufferSubData(const std::array<T, i>& data, GLintptr offset);
-	template<template<class, class...> class C, class T, class... Args> void BufferSubData(const C<T, Args...>& data, GLintptr offset);
+	template<class T> void BufferSubData(T& data, GLintptr offset = 0);
+	template<class T> void BufferSubData(const std::vector<T>& data, GLintptr offset = 0);
+	template<class T, std::size_t i> void BufferSubData(const std::array<T, i>& data, GLintptr offset = 0);
+	template<template<class, class...> class C, class T, class... Args> void BufferSubData(const C<T, Args...>& data, GLintptr offset = 0);
+
+	template<class T> static void GenerateBuffers(T& buffers);
+	template<class T> static void GenerateBuffers(std::map<T, Buffer>& buffers);
 };
+
 
 template<class T> inline Buffer::Buffer(GLenum type, BufferAccess usage, const std::vector<T>& data) : bufferType(type)
 {
@@ -98,6 +107,14 @@ template<template<class, class...> class C, class T, class... Args> inline void 
 			reserved.push_back(a);
 		}
 		this->BufferData(reserved, usage);
+	}
+}
+
+template<class T> inline void Buffer::BufferSubData(T& data, GLintptr offset)
+{
+	if (this->buffer)
+	{
+		glBufferSubData(this->buffer, offset, (GLsizeiptr) sizeof(T), &data);
 	}
 }
 
@@ -142,6 +159,33 @@ template<template<class, class...> class C, class T, class... Args> inline void 
 		}
 		this->BufferSubData(reserved, offset);
 	}
+}
+
+template<class T>
+inline void Buffer::GenerateBuffers(T& buffers)
+{
+	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(buffers))>::type, Buffer>::value);
+	GLuint* intermediate = new GLuint[std::size(buffers)];
+	glGenBuffers((GLsizei) std::size(buffers), intermediate);
+	for (std::size_t i = 0; i < std::size(buffers); i++)
+	{
+		buffers[i].buffer = intermediate[i];
+	}
+	delete[] intermediate;
+}
+
+template<class T>
+inline void Buffer::GenerateBuffers(std::map<T, Buffer>& buffers)
+{
+	GLuint* intermediate = new GLuint[buffers.size()];
+	glGenBuffers((GLsizei) buffers.size(), intermediate);
+	auto begin = std::begin(buffers);
+	for (std::size_t i = 0; i < buffers.size(); i++)
+	{
+		begin->buffer = intermediate[i];
+		begin++;
+	}
+	delete[] intermediate;
 }
 
 #endif // BUFFER_H
