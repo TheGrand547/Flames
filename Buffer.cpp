@@ -1,11 +1,11 @@
 #include "Buffer.h"
 
-Buffer::Buffer() : buffer(0), bufferType(0), length(0) 
+Buffer::Buffer() : buffer(0), bufferType(ArrayBuffer), length(0) 
 {
 
 }
 
-Buffer::Buffer(GLenum type) : buffer(0), bufferType(type), length(0)
+Buffer::Buffer(BufferType type) : buffer(0), bufferType(type), length(0)
 {
 	this->Generate(type);
 }
@@ -46,11 +46,15 @@ void Buffer::CleanUp()
 	this->length = 0;
 }
 
-void Buffer::Generate(GLenum type)
+void Buffer::Generate(BufferType type, GLsizeiptr size)
 {
 	this->CleanUp();
 	this->bufferType = type;
 	glGenBuffers(1, &this->buffer);
+	if (size)
+	{
+		this->Reserve(size);
+	}
 }
 
 void Buffer::Reserve(GLsizeiptr size) const

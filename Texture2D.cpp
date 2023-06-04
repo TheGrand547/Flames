@@ -29,7 +29,6 @@ void Texture2D::CleanUp()
 	if (this->texture)
 	{
 		glDeleteTextures(1, &this->texture);
-		glFinish();
 		this->texture = 0;
 	}
 	if (this->data)

@@ -40,7 +40,7 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 
 // Cringe globals
 GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
-Shader dammit, aabbShader, textures, light, lightTextured;
+Shader uniform, textures, light, lightTextured;
 Buffer buffer;
 
 VAO gamerTest;
@@ -252,7 +252,7 @@ void display()
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	dammit.SetActive();
+	uniform.SetActive();
 	glBindVertexArray(vertexVAO);
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
 	glm::mat4 projectionView = glm::mat4(1.0f);
@@ -290,18 +290,18 @@ void display()
 		dither.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
-	dammit.SetActive();
-	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
+	uniform.SetActive();
+	//glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	stickVAO.Bind();
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
-	dammit.SetMat4("mvp", projectionView * m22.GetModelMatrix());
-	dammit.SetVec3("color", colors);
+	uniform.SetMat4("mvp", projectionView * m22.GetModelMatrix());
+	uniform.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
 	if (outlineBoxes)
 	{
-		aabbShader.SetActive();
+		uniform.SetActive();
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
 
@@ -312,7 +312,7 @@ void display()
 		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 		glm::mat4 boxMat = projectionView * goober.GetModel().GetModelMatrix();
-		aabbShader.SetMat4("mvp", boxMat);
+		uniform.SetMat4("mvp", boxMat);
 
 		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 
@@ -387,7 +387,7 @@ void display()
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
-
+	glFlush();
 	glutSwapBuffers();
 	CheckError();
 }
@@ -516,12 +516,11 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	dammit.CompileSimple("uniform");
+	uniform.CompileSimple("uniform");
 	light.CompileSimple("light");
 	lightTextured.CompileSimple("lighttex");
 	dither.CompileSimple("light_text_dither");
 
-	aabbShader.CompileSimple("uniform");
 	frameShader.CompileSimple("framebuffer");
 
 	textures.CompileSimple("texture");
@@ -555,9 +554,10 @@ int main(int argc, char** argv)
 
 	std::map<int, VAO> gamers = { {3, stickVAO}, {532, gamerTest} };
 	VAO::GenerateArrays(gamers);
+	CheckError();
 
 	stickVAO.Generate();
-	stickVAO.FillArray<Vertex>(dammit);
+	stickVAO.FillArray<Vertex>(uniform);
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
@@ -573,22 +573,22 @@ int main(int argc, char** argv)
 	gamerTest.Generate();
 	gamerTest.FillArray<TextureVertex>(dither);
 
-
 	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);
 
 	glBindVertexArray(vertexVAO);
-	glVertexAttribPointer(dammit.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(vertexVAO, dammit.index("pos"));
+	glVertexAttribPointer(uniform.index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(vertexVAO, uniform.index("vPos"));
 
-
-	buffer.Generate(GL_ARRAY_BUFFER);
-	buffer.BufferData(plainCubeVerts, GL_STATIC_DRAW);
+	buffer.Generate(ArrayBuffer);
+	buffer.BufferData(plainCubeVerts, StaticDraw);
 	buffer.BindBuffer();
-	glBindVertexArray(aabbVAO);
-	glVertexAttribPointer(aabbShader.index("pos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(aabbVAO, aabbShader.index("pos"));
 
+	glBindVertexArray(aabbVAO);
+	glVertexAttribPointer(uniform.index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(aabbVAO, uniform.index("vPos"));
+
+	CheckError();
 
 	glm::vec3 origin(0, 0, 0);
 	CombineVector(planes, GetPlaneSegment(origin, PlusY));
@@ -671,8 +671,8 @@ int main(int argc, char** argv)
 	
 	// TODO: VAO class
 	glGenVertexArrays(1, &frameVAO);
-	framebufferBuffer.Generate(GL_ARRAY_BUFFER);
-	framebufferBuffer.BufferData(FrameBufferVerts, GL_STATIC_DRAW);
+	framebufferBuffer.Generate(ArrayBuffer);
+	framebufferBuffer.BufferData(FrameBufferVerts, StaticDraw);
 	framebufferBuffer.BindBuffer();
 	CheckError();
 	glBindVertexArray(frameVAO);
