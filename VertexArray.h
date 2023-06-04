@@ -2,6 +2,9 @@
 #ifndef VERTEX_ARRAY_H
 #define VERTEX_ARRAY_H
 #include <glew.h>
+#include <map>
+#include <type_traits>
+#include <typeinfo>
 #include "Shader.h"
 #include "Vertex.h"
 
@@ -19,6 +22,8 @@ public:
 
 
 	template<class V> void FillArray(Shader& shader);
+	template<class T> static void GenerateArrays(T& arrays);
+	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
 };
 
 typedef VertexArray VAO;
@@ -93,6 +98,33 @@ inline void VertexArray::FillArray<MeshVertex>(Shader& shader)
 	glEnableVertexArrayAttrib(this->array, shader.index("vPos"));
 	glEnableVertexArrayAttrib(this->array, shader.index("vNorm"));
 	glEnableVertexArrayAttrib(this->array, shader.index("vTex"));
+}
+
+template<class T>
+static void VertexArray::GenerateArrays(T& arrays)
+{
+	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(arrays))>::type, VertexArray>::value);
+	GLuint *intermediate = new GLuint[std::size(arrays)];
+	glGenVertexArrays((GLsizei) std::size(arrays), intermediate);
+	for (std::size_t i = 0; i < std::size(arrays); i++)
+	{
+		arrays[i].array = intermediate[i];
+	}
+	delete[] intermediate;
+}
+
+template<class T>
+static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
+{
+	GLuint* intermediate = new GLuint[arrays.size()];
+	glGenVertexArrays((GLsizei) arrays.size(), intermediate);
+	auto begin = std::begin(arrays);
+	for (std::size_t i = 0; i < arrays.size(); i++)
+	{
+		begin->second.array = intermediate[i];
+		begin++;
+	}
+	delete[] intermediate;
 }
 
 #endif // VERTEX_ARRAY_H

@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <freeglut.h>
+#include <map>
 #include "AABB.h"
 #include "Buffer.h"
 #include "Shader.h"
@@ -551,6 +552,10 @@ int main(int argc, char** argv)
 
 	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
+
+	std::map<int, VAO> gamers = { {3, stickVAO}, {532, gamerTest} };
+	VAO::GenerateArrays(gamers);
+
 	stickVAO.Generate();
 	stickVAO.FillArray<Vertex>(dammit);
 
