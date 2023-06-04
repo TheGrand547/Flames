@@ -23,7 +23,7 @@ Buffer::~Buffer()
 	this->CleanUp();
 }
 
-size_t Buffer::Size() const
+std::size_t Buffer::Size() const
 {
 	return this->length;
 }
