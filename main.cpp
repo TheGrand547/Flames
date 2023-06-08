@@ -240,11 +240,10 @@ static int counter = 0;
 
 void display()
 {
-	//glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	//glDrawBuffers(2, buffers);
+	glDrawBuffers(2, buffers);
 	CheckError();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
@@ -334,13 +333,11 @@ void display()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
-
-	// TODO: Figure out how the god damn hell this is fucking everything up with an access violation ~the drawArrays call
-	/*
+	
 	// Framebuffer stuff
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
 	glDrawBuffers(1, buffers);
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -369,7 +366,7 @@ void display()
 	expand.SetInt("depth", 1);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-	*/
+	
 	glFlush();
 	glutSwapBuffers();
 	CheckError();

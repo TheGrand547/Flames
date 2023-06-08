@@ -33,7 +33,7 @@ void main()
 	for(int i = 0; i < 9; i++)
 	{
 		//fColor += vec4(vec3(texture(normal, textureCoords + offsets[i])) * kernel[i], 0);
-		fColor += textureOffset(normal, textureCoords, ivec2(i % 3, i / 3)) * kernel[i];
+		fColor += textureOffset(normal, textureCoords, ivec2((i % 3) - 1, (i / 3) - 1)) * kernel[i];
 	}
 	float large = max(abs(fColor.x), max(abs(fColor.y), abs(fColor.z)));
 	
