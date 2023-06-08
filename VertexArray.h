@@ -117,6 +117,8 @@ template<class T>
 static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
 {
 	GLuint *intermediate = new GLuint[arrays.size()];
+	if (intermediate == nullptr)
+		return;
 	glGenVertexArrays((GLsizei) arrays.size(), intermediate);
 	auto begin = std::begin(arrays);
 	for (std::size_t i = 0; i < arrays.size(); i++)

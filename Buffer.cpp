@@ -30,10 +30,7 @@ std::size_t Buffer::Size() const
 
 void Buffer::BindBuffer() const
 {
-	if (this->buffer)
-	{
-		glBindBuffer(this->bufferType, this->buffer);
-	}
+	glBindBuffer((GLenum) this->bufferType, this->buffer);
 }
 
 void Buffer::CleanUp()
@@ -46,21 +43,22 @@ void Buffer::CleanUp()
 	this->length = 0;
 }
 
-void Buffer::Generate(BufferType type, GLsizeiptr size)
+void Buffer::Generate(BufferType type, BufferAccess access, GLsizeiptr size)
 {
 	this->CleanUp();
 	this->bufferType = type;
 	glGenBuffers(1, &this->buffer);
 	if (size)
 	{
-		this->Reserve(size);
+		this->Reserve(access, size);
 	}
 }
 
-void Buffer::Reserve(GLsizeiptr size) const
+void Buffer::Reserve(BufferAccess access, GLsizeiptr size)
 {
 	if (this->buffer)
 	{
-		glNamedBufferData(this->buffer, size, NULL, this->bufferType);
+		glNamedBufferData(this->buffer, size, nullptr, (GLenum) access);
+		this->length = size;
 	}
 }

@@ -53,12 +53,12 @@ public:
 	std::size_t Size() const;
 
 	void CleanUp();
-	void Generate(BufferType type, GLsizeiptr size = 0);
+	void Generate(BufferType type, BufferAccess access = StaticDraw, GLsizeiptr size = 0);
 	void BindBuffer() const;
-	void Reserve(GLsizeiptr size) const;
+	void Reserve(BufferAccess access, GLsizeiptr size);
 
 
-	template <class T> Buffer(GLenum type, BufferAccess usage, const std::vector<T>& data);
+	template <class T> Buffer(BufferType type, BufferAccess usage, const std::vector<T>& data);
 	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage);
 	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);
 	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage);
@@ -72,18 +72,19 @@ public:
 };
 
 
-template<class T> inline Buffer::Buffer(GLenum type, BufferAccess usage, const std::vector<T>& data) : bufferType(type)
+template<class T> inline Buffer::Buffer(BufferType type, BufferAccess usage, const std::vector<T>& data) : bufferType(type)
 {
 	glGenBuffers(1, &this->buffer);
-	this->BufferData(data, (GLenum) usage);
+	this->BufferData(data, usage);
 }
 
 template<class T> inline void Buffer::BufferData(const std::vector<T>& data, BufferAccess usage)
 {
 	if (this->buffer)
 	{
-		glNamedBufferData(this->buffer, data.size() * sizeof(T), data.data(), (GLenum) usage);
-		this->length += data.size() * sizeof(T);
+		glBindBuffer(this->bufferType, this->buffer);
+		glBufferData(this->bufferType, data.size() * sizeof(T), data.data(), (GLenum) usage);
+		this->length = data.size() * sizeof(T);
 	}
 }
 
@@ -114,7 +115,8 @@ template<class T> inline void Buffer::BufferSubData(T& data, GLintptr offset)
 {
 	if (this->buffer)
 	{
-		glBufferSubData(this->buffer, offset, (GLsizeiptr) sizeof(T), &data);
+		glBindBuffer(this->bufferType, this->buffer);
+		glBufferSubData(this->bufferType, offset, (GLsizeiptr) sizeof(T), &data);
 	}
 }
 
@@ -129,7 +131,8 @@ template<class T> inline void Buffer::BufferSubData(const std::vector<T>& data, 
 			// WARNING
 			return;
 		}
-		glBufferSubData(this->buffer, offset, (GLsizeiptr) sizeof(T) * data.size(), data.data());
+		glBindBuffer(this->bufferType, this->buffer);
+		glBufferSubData(this->bufferType, offset, (GLsizeiptr) sizeof(T) * data.size(), data.data());
 	}
 }
 
@@ -144,7 +147,8 @@ template<class T, std::size_t i> inline void Buffer::BufferSubData(const std::ar
 			// WARNING
 			return;
 		}
-		glBufferSubData(this->buffer, offset, (GLsizeiptr) sizeof(T) * i, data.data());
+		glBindBuffer(this->bufferType, this->buffer);
+		glBufferSubData(this->bufferType, offset, (GLsizeiptr) sizeof(T) * i, data.data());
 	}
 }
 

@@ -17,6 +17,7 @@
 #include "stbWrangler.h"
 #include "Plane.h"
 #include "Sphere.h"
+#include "UniformBuffer.h"
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
@@ -28,7 +29,7 @@ void CheckErrors(int line)
 	GLenum e;
 	while ((e = glGetError()))
 	{
-		std::string given((char*)gluErrorString(e));
+		std::string given((char*) gluErrorString(e));
 		std::cout << "Line " << line << ": " << given << std::endl;
 	}
 }
@@ -42,6 +43,8 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
 Shader uniform;
 Buffer buffer;
+
+UniformBuffer universal;
 
 VAO gamerTest;
 
@@ -74,8 +77,6 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 	}
 };
 
-// This has one redundant triangle but I can't seem to find it so whatever
-// 2,7,6 is repeated in the ord 6, 7, 2 i think i'm not sure ahh
 static const std::array<GLubyte, 36> cubeIndicies =
 {
 	0, 1, 4,
@@ -239,11 +240,11 @@ static int counter = 0;
 
 void display()
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+	//glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, buffers);
+	//glDrawBuffers(2, buffers);
 	CheckError();
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
@@ -255,17 +256,15 @@ void display()
 	uniform.SetActive();
 	glBindVertexArray(vertexVAO);
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
-	glm::mat4 projectionView = glm::mat4(1.0f);
 
 	// Camera matrix
-	glm::vec3 angles2 = glm::radians(angles);//glm::eulerAngles(rotation);
+	glm::vec3 angles2 = glm::radians(angles);
 
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
+	universal.BufferSubData(view, 0);
 
 	// MVP = model
-
-	projectionView = projection * view;
 
 
 	dither.SetActive();
@@ -277,7 +276,6 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", offset);
-	dither.SetMat4("vp", projectionView);
 	dither.SetTextureUnit("textureIn", 0);
 	dither.SetTextureUnit("ditherMap", 1);
 
@@ -286,48 +284,30 @@ void display()
 	for (Model& model : planes)
 	{
 		glm::vec3 color(.5f, .5f, .5f);
-		dither.SetMat4("model", model.GetModelMatrix());
+		dither.SetMat4("Model", model.GetModelMatrix());
 		dither.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
 	uniform.SetActive();
-	//glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	stickVAO.Bind();
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
-	uniform.SetMat4("mvp", projectionView * m22.GetModelMatrix());
+	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	if (outlineBoxes)
+	if (outlineBoxes || !outlineBoxes)
 	{
-		uniform.SetActive();
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
 
-		glDisable(GL_CULL_FACE);
-		
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
 		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
-		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		glm::mat4 boxMat = projectionView * goober.GetModel().GetModelMatrix();
-		uniform.SetMat4("mvp", boxMat);
+		uniform.SetMat4("Model", goober.GetModel().GetModelMatrix());
+		uniform.SetVec3("color", blue);
 
 		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-
-		/*
-		for (const auto& box : boxes)
-		{
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			aabbShader.SetVec3("color", colors);
-			glm::mat4 boxMat = projectionView * box.GetModel().GetModelMatrix();
-			aabbShader.SetMat4("mvp", boxMat);
-			glDrawElements(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data());
-			aabbShader.SetVec3("color", blue);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			glDrawElements(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data());
-		}*/
 		glEnable(GL_CULL_FACE);
 	}
 
@@ -346,7 +326,6 @@ void display()
 	sphereShader.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	sphereShader.SetMat4("viewProjMat", projectionView);
 	sphereShader.SetTextureUnit("hatching", 0);
 
 	// Doing this while letting the normal be the color will create a cool effect
@@ -356,6 +335,8 @@ void display()
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
+	// TODO: Figure out how the god damn hell this is fucking everything up with an access violation ~the drawArrays call
+	/*
 	// Framebuffer stuff
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -368,11 +349,13 @@ void display()
 	glDisable(GL_CULL_FACE);
 	framebufferNormal.Bind(0);
 	//framebufferDepth.Bind(0);
-
+	CheckError();
 	frameShader.SetActive();
 	frameShader.SetTextureUnit("normal", 0);
 	glBindVertexArray(frameVAO);
+	CheckError();
 	glDrawArrays(GL_TRIANGLES, 0, 6);
+	CheckError();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -386,7 +369,7 @@ void display()
 	expand.SetInt("depth", 1);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-
+	*/
 	glFlush();
 	glutSwapBuffers();
 	CheckError();
@@ -578,11 +561,12 @@ int main(int argc, char** argv)
 
 	buffer.Generate(ArrayBuffer);
 	buffer.BufferData(plainCubeVerts, StaticDraw);
-	buffer.BindBuffer();
 
+	buffer.BindBuffer();
 	glBindVertexArray(aabbVAO);
 	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
 	glEnableVertexArrayAttrib(aabbVAO, uniform.Index("vPos"));
+	glBindVertexArray(0);
 
 	CheckError();
 
@@ -682,6 +666,7 @@ int main(int argc, char** argv)
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
 
+	// TODO: Why isn't this in a VAO object??
 	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
 	glGenVertexArrays(1, &sphereVAO);
 	glBindVertexArray(sphereVAO);
@@ -693,13 +678,22 @@ int main(int argc, char** argv)
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
-	int ins;	
-	glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS, &ins);
+	uniform.UniformBlockBinding("Camera", 0);
+	dither.UniformBlockBinding("Camera", 0);
+	sphereShader.UniformBlockBinding("Camera", 0);
 
-	std::cout << ins << std::endl;
+	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
+	universal.SetBindingPoint(0);
+	universal.BindUniform();
+	CheckError();
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
+	universal.BufferSubData(projection, sizeof(glm::mat4));
+	CheckError();
+
+	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	glClearColor(1.f, 1.f, 1.f, 1.f);
-
+	CheckError();
 	glutMainLoop();
 
 	glDeleteFramebuffers(1, &framebuffer);
