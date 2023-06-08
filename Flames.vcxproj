@@ -155,6 +155,7 @@
     <ClCompile Include="StaticOctTree.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="UniformBuffer.cpp" />
     <ClCompile Include="VertexArray.cpp" />
     <ClCompile Include="Wall.cpp" />
   </ItemGroup>
@@ -182,6 +183,7 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
+    <ClInclude Include="UniformBuffer.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VertexArray.h" />
     <ClInclude Include="Wall.h" />

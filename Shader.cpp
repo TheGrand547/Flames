@@ -30,7 +30,7 @@ static GLuint CompileShader(GLenum type, const char* data)
 	return vertex;
 }
 
-Shader::Shader() : compiled(false), precompiled(false), program(0)
+Shader::Shader() : compiled(false), precompiled(false), program(0), mapping()
 {
 
 }
@@ -38,21 +38,22 @@ Shader::Shader() : compiled(false), precompiled(false), program(0)
 
 // If force is not set it will first check if a 'name.csp' (compiled shader program? no clue what industry standard is)
 // Takes name for a shader, and reads the files 'namev.glsl' and 'namef.glsl'
-Shader::Shader(const std::string& name, bool recompile) : compiled(false), precompiled(false), name(name), program(0)
+Shader::Shader(const std::string& name, bool recompile) : compiled(false), precompiled(false), name(name), program(0), mapping()
 {
 	this->CompileSimple(name, recompile);
 }
 
-Shader::Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile) : compiled(false), precompiled(false), name(""), program(0)
+Shader::Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile) : compiled(false), precompiled(false), 
+																		name(""), program(0), mapping()
 {
 	this->Compile(vertex, fragment, forceRecompile);
 }
-Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0)
+Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0), mapping()
 {
 	this->CompileExplicit(vertex, fragment);
 }
 
-Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0)
+Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0), mapping()
 {
 	*this = std::forward<Shader>(other);
 }
@@ -71,6 +72,7 @@ Shader& Shader::operator=(Shader&& other) noexcept
 		this->compiled = other.compiled;
 		this->precompiled = other.precompiled;
 		this->name = other.name;
+		this->mapping = other.mapping;
 		other.program = 0;
 		other.CleanUp();
 	}
@@ -209,15 +211,43 @@ bool Shader::CompileExplicit(const char* vertex, const char* fragment)
 	return this->compiled;
 }
 
-
-GLuint Shader::index(const std::string& name) const
+// TODO: Maybe store in an unordered_map?
+GLuint Shader::Index(const std::string& name) 
 {
 	return glGetAttribLocation(this->program, name.c_str());
 }
 
-GLuint Shader::uniformIndex(const std::string& name) const
+GLuint Shader::UniformIndex(const std::string& name)
 {
-	return glGetUniformLocation(this->program, name.c_str());
+	if (this->mapping.find(name) != this->mapping.end())
+	{
+		return this->mapping[name];
+	}
+	this->mapping[name] = glGetUniformLocation(this->program, name.c_str());
+	return this->mapping[name];
+}
+
+GLuint Shader::UniformBlockIndex(const std::string& name)
+{
+	return glGetUniformBlockIndex(this->program, name.c_str());
+}
+
+void Shader::CalculateUniforms()
+{
+	this->mapping.clear();
+	const GLsizei bufferSize = 20;
+	GLchar buffer[bufferSize];
+	GLint count, size;
+	GLsizei length;
+	GLenum enumer;
+	
+	glGetProgramiv(this->program, GL_ACTIVE_UNIFORMS, &count);
+
+	for (GLuint i = 0; i < count; i++)
+	{
+		glGetActiveUniform(this->program, i, bufferSize, &length, &size, &enumer, buffer);
+		this->mapping[buffer] = i;
+	}
 }
 
 void Shader::CleanUp()
@@ -230,11 +260,7 @@ void Shader::CleanUp()
 		this->precompiled = false;
 		this->name = "";
 	}
-}
-
-void Shader::SetActive()
-{
-	glUseProgram(this->program);
+	this->mapping.clear();
 }
 
 void Shader::ExportCompiled()
@@ -262,22 +288,22 @@ void Shader::ExportCompiled()
 	output.close();
 }
 
-void Shader::SetInt(const std::string& name, const int i) const
+void Shader::SetInt(const std::string& name, const int i)
 {
-	glUniform1i(this->uniformIndex(name), i);
+	glUniform1i(this->UniformIndex(name), i);
 }
 
-void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const
+void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
 {
-	glUniform3fv(this->uniformIndex(name), 1, glm::value_ptr(vec));
+	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
-void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
+void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
 {
-	glUniformMatrix4fv(this->uniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
-void Shader::SetTextureUnit(const std::string& name, const unsigned int unit) const
+void Shader::SetTextureUnit(const std::string& name, const unsigned int unit)
 {
-	glUniform1i(this->uniformIndex(name), unit);
+	glUniform1i(this->UniformIndex(name), unit);
 }

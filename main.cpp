@@ -577,16 +577,16 @@ int main(int argc, char** argv)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);
 
 	glBindVertexArray(vertexVAO);
-	glVertexAttribPointer(uniform.index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(vertexVAO, uniform.index("vPos"));
+	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(vertexVAO, uniform.Index("vPos"));
 
 	buffer.Generate(ArrayBuffer);
 	buffer.BufferData(plainCubeVerts, StaticDraw);
 	buffer.BindBuffer();
 
 	glBindVertexArray(aabbVAO);
-	glVertexAttribPointer(uniform.index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(aabbVAO, uniform.index("vPos"));
+	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(aabbVAO, uniform.Index("vPos"));
 
 	CheckError();
 
@@ -676,8 +676,8 @@ int main(int argc, char** argv)
 	framebufferBuffer.BindBuffer();
 	CheckError();
 	glBindVertexArray(frameVAO);
-	glVertexAttribPointer(frameShader.index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
-	glEnableVertexArrayAttrib(frameVAO, frameShader.index("positionAndTexture"));
+	glVertexAttribPointer(frameShader.Index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
+	glEnableVertexArrayAttrib(frameVAO, frameShader.Index("positionAndTexture"));
 
 	expand.Compile("framebuffer", "expand");
 
@@ -689,10 +689,10 @@ int main(int argc, char** argv)
 	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
 	glGenVertexArrays(1, &sphereVAO);
 	glBindVertexArray(sphereVAO);
-	glVertexAttribPointer(sphereShader.index("vPos"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vPos"));
-	glVertexAttribPointer(sphereShader.index("vNorm"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), (const void*) sizeof(glm::vec3));
-	glEnableVertexArrayAttrib(sphereVAO, sphereShader.index("vNorm"));
+	glVertexAttribPointer(sphereShader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), nullptr);
+	glEnableVertexArrayAttrib(sphereVAO, sphereShader.Index("vPos"));
+	glVertexAttribPointer(sphereShader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), (const void*) sizeof(glm::vec3));
+	glEnableVertexArrayAttrib(sphereVAO, sphereShader.Index("vNorm"));
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);

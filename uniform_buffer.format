@@ -1,0 +1,7 @@
+layout(std140, binding = X) uniform NAME
+{
+
+
+}
+// Everything will be packed as close as possible, largest things first to remove as much packing as possible
+// Avoid arrays of floats and vec3's as they have funky packing rules

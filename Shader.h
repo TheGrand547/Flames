@@ -2,8 +2,10 @@
 #ifndef FLAMES_SHADER_H
 #define FLAMES_SHADER_H
 #include <glew.h>
-#include <string>
 #include <glm/glm.hpp>
+#include <map>
+#include <string>
+
 
 class Shader
 {
@@ -11,6 +13,7 @@ protected:
 	bool compiled, precompiled;
 	GLuint program;
 	std::string name;
+	std::map<std::string, GLuint> mapping;
 public:
 	Shader();
 	Shader(const std::string& name, bool forceRecompile = false);
@@ -29,22 +32,41 @@ public:
 
 	constexpr bool Compiled() const;
 
-	GLuint index(const std::string& name) const;
-	GLuint uniformIndex(const std::string& name) const;
+	GLuint Index(const std::string& name) ;
+	GLuint UniformIndex(const std::string& name) ;
+	GLuint UniformBlockIndex(const std::string& name);
 
+	void CalculateUniforms();
 	void CleanUp();
-	void SetActive();
 	void ExportCompiled();
 
-	void SetInt(const std::string& name, const int i) const;
-	void SetVec3(const std::string& name, const glm::vec3& vec) const;
-	void SetMat4(const std::string& name, const glm::mat4& mat) const;
-	void SetTextureUnit(const std::string& name, const unsigned int unit) const;
+	void SetInt(const std::string& name, const int i);
+	void SetVec3(const std::string& name, const glm::vec3& vec);
+	void SetMat4(const std::string& name, const glm::mat4& mat);
+	void SetTextureUnit(const std::string& name, const unsigned int unit);
+
+	inline GLuint GetProgram();
+	inline void SetActive();
+	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 };
 
 constexpr bool Shader::Compiled() const
 {
 	return this->compiled;
+}
+inline GLuint Shader::GetProgram()
+{
+	return this->program;
+}
+
+inline void Shader::SetActive()
+{
+	glUseProgram(this->program);
+}
+
+inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingPoint)
+{
+	glUniformBlockBinding(this->program, this->UniformBlockIndex(name), bindingPoint);
 }
 
 #endif // FLAMES_SHADER_H
