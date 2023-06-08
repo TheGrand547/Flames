@@ -3,9 +3,9 @@
 #define FLAMES_SHADER_H
 #include <glew.h>
 #include <glm/glm.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <map>
 #include <string>
-
 
 class Shader
 {

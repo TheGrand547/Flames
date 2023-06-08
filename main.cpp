@@ -40,7 +40,7 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 
 // Cringe globals
 GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
-Shader uniform, textures, light, lightTextured;
+Shader uniform;
 Buffer buffer;
 
 VAO gamerTest;
@@ -517,15 +517,10 @@ int main(int argc, char** argv)
 	}
 
 	uniform.CompileSimple("uniform");
-	light.CompileSimple("light");
-	lightTextured.CompileSimple("lighttex");
 	dither.CompileSimple("light_text_dither");
+	sphereShader.CompileSimple("lightflat");
 
 	frameShader.CompileSimple("framebuffer");
-
-	textures.CompileSimple("texture");
-
-	sphereShader.CompileSimple("lightflat");
 
 	texture.Load("test.png");
 	wallTexture.Load("flowed.png");
@@ -554,6 +549,7 @@ int main(int argc, char** argv)
 
 	std::map<int, VAO> gamers = { {3, stickVAO}, {532, gamerTest} };
 	VAO::GenerateArrays(gamers);
+	gamers.clear();
 	CheckError();
 
 	stickVAO.Generate();

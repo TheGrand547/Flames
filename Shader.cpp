@@ -1,11 +1,9 @@
 #include "Shader.h"
 #include <filesystem>
 #include <fstream>
-#include <GL.h>
 #include <iostream>
 #include <iterator>
 #include <vector>
-#include <glm/gtc/type_ptr.hpp>
 
 static GLuint CompileShader(GLenum type, const char* data)
 {
