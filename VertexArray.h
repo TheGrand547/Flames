@@ -5,6 +5,7 @@
 #include <map>
 #include <type_traits>
 #include <typeinfo>
+#include <vector>
 #include "Shader.h"
 #include "Vertex.h"
 
@@ -104,7 +105,7 @@ template<class T>
 static void VertexArray::GenerateArrays(T& arrays)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(arrays))>::type, VertexArray>::value);
-	GLuint *intermediate = new GLuint[std::size(arrays)];
+	GLuint *intermediate = (GLuint) new GLuint[std::size(arrays)];
 	glGenVertexArrays((GLsizei) std::size(arrays), intermediate);
 	for (std::size_t i = 0; i < std::size(arrays); i++)
 	{
@@ -116,17 +117,14 @@ static void VertexArray::GenerateArrays(T& arrays)
 template<class T>
 static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
 {
-	GLuint *intermediate = new GLuint[arrays.size()];
-	if (intermediate == nullptr)
-		return;
-	glGenVertexArrays((GLsizei) arrays.size(), intermediate);
+	std::vector<GLuint> intermediate(arrays.size());
+	glGenVertexArrays((GLsizei) arrays.size(), intermediate.data());
 	auto begin = std::begin(arrays);
 	for (std::size_t i = 0; i < arrays.size(); i++)
 	{
 		begin->second.array = intermediate[i];
 		begin++;
 	}
-	delete[] intermediate;
 }
 
 #endif // VERTEX_ARRAY_H

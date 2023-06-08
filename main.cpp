@@ -150,12 +150,12 @@ Texture2D texture, wallTexture;
 
 bool outlineBoxes = false;
 
-glm::vec3 offset(0, 1.5f, 0);
+glm::vec3 offset(0, 1.5f, -3);
 glm::vec3 angles;
 
 GLuint texturedPlane, texturedVAO;
 
-static const std::array<const unsigned char, 16 * 16> dither16 = {
+static const std::array<GLubyte, 16 * 16> dither16 = {
 {
 	0,   191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254,
 	127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127,
@@ -263,9 +263,6 @@ void display()
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
 	universal.BufferSubData(view, 0);
 
-	// MVP = model
-
-
 	dither.SetActive();
 	wallTexture.Bind(0);
 	ditherTexture.Bind(1);
@@ -317,7 +314,7 @@ void display()
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.scale = glm::vec3(0.5f);
 
-
+	
 	hatching.Bind(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -498,7 +495,11 @@ int main(int argc, char** argv)
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
+	CheckError();
+
 	sphereShader.CompileSimple("lightflat");
+	CheckError();
+
 
 	frameShader.CompileSimple("framebuffer");
 
@@ -546,11 +547,15 @@ int main(int argc, char** argv)
 	verts[3].coordinates = glm::vec2(0, 0);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
 
+	CheckError();
 	gamerTest.Generate();
+	CheckError();
 	gamerTest.FillArray<TextureVertex>(dither);
+	CheckError();
 
 	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);
+	CheckError();
 
 	glBindVertexArray(vertexVAO);
 	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
@@ -588,8 +593,8 @@ int main(int argc, char** argv)
 	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0,  1), glm::vec3(-10, 2,  10)}));
 	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3( 1, 0, -1), glm::vec3( 10, 2, -10)}));
 
-	ditherTexture.Load(dither16);
-	ditherTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+	ditherTexture.Load<GLubyte, GL_UNSIGNED_BYTE, 256>(dither16);
+	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	ditherTexture.GenerateMipmap();
 
 	CheckError();

@@ -18,7 +18,7 @@ static GLuint CompileShader(GLenum type, const char* data)
 	{
 		GLint length;
 		glGetShaderiv(vertex, GL_INFO_LOG_LENGTH, &length);
-		char* infoLog = new char[length + 1];
+		char* infoLog = new char[length + 1];	
 		infoLog[length] = '\0';
 		glGetShaderInfoLog(vertex, length, NULL, infoLog);
 		std::cout << "Compilation of Shader failed\n" << infoLog << std::endl;
@@ -172,6 +172,15 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 			glDeleteShader(fShader);
 			this->compiled = true;
 			this->ExportCompiled();
+			GLint logSize;
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
+			if (logSize)
+			{
+				GLchar* logMsg = new char[logSize];
+				glGetProgramInfoLog(program, logSize, NULL, logMsg);
+				std::cout << "Program Log: " << logMsg << std::endl;
+				delete[] logMsg;
+			}
 		}
 		vertexFile.close();
 		fragmentFile.close();

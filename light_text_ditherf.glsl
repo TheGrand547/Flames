@@ -12,7 +12,6 @@ uniform vec3 lightPos;
 uniform vec3 viewPos;
 uniform sampler2D textureIn;
 uniform sampler2D ditherMap;
-// TODO: normal/parallax mapping
 
 void main()
 {
@@ -42,21 +41,13 @@ void main()
 
 	vec3 color = vec3(texture(textureIn, fTex));
 	
-	
 	vec3 result = color * (ambientColor + diffuseColor + specularOut) * attenuation;
 	
-	colorOut = vec4(result, 1);
 	normalOut = vec4(abs(norm), 1);
 	
 	// Dither stuff
 	
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
-	const float maxVal = 255;
-	vec3 scaled = result * maxVal;
-	vec3 floored = floor(scaled);
-	vec3 delta = scaled - floored;
-		
-	result = (floored + step(dither, delta)) / maxVal;
-	
+	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	colorOut = vec4(result, 1.0);
 }
