@@ -40,13 +40,12 @@ public:
 	void CleanUp();
 	void ExportCompiled();
 
-	void SetInt(const std::string& name, const int i);
-	void SetVec3(const std::string& name, const glm::vec3& vec);
-	void SetMat4(const std::string& name, const glm::mat4& mat);
-	void SetTextureUnit(const std::string& name, const unsigned int unit);
-
 	inline GLuint GetProgram();
 	inline void SetActive();
+	inline void SetInt(const std::string& name, const int i);
+	inline void SetVec3(const std::string& name, const glm::vec3& vec);
+	inline void SetMat4(const std::string& name, const glm::mat4& mat);
+	inline void SetTextureUnit(const std::string& name, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 };
 
@@ -62,6 +61,26 @@ inline GLuint Shader::GetProgram()
 inline void Shader::SetActive()
 {
 	glUseProgram(this->program);
+}
+
+inline void Shader::SetInt(const std::string& name, const int i)
+{
+	glUniform1i(this->UniformIndex(name), i);
+}
+
+inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
+{
+	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+}
+
+inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
+{
+	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit)
+{
+	glUniform1i(this->UniformIndex(name), unit);
 }
 
 inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingPoint)

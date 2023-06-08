@@ -243,7 +243,7 @@ void Shader::CalculateUniforms()
 	
 	glGetProgramiv(this->program, GL_ACTIVE_UNIFORMS, &count);
 
-	for (GLuint i = 0; i < count; i++)
+	for (GLuint i = 0; i < (GLuint) count; i++)
 	{
 		glGetActiveUniform(this->program, i, bufferSize, &length, &size, &enumer, buffer);
 		this->mapping[buffer] = i;
@@ -286,24 +286,4 @@ void Shader::ExportCompiled()
 #endif
 	}
 	output.close();
-}
-
-void Shader::SetInt(const std::string& name, const int i)
-{
-	glUniform1i(this->UniformIndex(name), i);
-}
-
-void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
-{
-	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
-}
-
-void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
-{
-	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
-}
-
-void Shader::SetTextureUnit(const std::string& name, const unsigned int unit)
-{
-	glUniform1i(this->UniformIndex(name), unit);
 }
