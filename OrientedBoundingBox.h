@@ -22,8 +22,11 @@ private:
 public:
 	constexpr OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1));
 	constexpr OrientedBoundingBox(const OrientedBoundingBox& other) = default;
+	constexpr OrientedBoundingBox(const Model& model);
 	constexpr OrientedBoundingBox(const AABB& other);
 	~OrientedBoundingBox() = default;
+
+	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) = default;
 
 	inline constexpr void Center(const glm::vec3& center) noexcept;
 	inline constexpr void Reorient(const glm::vec3& euler);
@@ -45,6 +48,11 @@ constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const
 	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), deltas.y);
 	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), deltas.z);
 	this->Rotate(glm::radians(euler));
+}
+
+constexpr OrientedBoundingBox::OrientedBoundingBox(const Model& model) : OrientedBoundingBox(model.rotation, model.scale)
+{
+	this->center = model.translation;
 }
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other)

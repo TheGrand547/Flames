@@ -150,7 +150,7 @@ Texture2D texture, wallTexture;
 
 bool outlineBoxes = false;
 
-glm::vec3 offset(0, 1.5f, -3);
+glm::vec3 offset(0, 1.5f, 0);
 glm::vec3 angles;
 
 GLuint texturedPlane, texturedVAO;
@@ -181,7 +181,7 @@ Texture2D ditherTexture;
 Shader dither;
 
 
-enum GeometryThing : unsigned char
+enum GeometryThing : unsigned short
 {
 	PlusX  = 1 << 1,
 	MinusX = 1 << 2,
@@ -292,7 +292,7 @@ void display()
 	uniform.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	if (outlineBoxes || !outlineBoxes)
+	if (outlineBoxes)
 	{
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
@@ -304,6 +304,11 @@ void display()
 		uniform.SetVec3("color", blue);
 
 		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		for (const auto& box : boxes)
+		{
+			uniform.SetMat4("Model", box.GetModel().GetModelMatrix());
+			glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		}
 		glEnable(GL_CULL_FACE);
 	}
 
@@ -576,22 +581,27 @@ int main(int argc, char** argv)
 	CombineVector(planes, GetPlaneSegment(origin, PlusY));
 	for (int i = -5; i <= 5; i++)
 	{
-		if (!i)
+		if (abs(i) <= 1)
 			continue;
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
+	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
+	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
+	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
+	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
+
 	planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
 		walls.push_back(Wall(ref));
+		//OBB project(ref.rotation, glm::vec3(1, .25f, 1) * ref.scale);
+		//project.Center(ref.translation);
+		OBB project(ref);
+		project.Scale(glm::vec3(1, .25f, 1));
+		boxes.push_back(project);
 	}
 	Model oops = planes[planes.size() / 2 + 1];
-	
-	boxes.push_back(AABB(glm::vec3(1, 0, 1), glm::vec3(10, 2, 10)));
-	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0, -1), glm::vec3(-10, 2, -10)}));
-	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3(-1, 0,  1), glm::vec3(-10, 2,  10)}));
-	boxes.push_back(AABB::GetAABB(std::vector<glm::vec3>{glm::vec3( 1, 0, -1), glm::vec3( 10, 2, -10)}));
 
 	ditherTexture.Load<GLubyte, GL_UNSIGNED_BYTE, 256>(dither16);
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
