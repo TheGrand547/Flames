@@ -10,13 +10,14 @@ layout(location = 2) uniform sampler2D depths;
 
 uniform int depth;
 
-bool dark = false;
+int dark = 0;
+const int required = 3;
 
 void test(ivec2 offset)
 {
-	if (!dark && textureOffset(edges, textureCoords, offset).r < 0.25)
+	if (dark < required && textureOffset(edges, textureCoords, offset).r < 0.25)
 	{
-		dark = true;
+		dark += 1;
 	}
 }
 
@@ -24,7 +25,7 @@ void main()
 {
 	vec4 sampled = texture(screen, textureCoords);
 	test(ivec2(0, 0));
-	for (int i = 1; i <= depth && !dark; i++)
+	for (int i = 1; i <= depth && dark < required; i++)
 	{
 		test(ivec2( i,  0));
 		test(ivec2(-i,  0));
@@ -35,7 +36,7 @@ void main()
 		test(ivec2(-i,  i));
 		test(ivec2( i,  i));
 	}
-	if (dark)
+	if (dark >= required)
 	{
 		fColor = vec4(0.15, 0.15, 0.15, 1);
 	}
@@ -44,6 +45,5 @@ void main()
 		fColor = vec4(1, 1, 1, 1);
 	}
 	fColor = sampled * fColor;
-	//fColor = texture(depths, textureCoords);
-	//fColor.w = 1;
+	fColor.w = 1;
 }

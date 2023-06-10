@@ -365,7 +365,7 @@ void display()
 	expand.SetTextureUnit("screen", 0);
 	expand.SetTextureUnit("edges", 1);
 	expand.SetTextureUnit("depths", 2);
-	expand.SetInt("depth", 1);
+	expand.SetInt("depth", 2);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	
@@ -487,6 +487,8 @@ int main(int argc, char** argv)
 
 	// Glut
 	glutInit(&argc, argv);
+	glutInitContextVersion(4, 6);
+	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("Wowie a window");
@@ -497,6 +499,8 @@ int main(int argc, char** argv)
 		printf("Error code %i from glewInit()", error);
 		return -1;
 	}
+
+	glDisable(GL_MULTISAMPLE);
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
@@ -577,14 +581,16 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	glm::vec3 origin(0, 0, 0);
-	CombineVector(planes, GetPlaneSegment(origin, PlusY));
 	for (int i = -5; i <= 5; i++)
 	{
 		if (abs(i) <= 1)
 			continue;
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
+	}
+	for (int i = 0; i < 9; i++)
+	{
+		CombineVector(planes, GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (((int)i / 3) - 1)), PlusY));
 	}
 	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
@@ -595,8 +601,6 @@ int main(int argc, char** argv)
 	for (const auto& ref : planes)
 	{
 		walls.push_back(Wall(ref));
-		//OBB project(ref.rotation, glm::vec3(1, .25f, 1) * ref.scale);
-		//project.Center(ref.translation);
 		OBB project(ref);
 		project.Scale(glm::vec3(1, .25f, 1));
 		boxes.push_back(project);
