@@ -47,6 +47,8 @@ public:
 	inline void SetMat4(const std::string& name, const glm::mat4& mat);
 	inline void SetTextureUnit(const std::string& name, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
+
+	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 };
 
 constexpr bool Shader::Compiled() const

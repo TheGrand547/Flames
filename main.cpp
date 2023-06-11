@@ -493,14 +493,16 @@ int main(int argc, char** argv)
 	glutInitWindowSize(1000, 1000);
 	glutCreateWindow("Wowie a window");
 
+	glewExperimental = GL_TRUE;
 	// Glew
 	if ((error = glewInit()) != GLEW_OK)
 	{
 		printf("Error code %i from glewInit()", error);
 		return -1;
 	}
-
 	glDisable(GL_MULTISAMPLE);
+
+	Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
