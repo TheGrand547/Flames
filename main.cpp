@@ -151,7 +151,7 @@ Texture2D texture, wallTexture;
 bool outlineBoxes = false;
 
 glm::vec3 offset(0, 1.5f, 0);
-glm::vec3 angles;
+glm::vec3 angles(0, 0, 0);
 
 GLuint texturedPlane, texturedVAO;
 
@@ -233,10 +233,14 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 }
 std::vector<Model> planes;
 std::vector<OBB> boxes;
+std::vector<bool> boxColor;
 
 bool dummyFlag = false;
 bool clear = false;
 static int counter = 0;
+
+Buffer rayBuffer;
+VAO rayVAO;
 
 void display()
 {
@@ -247,7 +251,7 @@ void display()
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	// FORWARD IS (1, 0, 0)
+	// FORWARD IS (0, 0, 1)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -259,7 +263,7 @@ void display()
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(angles);
 
-	// Adding pi/2 is necessary because the default camera is facing -z
+	// Adding pi is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
 	universal.BufferSubData(view, 0);
 
@@ -303,14 +307,24 @@ void display()
 		uniform.SetMat4("Model", goober.GetModel().GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
+		float wid = 10;
+		//glGetFloatv(GL_LINE_WIDTH, &wid);
 		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-		for (const auto& box : boxes)
+		for (std::size_t i = 0; i < boxes.size(); i++)
 		{
-			uniform.SetMat4("Model", box.GetModel().GetModelMatrix());
+			uniform.SetMat4("Model", boxes[i].GetModel().GetModelMatrix());
+			uniform.SetVec3("color", (boxColor[i]) ? colors : blue);
+			glLineWidth((boxColor[i]) ? wid * 1.5 : wid);
 			glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		}
 		glEnable(GL_CULL_FACE);
 	}
+
+	rayVAO.Bind();
+	Model bland;
+	uniform.SetMat4("Model", bland.GetModelMatrix());
+	uniform.SetVec3("color", glm::vec3(1, 0, 1));
+	glDrawArrays(GL_LINES, 0, 2);
 
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -335,7 +349,11 @@ void display()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
-	
+	sphereModel.translation = glm::vec3(0, 1.5f, 6.5f);
+	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
+	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
+	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+
 	// Framebuffer stuff
 	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -380,14 +398,17 @@ std::vector<Wall> walls;
 
 // To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
 
+glm::vec3 rayStart, rayDir;
+
 void idle()
 {
 	static int lastFrame = 0;
 	counter++;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
+	std::cout << "\r" << (float)elapsed / 1000.f;
 
-	float speed = 3 * ((float)elapsed) / 1000.f;
+	float speed = 3 * ((float) elapsed) / 1000.f;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -449,6 +470,19 @@ void keyboard(unsigned char key, int x, int y)
 		dummyFlag = !dummyFlag;
 	if (key == 'h' || key == 'H')
 		clear = !clear;
+	if (key == 'r' || key == 'R')
+	{
+		float fdist;
+		glm::vec3 angles2 = glm::radians(angles);
+		glm::vec3 gamer = glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0);
+		std::array<glm::vec3, 2> verts = { offset, offset + gamer * 100.f };
+		rayBuffer.BufferSubData(verts);
+
+		for (std::size_t i = 0; i < boxes.size(); i++)
+		{
+			boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, fdist);
+		}
+	}
 	if (key == 'f')
 	{
 		std::cout << offset.x << ", " << offset.y << ", " << offset.z << std::endl;
@@ -583,6 +617,13 @@ int main(int argc, char** argv)
 
 	CheckError();
 
+	std::array<glm::vec3, 2> gobs = { glm::vec3(), glm::vec3(5) };
+	rayBuffer.Generate(ArrayBuffer);
+	rayBuffer.BufferData(gobs, StaticDraw);
+	rayBuffer.BindBuffer();
+	rayVAO.Generate();
+	rayVAO.FillArray<Vertex>(uniform);
+
 	for (int i = -5; i <= 5; i++)
 	{
 		if (abs(i) <= 1)
@@ -606,6 +647,7 @@ int main(int argc, char** argv)
 		OBB project(ref);
 		project.Scale(glm::vec3(1, .25f, 1));
 		boxes.push_back(project);
+		boxColor.push_back(false);
 	}
 	Model oops = planes[planes.size() / 2 + 1];
 
