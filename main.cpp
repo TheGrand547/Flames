@@ -1,4 +1,3 @@
-#include <iostream>
 #include <glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -6,6 +5,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <freeglut.h>
+#include <iostream>
 #include <map>
 #include "AABB.h"
 #include "Buffer.h"
@@ -13,10 +13,10 @@
 #include "glmHelp.h"
 #include "Model.h"
 #include "OrientedBoundingBox.h"
-#include "Texture2D.h"
-#include "stbWrangler.h"
 #include "Plane.h"
+#include "stbWrangler.h"
 #include "Sphere.h"
+#include "Texture2D.h"
 #include "UniformBuffer.h"
 #include "Vertex.h"
 #include "VertexArray.h"

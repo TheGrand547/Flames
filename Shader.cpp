@@ -331,6 +331,8 @@ void Shader::ExportCompiled()
 	output.close();
 }
 
+
+// TODO: Use GL_ARB_shader_include or whatever if it's available idfk
 void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName)
 {
 	if (shaderIncludeMapping.find(virtualName) != shaderIncludeMapping.end())
