@@ -314,8 +314,10 @@ void display()
 		{
 			uniform.SetMat4("Model", boxes[i].GetModel().GetModelMatrix());
 			uniform.SetVec3("color", (boxColor[i]) ? colors : blue);
-			glLineWidth((boxColor[i]) ? wid * 1.5 : wid);
-			glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+			glLineWidth((boxColor[i]) ? wid * 1.5f : wid);
+			glPointSize((boxColor[i]) ? wid * 1.5f : wid);
+			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+			glDrawArrays(GL_POINTS, 0, 8);
 		}
 		glEnable(GL_CULL_FACE);
 	}
@@ -474,6 +476,7 @@ void keyboard(unsigned char key, int x, int y)
 	{
 		float fdist;
 		glm::vec3 angles2 = glm::radians(angles);
+
 		glm::vec3 gamer = glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0);
 		std::array<glm::vec3, 2> verts = { offset, offset + gamer * 100.f };
 		rayBuffer.BufferSubData(verts);
@@ -483,11 +486,6 @@ void keyboard(unsigned char key, int x, int y)
 			boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, fdist);
 		}
 	}
-	if (key == 'f')
-	{
-		std::cout << offset.x << ", " << offset.y << ", " << offset.z << std::endl;
-		offset = glm::vec3(1, 1.5f, 1);
-	}
 }
 
 void keyboardOff(unsigned char key, int x, int y)
@@ -495,12 +493,12 @@ void keyboardOff(unsigned char key, int x, int y)
 	keyState[key] = false;
 }
 
-#define ANGLE_DELTA 4
+constexpr float ANGLE_DELTA = 4;
 void mouseFunc(int x, int y)
 {
 	static int previousX, previousY;
-	float xDif = (float)x - previousX;
-	float yDif = (float)y - previousY;
+	float xDif = (float) (x - previousX);
+	float yDif = (float) (y - previousY);
 	if (abs(xDif) > 20)
 		xDif = 0;
 	if (abs(yDif) > 20)
@@ -651,7 +649,7 @@ int main(int argc, char** argv)
 	}
 	Model oops = planes[planes.size() / 2 + 1];
 
-	ditherTexture.Load<GLubyte, GL_UNSIGNED_BYTE, 256>(dither16);
+	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	ditherTexture.GenerateMipmap();
 
