@@ -40,8 +40,8 @@ static void ApplyShaderIncludes(std::string& data)
 static GLuint CompileShader(GLenum type, std::string data)
 {
 	GLuint vertex = glCreateShader(type);
-
-	ApplyShaderIncludes(data);
+	// TODO: Test this
+	//ApplyShaderIncludes(data);
 
 	const char* raw = data.c_str();
 

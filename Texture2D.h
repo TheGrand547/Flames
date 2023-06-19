@@ -52,7 +52,7 @@ enum TextureFormatInternal
 	InternalRedGreen             = GL_RG,
 	InternalRGB                  = GL_RGB,
 	InternalRGBA                 = GL_RGBA,
-	InternalDepth                = GL_DEPTH,
+	InternalDepth                = GL_DEPTH_COMPONENT,
 	InternalDepthStencil         = GL_DEPTH_STENCIL,
 	InternalRed8                 = GL_R8,
 	InternalSignedRed8           = GL_R8_SNORM,
@@ -128,6 +128,7 @@ enum TextureFormatInternal
 	InternalUnsignedBPTCSRGBA    = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM,
 	InternalFloatBPTCRGB         = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
 	InternalUnsignedFloatBPTCRGB = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
+	InternalUnspecified          = 666,
 };
 
 enum TextureDataInput
@@ -158,7 +159,6 @@ class Texture2D
 private:
 	GLuint texture;
 	int width, height, channels;
-	unsigned char* data;
 
 	inline constexpr GLenum TextureType();
 public:
@@ -175,13 +175,13 @@ public:
 	inline void SetWrapBehaviorS(TextureWrapping value) const;
 	inline void SetWrapBehaviorT(TextureWrapping value) const;
 	inline void GenerateMipmap() const;
-	inline void SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
-		TextureWrapping sWrapping, TextureWrapping tWrapping) const;
+	inline void SetFilters(TextureMinFilter minFilter = MinNearest, TextureMagFilter magFilter = MagNearest, 
+		TextureWrapping sWrapping = Repeat, TextureWrapping tWrapping = Repeat) const;
 	inline void SetAnisotropy(const float value);
 
 	inline void Bind(GLuint slot = 0) const;
-	void Load(const std::string& filename);
-	void CreateEmpty(std::size_t width, std::size_t height, GLenum type, GLint level = 0);
+	void Load(const std::string& filename, TextureFormatInternal internal = InternalRGBA);
+	void CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, GLint level = 0);
 	template <class T> void Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat, 
 								TextureDataInput dataFormat, std::size_t width, std::size_t height);
 	template <class T, std::size_t L> void Load(const std::array<T, L>& data, TextureFormatInternal internal, TextureFormat textureFormat, 
@@ -206,22 +206,24 @@ inline void Texture2D::GenerateMipmap() const
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint)value);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint) value);
 }
 
 inline void Texture2D::SetMinFilter(TextureMinFilter value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint)value);
+	if (!(value == MinLinear || value == MinNearest))
+		this->GenerateMipmap();
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint) value);
 }
 
 inline void Texture2D::SetWrapBehaviorS(TextureWrapping value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint)value);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint) value);
 }
 
 inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint)value);
+	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint) value);
 }
 
 inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
@@ -249,11 +251,8 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data, Textur
 	if (this->texture)
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei) width, (GLsizei) height, 0, (GLenum) textureFormat, (GLenum) dataFormat, data.data());
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	}
 }
 
@@ -273,11 +272,8 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 	if (this->texture)
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
+		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei)width, (GLsizei)height, 0, (GLenum)textureFormat, (GLenum)dataFormat, data.data());
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_REPEAT);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
 	}
 }
 

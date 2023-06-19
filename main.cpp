@@ -536,7 +536,10 @@ int main(int argc, char** argv)
 
 	Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 
+	std::cout << "Gaming" << std::endl;
+
 	uniform.CompileSimple("uniform");
+	std::cout << "We like the funny words" << std::endl;
 	dither.CompileSimple("light_text_dither");
 	CheckError();
 
@@ -546,10 +549,9 @@ int main(int argc, char** argv)
 
 	frameShader.CompileSimple("framebuffer");
 
-	texture.Load("test.png");
+	texture.Load("text.png");
 	wallTexture.Load("flowed.png");
-	wallTexture.SetMinFilter(LinearLinear);
-	wallTexture.SetMagFilter(MagNearest);
+	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
 	// Set up VBO/VAO
 	glGenVertexArrays(1, &vertexVAO);
@@ -678,14 +680,16 @@ int main(int argc, char** argv)
 	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
 
 	// Framebuffer stuff
-	framebufferColor.CreateEmpty(1000, 1000, GL_RGB);
+	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
 	framebufferColor.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
-	framebufferDepth.CreateEmpty(1000, 1000, GL_DEPTH_COMPONENT);
+
+	framebufferDepth.CreateEmpty(1000, 1000, InternalDepth);
 	framebufferDepth.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
-	framebufferNormal.CreateEmpty(1000, 1000, GL_RGBA);
+
+	framebufferNormal.CreateEmpty(1000, 1000, InternalRGBA);
 	framebufferNormal.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 
-	normalModifier.CreateEmpty(1000, 1000, GL_RGBA);
+	normalModifier.CreateEmpty(1000, 1000, InternalRGBA);
 	normalModifier.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 
 	// TODO: Framebuffer class to do this stuff
