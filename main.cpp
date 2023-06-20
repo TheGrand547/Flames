@@ -11,6 +11,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "glmHelp.h"
+#include "log.h"
 #include "Model.h"
 #include "OrientedBoundingBox.h"
 #include "Plane.h"
@@ -21,18 +22,6 @@
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
-
-#define CheckError() CheckErrors(__LINE__);
-
-void CheckErrors(int line)
-{
-	GLenum e;
-	while ((e = glGetError()))
-	{
-		std::string given((char*) gluErrorString(e));
-		std::cout << "Line " << line << ": " << given << std::endl;
-	}
-}
 
 template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
 {
@@ -536,10 +525,7 @@ int main(int argc, char** argv)
 
 	Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 
-	std::cout << "Gaming" << std::endl;
-
 	uniform.CompileSimple("uniform");
-	std::cout << "We like the funny words" << std::endl;
 	dither.CompileSimple("light_text_dither");
 	CheckError();
 

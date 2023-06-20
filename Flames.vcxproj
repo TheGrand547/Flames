@@ -146,6 +146,7 @@
     <ClCompile Include="Cylinder.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="glmHelp.cpp" />
+    <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
@@ -172,6 +173,7 @@
     <ClInclude Include="Cylinder.h" />
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
+    <ClInclude Include="log.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Plane.h" />
