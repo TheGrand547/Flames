@@ -50,5 +50,5 @@ void main()
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
 	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	colorOut = vec4(result, 1.0);
-	colorOut = vec4(abs(vec3(normalize(gl_FragCoord.xy), dither) * normalize(fPos)), 1.0);
+	colorOut = vec4(abs(vec3(normalize(gl_FragCoord.xy), fTex.x * fTex.y) * viewDirection), 1.0);
 }

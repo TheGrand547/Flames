@@ -1,7 +1,6 @@
 #pragma once
 #ifndef FLAMES_LOG_H
 #define FLMAES_LOG_H
-#include <glew.h>
 
 #ifdef _WIN64
 #define FILEPATH_SLASH '\\'
@@ -13,7 +12,7 @@
 #ifndef NDEBUG
 #undef CheckError
 
-#define __FILENAME__ (strrchr(__FILE__, FILEPATH_SLASH) ? strrchr(__FILE__, FILEPATH_SLASH) + 1 : __FILE__)
+#define __FILENAME__ ([] (const char *file) constexpr {return (strrchr(file, FILEPATH_SLASH) ? strrchr(file, FILEPATH_SLASH) + 1 : file);}(__FILE__))
 #define CheckError() CheckErrors(__LINE__, __FILENAME__, __FUNCTION__)
 #endif
 

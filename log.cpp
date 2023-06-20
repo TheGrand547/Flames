@@ -1,4 +1,5 @@
 #include "log.h"
+#include <glew.h>
 #include <iostream>
 
 void CheckErrors(int line, const char* file, const char* function)
