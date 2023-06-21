@@ -2,12 +2,49 @@
 #ifndef VERTEX_ARRAY_H
 #define VERTEX_ARRAY_H
 #include <glew.h>
+#include <glm/glm.hpp>
 #include <map>
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
 #include "Shader.h"
 #include "Vertex.h"
+
+template<typename T> concept IsString = std::convertible_to<T, std::string>;
+
+template<typename T> consteval std::size_t GetGLSize();
+template<typename T> consteval std::size_t GetGLCount();
+template<std::size_t M, typename base, template <std::size_t, typename> typename T> GLenum GetGLCount();
+template<std::size_t M, std::size_t N, typename base, template <std::size_t, std::size_t, typename> class T> GLenum GetGLCount();
+template<typename T> consteval GLenum GetGLEnum();
+template<std::size_t M, typename base, template <std::size_t, typename> class T> GLenum GetGLEnum();
+template<std::size_t M, typename base, template <std::size_t, typename> class T> GLenum GetGLEnum();
+template<std::size_t M, std::size_t N, typename base, template <std::size_t, std::size_t, typename> class T> GLenum GetGLEnum();
+template<class T, typename ...types> consteval std::size_t GetArgumentSize();
+
+template<> consteval GLenum GetGLEnum<float>() { return GL_FLOAT; }
+template<> consteval GLenum GetGLEnum<double>() { return GL_DOUBLE; }
+template<> consteval GLenum GetGLEnum<char>() { return GL_BYTE; }
+template<> consteval GLenum GetGLEnum<unsigned char>() { return GL_UNSIGNED_BYTE; }
+template<> consteval GLenum GetGLEnum<short>() { return GL_SHORT; }
+template<> consteval GLenum GetGLEnum<unsigned short>() { return GL_UNSIGNED_SHORT; }
+template<> consteval GLenum GetGLEnum<int>() { return GL_INT; }
+template<> consteval GLenum GetGLEnum<unsigned int>() { return GL_UNSIGNED_INT; }
+//template<std::size_t M, typename base> GLenum GetGLEnum<glm::vec<M, base>>() { return GetGLEnum<base>(); }
+template<std::size_t M, std::size_t N, typename base> GLenum GetGLEnum<glm::mat<M, N, base>>() { return GetGLEnum<base>(); }
+template<std::size_t M, typename base> GLenum GetGLCount<glm::vec<M, base>>() { return M; }
+template<std::size_t M, std::size_t N, typename base> GLenum GetGLCount<glm::mat<M, N, base>>() { return M * N; }
+
+
+template<class T, typename ...types> consteval std::size_t GetArgumentSize()
+{
+	return GetGLSize<T>() + GetArgumentSize<types...>();
+}
+
+template<typename T> consteval std::size_t GetGLSize()
+{
+	//return GetGLCount<T> * 
+}
 
 class VertexArray
 {
@@ -23,6 +60,8 @@ public:
 
 
 	template<class V> void FillArray(Shader& shader);
+	template<class T, typename ...types, IsString... Args> void FillArray(Shader& shader, const std::string& first, const Args&... args);
+	template<class T, typename ...types, IsString... Args> void FillArray(Shader& shader, std::size_t size, const std::string& first, const Args&... args);
 	template<class T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
 };
@@ -50,6 +89,23 @@ inline void VertexArray::FillArray(Shader& shader)
 {
 
 }
+
+
+template<class T, typename ...types, IsString ...Args>
+inline void VertexArray::FillArray(Shader& shader, const std::string& first, const Args& ...args)
+{
+	glBindVertexArray(this->array);
+	this->FillArray<T, types..., Args...>(shader, GetArgumentSize<types...>(), first, std::forward<Args>(args)...);
+}
+
+template<class T, typename ...types, IsString ...Args>
+inline void VertexArray::FillArray(Shader& shader, std::size_t stride, const std::string& first, const Args& ...args)
+{
+	glVertexAttribPointer(shader.Index(first), GetGLSize<T>(), GetGLEnum<T>(), GL_FALSE, stride, (const void*)GetGLSize<T>());
+	glEnableVertexArrayAttrib(this->array, shader.Index(first));
+	this->FillArray<T, types..., Args...>(shader, stride, std::forward<Args>(args)...);
+}
+
 
 template<>
 inline void VertexArray::FillArray<Vertex>(Shader& shader)
