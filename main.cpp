@@ -29,13 +29,13 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 }
 
 // Cringe globals
-GLuint triVBO, planeBO, cubeIndex, vertexVAO, aabbVAO;
+GLuint triVBO, planeBO, cubeIndex, aabbVAO;
 Shader uniform;
 Buffer buffer;
 
 UniformBuffer universal;
 
-VAO gamerTest;
+VAO gamerTest, vertexVAO;
 
 GLuint sphereBuf, sphereIndex, sphereVAO, sphereCount;
 Shader sphereShader;
@@ -246,7 +246,7 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	uniform.SetActive();
-	glBindVertexArray(vertexVAO);
+	vertexVAO.Bind();
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
 
 	// Camera matrix
@@ -315,7 +315,7 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(1, 0, 1));
-	glDrawArrays(GL_LINES, 0, 2);
+	//glDrawArrays(GL_LINES, 0, 2);
 
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -540,7 +540,6 @@ int main(int argc, char** argv)
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
 	// Set up VBO/VAO
-	glGenVertexArrays(1, &vertexVAO);
 	glGenVertexArrays(1, &aabbVAO);
 	glGenVertexArrays(1, &texturedVAO);
 
@@ -588,9 +587,15 @@ int main(int argc, char** argv)
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);
 	CheckError();
 
+
+	vertexVAO.Generate();
+	vertexVAO.FillArray<glm::vec3, glm::vec3>(uniform, "vPos", "vPos2");
+	vertexVAO.FillArray<glm::vec3>(uniform, "vPos");
+	/*
 	glBindVertexArray(vertexVAO);
 	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
 	glEnableVertexArrayAttrib(vertexVAO, uniform.Index("vPos"));
+	*/
 
 	buffer.Generate(ArrayBuffer);
 	buffer.BufferData(plainCubeVerts, StaticDraw);

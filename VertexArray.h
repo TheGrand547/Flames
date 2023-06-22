@@ -11,6 +11,7 @@
 #include "Vertex.h"
 
 template<typename T> concept IsString = std::convertible_to<T, std::string>;
+template<typename T> concept NotString = !std::convertible_to<T, std::string>;
 
 template<typename T> consteval std::size_t GetGLSize();
 template<typename T> consteval std::size_t GetGLCount();
@@ -88,6 +89,7 @@ public:
 	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, const std::string& first, Args&&... args);
 	template<typename T> void FillArray(Shader& shader, const std::string& first);
 	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, std::size_t size, std::size_t current, const std::string& first, Args&&... args);
+	template<typename T> void FillArray(Shader& shader, std::size_t size, std::size_t current);
 	//template<typename T> void FillArray(Shader& shader, std::size_t size, std::size_t current, const std::string& first);
 	template<typename T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
@@ -117,7 +119,7 @@ inline void VertexArray::FillArray(Shader& shader, const std::string& first,  Ar
 {
 	glBindVertexArray(this->array);
 	this->FillArrayInternal<T>(shader, GetArgumentSize<types...>(), 0, first);
-	this->FillArray<T, types..., Args...>(shader, GetArgumentSize<types...>(), GetGLSize<T>(), std::forward<Args>(args)...);
+	this->FillArray<types...>(shader, GetArgumentSize<types...>(), GetGLSize<T>(), std::forward<Args>(args)...);
 }
 
 template<typename T> inline void VertexArray::FillArray(Shader& shader, const std::string& first)
@@ -137,19 +139,11 @@ template<typename T> inline void VertexArray::FillArrayInternal(Shader& shader, 
 template<typename T, typename... types, IsString... Args>
 inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size_t current, const std::string& first, Args&&... args)
 {
-	/*
-	glVertexAttribPointer(shader.Index(first), GetGLCount<T>(), GetGLEnum<T>(), GL_FALSE, (GLsizei) stride, (const void*) current);
-	glEnableVertexArrayAttrib(this->array, shader.Index(first));*/
 	this->FillArrayInternal<T>(shader, stride, current, first);
-	this->FillArray<types...>(shader, stride, current + GetGLSize<T>(), std::forward<Args>(args)...);
+	this->FillArray<types..., T>(shader, stride, current + GetGLSize<T>(), std::forward<Args>(args)...);
 }
 
-/*
-template<class T>
-inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size_t current, const std::string& first)
-{
-	this->FillArrayInternal<T>(shader, stride, current + GetGLSize<T>(), first);
-}*/
+template<typename T> inline void VertexArray::FillArray(Shader& shader, std::size_t strid, std::size_t current) {}
 
 
 template<>
