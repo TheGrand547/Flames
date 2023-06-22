@@ -179,7 +179,7 @@ public:
 		TextureWrapping sWrapping = Repeat, TextureWrapping tWrapping = Repeat) const;
 	inline void SetAnisotropy(const float value);
 
-	inline void Bind(GLuint slot = 0) const;
+	inline void BindTexture(GLuint slot = 0) const;
 	void Load(const std::string& filename, TextureFormatInternal internal = InternalRGBA);
 	void CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, GLint level = 0);
 	template <class T> void Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat, 
@@ -193,7 +193,7 @@ inline GLuint Texture2D::GetGLTexture() const
 	return this->texture;
 }
 
-void Texture2D::Bind(GLuint slot) const
+void Texture2D::BindTexture(GLuint slot) const
 {
 	glActiveTexture(GL_TEXTURE0 + slot);
 	glBindTexture(GL_TEXTURE_2D, this->texture);

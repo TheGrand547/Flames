@@ -35,9 +35,9 @@ Buffer buffer;
 
 UniformBuffer universal;
 
-VAO gamerTest, vertexVAO;
+VAO gamerTest, vertexVAO, sphereVAO;
 
-GLuint sphereBuf, sphereIndex, sphereVAO, sphereCount;
+GLuint sphereBuf, sphereIndex, sphereCount;
 Shader sphereShader;
 
 std::array<ColoredVertex, 8> coloredCubeVertex{
@@ -245,8 +245,8 @@ void display()
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	uniform.SetActive();
-	vertexVAO.Bind();
+	uniform.SetActiveShader();
+	vertexVAO.BindArrayObject();
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
 
 	// Camera matrix
@@ -256,9 +256,9 @@ void display()
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
 	universal.BufferSubData(view, 0);
 
-	dither.SetActive();
-	wallTexture.Bind(0);
-	ditherTexture.Bind(1);
+	dither.SetActiveShader();
+	wallTexture.BindTexture(0);
+	ditherTexture.BindTexture(1);
 
 	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
 	glm::vec3 colors(.5f, .5f, .5f);
@@ -268,7 +268,7 @@ void display()
 	dither.SetTextureUnit("textureIn", 0);
 	dither.SetTextureUnit("ditherMap", 1);
 
-	gamerTest.Bind();
+	gamerTest.BindArrayObject();
 
 	for (Model& model : planes)
 	{
@@ -277,8 +277,8 @@ void display()
 		dither.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
-	uniform.SetActive();
-	stickVAO.Bind();
+	uniform.SetActiveShader();
+	stickVAO.BindArrayObject();
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
@@ -311,7 +311,7 @@ void display()
 		glEnable(GL_CULL_FACE);
 	}
 
-	rayVAO.Bind();
+	rayVAO.BindArrayObject();
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(1, 0, 1));
@@ -319,13 +319,13 @@ void display()
 
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	sphereShader.SetActive();
-	glBindVertexArray(sphereVAO);
+	sphereShader.SetActiveShader();
+	sphereVAO.BindArrayObject();
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.scale = glm::vec3(0.5f);
 
 	
-	hatching.Bind(0);
+	hatching.BindTexture(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	sphereShader.SetVec3("viewPos", offset);
@@ -355,10 +355,10 @@ void display()
 	
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
-	framebufferNormal.Bind(0);
+	framebufferNormal.BindTexture(0);
 	//framebufferDepth.Bind(0);
 	CheckError();
-	frameShader.SetActive();
+	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", 0);
 	glBindVertexArray(frameVAO);
 	CheckError();
@@ -367,10 +367,10 @@ void display()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	framebufferColor.Bind(0);
-	normalModifier.Bind(1);
-	framebufferDepth.Bind(2);
-	expand.SetActive();
+	framebufferColor.BindTexture(0);
+	normalModifier.BindTexture(1);
+	framebufferDepth.BindTexture(2);
+	expand.SetActiveShader();
 	expand.SetTextureUnit("screen", 0);
 	expand.SetTextureUnit("edges", 1);
 	expand.SetTextureUnit("depths", 2);
@@ -558,9 +558,6 @@ int main(int argc, char** argv)
 	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
 
-	std::map<int, VAO> gamers = { {3, stickVAO}, {532, gamerTest} };
-	VAO::GenerateArrays(gamers);
-	gamers.clear();
 	CheckError();
 
 	stickVAO.Generate();
@@ -589,13 +586,7 @@ int main(int argc, char** argv)
 
 
 	vertexVAO.Generate();
-	vertexVAO.FillArray<glm::vec3, glm::vec3>(uniform, "vPos", "vPos2");
-	vertexVAO.FillArray<glm::vec3>(uniform, "vPos");
-	/*
-	glBindVertexArray(vertexVAO);
-	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(vertexVAO, uniform.Index("vPos"));
-	*/
+	vertexVAO.FillArray<Vertex>(uniform);
 
 	buffer.Generate(ArrayBuffer);
 	buffer.BufferData(plainCubeVerts, StaticDraw);
@@ -711,7 +702,6 @@ int main(int argc, char** argv)
 	glBindVertexArray(frameVAO);
 	glVertexAttribPointer(frameShader.Index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
 	glEnableVertexArrayAttrib(frameVAO, frameShader.Index("positionAndTexture"));
-
 	expand.Compile("framebuffer", "expand");
 
 	auto stuff = GenerateSphere(30, 30);
@@ -721,12 +711,8 @@ int main(int argc, char** argv)
 
 	// TODO: Why isn't this in a VAO object??
 	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
-	glGenVertexArrays(1, &sphereVAO);
-	glBindVertexArray(sphereVAO);
-	glVertexAttribPointer(sphereShader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(sphereVAO, sphereShader.Index("vPos"));
-	glVertexAttribPointer(sphereShader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE, 2 * sizeof(glm::vec3), (const void*) sizeof(glm::vec3));
-	glEnableVertexArrayAttrib(sphereVAO, sphereShader.Index("vNorm"));
+	sphereVAO.Generate();
+	sphereVAO.FillArray<NormalVertex>(sphereShader);
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);

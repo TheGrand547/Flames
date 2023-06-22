@@ -41,7 +41,7 @@ public:
 	void ExportCompiled();
 
 	inline GLuint GetProgram();
-	inline void SetActive();
+	inline void SetActiveShader();
 	inline void SetInt(const std::string& name, const int i);
 	inline void SetVec3(const std::string& name, const glm::vec3& vec);
 	inline void SetMat4(const std::string& name, const glm::mat4& mat);
@@ -60,7 +60,7 @@ inline GLuint Shader::GetProgram()
 	return this->program;
 }
 
-inline void Shader::SetActive()
+inline void Shader::SetActiveShader()
 {
 	glUseProgram(this->program);
 }
