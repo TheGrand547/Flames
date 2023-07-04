@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <limits>
 #include "AABB.h"
+#include "glmHelp.h"
 
 // TODO: EPSILON DUMB FUCK
 #define EPSILON 0.000001f
@@ -28,6 +29,10 @@ public:
 
 	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) = default;
 
+	inline constexpr glm::vec3 Forward() const noexcept;
+	inline constexpr glm::vec3 Up() const noexcept;
+	inline constexpr glm::vec3 Cross() const noexcept;
+
 	inline constexpr void Center(const glm::vec3& center) noexcept;
 	inline constexpr void Reorient(const glm::vec3& euler);
 	inline constexpr void Reorient(const glm::mat4& rotation);
@@ -39,7 +44,9 @@ public:
 	constexpr bool Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
-	Model GetModel() const;
+	constexpr void OverlapWithResponse(const OrientedBoundingBox& other);
+
+	inline Model GetModel() const;
 };
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : center(0, 0, 0)
@@ -63,6 +70,30 @@ constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other)
 	this->axes[0] = std::make_pair(glm::vec3(1, 0, 0), temp.x);
 	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), temp.y);
 	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), temp.z);
+}
+
+inline Model OrientedBoundingBox::GetModel() const
+{
+	glm::mat4 mat(glm::vec4(this->axes[0].first, 0), glm::vec4(this->axes[1].first, 0),
+		glm::vec4(this->axes[2].first, 0), glm::vec4(0, 0, 0, 1));
+	glm::vec3 angles{ 0.f, 0.f, 0.f };
+	glm::extractEulerAngleXYZ(mat, angles.x, angles.y, angles.z);
+	return Model(this->center, glm::degrees(angles), glm::vec3(this->axes[0].second, this->axes[1].second, this->axes[2].second));
+}
+
+inline constexpr glm::vec3 OrientedBoundingBox::Forward() const noexcept
+{
+	return this->axes[0].first;
+}
+
+inline constexpr glm::vec3 OrientedBoundingBox::Up() const noexcept
+{
+	return this->axes[1].first;
+}
+
+inline constexpr glm::vec3 OrientedBoundingBox::Cross() const noexcept
+{
+	return this->axes[2].first;
 }
 
 inline constexpr void OrientedBoundingBox::Center(const glm::vec3& center) noexcept
@@ -190,6 +221,30 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 		}
 	}
 	return true;
+}
+#include <iostream>
+inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+{
+	if (!this->Overlap(other))
+		return;
+	glm::vec3 normal = glm::normalize(this->center - other.center);
+	int mostAligned = 0, theirAligned = 0;
+	float leftRadius = -INFINITY, rightRadius = -INFINITY;
+	for (int i = 0; i < 3; i++)
+	{
+		leftRadius = glm::max(leftRadius, glm::abs(this->axes[i].second));
+		rightRadius = glm::max(rightRadius, glm::abs(other.axes[i].second));
+		// I think this was an idea but I'm not sure of what quality, need to test it
+		if (glm::abs(glm::dot(this->axes[i].first, normal)) > glm::abs(glm::dot(this->axes[mostAligned].first, normal)))
+			mostAligned = i;
+		if (glm::abs(glm::dot(other.axes[i].first, normal)) > glm::abs(glm::dot(other.axes[theirAligned].first, normal)))
+			theirAligned = i;
+		leftRadius = this->axes[mostAligned].second, rightRadius = other.axes[theirAligned].second;
+		//*/
+	}
+	float sum = leftRadius + rightRadius;
+	this->center = other.center + sum * normal;
+	// Project them to AABB in one of their coordinate systems via change of basis
 }
 
 typedef OrientedBoundingBox OBB;

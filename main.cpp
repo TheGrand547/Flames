@@ -231,6 +231,9 @@ static int counter = 0;
 Buffer rayBuffer;
 VAO rayVAO;
 
+OBB smartBox;
+bool smartBoxColor = false;
+
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -308,6 +311,12 @@ void display()
 			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 			glDrawArrays(GL_POINTS, 0, 8);
 		}
+		glLineWidth(wid);
+		glPointSize(wid);
+		uniform.SetMat4("Model", smartBox.GetModel().GetModelMatrix());
+		uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
+		glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		glDrawArrays(GL_POINTS, 0, 8);
 		glEnable(GL_CULL_FACE);
 	}
 
@@ -383,6 +392,11 @@ void display()
 	CheckError();
 }
 
+#define ArrowKeyUp    0
+#define ArrowKeyDown  1
+#define ArrowKeyRight 2
+#define ArrowKeyLeft  3
+
 std::vector<bool> keyState(UCHAR_MAX);
 std::vector<bool> keyStateBackup(UCHAR_MAX);
 std::vector<Wall> walls;
@@ -397,7 +411,7 @@ void idle()
 	counter++;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
-	std::cout << "\r" << (float)elapsed / 1000.f;
+	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
@@ -406,6 +420,19 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = offset;
+	if (keyState[ArrowKeyUp])    smartBox.Translate(smartBox.Forward() * speed);
+	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
+	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -0.01f, 0));
+	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 0.01f, 0));
+	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft])
+	{
+		smartBoxColor = false;
+		for (auto& wall : boxes)
+		{
+			smartBoxColor |= smartBox.Overlap(wall);
+			smartBox.OverlapWithResponse(wall);
+		}
+	}
 	if (keyState['p'] || keyState['P'])
 		std::cout << previous << std::endl;
 	if (keyState['w'] || keyState['W'])
@@ -500,6 +527,30 @@ void mouseFunc(int x, int y)
 
 	previousX = x;
 	previousY = y;
+}
+
+void specialKeys(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
+{
+	switch (key)
+	{
+	case GLUT_KEY_UP: keyState[ArrowKeyUp] = true; break;
+	case GLUT_KEY_DOWN: keyState[ArrowKeyDown] = true; break;
+	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = true; break;
+	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = true; break;
+	default: break;
+	}
+}
+
+void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
+{
+	switch (key)
+	{
+	case GLUT_KEY_UP: keyState[ArrowKeyUp] = false; break;
+	case GLUT_KEY_DOWN: keyState[ArrowKeyDown] = false; break;
+	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = false; break;
+	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = false; break;
+	default: break;
+	}
 }
 
 int main(int argc, char** argv)
@@ -657,6 +708,8 @@ int main(int argc, char** argv)
 	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
 	glutKeyboardFunc(keyboard);
 	glutKeyboardUpFunc(keyboardOff);
+	glutSpecialFunc(specialKeys);
+	glutSpecialUpFunc(specialKeysUp);
 
 	glutMotionFunc(mouseFunc);
 	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
@@ -720,6 +773,9 @@ int main(int argc, char** argv)
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	sphereShader.UniformBlockBinding("Camera", 0);
+
+	smartBox.Center(glm::vec3(3, 1, 0));
+	smartBox.Scale(glm::vec3(0.5f));
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
