@@ -44,7 +44,7 @@ public:
 	constexpr bool Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
-	constexpr void OverlapWithResponse(const OrientedBoundingBox& other);
+	constexpr void OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 dir = glm::vec3(0));
 
 	inline Model GetModel() const;
 };
@@ -54,7 +54,7 @@ constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const
 	this->axes[0] = std::make_pair(glm::vec3(1, 0, 0), deltas.x);
 	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), deltas.y);
 	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), deltas.z);
-	this->Rotate(glm::radians(euler));
+	this->Rotate(euler);
 }
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const Model& model) : OrientedBoundingBox(model.rotation, model.scale)
@@ -116,7 +116,7 @@ inline constexpr void OrientedBoundingBox::Reorient(const glm::mat4& rotation)
 
 inline constexpr void OrientedBoundingBox::Rotate(const glm::vec3& euler)
 {
-	this->Rotate(glm::eulerAngleXYZ(euler.x, euler.y, euler.z));
+	this->Rotate(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)));
 }
 
 inline constexpr void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
@@ -223,8 +223,85 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 	return true;
 }
 #include <iostream>
-inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 direction)
 {
+	std::array<glm::vec3, 15> separatingAxes{};
+	for (std::size_t i = 0; i < 3; i++)
+	{
+		separatingAxes[i * 5] = this->axes[i].first;
+		separatingAxes[i * 5 + 1] = other.axes[i].first;
+		for (std::size_t j = 0; j < 3; j++)
+		{
+			separatingAxes[i * 5 + 2 + j] = glm::cross(this->axes[i].first, other.axes[j].first);
+		}
+	}
+	glm::vec3 delta = this->center - other.center;
+	float min = INFINITY;
+	std::size_t index = 0;
+	for (std::size_t i = 0; i < separatingAxes.size(); i++)
+	{
+		glm::vec3 axis = separatingAxes[i];
+		float left = glm::abs(glm::dot(axis, delta));
+		float right = 0;
+
+		for (std::size_t i = 0; i < 3; i++)
+		{
+			right += glm::abs(this->axes[i].second * glm::dot(this->axes[i].first, axis));
+			right += glm::abs(other.axes[i].second * glm::dot(other.axes[i].first, axis));
+		}
+		// This axis is a separating one 
+		if (left > right)
+		{
+			return;
+		}
+		if (min > left - right)
+		{
+			index = i;
+			min = left - right;
+		}
+	}
+	// Minimum separating axis is separatingAxes[i]
+	// fumo
+	std::array<glm::vec3, 3> basis;
+	//std::cout << min << " : " << separatingAxes[index] << std::endl;
+	//this->center += separatingAxes[index] * min;
+	/*
+	// One of the cross product ones
+	if (index % 5 > 1)
+	{
+		int intern = index % 5;
+		basis[0] = this->axes[index / 5].first;
+		basis[1] = other.axes[(index % 5) - 2].first;
+		basis[2] = separatingAxes[index];
+	}
+	std::cout << this->center << std::endl;
+	*/
+	float dot = 0;
+	std::size_t dotIndex = 0;
+
+	glm::vec3 dir;
+	float len = 1;
+	if (glm::length(direction) > 0.0001)
+		len = glm::length(direction);
+	else
+		return;
+	dir = glm::normalize((direction.x == direction.y && direction.y == 0 && direction.z == direction.y) ?  other.center - this->center : direction);
+	std::cout << "DIR: " << dir << ": " << direction.length() << std::endl;
+	// Find most aligned vector
+	for (std::size_t i = 0; i < 3; i++)
+	{
+		std::cout << "DOT " << other.axes[i].first << ": " << glm::dot(dir, glm::normalize(other.axes[i].first)) << std::endl;
+		if (glm::abs(glm::dot(dir, glm::normalize(other.axes[i].first)) > glm::abs(dot)))
+		{
+			dotIndex = i;
+			dot = glm::dot(dir, glm::normalize(other.axes[i].first));
+		}
+	}
+	std::cout << "PROJ: " << other.axes[dotIndex].first << ":" << dot << std::endl;
+	dot = -glm::sign(dot);
+	//this->center += len * (glm::normalize(glm::reflect(dir, dot * other.axes[dotIndex].first)) - dir) / 20.f ;
+	this->center -= len * dir;
+	/*
 	if (!this->Overlap(other))
 		return;
 	glm::vec3 normal = glm::normalize(this->center - other.center);
@@ -240,10 +317,10 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 		if (glm::abs(glm::dot(other.axes[i].first, normal)) > glm::abs(glm::dot(other.axes[theirAligned].first, normal)))
 			theirAligned = i;
 		leftRadius = this->axes[mostAligned].second, rightRadius = other.axes[theirAligned].second;
-		//*/
 	}
 	float sum = leftRadius + rightRadius;
 	this->center = other.center + sum * normal;
+	*/
 	// Project them to AABB in one of their coordinate systems via change of basis
 }
 

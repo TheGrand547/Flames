@@ -422,15 +422,17 @@ void idle()
 	glm::vec3 previous = offset;
 	if (keyState[ArrowKeyUp])    smartBox.Translate(smartBox.Forward() * speed);
 	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
-	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -0.01f, 0));
-	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 0.01f, 0));
+	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -2.f, 0));
+	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 2.f, 0));
 	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft])
 	{
 		smartBoxColor = false;
+		float a = (keyState[ArrowKeyDown] || keyState[ArrowKeyLeft]) ? -1.f : 1.f;
 		for (auto& wall : boxes)
 		{
 			smartBoxColor |= smartBox.Overlap(wall);
-			smartBox.OverlapWithResponse(wall);
+			smartBox.OverlapWithResponse(wall, a * smartBox.Forward() * speed);
+			if (smartBoxColor) break;
 		}
 	}
 	if (keyState['p'] || keyState['P'])
@@ -480,6 +482,8 @@ void idle()
 void keyboard(unsigned char key, int x, int y)
 {
 	keyState[key] = true;
+	if (key == 'm' || key == 'M')
+		offset.y += 3;
 	if (key == 'q' || key == 'Q')
 		glutLeaveMainLoop();
 	if (key == 't' || key == 'T')
@@ -776,6 +780,7 @@ int main(int argc, char** argv)
 
 	smartBox.Center(glm::vec3(3, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
+	smartBox.Rotate(glm::vec3(0, 90, 0));
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
