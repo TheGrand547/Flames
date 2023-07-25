@@ -15,3 +15,4 @@ Model AABB::GetModel() const
 	glm::vec3 scale     = (this->positiveBound - this->negativeBound) / 2.f;
 	return Model(transform, glm::vec3(0, 0, 0), scale);
 }
+

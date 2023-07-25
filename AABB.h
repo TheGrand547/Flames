@@ -22,18 +22,24 @@ public:
 
 	Model GetModel() const;
 	
+	inline constexpr float Volume() const;
+
+	// Get the Center of the AABB
 	inline constexpr glm::vec3 GetCenter() const;
+	// Get the Half-Lengths of the AABB
 	inline constexpr glm::vec3 Deviation() const;
 
+	// Recenter the AABB
 	inline constexpr void Center(const glm::vec3& point);
 	inline constexpr void ScaleInPlace(const glm::vec3& factor);
 	inline constexpr void ScaleInPlace(float x, float y = 1.0f, float z = 1.0f);
+	// Move the AABB by factor in space
 	inline constexpr void Translate(const glm::vec3& factor);
 
 	inline constexpr bool PointInside(const glm::vec3& point) const;
 	inline constexpr bool Overlap(const AABB& other) const;
-	static constexpr AABB GetAABB(const glm::vec3& left, const glm::vec3& right);
-	static constexpr AABB GetAABB(const std::vector<glm::vec3>& points);
+	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
+	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
 };
 
 constexpr AABB::AABB() : negativeBound(INFINITY, INFINITY, INFINITY), positiveBound(-INFINITY, -INFINITY, -INFINITY)
@@ -55,6 +61,12 @@ constexpr AABB::AABB(const AABB& other)
 {
 	this->negativeBound = other.negativeBound;
 	this->positiveBound = other.positiveBound;
+}
+
+inline constexpr float AABB::Volume() const
+{
+	glm::vec3 deviation(this->Deviation());
+	return deviation.x * deviation.y * deviation.z * 8.f;
 }
 
 inline constexpr glm::vec3 AABB::GetCenter() const
@@ -114,7 +126,7 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 	return xInside && yInside && zInside;
 }
 
-constexpr AABB AABB::GetAABB(const glm::vec3& left, const glm::vec3& right)
+constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)
 {
 	glm::vec3 min{}, max{};
 
@@ -129,7 +141,7 @@ constexpr AABB AABB::GetAABB(const glm::vec3& left, const glm::vec3& right)
 	return AABB(min, max);
 }
 
-constexpr AABB AABB::GetAABB(const std::vector<glm::vec3>& points)
+constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 {
 	glm::vec3 min(INFINITY, INFINITY, INFINITY), max(-INFINITY, -INFINITY, -INFINITY);
 	for (int i = 0; i < points.size(); i++)

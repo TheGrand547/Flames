@@ -29,6 +29,8 @@ public:
 
 	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) = default;
 
+	inline constexpr AABB GetAABB() const noexcept;
+
 	inline constexpr glm::vec3 Forward() const noexcept;
 	inline constexpr glm::vec3 Up() const noexcept;
 	inline constexpr glm::vec3 Cross() const noexcept;
@@ -79,6 +81,16 @@ inline Model OrientedBoundingBox::GetModel() const
 	glm::vec3 angles{ 0.f, 0.f, 0.f };
 	glm::extractEulerAngleXYZ(mat, angles.x, angles.y, angles.z);
 	return Model(this->center, glm::degrees(angles), glm::vec3(this->axes[0].second, this->axes[1].second, this->axes[2].second));
+}
+
+inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
+{
+	glm::vec3 deviation(0.f);
+	for (const auto& axis : this->axes)
+	{
+		deviation += axis.first * axis.second;
+	}
+	return AABB(this->center - deviation, this->center + deviation);
 }
 
 inline constexpr glm::vec3 OrientedBoundingBox::Forward() const noexcept
@@ -262,7 +274,7 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 	}
 	// Minimum separating axis is separatingAxes[i]
 	// fumo
-	std::array<glm::vec3, 3> basis;
+	//std::array<glm::vec3, 3> basis;
 	//std::cout << min << " : " << separatingAxes[index] << std::endl;
 	//this->center += separatingAxes[index] * min;
 	/*

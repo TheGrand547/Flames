@@ -14,6 +14,8 @@
 
 #define __FILENAME__ ([] (const char *file) constexpr {return (strrchr(file, FILEPATH_SLASH) ? strrchr(file, FILEPATH_SLASH) + 1 : file);}(__FILE__))
 #define CheckError() CheckErrors(__LINE__, __FILENAME__, __FUNCTION__)
+// TODO: LOG() file thingy
+
 #endif
 
 void CheckErrors(int line, const char *file, const char *function);
