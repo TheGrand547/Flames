@@ -8,15 +8,24 @@
 #define FILEPATH_SLASH '/'
 #endif // _WIN64
 
-#define CheckError
+#ifndef OMIT_FILENAMES
+
+#else
+
+#endif // OMIT_FILENAMES
+
 #ifndef NDEBUG
-#undef CheckError
 
 #define __FILENAME__ ([] (const char *file) constexpr {return (strrchr(file, FILEPATH_SLASH) ? strrchr(file, FILEPATH_SLASH) + 1 : file);}(__FILE__))
 #define CheckError() CheckErrors(__LINE__, __FILENAME__, __FUNCTION__)
-// TODO: LOG() file thingy
+#define Log(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); printf(__VA_ARGS__);}
 
-#endif
+#else // NDEBUG
+
+#define CheckError()
+#define Log(...) 
+
+#endif // NDEBUF
 
 void CheckErrors(int line, const char *file, const char *function);
 

@@ -8,6 +8,6 @@ void CheckErrors(int line, const char* file, const char* function)
 	while ((e = glGetError()))
 	{
 		std::string given((char*) gluErrorString(e));
-		printf("[%s][%s][%i] %s\n", file, function, line, given.c_str());
+		printf("[%s][%s][%i] OpenGL Error: %s\n", file, function, line, given.c_str());
 	}
 }

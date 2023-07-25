@@ -24,11 +24,33 @@ StaticOctTree::~StaticOctTree()
 	this->Clear();
 }
 
+bool StaticOctTree::CollideQuick(const OBB& element, const AABB& box) const
+{
+	if (!box.Overlap(this->bounds))
+		return false;
+	for (const OBB& guy : this->pointers)
+	{
+		if (guy.Overlap(box) && guy.Overlap(element))
+			return true;
+	}
+	if (!this->leaf)
+		for (std::size_t i = 0; i < OCT; i++)
+			if (this->tree[i] && this->tree[i]->CollideQuick(element, box))
+				return true;
+	return false;
+}
+
+bool StaticOctTree::Collide(const OBB& element) const
+{
+	AABB box = element.GetAABB();
+	return this->CollideQuick(element, box);
+}
+
 void StaticOctTree::Clear()
 {
 	if (this->tree != nullptr)
 	{
-		for (int i = 0; i < 8; i++)
+		for (int i = 0; i < OCT; i++)
 		{
 			if (this->tree[i] != nullptr)
 			{

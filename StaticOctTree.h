@@ -26,10 +26,14 @@ protected:
 	StaticOctTree(const glm::vec3& negativeBound, const glm::vec3& positiveBound, int depth);
 	StaticOctTree(const AABB& bounds, int depth);
 
+	bool CollideQuick(const OBB& element, const AABB& box) const;
+
 	void InsertQuick(const OBB& element, const AABB& box);
 public:
 	 StaticOctTree(const glm::vec3& negativeBound = glm::vec3(-100, -100, -100), const glm::vec3& positiveBound = glm::vec3(100, 100, 100));
 	~StaticOctTree();
+
+	bool Collide(const OBB& element) const;
 
 	void Clear();
 	void Generate();
