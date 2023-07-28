@@ -129,6 +129,7 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 
 inline constexpr bool AABB::Contains(const AABB& other) const
 {
+	// TODO: This is bad and slow
 	return this->PointInside(other.GetCenter() + other.Deviation()) && this->PointInside(other.GetCenter() - other.Deviation());
 }
 

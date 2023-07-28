@@ -15,6 +15,7 @@
 #include "Model.h"
 #include "OrientedBoundingBox.h"
 #include "Plane.h"
+#include "StaticOctTree.h"
 #include "stbWrangler.h"
 #include "Sphere.h"
 #include "Texture2D.h"
@@ -233,6 +234,7 @@ VAO rayVAO;
 
 OBB smartBox;
 bool smartBoxColor = false;
+StaticOctTree<glm::vec3> tree;
 
 void display()
 {
