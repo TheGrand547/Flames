@@ -38,6 +38,7 @@ public:
 
 	inline constexpr bool PointInside(const glm::vec3& point) const;
 	inline constexpr bool Overlap(const AABB& other) const;
+	inline constexpr bool Contains(const AABB& other) const;
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
 };
@@ -124,6 +125,11 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 	bool yInside = this->negativeBound.y < other.positiveBound.y && this->positiveBound.y > other.negativeBound.y;
 	bool zInside = this->negativeBound.z < other.positiveBound.z && this->positiveBound.z > other.negativeBound.z;
 	return xInside && yInside && zInside;
+}
+
+inline constexpr bool AABB::Contains(const AABB& other) const
+{
+	return this->PointInside(other.GetCenter() + other.Deviation()) && this->PointInside(other.GetCenter() - other.Deviation());
 }
 
 constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)

@@ -18,12 +18,14 @@
 
 #define __FILENAME__ ([] (const char *file) constexpr {return (strrchr(file, FILEPATH_SLASH) ? strrchr(file, FILEPATH_SLASH) + 1 : file);}(__FILE__))
 #define CheckError() CheckErrors(__LINE__, __FILENAME__, __FUNCTION__)
-#define Log(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); printf(__VA_ARGS__);}
+#define LogF(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); printf(__VA_ARGS__);}
+#define Log(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); std::cout << __VA_ARGS__ << std::endl;}
 
 #else // NDEBUG
 
-#define CheckError()
-#define Log(...) 
+#define CheckError
+#define Log(...) CheckError
+#define LogF(...) CheckError
 
 #endif // NDEBUF
 
