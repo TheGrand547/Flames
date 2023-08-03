@@ -157,6 +157,7 @@
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="UniformBuffer.cpp" />
+    <ClCompile Include="util.cpp" />
     <ClCompile Include="VertexArray.cpp" />
     <ClCompile Include="Wall.cpp" />
   </ItemGroup>
@@ -186,6 +187,7 @@
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
     <ClInclude Include="UniformBuffer.h" />
+    <ClInclude Include="util.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VertexArray.h" />
     <ClInclude Include="Wall.h" />

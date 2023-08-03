@@ -20,6 +20,7 @@
 #include "Sphere.h"
 #include "Texture2D.h"
 #include "UniformBuffer.h"
+#include "util.h"
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
@@ -234,6 +235,7 @@ VAO rayVAO;
 
 OBB smartBox;
 bool smartBoxColor = false;
+
 StaticOctTree<glm::vec3> tree;
 
 void display()
@@ -325,8 +327,8 @@ void display()
 	rayVAO.BindArrayObject();
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
-	uniform.SetVec3("color", glm::vec3(1, 0, 1));
-	//glDrawArrays(GL_LINES, 0, 2);
+	uniform.SetVec3("color", glm::vec3(0, 0, 0));
+	glDrawArrays(GL_LINES, 0, 8);
 
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -484,8 +486,8 @@ void idle()
 void keyboard(unsigned char key, int x, int y)
 {
 	keyState[key] = true;
-	if (key == 'm' || key == 'M')
-		offset.y += 3;
+	if (key == 'm' || key == 'M') offset.y += 3;
+	if (key == 'n' || key == 'N') offset.y -= 3;
 	if (key == 'q' || key == 'Q')
 		glutLeaveMainLoop();
 	if (key == 't' || key == 'T')
@@ -499,14 +501,26 @@ void keyboard(unsigned char key, int x, int y)
 		float fdist;
 		glm::vec3 angles2 = glm::radians(angles);
 
-		glm::vec3 gamer = glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0);
-		std::array<glm::vec3, 2> verts = { offset, offset + gamer * 100.f };
-		rayBuffer.BufferSubData(verts);
+		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
+		std::array<glm::vec3, 8> verts = { offset, offset + gamer * 100.f , offset, offset + gamer * 100.f};
+		bool set = false;
 
 		for (std::size_t i = 0; i < boxes.size(); i++)
 		{
 			boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, fdist);
+			if (boxColor[i] && !set)
+			{
+				set = true;
+				glm::vec3 point = offset + gamer * fdist * 100.f;
+				for (std::size_t j = 0; j < 3; j++)
+				{
+					verts[2 + 2 * j] = point;
+					glm::vec3 cur = glm::normalize(boxes[i][j]);
+					verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
+				}
+			}
 		}
+		rayBuffer.BufferSubData(verts);
 	}
 }
 
@@ -656,7 +670,7 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	std::array<glm::vec3, 2> gobs = { glm::vec3(), glm::vec3(5) };
+	std::array<glm::vec3, 8> gobs = { glm::vec3(), glm::vec3(5), glm::vec3(3),  glm::vec3(4)};
 	rayBuffer.Generate(ArrayBuffer);
 	rayBuffer.BufferData(gobs, StaticDraw);
 	rayBuffer.BindBuffer();

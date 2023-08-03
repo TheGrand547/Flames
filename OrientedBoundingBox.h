@@ -34,6 +34,7 @@ public:
 	inline constexpr glm::vec3 Forward() const noexcept;
 	inline constexpr glm::vec3 Up() const noexcept;
 	inline constexpr glm::vec3 Cross() const noexcept;
+	inline constexpr glm::vec3 operator[](const std::size_t& t) const;
 
 	inline constexpr void Center(const glm::vec3& center) noexcept;
 	inline constexpr void Reorient(const glm::vec3& euler);
@@ -108,6 +109,12 @@ inline constexpr glm::vec3 OrientedBoundingBox::Cross() const noexcept
 	return this->axes[2].first;
 }
 
+inline constexpr glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const
+{
+	assert(t < 3);
+	return this->axes[t].first;
+}
+
 inline constexpr void OrientedBoundingBox::Center(const glm::vec3& center) noexcept
 {
 	this->center = center;
@@ -152,6 +159,7 @@ inline constexpr void OrientedBoundingBox::Translate(const glm::vec3& distance) 
 	this->center += distance;
 }
 
+// TODO: Get the normal of the intersection points, and return both
 // https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
 constexpr bool OrientedBoundingBox::Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const
 {
