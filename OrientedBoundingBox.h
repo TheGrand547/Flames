@@ -7,6 +7,7 @@
 #include <glm/glm.hpp>
 #include <limits>
 #include "AABB.h"
+#include "Collidable.h"
 #include "glmHelp.h"
 
 // TODO: EPSILON DUMB FUCK
@@ -44,7 +45,13 @@ public:
 	inline constexpr void Scale(const glm::vec3& scale);
 	inline constexpr void Translate(const glm::vec3& distance) noexcept;
 
-	constexpr bool Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const;
+	constexpr bool Intersect(const glm::vec3& origin, const glm::vec3& dir) const;
+	// If no intersection is found, distance is undefined
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const;
+	// If no intersection is found, result is undefined
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& result) const;
+	// If no intersection is found, near and far hit are undefined
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
 	constexpr void OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 dir = glm::vec3(0));
@@ -159,11 +166,33 @@ inline constexpr void OrientedBoundingBox::Translate(const glm::vec3& distance) 
 	this->center += distance;
 }
 
-// TODO: Get the normal of the intersection points, and return both
-// https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
-constexpr bool OrientedBoundingBox::Intersect(glm::vec3 point, glm::vec3 dir, float& distance) const
+constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir) const
 {
-	float nearDist = -std::numeric_limits<float>::infinity(), farDist = std::numeric_limits<float>::infinity();
+	float dist;
+	return this->Intersect(point, dir, dist);
+}
+
+constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const
+{
+	Collision collision;
+	bool value = this->Intersect(point, dir, collision);
+	distance = collision.distance;
+	return value;
+}
+
+constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& first) const
+{
+	Collision second;
+	return this->Intersect(point, dir, first, second);
+}
+
+// https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
+constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
+{
+	nearHit.Clear();
+	farHit.Clear();
+	nearHit.distance = -std::numeric_limits<float>::infinity();
+	farHit.distance = std::numeric_limits<float>::infinity();
 	for (const auto& axis : this->axes)
 	{
 		float parallel = glm::dot(axis.first, this->center - point);
@@ -183,30 +212,30 @@ constexpr bool OrientedBoundingBox::Intersect(glm::vec3 point, glm::vec3 dir, fl
 		{
 			std::swap(param0, param1);
 		}
-		if (param0 > nearDist)
+		if (param0 > nearHit.distance)
 		{
-			nearDist = param0;
+			nearHit.distance = param0;
+			nearHit.normal = axis.first;
 		}
-		if (param1 < farDist)
+		if (param1 < farHit.distance)
 		{
-			farDist = param1;
+			farHit.distance = param1;
+			farHit.normal = axis.first;
 		}
-		if (nearDist > farDist)
+		if (nearHit.distance > farHit.distance)
 		{
 			return false;
 		}
-		if (farDist < 0)
+		if (farHit.distance < 0)
 		{
 			return false;
 		}
 	}
-	if (nearDist > 0)
+	nearHit.point = nearHit.distance * dir + point;
+	farHit.point = farHit.distance * dir + point;
+	if (nearHit.distance < 0)
 	{
-		distance = nearDist;
-	}
-	else
-	{
-		distance = farDist;
+		std::swap(nearHit, farHit);
 	}
 	return true;
 }
@@ -242,6 +271,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 	}
 	return true;
 }
+
 #include <iostream>
 inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 direction)
 {
