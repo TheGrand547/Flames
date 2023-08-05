@@ -782,7 +782,6 @@ int main(int argc, char** argv)
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
 
-	// TODO: Why isn't this in a VAO object??
 	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
 	sphereVAO.Generate();
 	sphereVAO.FillArray<NormalVertex>(sphereShader);

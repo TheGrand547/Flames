@@ -120,7 +120,6 @@ template<class T> inline void Buffer::BufferSubData(T& data, GLintptr offset)
 	}
 }
 
-// TODO: Warnings for things
 template<class T> inline void Buffer::BufferSubData(const std::vector<T>& data, GLintptr offset)
 {
 	if (this->buffer)
@@ -128,7 +127,7 @@ template<class T> inline void Buffer::BufferSubData(const std::vector<T>& data, 
 		std::size_t total = (std::size_t) offset + sizeof(T) * data.size();
 		if (total > this->length)
 		{
-			// WARNING
+			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
 			return;
 		}
 		glBindBuffer(this->bufferType, this->buffer);
@@ -144,7 +143,7 @@ template<class T, std::size_t i> inline void Buffer::BufferSubData(const std::ar
 		std::size_t total = (std::size_t) offset + sizeof(T) * i;
 		if (total > this->length)
 		{
-			// WARNING
+			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
 			return;
 		}
 		glBindBuffer(this->bufferType, this->buffer);

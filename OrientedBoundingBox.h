@@ -9,9 +9,7 @@
 #include "AABB.h"
 #include "Collidable.h"
 #include "glmHelp.h"
-
-// TODO: EPSILON DUMB FUCK
-#define EPSILON 0.000001f
+#include "util.h"
 
 class OrientedBoundingBox
 {

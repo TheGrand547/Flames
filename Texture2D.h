@@ -260,15 +260,16 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 																		TextureDataInput dataFormat, std::size_t width, std::size_t height)
 {
 	this->CleanUp();
-	glGenTextures(1, &this->texture);
 	if (!width && !height)
 	{
-		width = height = (std::size_t) sqrt(L);
+		width = height = (std::size_t)sqrt(L);
 		if (width * height != L)
 		{
-			// TODO: LOGO ERROR
+			LogF("Width(%zu) and Height(%zu) do not equal the proper size(%zu)\n", width, heith, L);
+			return;
 		}
 	}
+	glGenTextures(1, &this->texture);
 	if (this->texture)
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
