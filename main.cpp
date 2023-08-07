@@ -11,6 +11,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 #include "glmHelp.h"
+#include "Lines.h"
 #include "log.h"
 #include "Model.h"
 #include "OrientedBoundingBox.h"

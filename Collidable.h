@@ -7,7 +7,10 @@
 struct Collision
 {
 	glm::vec3 point, normal;
-	float distance;
+	union
+	{
+		float distance, depth;
+	};
 
 	Collision() = default;
 	inline consteval Collision(const glm::vec3& point, const glm::vec3& normal, const float& distance) noexcept 

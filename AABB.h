@@ -39,16 +39,22 @@ public:
 	inline constexpr bool PointInside(const glm::vec3& point) const;
 	inline constexpr bool Overlap(const AABB& other) const;
 	inline constexpr bool Contains(const AABB& other) const;
+
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
+
+	bool operator==(const AABB& other) const
+	{
+		return negativeBound == other.negativeBound && positiveBound == other.positiveBound;
+	}
 };
 
-constexpr AABB::AABB() : negativeBound(INFINITY, INFINITY, INFINITY), positiveBound(-INFINITY, -INFINITY, -INFINITY)
+constexpr AABB::AABB() : negativeBound(-1), positiveBound(1)
 {
 
 }
 
-constexpr AABB::AABB(const glm::vec3& dimension) : negativeBound(0, 0, 0), positiveBound(glm::abs(dimension))
+constexpr AABB::AABB(const glm::vec3& dimension) : negativeBound(-glm::abs(dimension) / 2.f), positiveBound(glm::abs(dimension) / 2.f)
 {
 
 }
