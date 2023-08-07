@@ -6,13 +6,10 @@
 #include <tuple> 
 
 // TODO: Sphere CLASS YOU DUMMY
-class Sphere
+struct Sphere
 {
-protected:
 	glm::vec3 center;
 	float radius;
-
-public:
 	constexpr Sphere(const float& radius = 1.f, const glm::vec3& center = glm::vec3(0));
 };
 

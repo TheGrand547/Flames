@@ -81,7 +81,11 @@ struct LineSegment : public LineBase
 		glm::vec3 pointB, point2, end, B;
 	};
 	LineSegment() = default;
-	constexpr inline LineSegment(const glm::vec3& a, const glm::vec3& b) : A(a), B(b) {}
+	constexpr LineSegment(const glm::vec3& a, const glm::vec3& b) : A(a), B(b) {}
+	constexpr LineSegment(const LineSegment& other) noexcept : A(other.A), B(other.B) {}
+	constexpr LineSegment(const LineSegment&& other) noexcept : A(other.A), B(other.B) {}
+	constexpr LineSegment& operator=(const LineSegment& other) noexcept;
+	constexpr LineSegment& operator=(const LineSegment&& other) noexcept;
 
 	bool operator==(const LineSegment& other) const = default;
 	bool operator!=(const LineSegment& other) const = default;
@@ -94,6 +98,21 @@ struct LineSegment : public LineBase
 	virtual constexpr glm::vec3 PointB() const noexcept;
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept;
 };
+
+constexpr LineSegment& LineSegment::operator=(const LineSegment& other) noexcept
+{
+	this->A = other.A;
+	this->B = other.B;
+	return *this;
+}
+
+constexpr LineSegment& LineSegment::operator=(const LineSegment&& other) noexcept
+{
+	this->A = other.A;
+	this->B = other.B;
+	return *this;
+}
+
 
 constexpr glm::vec3 LineSegment::PointA() const noexcept
 {

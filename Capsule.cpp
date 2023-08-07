@@ -2,40 +2,33 @@
 
 bool Capsule::Intersect(const Capsule& other) const noexcept
 {
-	Collision temp;
+	Collision temp{};
 	return this->Intersect(other, temp);
 }
 
+// See: https://wickedengine.net/2020/04/26/capsule-collision-detection/
+
 bool Capsule::Intersect(const Capsule& other, Collision& hit) const noexcept
 {
-	/*
-	std::array<glm::vec3, 4> dirs =
-	{
-		other.line.A - this->line.A,
-		other.line.A - this->line.B,
-		other.line.B - this->line.A,
-		other.line.B - this->line.B
-	};
-	glm::vec3 bestA, bestB;
-	if (glm::length2(dirs[1]) < glm::length2(dirs[0]) ||
-		glm::length2(dirs[1]) < glm::length2(dirs[2]) ||
-		glm::length2(dirs[3]) < glm::length2(dirs[0]) ||
-		glm::length2(dirs[3]) < glm::length2(dirs[2]))
-	{
-		bestA = this->line.B;
-	}
-	else
-	{
-		bestA = this->line.A;
-	}
-	bestB = other.line.PointClosestTo(bestA);
-	bestA = this->line.PointClosestTo(bestB);
-	*/
 	glm::vec3 bestA(0), bestB(0);
 	float distance = this->line.Distance(other.line, bestA, bestB);
-	hit.normal = bestB - bestA;
-	hit.normal = glm::normalize(hit.normal);
-	hit.distance = this->radius + other.radius - distance;
-	hit.point = bestB + other.radius * hit.normal;
+	hit.normal = glm::normalize(bestB - bestA);
+	hit.distance = this->radius + other.radius - distance; // How far into this capsule the other is
+	hit.point = bestB + other.radius * hit.normal; // The point of other furthest into the 
 	return distance > 0;
+}
+
+bool Capsule::Intersect(const Sphere& other) const noexcept
+{
+	Collision temp{};
+	return this->Intersect(other, temp);
+}
+
+bool Capsule::Intersect(const Sphere& other, Collision& hit) const noexcept
+{
+	glm::vec3 closest = this->line.PointClosestTo(other.center);
+	hit.normal = glm::normalize(closest - other.center);
+	hit.distance = this->radius + other.radius - glm::length(closest - other.center);
+	hit.point = closest + hit.normal * other.radius; 
+	return hit.distance > 0;
 }
