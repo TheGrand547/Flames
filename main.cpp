@@ -300,7 +300,7 @@ void display()
 
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
+		goober.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
 		uniform.SetMat4("Model", goober.GetModel().GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
@@ -416,7 +416,16 @@ void idle()
 	counter++;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
+
+	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
+	goober2.Translate(glm::vec3(2, 0.1, 0));	
+	goober2.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
+	glm::mat4 tester = (goober2.GetModel().GetNormalMatrix());
+	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
+	std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0] << std::endl;
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
+	
+
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
@@ -463,7 +472,7 @@ void idle()
 		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
 
 		goober.Translate(glm::vec3(2, 0, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, counter * 0.05f, 0)));
+		goober.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
 		for (auto& wall : boxes)
 		{
 			if (wall.Overlap(playerOb))

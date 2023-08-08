@@ -17,6 +17,20 @@
 #define Vec4to3(vec4) glm::vec3(vec4.x, vec4.y, vec4.z)
 #define Vec3to4(vec3) glm::vec4(vec3.x, vec3.y, vec3.z, 1.f)
 
-std::ostream& operator<<(std::ostream& os, const glm::vec3& vec);
+//std::ostream& operator<<(std::ostream& os, const glm::vec3& vec);
+
+template<glm::length_t T, typename W, glm::qualifier Q>
+std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)
+{
+	os << "(";
+	for (glm::length_t i = 0; i < T; i++)
+	{
+		os << vec[i];
+		if (i != T - 1)
+			os << ", ";
+	}
+	os << ")";
+	return os;
+}
 
 #endif // GLM_HELP_H

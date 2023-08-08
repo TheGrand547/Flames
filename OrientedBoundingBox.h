@@ -19,6 +19,7 @@ private:
 	glm::vec3 center;
 	// TODO: Store these better, hack fraud
 	std::array<std::pair<glm::vec3, float>, 3> axes;
+	// The basis vectors can used to recreate the rotation matrix by simply transposing it
 public:
 	constexpr OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1));
 	constexpr OrientedBoundingBox(const OrientedBoundingBox& other) = default;
