@@ -272,6 +272,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 }
 
 #include <iostream>
+#include "util.h"
 inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 direction)
 {
 	std::array<glm::vec3, 15> separatingAxes{};
@@ -281,7 +282,7 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 		separatingAxes[i * 5 + 1] = other.axes[i].first;
 		for (std::size_t j = 0; j < 3; j++)
 		{
-			separatingAxes[i * 5 + 2 + j] = glm::cross(this->axes[i].first, other.axes[j].first);
+			separatingAxes[i * 5 + 2 + j] = glm::normalize(glm::cross(this->axes[i].first, other.axes[j].first));
 		}
 	}
 	glm::vec3 delta = this->center - other.center;
@@ -303,12 +304,25 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 		{
 			return;
 		}
-		if (min > left - right)
+		if (min > right - left)
 		{
 			index = i;
-			min = left - right;
+			min = right - left;
 		}
 	}
+	glm::vec3 normdir = glm::normalize(direction);
+	// min is the penetration depth? on axis separatingAxes[i]
+	//std::cout << "->" << separatingAxes[index] << ": " << min << ": " << index << std::endl;
+	std::cout << "<-" << direction << std::endl;
+	std::cout << "->" << min * separatingAxes[index] << std::endl;
+	//this->center -= min * (normdir - SlideAlongPlane(separatingAxes[index], normdir)) * glm::length(direction); // what
+	this->center += min * separatingAxes[index];
+	std::cout << SlideAlongPlane(separatingAxes[index], direction) << std::endl;
+	
+	
+	
+	
+	
 	// Minimum separating axis is separatingAxes[i]
 	// fumo
 	//std::array<glm::vec3, 3> basis;
@@ -325,6 +339,7 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 	}
 	std::cout << this->center << std::endl;
 	*/
+	/*
 	float dot = 0;
 	std::size_t dotIndex = 0;
 
@@ -342,7 +357,7 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 		std::cout << "DOT " << other.axes[i].first << ": " << glm::dot(dir, glm::normalize(other.axes[i].first)) << std::endl;
 		if (glm::abs(glm::dot(dir, glm::normalize(other.axes[i].first)) > glm::abs(dot)))
 		{
-			dotIndex = i;
+			//dotIndex = i;
 			dot = glm::dot(dir, glm::normalize(other.axes[i].first));
 		}
 	}
@@ -350,6 +365,7 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 	dot = -glm::sign(dot);
 	//this->center += len * (glm::normalize(glm::reflect(dir, dot * other.axes[dotIndex].first)) - dir) / 20.f ;
 	this->center -= len * dir;
+	*/
 	/*
 	if (!this->Overlap(other))
 		return;

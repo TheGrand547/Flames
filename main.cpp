@@ -422,7 +422,7 @@ void idle()
 	goober2.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
 	glm::mat4 tester = (goober2.GetModel().GetNormalMatrix());
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
-	std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0] << std::endl;
+	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
 	
 

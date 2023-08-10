@@ -36,8 +36,8 @@ public:
 	bool Intersect(const Sphere& other, Collision& hit) const noexcept;
 };
 
-constexpr Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(radius) {}
+constexpr Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(other.radius) {}
 
-constexpr Capsule::Capsule(const Capsule&& other) noexcept : line(other.line), radius(radius) {}
+constexpr Capsule::Capsule(const Capsule&& other) noexcept : line(other.line), radius(other.radius) {}
 
 #endif // CAPSULE_H
