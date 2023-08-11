@@ -59,15 +59,16 @@ constexpr AABB::AABB(const glm::vec3& dimension) : negativeBound(-glm::abs(dimen
 
 }
 
-constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : negativeBound(negativeBound), positiveBound(positiveBound)
+constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : negativeBound(-glm::abs(negativeBound)), 
+																						positiveBound(glm::abs(positiveBound))
 {
 
 }
 
-constexpr AABB::AABB(const AABB& other)
+constexpr AABB::AABB(const AABB& other) : negativeBound(other.negativeBound), positiveBound(other.positiveBound)
 {
-	this->negativeBound = other.negativeBound;
-	this->positiveBound = other.positiveBound;
+/*	this->negativeBound = other.negativeBound;
+	this->positiveBound = other.positiveBound;*/
 }
 
 inline constexpr float AABB::Volume() const
@@ -135,8 +136,10 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 
 inline constexpr bool AABB::Contains(const AABB& other) const
 {
-	// TODO: This is bad and slow
-	return this->PointInside(other.GetCenter() + other.Deviation()) && this->PointInside(other.GetCenter() - other.Deviation());
+	bool xInside = this->negativeBound.x < other.negativeBound.x && this->positiveBound.x > other.positiveBound.x;
+	bool yInside = this->negativeBound.y < other.negativeBound.y && this->positiveBound.y > other.positiveBound.y;
+	bool zInside = this->negativeBound.z < other.negativeBound.z && this->positiveBound.z > other.positiveBound.z;
+	return xInside && yInside && zInside;
 }
 
 constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)

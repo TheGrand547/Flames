@@ -224,7 +224,15 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
 }
 std::vector<Model> planes;
-std::vector<OBB> boxes;
+
+struct Dummy
+{
+	OBB box;
+	bool color;
+};
+
+//std::vector<OBB> boxes;
+StaticOctTree<Dummy> boxes(glm::vec3(20));
 std::vector<bool> boxColor;
 
 bool dummyFlag = false;
@@ -237,7 +245,7 @@ VAO rayVAO;
 OBB smartBox;
 bool smartBoxColor = false;
 
-StaticOctTree<glm::vec3> tree;
+//StaticOctTree<glm::vec3> tree;
 
 void display()
 {
@@ -307,12 +315,13 @@ void display()
 		float wid = 10;
 		//glGetFloatv(GL_LINE_WIDTH, &wid);
 		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-		for (std::size_t i = 0; i < boxes.size(); i++)
+		//for (std::size_t i = 0; i < boxes.size(); i++)
+		for (const auto& box: boxes)
 		{
-			uniform.SetMat4("Model", boxes[i].GetModel().GetModelMatrix());
-			uniform.SetVec3("color", (boxColor[i]) ? colors : blue);
-			glLineWidth((boxColor[i]) ? wid * 1.5f : wid);
-			glPointSize((boxColor[i]) ? wid * 1.5f : wid);
+			uniform.SetMat4("Model", box.box.GetModel().GetModelMatrix());
+			uniform.SetVec3("color", (box.color) ? colors : blue);
+			glLineWidth((box.color) ? wid * 1.5f : wid);
+			glPointSize((box.color) ? wid * 1.5f : wid);
 			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 			glDrawArrays(GL_POINTS, 0, 8);
 		}
@@ -410,6 +419,23 @@ std::vector<Wall> walls;
 
 glm::vec3 rayStart, rayDir;
 
+bool smartBoxCollide(glm::vec3 forward, int depth = 0)
+{
+	if (depth > 4)
+		return true;
+	auto gamerse = boxes.Search(smartBox.GetAABB());
+	std::cout << "Depth: " << depth << "\t Count: " << gamerse.size() << std::endl;
+	for (auto& letsgo : gamerse)
+	{
+		if (letsgo->box.Overlap(smartBox))
+		{
+			smartBox.OverlapWithResponse(letsgo->box, forward);
+			return smartBoxCollide(forward, depth + 1);
+		}
+	}
+	return false;
+}
+
 void idle()
 {
 	static int lastFrame = 0;
@@ -436,18 +462,20 @@ void idle()
 	glm::vec3 previous = offset;
 	if (keyState[ArrowKeyUp])    smartBox.Translate(smartBox.Forward() * speed);
 	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
-	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -2.f, 0));
-	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 2.f, 0));
+	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
+	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
 	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft])
 	{
 		smartBoxColor = false;
 		float a = (keyState[ArrowKeyDown] || keyState[ArrowKeyLeft]) ? -1.f : 1.f;
+		smartBoxColor = smartBoxCollide(a * smartBox.Forward() * speed);
+		/*
 		for (auto& wall : boxes)
 		{
-			smartBoxColor |= smartBox.Overlap(wall);
-			smartBox.OverlapWithResponse(wall, a * smartBox.Forward() * speed);
-			if (smartBoxColor) break;
-		}
+			smartBoxColor |= smartBox.Overlap(wall.box);
+			smartBox.OverlapWithResponse(wall.box, a * smartBox.Forward() * speed);
+			//if (smartBoxColor) break;
+		}*/
 	}
 	if (keyState['p'] || keyState['P'])
 		std::cout << previous << std::endl;
@@ -475,7 +503,7 @@ void idle()
 		goober.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
 		for (auto& wall : boxes)
 		{
-			if (wall.Overlap(playerOb))
+			if (wall.box.Overlap(playerOb))
 			{
 				offset = previous;
 				break;
@@ -508,24 +536,27 @@ void keyboard(unsigned char key, int x, int y)
 		clear = !clear;
 	if (key == 'r' || key == 'R')
 	{
-		float fdist;
 		glm::vec3 angles2 = glm::radians(angles);
 
 		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
 		std::array<glm::vec3, 8> verts = { offset, offset + gamer * 100.f , offset, offset + gamer * 100.f};
 		bool set = false;
 
-		for (std::size_t i = 0; i < boxes.size(); i++)
+
+		Collision nears, fars;
+		//for (std::size_t i = 0; i < boxes.size(); i++)
+		for (auto& box: boxes)
 		{
-			boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, fdist);
-			if (boxColor[i] && !set)
+			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
+			box.color = box.box.Intersect(offset, gamer * 100.f, nears, fars);
+			if (box.color && !set)
 			{
 				set = true;
-				glm::vec3 point = offset + gamer * fdist * 100.f;
+				glm::vec3 point = offset + gamer * nears.distance * 100.f;
 				for (std::size_t j = 0; j < 3; j++)
 				{
 					verts[2 + 2 * j] = point;
-					glm::vec3 cur = glm::normalize(boxes[i][j]);
+					glm::vec3 cur = glm::normalize(box.box[j]);
 					verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
 				}
 			}
@@ -709,7 +740,7 @@ int main(int argc, char** argv)
 		walls.push_back(Wall(ref));
 		OBB project(ref);
 		project.Scale(glm::vec3(1, .25f, 1));
-		boxes.push_back(project);
+		boxes.Insert({project, false}, project.GetAABB());
 		boxColor.push_back(false);
 	}
 	Model oops = planes[planes.size() / 2 + 1];

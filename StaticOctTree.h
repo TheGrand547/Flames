@@ -57,6 +57,7 @@ protected:
 	std::list<T> items;
 public:
 	StaticOctTree();
+	StaticOctTree(const glm::vec3& bounds);
 	StaticOctTree(const AABB& bound);
 	~StaticOctTree();
 
@@ -79,6 +80,11 @@ template<class T> using Item = typename std::list<T>::iterator;
 
 template<class T>
 inline StaticOctTree<T>::StaticOctTree() : root()
+{
+}
+
+template<class T>
+inline StaticOctTree<T>::StaticOctTree(const glm::vec3& bounds) : root(-glm::abs(bounds), glm::abs(bounds))
 {
 }
 
@@ -110,7 +116,7 @@ template<class T>
 inline void StaticOctTree<T>::Insert(const T& element, const AABB& box)
 {
 	this->items.push_back(element);
-	this->root.Insert(this->items.back(), box);
+	this->root.Insert(std::prev(this->items.end()), box);
 }
 
 
@@ -148,6 +154,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Generate()
 	//  x,  y,  z Index 7
 	glm::vec3 center = this->bounds.GetCenter();
 	glm::vec3 extents = this->bounds.Deviation();
+
 	glm::vec3 mults(-1.f);
 	for (std::size_t i = 0; i < 8; i++)
 	{
@@ -232,12 +239,14 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Search(const AABB& box, std::li
 	}
 }
 
-
 template<class T>
 inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, const AABB& box)
 {
 	for (std::size_t i = 0; i < 8; i++)
 	{
+		glm::vec3 c = this->internals[i].GetCenter();
+		glm::vec3 d = this->internals[i].Deviation();
+		//std::cout << c - d << ": " << c + d << std::endl;
 		if (this->internals[i].Contains(box))
 		{
 			if (this->depth + 1 < MAX_OCT_TREE_DEPTH)
@@ -251,6 +260,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 			}
 		}
 	}
+	std::cout << "Inserted at Depth: " << this->depth << std::endl;
 	this->objects.push_back({ box, element });
 }
 
