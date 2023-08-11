@@ -3,6 +3,7 @@
 #define AXIS_ALIGNED_BOUNDING_BOX_H
 #include <glm/glm.hpp>
 #include <vector>
+#include "glmHelp.h"
 #include "Model.h"
 
 class AABB
@@ -19,6 +20,9 @@ public:
 
 	AABB& operator=(const AABB& other) noexcept;
 	inline constexpr AABB operator+(const glm::vec3& point) const;
+	inline constexpr AABB operator-(const glm::vec3& point) const;
+	inline constexpr AABB& operator+=(const glm::vec3& point);
+	inline constexpr AABB& operator-=(const glm::vec3& point);
 
 	Model GetModel() const;
 	
@@ -42,10 +46,15 @@ public:
 
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
+	template<IsVec3... Args> inline static constexpr AABB MakeAABB(const Args... args);
 
-	bool operator==(const AABB& other) const
+	constexpr bool operator==(const AABB& other) const
 	{
 		return negativeBound == other.negativeBound && positiveBound == other.positiveBound;
+	}
+	constexpr bool operator!=(const AABB& other) const
+	{
+		return !(*this == other);
 	}
 };
 
@@ -67,8 +76,7 @@ constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBo
 
 constexpr AABB::AABB(const AABB& other) : negativeBound(other.negativeBound), positiveBound(other.positiveBound)
 {
-/*	this->negativeBound = other.negativeBound;
-	this->positiveBound = other.positiveBound;*/
+
 }
 
 inline constexpr float AABB::Volume() const
@@ -90,6 +98,25 @@ inline constexpr glm::vec3 AABB::Deviation() const
 inline constexpr AABB AABB::operator+(const glm::vec3& point) const
 {
 	return AABB(this->negativeBound + point, this->positiveBound + point);
+}
+
+inline constexpr AABB AABB::operator-(const glm::vec3& point) const
+{
+	return AABB(this->negativeBound - point, this->positiveBound - point);
+}
+
+inline constexpr AABB& AABB::operator+=(const glm::vec3& point) 
+{
+	this->negativeBound += point;
+	this->positiveBound += point;
+	return *this;
+}
+
+inline constexpr AABB& AABB::operator-=(const glm::vec3& point)
+{
+	this->negativeBound -= point;
+	this->positiveBound -= point;
+	return *this;
 }
 
 inline constexpr void AABB::Center(const glm::vec3& point)
@@ -120,25 +147,25 @@ inline constexpr void AABB::Translate(const glm::vec3& point)
 
 inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {
-	bool xInside = this->negativeBound.x < point.x && point.x < this->positiveBound.x;
-	bool yInside = this->negativeBound.y < point.y && point.y < this->positiveBound.y;
-	bool zInside = this->negativeBound.z < point.z && point.z < this->positiveBound.z;
+	bool xInside = this->negativeBound.x <= point.x && point.x <= this->positiveBound.x;
+	bool yInside = this->negativeBound.y <= point.y && point.y <= this->positiveBound.y;
+	bool zInside = this->negativeBound.z <= point.z && point.z <= this->positiveBound.z;
 	return xInside && yInside && zInside;
 }
 
 inline constexpr bool AABB::Overlap(const AABB& other) const
 {
-	bool xInside = this->negativeBound.x < other.positiveBound.x && this->positiveBound.x > other.negativeBound.x;
-	bool yInside = this->negativeBound.y < other.positiveBound.y && this->positiveBound.y > other.negativeBound.y;
-	bool zInside = this->negativeBound.z < other.positiveBound.z && this->positiveBound.z > other.negativeBound.z;
+	bool xInside = this->negativeBound.x <= other.positiveBound.x && this->positiveBound.x >= other.negativeBound.x;
+	bool yInside = this->negativeBound.y <= other.positiveBound.y && this->positiveBound.y >= other.negativeBound.y;
+	bool zInside = this->negativeBound.z <= other.positiveBound.z && this->positiveBound.z >= other.negativeBound.z;
 	return xInside && yInside && zInside;
 }
 
 inline constexpr bool AABB::Contains(const AABB& other) const
 {
-	bool xInside = this->negativeBound.x < other.negativeBound.x && this->positiveBound.x > other.positiveBound.x;
-	bool yInside = this->negativeBound.y < other.negativeBound.y && this->positiveBound.y > other.positiveBound.y;
-	bool zInside = this->negativeBound.z < other.negativeBound.z && this->positiveBound.z > other.positiveBound.z;
+	bool xInside = this->negativeBound.x <= other.negativeBound.x && this->positiveBound.x >= other.positiveBound.x;
+	bool yInside = this->negativeBound.y <= other.negativeBound.y && this->positiveBound.y >= other.positiveBound.y;
+	bool zInside = this->negativeBound.z <= other.negativeBound.z && this->positiveBound.z >= other.positiveBound.z;
 	return xInside && yInside && zInside;
 }
 
@@ -174,6 +201,14 @@ constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 	return AABB(min, max);
 }
 
+template<IsVec3 ...Args>
+inline constexpr AABB AABB::MakeAABB(const Args ...args)
+{
+	std::vector<glm::vec3> points = { args... };
+	return AABB::MakeAABB(points);
+}
+
 typedef AABB AxisAlignedBox;
 
 #endif // AXIS_ALIGNED_BOUNDING_BOX_H
+

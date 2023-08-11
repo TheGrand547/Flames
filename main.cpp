@@ -347,7 +347,6 @@ void display()
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.scale = glm::vec3(0.5f);
 
-	
 	hatching.BindTexture(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));

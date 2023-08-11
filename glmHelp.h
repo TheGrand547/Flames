@@ -33,4 +33,6 @@ std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)
 	return os;
 }
 
+template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::vec3>;
+
 #endif // GLM_HELP_H
