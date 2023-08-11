@@ -35,8 +35,10 @@ public:
 	inline constexpr glm::vec3 Up() const noexcept;
 	inline constexpr glm::vec3 Cross() const noexcept;
 	inline constexpr glm::vec3 operator[](const std::size_t& t) const;
+	inline constexpr glm::vec3 Center() const noexcept;
 
-	inline constexpr void Center(const glm::vec3& center) noexcept;
+
+	inline constexpr void ReCenter(const glm::vec3& center) noexcept;
 	inline constexpr void Reorient(const glm::vec3& euler);
 	inline constexpr void Reorient(const glm::mat4& rotation);
 	inline constexpr void Rotate(const glm::vec3& euler);
@@ -95,7 +97,7 @@ inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
 	glm::vec3 deviation(0.f);
 	for (const auto& axis : this->axes)
 	{
-		deviation += axis.first * axis.second;
+		deviation += glm::abs(axis.first) * axis.second;
 	}
 	return AABB(this->center - deviation, this->center + deviation);
 }
@@ -121,7 +123,12 @@ inline constexpr glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t)
 	return this->axes[t].first;
 }
 
-inline constexpr void OrientedBoundingBox::Center(const glm::vec3& center) noexcept
+inline constexpr glm::vec3 OrientedBoundingBox::Center() const noexcept
+{
+	return this->center;
+}
+
+inline constexpr void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
 {
 	this->center = center;
 }
@@ -148,7 +155,7 @@ inline constexpr void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
 {
 	for (auto& each : this->axes)
 	{
-		each.first = rotation * glm::vec4(each.first, 0);
+		each.first = glm::normalize(rotation * glm::vec4(each.first, 0));
 	}
 }
 
@@ -313,11 +320,11 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 	glm::vec3 normdir = glm::normalize(direction);
 	// min is the penetration depth? on axis separatingAxes[i]
 	//std::cout << "->" << separatingAxes[index] << ": " << min << ": " << index << std::endl;
-	std::cout << "<-" << direction << std::endl;
-	std::cout << "->" << min * separatingAxes[index] << std::endl;
+	//std::cout << "<-" << direction << std::endl;
+	//std::cout << "->" << min * separatingAxes[index] << std::endl;
 	//this->center -= min * (normdir - SlideAlongPlane(separatingAxes[index], normdir)) * glm::length(direction); // what
 	this->center += min * separatingAxes[index];
-	std::cout << SlideAlongPlane(separatingAxes[index], direction) << std::endl;
+	//std::cout << SlideAlongPlane(separatingAxes[index], direction) << std::endl;
 	
 	
 	

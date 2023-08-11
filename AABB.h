@@ -68,8 +68,7 @@ constexpr AABB::AABB(const glm::vec3& dimension) : negativeBound(-glm::abs(dimen
 
 }
 
-constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : negativeBound(-glm::abs(negativeBound)), 
-																						positiveBound(glm::abs(positiveBound))
+constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : negativeBound(negativeBound), positiveBound(positiveBound)
 {
 
 }

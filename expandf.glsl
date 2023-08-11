@@ -38,12 +38,14 @@ void main()
 	}
 	if (dark >= required)
 	{
-		fColor = vec4(0.15, 0.15, 0.15, 1);
+		//fColor = vec4(0.15, 0.15, 0.15, 1);
+		fColor = vec4(1, 1, 1, 1);
 	}
 	else
 	{
-		fColor = vec4(1, 1, 1, 1);
+		//fColor = vec4(1, 1, 1, 1);
+		fColor = sampled;
 	}
-	fColor = sampled * fColor;
+	//fColor = sampled * fColor;
 	fColor.w = 1;
 }
