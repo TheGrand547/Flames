@@ -55,7 +55,7 @@ public:
 	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
-	constexpr void OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 dir = glm::vec3(0));
+	constexpr void OverlapWithResponse(const OrientedBoundingBox& other);
 
 	inline Model GetModel() const;
 };
@@ -280,7 +280,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 
 #include <iostream>
 #include "util.h"
-inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other, const glm::vec3 direction)
+inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
 {
 	std::array<glm::vec3, 15> separatingAxes{};
 	for (std::size_t i = 0; i < 3; i++)
@@ -317,21 +317,11 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 			min = right - left;
 		}
 	}
-	//glm::vec3 normdir = glm::normalize(direction);
 	glm::vec3 normdir = glm::normalize(-delta);
-	std::cout << glm::dot(normdir, separatingAxes[index]) << ": " << min << ":" << separatingAxes[index] << ":" << normdir << std::endl;
 
 	// min is the penetration depth? on axis separatingAxes[i]
 	// dot(normdir, separatingAxes) > 0 they are aligned and must not be flipped or something
-
-
-	//std::cout << "->" << separatingAxes[index] << ": " << min << ": " << index << std::endl;
-	//std::cout << "<-" << direction << std::endl;
-	//std::cout << "->" << min * separatingAxes[index] << std::endl;
-	//this->center -= min * (normdir - SlideAlongPlane(separatingAxes[index], normdir)) * glm::length(direction); // what
 	this->center += min * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
-	//std::cout << SlideAlongPlane(separatingAxes[index], direction) << std::endl;
-
 }
 
 typedef OrientedBoundingBox OBB;

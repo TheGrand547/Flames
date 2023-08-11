@@ -301,29 +301,34 @@ void display()
 	uniform.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	if (outlineBoxes)
+	if (outlineBoxes || !outlineBoxes)
 	{
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
 
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
+		goober.Rotate(glm::radians(glm::vec3(-counter * 2.f, counter * 4.f, counter)));
 		uniform.SetMat4("Model", goober.GetModel().GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
 		//glGetFloatv(GL_LINE_WIDTH, &wid);
-		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-		//for (std::size_t i = 0; i < boxes.size(); i++)
+		//glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
+		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
+		//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		for (const auto& box: boxes)
 		{
 			uniform.SetMat4("Model", box.box.GetModel().GetModelMatrix());
 			uniform.SetVec3("color", (box.color) ? colors : blue);
 			glLineWidth((box.color) ? wid * 1.5f : wid);
 			glPointSize((box.color) ? wid * 1.5f : wid);
-			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-			glDrawArrays(GL_POINTS, 0, 8);
+			//glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+
+			uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
+			//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+			//glDrawArrays(GL_POINTS, 0, 8);
 		}
 		glLineWidth(wid);
 		glPointSize(wid);
@@ -361,11 +366,11 @@ void display()
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
-	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	//glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 	sphereModel.translation = glm::vec3(0, 1.5f, 6.5f);
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	//glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
 	// Framebuffer stuff
 	CheckError();
@@ -423,16 +428,20 @@ bool smartBoxCollide(glm::vec3 forward, int depth = 0)
 	if (depth > 4)
 		return true;
 	auto gamerse = boxes.Search(smartBox.GetAABB());
-	std::cout << "Depth: " << depth << "\t Count: " << gamerse.size() << std::endl;
+	//std::cout << "Depth: " << depth << "\t Count: " << gamerse.size() << std::endl;
+	bool val = false;
 	for (auto& letsgo : gamerse)
 	{
 		if (letsgo->box.Overlap(smartBox))
 		{
-			smartBox.OverlapWithResponse(letsgo->box, forward);
-			return smartBoxCollide(forward, depth + 1);
+			val = true;
+			smartBox.OverlapWithResponse(letsgo->box);
+			//return true;
+			//if (letsgo->box.Overlap(smartBox))
+				//return smartBoxCollide(forward, depth + 1);
 		}
 	}
-	return false;
+	return val;
 }
 
 void idle()
@@ -446,6 +455,7 @@ void idle()
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
 	goober2.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
 	glm::mat4 tester = (goober2.GetModel().GetNormalMatrix());
+	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
@@ -466,7 +476,7 @@ void idle()
 	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft])
 	{
 		smartBoxColor = false;
-		float a = (keyState[ArrowKeyDown] || keyState[ArrowKeyLeft]) ? -1.f : 1.f;
+		float a = (keyState[ArrowKeyDown]) ? -1.f : 1.f;
 		smartBoxColor = smartBoxCollide(a * smartBox.Forward() * speed);
 		/*
 		for (auto& wall : boxes)
@@ -495,7 +505,9 @@ void idle()
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 		OBB goober(playerBounds);
 		playerBounds.Center(offset);
+
 		OBB playerOb(playerBounds);
+		playerOb.Rotate(glm::eulerAngleY(glm::radians(-angles.y)));
 		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
 
 		goober.Translate(glm::vec3(2, 0, 0));
@@ -504,14 +516,16 @@ void idle()
 		{
 			if (wall.box.Overlap(playerOb))
 			{
-				offset = previous;
-				break;
+				playerOb.OverlapWithResponse(wall.box);
+				//offset = previous;
+				//break;
 			}
 		}
 		if (goober.Overlap(playerOb))
 		{
-			offset = previous;
+			//offset = previous;
 		}
+		offset = playerOb.Center();
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -528,7 +542,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'q' || key == 'Q')
 		glutLeaveMainLoop();
 	if (key == 't' || key == 'T')
-		outlineBoxes = !outlineBoxes;
+		smartBox.ReCenter(glm::vec3(4, 1, -4)); //outlineBoxes = !outlineBoxes;
 	if (key == 'g' || key == 'G')
 		dummyFlag = !dummyFlag;
 	if (key == 'h' || key == 'H')
@@ -833,7 +847,7 @@ int main(int argc, char** argv)
 	dither.UniformBlockBinding("Camera", 0);
 	sphereShader.UniformBlockBinding("Camera", 0);
 
-	smartBox.Center(glm::vec3(3, 1, 0));
+	smartBox.ReCenter(glm::vec3(4, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
 	smartBox.Rotate(glm::vec3(0, 90, 0));
 
@@ -847,7 +861,8 @@ int main(int argc, char** argv)
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	glClearColor(1.f, 1.f, 1.f, 1.f);
+	//glClearColor(1.f, 1.f, 1.f, 1.f);
+	glClearColor(0.f, 0.f, 0.f, 0.f);
 	CheckError();
 	glutMainLoop();
 
