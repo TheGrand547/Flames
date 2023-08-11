@@ -317,83 +317,21 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 			min = right - left;
 		}
 	}
-	glm::vec3 normdir = glm::normalize(direction);
+	//glm::vec3 normdir = glm::normalize(direction);
+	glm::vec3 normdir = glm::normalize(-delta);
+	std::cout << glm::dot(normdir, separatingAxes[index]) << ": " << min << ":" << separatingAxes[index] << ":" << normdir << std::endl;
+
 	// min is the penetration depth? on axis separatingAxes[i]
+	// dot(normdir, separatingAxes) > 0 they are aligned and must not be flipped or something
+
+
 	//std::cout << "->" << separatingAxes[index] << ": " << min << ": " << index << std::endl;
 	//std::cout << "<-" << direction << std::endl;
 	//std::cout << "->" << min * separatingAxes[index] << std::endl;
 	//this->center -= min * (normdir - SlideAlongPlane(separatingAxes[index], normdir)) * glm::length(direction); // what
-	this->center += min * separatingAxes[index];
+	this->center += min * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
 	//std::cout << SlideAlongPlane(separatingAxes[index], direction) << std::endl;
-	
-	
-	
-	
-	
-	// Minimum separating axis is separatingAxes[i]
-	// fumo
-	//std::array<glm::vec3, 3> basis;
-	//std::cout << min << " : " << separatingAxes[index] << std::endl;
-	//this->center += separatingAxes[index] * min;
-	/*
-	// One of the cross product ones
-	if (index % 5 > 1)
-	{
-		int intern = index % 5;
-		basis[0] = this->axes[index / 5].first;
-		basis[1] = other.axes[(index % 5) - 2].first;
-		basis[2] = separatingAxes[index];
-	}
-	std::cout << this->center << std::endl;
-	*/
-	/*
-	float dot = 0;
-	std::size_t dotIndex = 0;
 
-	glm::vec3 dir;
-	float len = 1;
-	if (glm::length(direction) > 0.0001)
-		len = glm::length(direction);
-	else
-		return;
-	dir = glm::normalize((direction.x == direction.y && direction.y == 0 && direction.z == direction.y) ?  other.center - this->center : direction);
-	std::cout << "DIR: " << dir << ": " << direction.length() << std::endl;
-	// Find most aligned vector
-	for (std::size_t i = 0; i < 3; i++)
-	{
-		std::cout << "DOT " << other.axes[i].first << ": " << glm::dot(dir, glm::normalize(other.axes[i].first)) << std::endl;
-		if (glm::abs(glm::dot(dir, glm::normalize(other.axes[i].first)) > glm::abs(dot)))
-		{
-			//dotIndex = i;
-			dot = glm::dot(dir, glm::normalize(other.axes[i].first));
-		}
-	}
-	std::cout << "PROJ: " << other.axes[dotIndex].first << ":" << dot << std::endl;
-	dot = -glm::sign(dot);
-	//this->center += len * (glm::normalize(glm::reflect(dir, dot * other.axes[dotIndex].first)) - dir) / 20.f ;
-	this->center -= len * dir;
-	*/
-	/*
-	if (!this->Overlap(other))
-		return;
-	glm::vec3 normal = glm::normalize(this->center - other.center);
-	int mostAligned = 0, theirAligned = 0;
-	float leftRadius = -INFINITY, rightRadius = -INFINITY;
-	for (int i = 0; i < 3; i++)
-	{
-		leftRadius = glm::max(leftRadius, glm::abs(this->axes[i].second));
-		rightRadius = glm::max(rightRadius, glm::abs(other.axes[i].second));
-		// I think this was an idea but I'm not sure of what quality, need to test it
-		if (glm::abs(glm::dot(this->axes[i].first, normal)) > glm::abs(glm::dot(this->axes[mostAligned].first, normal)))
-			mostAligned = i;
-		if (glm::abs(glm::dot(other.axes[i].first, normal)) > glm::abs(glm::dot(other.axes[theirAligned].first, normal)))
-			theirAligned = i;
-		leftRadius = this->axes[mostAligned].second, rightRadius = other.axes[theirAligned].second;
-	}
-	float sum = leftRadius + rightRadius;
-	this->center = other.center + sum * normal;
-	*/
-	// Project them to AABB in one of their coordinate systems via change of basis
 }
 
 typedef OrientedBoundingBox OBB;
