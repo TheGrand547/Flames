@@ -171,7 +171,7 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)
 {
 	glm::vec3 min{}, max{};
-
+	// Check out glm/ext/vector_common min/max
 	min.x = glm::min(left.x, right.x);
 	min.y = glm::min(left.y, right.y);
 	min.z = glm::min(left.z, right.z);

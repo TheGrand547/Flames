@@ -3,6 +3,7 @@
 #define PLANE_H
 #include <glm/glm.hpp>
 #include <glm/ext/scalar_constants.hpp>
+#include "glmHelp.h"
 // glm::gtc::ext::intersection
 
 
@@ -33,12 +34,12 @@ public:
 	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
 };
 
-inline Plane::Plane(float a, float b, float c, float d) noexcept : normal(glm::vec3(a, b, c)), constant(d), point()
+inline Plane::Plane(float a, float b, float c, float d) noexcept : normal(glm::normalize(glm::vec3(a, b, c))), constant(d), point()
 {
 	// Maybe deprecated due to not having a defined point
 }
 
-inline Plane::Plane(const glm::vec3& vector, float f) noexcept : normal(vector), constant(f), point()
+inline Plane::Plane(const glm::vec3& vector, float f) noexcept : normal(glm::normalize(vector)), constant(f), point()
 {
 	// Point should be a point in the Plane
 }
@@ -61,9 +62,11 @@ inline Plane& Plane::operator=(const Plane& other) noexcept
 	return *this;
 }
 
+// TODO: Investigate constexpr
 inline float Plane::Facing(const glm::vec3& vector) const noexcept
 {
-	return glm::dot(this->normal, vector) - this->constant;
+	glm::vec3 loc(vector);
+	return glm::dot(this->normal, loc) - this->constant;
 }
 
 inline bool Plane::Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept

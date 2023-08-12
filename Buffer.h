@@ -57,7 +57,7 @@ public:
 	void BindBuffer() const;
 	void Reserve(BufferAccess access, GLsizeiptr size);
 
-
+	// TODO: Offer these with BufferAcces as a template argument? 
 	template <class T> Buffer(BufferType type, BufferAccess usage, const std::vector<T>& data);
 	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage);
 	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);

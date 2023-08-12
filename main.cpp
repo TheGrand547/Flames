@@ -342,7 +342,7 @@ void display()
 	rayVAO.BindArrayObject();
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
-	uniform.SetVec3("color", glm::vec3(0, 0, 0));
+	uniform.SetVec3("color", glm::vec3(0.7f));
 	glDrawArrays(GL_LINES, 0, 8);
 
 	glEnable(GL_CULL_FACE);
@@ -459,8 +459,10 @@ void idle()
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
-	
-
+	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
+	if (!smartBox.Intersection(foobar))
+		counter++;
+		//std::cout << counter << std::endl;
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
@@ -542,7 +544,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'q' || key == 'Q')
 		glutLeaveMainLoop();
 	if (key == 't' || key == 'T')
-		smartBox.ReCenter(glm::vec3(4, 1, -4)); //outlineBoxes = !outlineBoxes;
+		smartBox.ReCenter(glm::vec3(2, 1, 0)); //outlineBoxes = !outlineBoxes;
 	if (key == 'g' || key == 'G')
 		dummyFlag = !dummyFlag;
 	if (key == 'h' || key == 'H')
@@ -574,7 +576,7 @@ void keyboard(unsigned char key, int x, int y)
 				}
 			}
 		}
-		rayBuffer.BufferSubData(verts);
+		//rayBuffer.BufferSubData(verts);
 	}
 }
 
@@ -724,7 +726,7 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	std::array<glm::vec3, 8> gobs = { glm::vec3(), glm::vec3(5), glm::vec3(3),  glm::vec3(4)};
+	std::array<glm::vec3, 8> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
 	rayBuffer.Generate(ArrayBuffer);
 	rayBuffer.BufferData(gobs, StaticDraw);
 	rayBuffer.BindBuffer();
@@ -847,9 +849,9 @@ int main(int argc, char** argv)
 	dither.UniformBlockBinding("Camera", 0);
 	sphereShader.UniformBlockBinding("Camera", 0);
 
-	smartBox.ReCenter(glm::vec3(4, 1, 0));
+	smartBox.ReCenter(glm::vec3(2, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
-	smartBox.Rotate(glm::vec3(0, 90, 0));
+	smartBox.Rotate(glm::vec3(0, 0, 0));
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);

@@ -9,6 +9,7 @@
 #include "AABB.h"
 #include "Collidable.h"
 #include "glmHelp.h"
+#include "Plane.h"
 #include "util.h"
 
 class OrientedBoundingBox
@@ -56,6 +57,9 @@ public:
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	
 	constexpr void OverlapWithResponse(const OrientedBoundingBox& other);
+
+	// TODO: constexpr
+	inline bool Intersection(const Plane& plane);
 
 	inline Model GetModel() const;
 };
@@ -278,9 +282,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) co
 	return true;
 }
 
-#include <iostream>
-#include "util.h"
-inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
 {
 	std::array<glm::vec3, 15> separatingAxes{};
 	for (std::size_t i = 0; i < 3; i++)
@@ -317,11 +319,76 @@ inline constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBou
 			min = right - left;
 		}
 	}
-	glm::vec3 normdir = glm::normalize(-delta);
+	glm::vec3 normdir = glm::normalize(-delta); // direction here -> there
 
 	// min is the penetration depth? on axis separatingAxes[i]
 	// dot(normdir, separatingAxes) > 0 they are aligned and must not be flipped or something
 	this->center += min * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+}
+
+inline bool OrientedBoundingBox::Intersection(const Plane& plane)
+{
+	float distance = plane.Facing(this->center);
+	glm::vec3 dist(this->axes[0].second, this->axes[1].second, this->axes[2].second);
+	
+	// Might be flat out wrong due to this shifting but whatever
+	if (distance < 0 || distance < glm::length(dist)) // Ensure that the box can always go from out to inbounds
+		return false;
+	// TODO: Another quick test for distance to weed out far plane misses
+
+	// Get the corner points
+	std::array<glm::vec3, 8> points{};
+	points.fill(this->center);
+	for (std::size_t i = 0; i < 3; i++)
+	{
+		std::size_t place = 1ull << i;
+		glm::vec3 dir = this->axes[i].first * this->axes[i].second;
+		for (std::size_t j = 0; j < 8; j++)
+		{
+			points[j] += dir;
+			if (j & place)
+				dir *= -1;
+		}
+	}
+	float sign = distance;
+	std::array<std::pair<std::size_t, float>, 2> fools;
+	fools.fill({ 9, INFINITY});
+	int count = 0;
+	for (std::size_t i = 0; i < 8; i++)
+	{
+		float local = plane.Facing(points[i]); // Possibly call a different function for two sided collision? idk
+		int pos = (int) (local <= 0);
+		count += pos;
+		if (glm::abs(fools[pos].second) > glm::abs(local))
+		{
+			fools[pos].first = i;
+			fools[pos].second = local;
+		}
+		/*
+		if (local < 0) // on opposite sides, definitely a collision
+		{
+			if (local < pos.second)
+			{
+				pos.first = i;
+				pos.second = local;
+			}
+		}
+		else
+		{
+			sign = glm::min(sign, local); // I don't know why this is here
+		}*/
+	}
+
+	if (fools[0].first == 9 || fools[1].first == 9) // All the points are on the same side
+	{
+		return false;
+	}
+	std::cout << count << std::endl;
+	if (distance > 0)
+	{
+		this->center += plane.GetNormal() * glm::abs(fools[1].second);
+	}
+	return true;
 }
 
 typedef OrientedBoundingBox OBB;
