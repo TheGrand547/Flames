@@ -55,8 +55,9 @@ public:
 	// If no intersection is found, near and far hit are undefined
 	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
+	constexpr bool Overlap(const OrientedBoundingBox& other, Collision& result) const;
 	
-	constexpr void OverlapWithResponse(const OrientedBoundingBox& other);
+	constexpr bool OverlapWithResponse(const OrientedBoundingBox& other);
 
 	// TODO: constexpr
 	inline bool Intersection(const Plane& plane);
@@ -253,36 +254,11 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 // https://web.stanford.edu/class/cs273/refs/obb.pdf
 constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) const
 {
-	std::array<glm::vec3, 15> separatingAxes{};
-	for (std::size_t i = 0; i < 3; i++)
-	{
-		separatingAxes[i * 5] = this->axes[i].first;
-		separatingAxes[i * 5 + 1] = other.axes[i].first;
-		for (std::size_t j = 0; j < 3; j++)
-		{
-			separatingAxes[i * 5 + 2 + j] = glm::cross(this->axes[i].first, other.axes[j].first);
-		}
-	}
-	glm::vec3 delta = this->center - other.center;
-	for (glm::vec3 axis : separatingAxes)
-	{
-		float left = glm::abs(glm::dot(axis, delta));
-		float right = 0;
-		for (std::size_t i = 0; i < 3; i++)
-		{
-			right += glm::abs(this->axes[i].second * glm::dot(this->axes[i].first, axis));
-			right += glm::abs(other.axes[i].second * glm::dot(other.axes[i].first, axis));
-		}
-		// This axis is a separating one 
-		if (left > right)
-		{
-			return false;
-		}
-	}
-	return true;
+	Collision collide;
+	return this->Overlap(other, collide);
 }
 
-constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Collision& result) const
 {
 	std::array<glm::vec3, 15> separatingAxes{};
 	for (std::size_t i = 0; i < 3; i++)
@@ -295,7 +271,7 @@ constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 		}
 	}
 	glm::vec3 delta = this->center - other.center;
-	float min = INFINITY;
+	result.distance = INFINITY;
 	std::size_t index = 0;
 	for (std::size_t i = 0; i < separatingAxes.size(); i++)
 	{
@@ -311,19 +287,27 @@ constexpr void OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 		// This axis is a separating one 
 		if (left > right)
 		{
-			return;
+			return false;
 		}
-		if (min > right - left)
+		if (result.distance > right - left)
 		{
 			index = i;
-			min = right - left;
+			result.distance = right - left;
 		}
 	}
 	glm::vec3 normdir = glm::normalize(-delta); // direction here -> there
+	result.point = this->center + result.distance * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+	result.normal = separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+	return true;
+}
 
-	// min is the penetration depth? on axis separatingAxes[i]
-	// dot(normdir, separatingAxes) > 0 they are aligned and must not be flipped or something
-	this->center += min * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+{
+	Collision collide;
+	bool fool = this->Overlap(other, collide);
+	if (fool)
+		this->center = collide.point;
+	return fool;
 }
 
 inline bool OrientedBoundingBox::Intersection(const Plane& plane)
@@ -332,7 +316,7 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane)
 	glm::vec3 dist(this->axes[0].second, this->axes[1].second, this->axes[2].second);
 	
 	// Might be flat out wrong due to this shifting but whatever
-	if (distance < 0 || distance < glm::length(dist)) // Ensure that the box can always go from out to inbounds
+	if (distance < 0 || distance > glm::length(dist)) // Ensure that the box can always go from out to inbounds
 		return false;
 	// TODO: Another quick test for distance to weed out far plane misses
 
