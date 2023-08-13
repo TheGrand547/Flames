@@ -2,6 +2,7 @@
 #ifndef AXIS_ALIGNED_BOUNDING_BOX_H
 #define AXIS_ALIGNED_BOUNDING_BOX_H
 #include <glm/glm.hpp>
+#include <glm/ext/vector_common.hpp>
 #include <vector>
 #include "glmHelp.h"
 #include "Model.h"
@@ -128,7 +129,7 @@ inline constexpr void AABB::Center(const glm::vec3& point)
 inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale)
 {
 	glm::vec3 center = (this->positiveBound + this->negativeBound) / 2.0f;
-	this->positiveBound = (this->positiveBound - this->negativeBound) * scale;
+	this->positiveBound = (this->positiveBound - this->negativeBound) * glm::abs(scale);
 	this->Center(center);
 }
 
@@ -170,17 +171,7 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 
 constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)
 {
-	glm::vec3 min{}, max{};
-	// Check out glm/ext/vector_common min/max
-	min.x = glm::min(left.x, right.x);
-	min.y = glm::min(left.y, right.y);
-	min.z = glm::min(left.z, right.z);
-
-	max.x = glm::max(left.x, right.x);
-	max.y = glm::max(left.y, right.y);
-	max.z = glm::max(left.z, right.z);
-
-	return AABB(min, max);
+	return AABB(glm::fmin(left, right), glm::fmax(left, right));
 }
 
 constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
@@ -188,14 +179,8 @@ constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 	glm::vec3 min(INFINITY, INFINITY, INFINITY), max(-INFINITY, -INFINITY, -INFINITY);
 	for (int i = 0; i < points.size(); i++)
 	{
-		glm::vec3 point = points[i];
-		min.x = glm::min(min.x, point.x);
-		min.y = glm::min(min.y, point.y);
-		min.z = glm::min(min.z, point.z);
-
-		max.x = glm::max(max.x, point.x);
-		max.y = glm::max(max.y, point.y);
-		max.z = glm::max(max.z, point.z);
+		min = glm::fmin(min, points[i]);
+		max = glm::fmax(max, points[i]);
 	}
 	return AABB(min, max);
 }

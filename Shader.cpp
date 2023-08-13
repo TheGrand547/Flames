@@ -5,6 +5,7 @@
 #include <iterator>
 #include <map>
 #include <vector>
+#include "log.h"
 
 static std::map<std::string, std::string> shaderIncludeMapping;
 
@@ -15,13 +16,13 @@ static void ApplyShaderIncludes(std::string& data)
 	{
 		std::string current = std::format("#include \"{}\"\n", tag);
 		std::size_t index = data.find(current);
-		if (index)
+		if (index != std::string::npos)
 		{
-			data.replace(index, current.length(), mapping.c_str());
+			data.replace(index, current.length(), mapping);
 		}
 	}
 	std::size_t index = data.find("#include \"");
-	if (index)
+	if (index != std::string::npos)
 	{
 		std::size_t end = data.find("\"", index);
 		const std::size_t length = std::string("#include \"").length();
@@ -29,11 +30,10 @@ static void ApplyShaderIncludes(std::string& data)
 		Shader::IncludeInShaderFilesystem(path.filename().string(), data.substr(index + length, end - index - length));
 		std::string current = std::format("#include \"{}\"\n", path.filename().string());
 		index = data.find(current);
-		if (index)
+		if (index != std::string::npos)
 		{
 			data.replace(index, current.length(), shaderIncludeMapping[path.filename().string()].c_str());
 		}
-
 	}
 }
 
@@ -41,7 +41,7 @@ static GLuint CompileShader(GLenum type, std::string data)
 {
 	GLuint vertex = glCreateShader(type);
 	// TODO: Test this
-	//ApplyShaderIncludes(data);
+	ApplyShaderIncludes(data);
 
 	const char* raw = data.c_str();
 
@@ -337,18 +337,18 @@ void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std
 {
 	if (shaderIncludeMapping.find(virtualName) != shaderIncludeMapping.end())
 	{
-		std::cout << "Already created a mapping with the name '" << virtualName << "'." << std::endl;
+		LogF("Already created a mapping with the name '%s'.\n", virtualName.c_str());
 		return;
 	}
 	std::ifstream included(fileName, std::ifstream::in);
 	if (included.is_open())
 	{
-		std::cout << "Including file '" << fileName << "' in the virtual shader filesystem." << std::endl;
+		LogF("Including file '%s' in the virtual shader filesystem.\n", fileName.c_str());
 		std::string text(std::istreambuf_iterator<char>{included}, {});
 		shaderIncludeMapping[virtualName] = text;
 	}
 	else
 	{
-		std::cout << "Filename '" << fileName << "' could not be found." << std::endl;
+		LogF("Filename '%s' could not be found.\n", fileName.c_str());
 	}
 }

@@ -67,9 +67,9 @@ public:
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : center(0, 0, 0)
 {
-	this->axes[0] = std::make_pair(glm::vec3(1, 0, 0), deltas.x);
-	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), deltas.y);
-	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), deltas.z);
+	this->axes[0] = std::make_pair(glm::vec3(1, 0, 0), glm::abs(deltas.x));
+	this->axes[1] = std::make_pair(glm::vec3(0, 1, 0), glm::abs(deltas.y));
+	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), glm::abs(deltas.z));
 	this->Rotate(euler);
 }
 
@@ -168,7 +168,7 @@ inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
 {
 	for (int i = 0; i < 3; i++)
 	{
-		this->axes[i].second *= scale[i];
+		this->axes[i].second *= glm::abs(scale[i]);
 	}
 }
 
@@ -315,10 +315,8 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane)
 	float distance = plane.Facing(this->center);
 	glm::vec3 dist(this->axes[0].second, this->axes[1].second, this->axes[2].second);
 	
-	// Might be flat out wrong due to this shifting but whatever
 	if (distance < 0 || distance > glm::length(dist)) // Ensure that the box can always go from out to inbounds
 		return false;
-	// TODO: Another quick test for distance to weed out far plane misses
 
 	// Get the corner points
 	std::array<glm::vec3, 8> points{};

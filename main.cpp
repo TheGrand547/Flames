@@ -324,7 +324,7 @@ void display()
 			uniform.SetVec3("color", (box.color) ? colors : blue);
 			glLineWidth((box.color) ? wid * 1.5f : wid);
 			glPointSize((box.color) ? wid * 1.5f : wid);
-			//glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 
 			uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
 			//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
@@ -650,7 +650,9 @@ int main(int argc, char** argv)
 	}
 	glDisable(GL_MULTISAMPLE);
 
-	Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
+	// TODO: This noise stuff idk man
+	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
+	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
@@ -754,7 +756,7 @@ int main(int argc, char** argv)
 	{
 		walls.push_back(Wall(ref));
 		OBB project(ref);
-		project.Scale(glm::vec3(1, .25f, 1));
+		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
 		boxColor.push_back(false);
 	}
@@ -852,6 +854,8 @@ int main(int argc, char** argv)
 	smartBox.ReCenter(glm::vec3(2, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
 	smartBox.Rotate(glm::vec3(0, 0, 0));
+
+	std::cout << glm::min(glm::vec3(3, 2, 1), glm::vec3(1, 2, 3)) << std::endl;
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
