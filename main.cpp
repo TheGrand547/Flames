@@ -309,7 +309,7 @@ void display()
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
 		goober.Rotate(glm::radians(glm::vec3(-counter * 2.f, counter * 4.f, counter)));
-		uniform.SetMat4("Model", goober.GetModel().GetModelMatrix());
+		uniform.SetMat4("Model", goober.GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
@@ -320,7 +320,7 @@ void display()
 		//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		for (const auto& box: boxes)
 		{
-			uniform.SetMat4("Model", box.box.GetModel().GetModelMatrix());
+			uniform.SetMat4("Model", box.box.GetModelMatrix());
 			uniform.SetVec3("color", (box.color) ? colors : blue);
 			glLineWidth((box.color) ? wid * 1.5f : wid);
 			glPointSize((box.color) ? wid * 1.5f : wid);
@@ -332,7 +332,7 @@ void display()
 		}
 		glLineWidth(wid);
 		glPointSize(wid);
-		uniform.SetMat4("Model", smartBox.GetModel().GetModelMatrix());
+		uniform.SetMat4("Model", smartBox.GetModelMatrix());
 		uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
 		glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		glDrawArrays(GL_POINTS, 0, 8);
@@ -463,6 +463,7 @@ void idle()
 	if (!smartBox.Intersection(foobar))
 		counter++;
 		//std::cout << counter << std::endl;
+
 	smartBox.RotateAbout(glm::vec3(0, 0.05f, 0.03f), glm::vec3(0));
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
@@ -855,8 +856,6 @@ int main(int argc, char** argv)
 	smartBox.ReCenter(glm::vec3(2, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
 	smartBox.Rotate(glm::vec3(0, 0, 0));
-
-	std::cout << glm::min(glm::vec3(3, 2, 1), glm::vec3(1, 2, 3)) << std::endl;
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);

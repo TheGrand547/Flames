@@ -16,7 +16,6 @@ class OrientedBoundingBox
 {
 private:
 	// These are the basis vectors
-	// TODO: maybe store only the euler orientation? trivial reconstruction of the basis
 	glm::vec3 center;
 	// TODO: Store these better, hack fraud
 	std::array<std::pair<glm::vec3, float>, 3> axes;
@@ -31,6 +30,9 @@ public:
 	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) = default;
 
 	inline constexpr AABB GetAABB() const noexcept;
+
+	inline constexpr glm::mat4 GetModelMatrix() const noexcept;
+	inline constexpr glm::mat4 GetNormalMatrix() const noexcept;
 
 	inline constexpr glm::vec3 Forward() const noexcept;
 	inline constexpr glm::vec3 Up() const noexcept;
@@ -90,15 +92,6 @@ constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other)
 	this->axes[2] = std::make_pair(glm::vec3(0, 0, 1), temp.z);
 }
 
-inline Model OrientedBoundingBox::GetModel() const
-{
-	glm::mat4 mat(glm::vec4(this->axes[0].first, 0), glm::vec4(this->axes[1].first, 0),
-		glm::vec4(this->axes[2].first, 0), glm::vec4(0, 0, 0, 1));
-	glm::vec3 angles{ 0.f, 0.f, 0.f };
-	glm::extractEulerAngleXYZ(mat, angles.x, angles.y, angles.z);
-	return Model(this->center, glm::degrees(angles), glm::vec3(this->axes[0].second, this->axes[1].second, this->axes[2].second));
-}
-
 inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
 {
 	glm::vec3 deviation(0.f);
@@ -107,6 +100,21 @@ inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
 		deviation += glm::abs(axis.first) * axis.second;
 	}
 	return AABB(this->center - deviation, this->center + deviation);
+}
+
+inline constexpr glm::mat4 OrientedBoundingBox::GetModelMatrix() const noexcept
+{
+	glm::mat4 model = this->GetNormalMatrix();
+	for (auto i = 0; i < 3; i++)
+		model[i] *= this->axes[i].second;
+	return model;
+}
+
+inline constexpr glm::mat4 OrientedBoundingBox::GetNormalMatrix() const noexcept
+{
+	glm::mat4 normal(glm::vec4(this->axes[0].first, 0), glm::vec4(this->axes[1].first, 0),
+					glm::vec4(this->axes[2].first, 0), glm::vec4(this->center, 1));
+	return normal;
 }
 
 inline constexpr glm::vec3 OrientedBoundingBox::Forward() const noexcept
@@ -133,6 +141,15 @@ inline constexpr glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t)
 inline constexpr glm::vec3 OrientedBoundingBox::Center() const noexcept
 {
 	return this->center;
+}
+
+inline Model OrientedBoundingBox::GetModel() const
+{
+	glm::mat4 mat(glm::vec4(this->axes[0].first, 0), glm::vec4(this->axes[1].first, 0),
+		glm::vec4(this->axes[2].first, 0), glm::vec4(0, 0, 0, 1));
+	glm::vec3 angles{ 0.f, 0.f, 0.f };
+	glm::extractEulerAngleXYZ(mat, angles.x, angles.y, angles.z);
+	return Model(this->center, glm::degrees(angles), glm::vec3(this->axes[0].second, this->axes[1].second, this->axes[2].second));
 }
 
 inline constexpr void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
