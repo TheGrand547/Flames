@@ -314,20 +314,21 @@ void display()
 
 		float wid = 10;
 		//glGetFloatv(GL_LINE_WIDTH, &wid);
-		//glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
-		//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		for (const auto& box: boxes)
 		{
 			uniform.SetMat4("Model", box.box.GetModelMatrix());
-			uniform.SetVec3("color", (box.color) ? colors : blue);
+			uniform.SetVec3("color", (box.color) ? blue : colors);
 			glLineWidth((box.color) ? wid * 1.5f : wid);
 			glPointSize((box.color) ? wid * 1.5f : wid);
 			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 
+			uniform.SetVec3("color", (box.color) ? colors : blue);
 			uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
-			//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+			glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 			//glDrawArrays(GL_POINTS, 0, 8);
 		}
 		glLineWidth(wid);
@@ -422,6 +423,7 @@ std::vector<Wall> walls;
 // To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
 
 glm::vec3 rayStart, rayDir;
+void temp();
 
 bool smartBoxCollide(glm::vec3 forward, int depth = 0)
 {
@@ -463,8 +465,7 @@ void idle()
 	if (!smartBox.Intersection(foobar))
 		counter++;
 		//std::cout << counter << std::endl;
-
-	smartBox.RotateAbout(glm::vec3(0, 0.05f, 0.03f), glm::vec3(0));
+	smartBox.RotateAbout(glm::vec3(0, 0.05f, 0), glm::vec3(0));
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
@@ -628,6 +629,16 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = false; break;
 	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = false; break;
 	default: break;
+	}
+}
+
+void temp()
+{
+	glm::mat4 super(glm::transpose(smartBox.GetModelMatrix()));
+	std::cout << "\n\n\n";
+	for (int i = 0; i < 4; i++)
+	{
+		std::cout << "Thing: " << super[i] << std::endl;
 	}
 }
 
@@ -856,6 +867,7 @@ int main(int argc, char** argv)
 	smartBox.ReCenter(glm::vec3(2, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
 	smartBox.Rotate(glm::vec3(0, 0, 0));
+	std::cout << "End of test" << std::endl;
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
