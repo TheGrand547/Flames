@@ -463,6 +463,7 @@ void idle()
 	if (!smartBox.Intersection(foobar))
 		counter++;
 		//std::cout << counter << std::endl;
+	smartBox.RotateAbout(glm::vec3(0, 0.05f, 0.03f), glm::vec3(0));
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
@@ -475,7 +476,7 @@ void idle()
 	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
-	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft])
+	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft] || true)
 	{
 		smartBoxColor = false;
 		float a = (keyState[ArrowKeyDown]) ? -1.f : 1.f;

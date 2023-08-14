@@ -40,10 +40,12 @@ public:
 
 
 	inline constexpr void ReCenter(const glm::vec3& center) noexcept;
-	inline constexpr void Reorient(const glm::vec3& euler);
 	inline constexpr void Reorient(const glm::mat4& rotation);
-	inline constexpr void Rotate(const glm::vec3& euler);
+	inline constexpr void Reorient(const glm::vec3& euler);
 	inline constexpr void Rotate(const glm::mat4& rotation);
+	inline constexpr void Rotate(const glm::vec3& euler);
+	inline constexpr void RotateAbout(const glm::mat4& rotation, const glm::vec3& point);
+	inline constexpr void RotateAbout(const glm::vec3& euler, const glm::vec3& point);
 	inline constexpr void Scale(const glm::vec3& scale);
 	inline constexpr void Translate(const glm::vec3& distance) noexcept;
 
@@ -140,6 +142,7 @@ inline constexpr void OrientedBoundingBox::ReCenter(const glm::vec3& center) noe
 
 inline constexpr void OrientedBoundingBox::Reorient(const glm::vec3& euler)
 {
+	// TODO: Standardize using degrees or radians
 	this->Reorient(glm::eulerAngleXYZ(euler.x, euler.y, euler.z));
 }
 
@@ -151,17 +154,28 @@ inline constexpr void OrientedBoundingBox::Reorient(const glm::mat4& rotation)
 	this->Rotate(rotation);
 }
 
-inline constexpr void OrientedBoundingBox::Rotate(const glm::vec3& euler)
-{
-	this->Rotate(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)));
-}
-
 inline constexpr void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
 {
 	for (auto& each : this->axes)
 	{
 		each.first = glm::normalize(rotation * glm::vec4(each.first, 0));
 	}
+}
+
+inline constexpr void OrientedBoundingBox::Rotate(const glm::vec3& euler)
+{
+	this->Rotate(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)));
+}
+
+inline constexpr void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const glm::vec3& point)
+{
+	this->Rotate(rotation);
+	this->center = glm::vec3(rotation * glm::vec4(this->center - point, 0)) + point;
+}
+
+inline constexpr void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point)
+{
+	this->RotateAbout(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)), point);
 }
 
 inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
