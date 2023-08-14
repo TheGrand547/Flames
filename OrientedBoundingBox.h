@@ -16,6 +16,7 @@
 class OrientedBoundingBox
 {
 private:
+	// TODO: Worth investigating if a 3x3 matrix would suffice
 	glm::mat4 matrix;
 	glm::vec3 halfs;
 public:
@@ -70,7 +71,10 @@ public:
 	constexpr bool OverlapWithResponse(const OrientedBoundingBox& other);
 
 	// TODO: constexpr
-	inline bool Intersection(const Plane& plane);
+	inline bool IntersectionWithResponse(const Plane& plane);
+	inline bool Intersection(const Plane& plane) const;
+	inline bool Intersection(const Plane& plane, float& distance) const;
+	inline bool Intersection(const Plane& plane, Collision& out) const;
 
 	inline Model GetModel() const;
 };
@@ -325,13 +329,22 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 	return fool;
 }
 
-inline bool OrientedBoundingBox::Intersection(const Plane& plane)
+inline bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision) const
 {
-	float distance = plane.Facing(this->matrix[3]);
-	
-	if (distance < 0 || distance > glm::length(this->halfs)) // Ensure that the box can always go from out to inbounds
-		return false;
+	collision.distance = plane.Facing(this->matrix[3]);
+	collision.normal = plane.GetNormal();
 
+	// TODO: Make one-sided collision conditional
+	if (collision.distance < 0 || collision.distance > glm::length(this->halfs)) // Ensure that the box can always go from out to inbounds
+		return false;
+	float other = 0.f;
+	for (glm::length_t i = 0; i < 3; i++)
+		other += glm::abs(glm::dot(glm::vec3(this->matrix[i] * this->halfs[i]), plane.GetNormal()));
+	collision.distance = other - collision.distance;
+	collision.point = this->Center() + glm::sign(collision.distance) * collision.normal; // This might be wrong?
+
+	return collision.distance > 0;
+	/*
 	// Get the corner points
 	std::array<glm::vec3, 8> points{};
 	points.fill(this->matrix[3]);
@@ -360,19 +373,6 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane)
 			fools[pos].first = i;
 			fools[pos].second = local;
 		}
-		/*
-		if (local < 0) // on opposite sides, definitely a collision
-		{
-			if (local < pos.second)
-			{
-				pos.first = i;
-				pos.second = local;
-			}
-		}
-		else
-		{
-			sign = glm::min(sign, local); // I don't know why this is here
-		}*/
 	}
 
 	if (fools[0].first == 9 || fools[1].first == 9) // All the points are on the same side
@@ -384,8 +384,35 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane)
 	{
 		this->matrix[3] += glm::vec4(plane.GetNormal() * glm::abs(fools[1].second), 0);
 	}
-	return true;
+	return true;*/
 }
+
+inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const
+{
+	Collision collision{};
+	bool result = this->Intersection(plane, collision);
+	distance = collision.distance;
+	return result;
+}
+
+inline bool OrientedBoundingBox::Intersection(const Plane& plane) const
+{
+	Collision collision{};
+	return this->Intersection(plane, collision);
+}
+
+inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane)
+{
+	float distance = 0.f;
+	bool result = this->Intersection(plane, distance);
+	//std::cout << std::boolalpha << result << std::endl;
+	if (result)
+	{
+		this->matrix[3] += glm::vec4(plane.GetNormal() * glm::abs(distance), 0);
+	}
+	return result;
+}
+
 
 typedef OrientedBoundingBox OBB;
 /*
