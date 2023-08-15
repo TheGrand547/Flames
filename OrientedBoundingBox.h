@@ -331,60 +331,21 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 
 inline bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision) const
 {
-	collision.distance = plane.Facing(this->matrix[3]);
+	float delta = plane.Facing(this->matrix[3]);
 	collision.normal = plane.GetNormal();
 
-	// TODO: Make one-sided collision conditional
-	if (collision.distance < 0 || collision.distance > glm::length(this->halfs)) // Ensure that the box can always go from out to inbounds
+	// Ensure that the box can always go from out to inbounds
+	if (!plane.TwoSided() && (delta < 0 || delta > glm::length(this->halfs)))
 		return false;
-	float other = 0.f;
-	for (glm::length_t i = 0; i < 3; i++)
-		other += glm::abs(glm::dot(glm::vec3(this->matrix[i] * this->halfs[i]), plane.GetNormal()));
-	collision.distance = other - collision.distance;
-	collision.point = this->Center() + glm::sign(collision.distance) * collision.normal; // This might be wrong?
 
-	return collision.distance > 0;
-	/*
-	// Get the corner points
-	std::array<glm::vec3, 8> points{};
-	points.fill(this->matrix[3]);
-	for (glm::length_t i = 0; i < 3; i++)
-	{
-		glm::length_t place = 1ull << i;
-		glm::vec3 dir = this->matrix[i] * this->halfs[i];
-		for (glm::length_t j = 0; j < 8; j++)
-		{
-			points[j] += dir;
-			if (j & place)
-				dir *= -1;
-		}
-	}
-	float sign = distance;
-	std::array<std::pair<glm::length_t, float>, 2> fools;
-	fools.fill({ 9, INFINITY});
-	int count = 0;
-	for (glm::length_t i = 0; i < 8; i++)
-	{
-		float local = plane.Facing(points[i]); // Possibly call a different function for two sided collision? idk
-		int pos = (int) (local <= 0);
-		count += pos;
-		if (glm::abs(fools[pos].second) > glm::abs(local))
-		{
-			fools[pos].first = i;
-			fools[pos].second = local;
-		}
-	}
+	float projected = 0.f;
 
-	if (fools[0].first == 9 || fools[1].first == 9) // All the points are on the same side
-	{
-		return false;
-	}
-	std::cout << count << std::endl;
-	if (distance > 0)
-	{
-		this->matrix[3] += glm::vec4(plane.GetNormal() * glm::abs(fools[1].second), 0);
-	}
-	return true;*/
+	for (glm::length_t i = 0; i < 3; i++)
+		projected += glm::abs(glm::dot(glm::vec3(this->matrix[i] * this->halfs[i]), plane.GetNormal()));
+
+	collision.distance = projected - glm::abs(delta);
+	collision.point = this->Center() + glm::sign(delta) * glm::abs(collision.distance) * collision.normal; // This might be wrong?
+	return glm::abs(projected) > glm::abs(delta);
 }
 
 inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const
@@ -403,12 +364,11 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane) const
 
 inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane)
 {
-	float distance = 0.f;
-	bool result = this->Intersection(plane, distance);
-	//std::cout << std::boolalpha << result << std::endl;
+	Collision collision{};
+	bool result = this->Intersection(plane, collision);
 	if (result)
 	{
-		this->matrix[3] += glm::vec4(plane.GetNormal() * glm::abs(distance), 0);
+		this->matrix[3] = glm::vec4(collision.point, 1);
 	}
 	return result;
 }

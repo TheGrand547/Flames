@@ -462,6 +462,7 @@ void idle()
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
+	//foobar.ToggleTwoSided();
 	if (!smartBox.IntersectionWithResponse(foobar))
 		counter++;
 		//std::cout << counter << std::endl;
