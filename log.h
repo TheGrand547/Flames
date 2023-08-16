@@ -1,6 +1,7 @@
 #pragma once
 #ifndef FLAMES_LOG_H
 #define FLMAES_LOG_H
+#include <iostream>
 
 #ifdef _WIN64
 #define FILEPATH_SLASH '\\'

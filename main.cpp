@@ -134,7 +134,8 @@ std::array<glm::vec3, 10> stick{
 };
 
 GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
-GLuint stickBuf;// , stickVAO;
+
+Buffer stickBuffer;
 VAO stickVAO;
 
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
@@ -295,8 +296,11 @@ void display()
 		dither.SetVec3("color", color);
 		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
 	}
+
+	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
-	stickVAO.BindArrayObject();
+	stickVAO.BindArrayBuffer(stickBuffer);
+
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
@@ -701,8 +705,9 @@ int main(int argc, char** argv)
 
 	glGenBuffers(1, &triVBO);
 	glGenBuffers(1, &planeBO);
-	glGenBuffers(1, &stickBuf);
 	glGenBuffers(1, &texturedPlane);
+
+
 	ColoredVertex data[] = {
 		{{-0.5, -0.5, 0}, {1, 0, 0}},
 		{{0.5, -0.5, 0}, {0, 1, 0}},
@@ -711,13 +716,15 @@ int main(int argc, char** argv)
 	glBindBuffer(GL_ARRAY_BUFFER, triVBO);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(ColoredVertex) * 3, data, GL_STATIC_DRAW);
 
-	glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
+	stickBuffer.Generate(ArrayBuffer);
+	stickBuffer.BufferData(stick, StaticDraw);
+	//glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
 
 	CheckError();
 
 	stickVAO.Generate();
-	stickVAO.FillArray<Vertex>(uniform);
+	stickVAO.FillArray2<Vertex>(uniform);
 
 
 	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);

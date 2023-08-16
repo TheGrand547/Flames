@@ -7,6 +7,7 @@
 #include <type_traits>
 #include <typeinfo>
 #include <vector>
+#include "Buffer.h"
 #include "log.h"
 #include "Shader.h"
 #include "Vertex.h"
@@ -89,17 +90,20 @@ class VertexArray
 {
 protected:
 	GLuint array;
+	GLsizei stride;
 	//template<typename T> void FillArrayInternal(Shader& shader, std::size_t stride, std::size_t current, const std::string& first);
 public:
-	constexpr VertexArray(GLuint array = 0);
+	constexpr VertexArray(GLuint array = 0, GLsizei stride = 0);
 	~VertexArray();
 
 	void CleanUp();
 	inline void BindArrayObject();
 	inline void Generate();
-
+	
+	inline void BindArrayBuffer(Buffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
 	template<class V> void FillArray(Shader& shader);
+	template<class V> void FillArray2(Shader& shader);
 	// TODO: Do this with specified indicies std::size_t
 	/*
 	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, const std::string& first, Args&&... args);
@@ -115,7 +119,7 @@ public:
 
 typedef VertexArray VAO;
 
-constexpr VertexArray::VertexArray(GLuint array) : array(array)
+constexpr VertexArray::VertexArray(GLuint array, GLsizei stride) : array(array), stride(stride)
 {
 
 }
@@ -130,6 +134,14 @@ inline void VertexArray::Generate()
 	this->CleanUp();
 	glGenVertexArrays(1, &this->array);
 }
+
+inline void VertexArray::BindArrayBuffer(Buffer& buffer, GLuint bindingPoint, GLintptr offset)
+{
+	glBindVertexArray(this->array);
+	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->stride);
+	CheckError();
+}
+
 // TODO: Maybe reinvestigate this later?
 /*
 template<typename T, typename... types, IsString... Args>
@@ -170,6 +182,16 @@ inline void VertexArray::FillArray<Vertex>(Shader& shader)
 	glBindVertexArray(this->array);
 	glVertexAttribPointer(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*) nullptr);
 	glEnableVertexArrayAttrib(this->array, shader.Index("vPos"));
+}
+
+template<>
+inline void VertexArray::FillArray2<Vertex>(Shader& shader)
+{
+	glBindVertexArray(this->array);
+	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribBinding(shader.Index("vPos"), 0); // TODO: NOT 0
+	glEnableVertexAttribArray(shader.Index("vPos"));
+	this->stride = sizeof(Vertex);
 }
 
 template<>

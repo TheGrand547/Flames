@@ -50,6 +50,8 @@ public:
 	Buffer(Buffer&& other) noexcept;
 	~Buffer();
 
+	inline GLuint GetBuffer() const;
+
 	std::size_t Size() const;
 
 	void CleanUp();
@@ -71,6 +73,10 @@ public:
 	template<class T> static void GenerateBuffers(std::map<T, Buffer>& buffers);
 };
 
+inline GLuint Buffer::GetBuffer() const
+{
+	return this->buffer;
+}
 
 template<class T> inline Buffer::Buffer(BufferType type, BufferAccess usage, const std::vector<T>& data) : bufferType(type)
 {
