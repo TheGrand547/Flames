@@ -140,7 +140,10 @@ VAO stickVAO;
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
 Texture2D texture, wallTexture;
 
-bool outlineBoxes = false;
+#define TIGHT_BOXES 0
+#define WIDE_BOXES 1
+std::array<bool, 2> debugFlags{};
+
 
 glm::vec3 offset(0, 1.5f, 0);
 glm::vec3 angles(0, 0, 0);
@@ -245,7 +248,6 @@ VAO rayVAO;
 OBB smartBox;
 bool smartBoxColor = false;
 
-//StaticOctTree<glm::vec3> tree;
 
 void display()
 {
@@ -301,7 +303,8 @@ void display()
 	uniform.SetVec3("color", colors);
 	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
 
-	if (outlineBoxes || !outlineBoxes)
+	// Debugging boxes
+	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
 		glm::vec3 blue(0, 0, 1);
 		glBindVertexArray(aabbVAO);
@@ -313,23 +316,29 @@ void display()
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
-		//glGetFloatv(GL_LINE_WIDTH, &wid);
-		glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		if (debugFlags[TIGHT_BOXES]) glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
-		glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+
+		if (debugFlags[WIDE_BOXES]) glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 		for (const auto& box: boxes)
 		{
-			uniform.SetMat4("Model", box.box.GetModelMatrix());
-			uniform.SetVec3("color", (box.color) ? blue : colors);
 			glLineWidth((box.color) ? wid * 1.5f : wid);
 			glPointSize((box.color) ? wid * 1.5f : wid);
-			glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-
-			uniform.SetVec3("color", (box.color) ? colors : blue);
-			uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
-			glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-			//glDrawArrays(GL_POINTS, 0, 8);
+			if (debugFlags[TIGHT_BOXES])
+			{
+				uniform.SetMat4("Model", box.box.GetModelMatrix());
+				uniform.SetVec3("color", (box.color) ? blue : colors);
+				glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+				glDrawArrays(GL_POINTS, 0, 8);
+			}
+			if (debugFlags[WIDE_BOXES])
+			{
+				uniform.SetVec3("color", (box.color) ? colors : blue);
+				uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
+				glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+				glDrawArrays(GL_POINTS, 0, 8);
+			}
 		}
 		glLineWidth(wid);
 		glPointSize(wid);
@@ -339,13 +348,14 @@ void display()
 		glDrawArrays(GL_POINTS, 0, 8);
 		glEnable(GL_CULL_FACE);
 	}
-
+	// Drawing of the rays
 	rayVAO.BindArrayObject();
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
 	glDrawArrays(GL_LINES, 0, 8);
 
+	// Sphere drawing
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	sphereShader.SetActiveShader();
@@ -367,11 +377,11 @@ void display()
 	
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
-	//glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 	sphereModel.translation = glm::vec3(0, 1.5f, 6.5f);
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	//glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
 	// Framebuffer stuff
 	CheckError();
@@ -542,13 +552,13 @@ void idle()
 
 void keyboard(unsigned char key, int x, int y)
 {
+	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
 	if (key == 'm' || key == 'M') offset.y += 3;
 	if (key == 'n' || key == 'N') offset.y -= 3;
-	if (key == 'q' || key == 'Q')
-		glutLeaveMainLoop();
-	if (key == 't' || key == 'T')
-		smartBox.ReCenter(glm::vec3(2, 1, 0)); //outlineBoxes = !outlineBoxes;
+	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
+	if (key == '1') debugFlags[TIGHT_BOXES] = !debugFlags[TIGHT_BOXES];
+	if (key == '2') debugFlags[WIDE_BOXES] = !debugFlags[WIDE_BOXES];
 	if (key == 'g' || key == 'G')
 		dummyFlag = !dummyFlag;
 	if (key == 'h' || key == 'H')
@@ -611,12 +621,15 @@ void mouseFunc(int x, int y)
 
 void specialKeys(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 {
+	// TODO: Investigate stuff relating to number pad keys
 	switch (key)
 	{
 	case GLUT_KEY_UP: keyState[ArrowKeyUp] = true; break;
 	case GLUT_KEY_DOWN: keyState[ArrowKeyDown] = true; break;
 	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = true; break;
 	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = true; break;
+	case GLUT_KEY_F1: debugFlags[TIGHT_BOXES] = !debugFlags[TIGHT_BOXES]; break;
+	case GLUT_KEY_F2: debugFlags[WIDE_BOXES] = !debugFlags[WIDE_BOXES]; break;
 	default: break;
 	}
 }
@@ -646,7 +659,7 @@ void temp()
 int main(int argc, char** argv)
 {
 	int error = 0;
-
+	debugFlags.fill(false);
 	// Glut
 	glutInit(&argc, argv);
 	glutInitContextVersion(4, 6);
