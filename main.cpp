@@ -32,13 +32,13 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 }
 
 // Cringe globals
-GLuint triVBO, planeBO, cubeIndex, aabbVAO;
+GLuint cubeIndex;
 Shader uniform;
-Buffer buffer;
+Buffer buffer, planeBO;
 
 UniformBuffer universal;
 
-VAO gamerTest, vertexVAO, sphereVAO;
+VAO gamerTest, sphereVAO;
 
 GLuint sphereBuf, sphereIndex, sphereCount;
 Shader sphereShader;
@@ -110,12 +110,14 @@ std::array<GLubyte, 24> cubeOutline =
 	3, 7,  4, 0, 
 };
 
-glm::vec3 plane[] =
-{
-	{ 1, 0,  1},
-	{ 1, 0, -1},
-	{-1, 0,  1},
-	{-1, 0, -1}
+// EW
+std::array<Vertex, 4> plane{
+	{
+		{ 1, 0,  1},
+		{ 1, 0, -1},
+		{-1, 0,  1},
+		{-1, 0, -1}
+	}
 };
 
 std::array<glm::vec3, 10> stick{
@@ -149,7 +151,7 @@ std::array<bool, 2> debugFlags{};
 glm::vec3 offset(0, 1.5f, 0);
 glm::vec3 angles(0, 0, 0);
 
-GLuint texturedPlane, texturedVAO;
+Buffer texturedPlane;
 
 static const std::array<GLubyte, 16 * 16> dither16 = {
 {
@@ -265,13 +267,12 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	uniform.SetActiveShader();
-	vertexVAO.BindArrayObject();
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
 
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(angles);
 
-	// Adding pi is necessary because the default camera is facing -z
+	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
 	universal.BufferSubData(view, 0);
 
@@ -279,7 +280,6 @@ void display()
 	wallTexture.BindTexture(0);
 	ditherTexture.BindTexture(1);
 
-	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
 	glm::vec3 colors(.5f, .5f, .5f);
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -311,7 +311,7 @@ void display()
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
 		glm::vec3 blue(0, 0, 1);
-		glBindVertexArray(aabbVAO);
+		stickVAO.BindArrayBuffer(buffer);
 
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
@@ -353,7 +353,7 @@ void display()
 		glEnable(GL_CULL_FACE);
 	}
 	// Drawing of the rays
-	rayVAO.BindArrayObject();
+	stickVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
@@ -402,10 +402,10 @@ void display()
 	CheckError();
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", 0);
+
+
 	glBindVertexArray(frameVAO);
-	CheckError();
 	glDrawArrays(GL_TRIANGLES, 0, 6);
-	CheckError();
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -437,7 +437,6 @@ std::vector<Wall> walls;
 // To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
 
 glm::vec3 rayStart, rayDir;
-void temp();
 
 bool smartBoxCollide(glm::vec3 forward, int depth = 0)
 {
@@ -650,16 +649,6 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	}
 }
 
-void temp()
-{
-	glm::mat4 super(glm::transpose(smartBox.GetModelMatrix()));
-	std::cout << "\n\n\n";
-	for (int i = 0; i < 4; i++)
-	{
-		std::cout << "Thing: " << super[i] << std::endl;
-	}
-}
-
 int main(int argc, char** argv)
 {
 	int error = 0;
@@ -699,75 +688,49 @@ int main(int argc, char** argv)
 	wallTexture.Load("flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
-	// Set up VBO/VAO
-	glGenVertexArrays(1, &aabbVAO);
-	glGenVertexArrays(1, &texturedVAO);
-
-	glGenBuffers(1, &triVBO);
-	glGenBuffers(1, &planeBO);
-	glGenBuffers(1, &texturedPlane);
-
-
-	ColoredVertex data[] = {
-		{{-0.5, -0.5, 0}, {1, 0, 0}},
-		{{0.5, -0.5, 0}, {0, 1, 0}},
-		{{0, 0.5, 0}, {0, 0, 1}}
-	};
-	glBindBuffer(GL_ARRAY_BUFFER, triVBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(ColoredVertex) * 3, data, GL_STATIC_DRAW);
-
 	stickBuffer.Generate(ArrayBuffer);
 	stickBuffer.BufferData(stick, StaticDraw);
-	//glBindBuffer(GL_ARRAY_BUFFER, stickBuf);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * stick.size(), stick.data(), GL_STATIC_DRAW);
 
 	CheckError();
 
 	stickVAO.Generate();
-	stickVAO.FillArray2<Vertex>(uniform);
+	stickVAO.FillArray<Vertex>(uniform);
 
 
-	glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
-	TextureVertex verts[4] = {};
+	//glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
+	std::array<TextureVertex, 4> verts{};
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
 	verts[0].coordinates = glm::vec2(1, 1);
 	verts[1].coordinates = glm::vec2(1, 0);
 	verts[2].coordinates = glm::vec2(0, 1);
 	verts[3].coordinates = glm::vec2(0, 0);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
+	texturedPlane.Generate(ArrayBuffer);
+	texturedPlane.BufferData(verts, StaticDraw);
+	//glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
 
 	CheckError();
 	gamerTest.Generate();
-	CheckError();
 	gamerTest.FillArray<TextureVertex>(dither);
 	CheckError();
 
+	planeBO.Generate(ArrayBuffer);
+	planeBO.BufferData(plane, StaticDraw);
+	/*
 	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);*/
 	CheckError();
-
-
-	vertexVAO.Generate();
-	vertexVAO.FillArray<Vertex>(uniform);
 
 	buffer.Generate(ArrayBuffer);
 	buffer.BufferData(plainCubeVerts, StaticDraw);
 
 	buffer.BindBuffer();
-	glBindVertexArray(aabbVAO);
-	glVertexAttribPointer(uniform.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(glm::vec3), nullptr);
-	glEnableVertexArrayAttrib(aabbVAO, uniform.Index("vPos"));
-	glBindVertexArray(0);
 
 	CheckError();
 
 	std::array<glm::vec3, 8> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
 	rayBuffer.Generate(ArrayBuffer);
 	rayBuffer.BufferData(gobs, StaticDraw);
-	rayBuffer.BindBuffer();
-	rayVAO.Generate();
-	rayVAO.FillArray<Vertex>(uniform);
 
 	for (int i = -5; i <= 5; i++)
 	{
@@ -888,7 +851,6 @@ int main(int argc, char** argv)
 	smartBox.ReCenter(glm::vec3(2, 1, 0));
 	smartBox.Scale(glm::vec3(0.5f));
 	smartBox.Rotate(glm::vec3(0, 0, 0));
-	std::cout << "End of test" << std::endl;
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);

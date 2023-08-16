@@ -103,7 +103,7 @@ public:
 	inline void BindArrayBuffer(Buffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
 	template<class V> void FillArray(Shader& shader);
-	template<class V> void FillArray2(Shader& shader);
+	//template<class V> void FillArray2(Shader& shader);
 	// TODO: Do this with specified indicies std::size_t
 	/*
 	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, const std::string& first, Args&&... args);
@@ -178,14 +178,6 @@ template<typename T> inline void VertexArray::FillArray(Shader& shader, std::siz
 
 template<>
 inline void VertexArray::FillArray<Vertex>(Shader& shader)
-{
-	glBindVertexArray(this->array);
-	glVertexAttribPointer(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (const void*) nullptr);
-	glEnableVertexArrayAttrib(this->array, shader.Index("vPos"));
-}
-
-template<>
-inline void VertexArray::FillArray2<Vertex>(Shader& shader)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);

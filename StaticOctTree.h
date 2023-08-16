@@ -244,9 +244,8 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 {
 	for (std::size_t i = 0; i < 8; i++)
 	{
-		glm::vec3 c = this->internals[i].GetCenter();
-		glm::vec3 d = this->internals[i].Deviation();
-		//std::cout << c - d << ": " << c + d << std::endl;
+		glm::vec3 center = this->internals[i].GetCenter();
+		glm::vec3 deviation = this->internals[i].Deviation();
 		if (this->internals[i].Contains(box))
 		{
 			if (this->depth + 1 < MAX_OCT_TREE_DEPTH)
@@ -260,7 +259,6 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 			}
 		}
 	}
-	std::cout << "Inserted at Depth: " << this->depth << std::endl;
 	this->objects.push_back({ box, element });
 }
 
