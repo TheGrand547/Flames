@@ -18,19 +18,19 @@ void main()
 {
 	fNormOut = abs(fNorm);
 
-	float ambient = 0.2f; // TODO: material setting
+	float ambient = 0.25f; // TODO: material setting
 	vec3 ambientColor = lightColor * ambient;
 	
 	vec3 norm = fNorm.xyz;
 	vec3 lightDir = normalize(lightPos - fPos);
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
-	vec3 diffuseColor = diffuse * lightColor;
+	vec3 diffuseColor = max(ambient, (ceil(diffuse * 6) - 1) / 5) * lightColor;
 	
 	vec3 viewDirection = normalize(viewPos - fPos);
 	vec3 reflected = reflect(-lightDir, norm);
 
-	float specular = pow(max(dot(viewDirection, reflected), 0.0), 4); // TODO: Specular setting
+	float specular = pow(max(dot(viewDirection, reflected), 0.0), 6); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
 	vec3 result = shapeColor * (ambientColor + diffuseColor);
@@ -58,10 +58,13 @@ void main()
 		{
 			hatchVal = hatch.b;
 		}
-		fColor = vec4(hatchVal * result, 1);
+		//fColor = vec4(hatchVal * result, 1);
 	}
 	else
 	{
+		//result = (round(result * 5) - 1) / 4;
 		fColor = vec4(result, 1.0);
 	}
+	//result = (ceil(result * 5) - 1) / 4;
+	fColor = vec4(result, 1.0);
 }

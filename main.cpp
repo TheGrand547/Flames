@@ -32,7 +32,6 @@ template <class T> inline void CombineVector(std::vector<T>& left, const std::ve
 }
 
 // Cringe globals
-GLuint cubeIndex;
 Shader uniform;
 Buffer buffer, planeBO;
 
@@ -237,7 +236,6 @@ struct Dummy
 	bool color;
 };
 
-//std::vector<OBB> boxes;
 StaticOctTree<Dummy> boxes(glm::vec3(20));
 std::vector<bool> boxColor;
 
@@ -398,7 +396,7 @@ void display()
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);
 	framebufferNormal.BindTexture(0);
-	//framebufferDepth.Bind(0);
+	//framebufferDepth.BindTexture(0);
 	CheckError();
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", 0);
@@ -649,6 +647,11 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	}
 }
 
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
+{
+	printf("%u: %s\n", id, message);
+}
+
 int main(int argc, char** argv)
 {
 	int error = 0;
@@ -669,6 +672,9 @@ int main(int argc, char** argv)
 		return -1;
 	}
 	glDisable(GL_MULTISAMPLE);
+	glEnable(GL_DEBUG_OUTPUT);
+	CheckError();
+	glDebugMessageCallback(DebugCallback, nullptr);
 
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
