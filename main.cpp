@@ -342,14 +342,17 @@ void display()
 				glDrawArrays(GL_POINTS, 0, 8);
 			}
 		}
-		glLineWidth(wid);
-		glPointSize(wid);
-		uniform.SetMat4("Model", smartBox.GetModelMatrix());
-		uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-		glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-		glDrawArrays(GL_POINTS, 0, 8);
-		glEnable(GL_CULL_FACE);
 	}
+	// Alfred
+	stickVAO.BindArrayBuffer(buffer);
+	glLineWidth(19.f);
+	glPointSize(19.f);
+	uniform.SetMat4("Model", smartBox.GetModelMatrix());
+	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
+	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+	glDrawArrays(GL_POINTS, 0, 8);
+
+
 	// Drawing of the rays
 	stickVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
@@ -414,7 +417,7 @@ void display()
 	expand.SetTextureUnit("screen", 0);
 	expand.SetTextureUnit("edges", 1);
 	expand.SetTextureUnit("depths", 2);
-	expand.SetInt("depth", 2);
+	expand.SetInt("depth", 5);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	
@@ -436,7 +439,7 @@ std::vector<Wall> walls;
 
 glm::vec3 rayStart, rayDir;
 
-bool smartBoxCollide(glm::vec3 forward, int depth = 0)
+bool smartBoxCollide(int depth = 0)
 {
 	if (depth > 4)
 		return true;
@@ -474,11 +477,13 @@ void idle()
 	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
 	//foobar.ToggleTwoSided();
-	if (!smartBox.IntersectionWithResponse(foobar))
-		counter++;
+	//if (!smartBox.IntersectionWithResponse(foobar))
+		//sacounter++;
 		//std::cout << counter << std::endl;
-	//smartBox.RotateAbout(glm::vec3(0, 0.05f, 0), glm::vec3(0));
-
+	//smartBox.RotateAbout(glm::vec3(0.05f, 0.07f, -0.09f), glm::vec3(0, -5, 0));
+	smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
+	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
+	//smartBoxColor = smartBoxCollide();
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
@@ -490,19 +495,6 @@ void idle()
 	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
-	if (keyState[ArrowKeyUp] || keyState[ArrowKeyDown] || keyState[ArrowKeyRight] || keyState[ArrowKeyLeft] || true)
-	{
-		smartBoxColor = false;
-		float a = (keyState[ArrowKeyDown]) ? -1.f : 1.f;
-		smartBoxColor = smartBoxCollide(a * smartBox.Forward() * speed);
-		/*
-		for (auto& wall : boxes)
-		{
-			smartBoxColor |= smartBox.Overlap(wall.box);
-			smartBox.OverlapWithResponse(wall.box, a * smartBox.Forward() * speed);
-			//if (smartBoxColor) break;
-		}*/
-	}
 	if (keyState['p'] || keyState['P'])
 		std::cout << previous << std::endl;
 	if (keyState['w'] || keyState['W'])
@@ -649,7 +641,7 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
-	printf("%u: %s\n", id, message);
+	//printf("%u: %s\n", id, message);
 }
 
 int main(int argc, char** argv)
@@ -735,6 +727,11 @@ int main(int argc, char** argv)
 	CheckError();
 
 	std::array<glm::vec3, 8> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
+	gobs.fill(glm::vec3(0, -5, 0));
+	gobs[0] += glm::vec3(1, 0, 0);
+	gobs[1] += glm::vec3(-1, 0, 0);
+	gobs[2] += glm::vec3(0, 0, 1);
+	gobs[3] += glm::vec3(0, 0, -1);
 	rayBuffer.Generate(ArrayBuffer);
 	rayBuffer.BufferData(gobs, StaticDraw);
 
@@ -797,16 +794,16 @@ int main(int argc, char** argv)
 
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
-	framebufferColor.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
+	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	framebufferDepth.CreateEmpty(1000, 1000, InternalDepth);
-	framebufferDepth.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
+	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	framebufferNormal.CreateEmpty(1000, 1000, InternalRGBA);
-	framebufferNormal.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
+	framebufferNormal.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	normalModifier.CreateEmpty(1000, 1000, InternalRGBA);
-	normalModifier.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
+	normalModifier.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	// TODO: Framebuffer class to do this stuff
 	// TODO: Renderbuffer for buffers that don't need to be directly read

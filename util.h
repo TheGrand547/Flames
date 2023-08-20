@@ -3,7 +3,8 @@
 #define UTIL_H
 #include "glmHelp.h"
 
-#define EPSILON 0.000001f
+#define EPSILON std::numeric_limits<float>::epsilon()
+#define D_EPSILON std::numeric_limits<double>::epsilon()
 
 inline glm::vec3 SlideAlongPlane(const glm::vec3& plane, const glm::vec3& direction) noexcept;
 

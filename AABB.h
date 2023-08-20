@@ -4,8 +4,10 @@
 #include <glm/glm.hpp>
 #include <glm/ext/vector_common.hpp>
 #include <vector>
+#include "Collidable.h"
 #include "glmHelp.h"
 #include "Model.h"
+#include "util.h"
 
 class AABB
 {
@@ -44,6 +46,10 @@ public:
 	inline constexpr bool PointInside(const glm::vec3& point) const;
 	inline constexpr bool Overlap(const AABB& other) const;
 	inline constexpr bool Contains(const AABB& other) const;
+
+	// TODO: Other forms without both collisions y'know
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
+	constexpr bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const;
 
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
@@ -167,6 +173,111 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 	bool yInside = this->negativeBound.y <= other.negativeBound.y && this->positiveBound.y >= other.positiveBound.y;
 	bool zInside = this->negativeBound.z <= other.negativeBound.z && this->positiveBound.z >= other.positiveBound.z;
 	return xInside && yInside && zInside;
+}
+
+// Modified version of the OBB code to be in theory "better", ie faster
+constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
+{
+	nearHit.Clear();
+	farHit.Clear();
+	nearHit.distance = -std::numeric_limits<float>::infinity();
+	farHit.distance = std::numeric_limits<float>::infinity();
+
+	glm::vec3 center = this->GetCenter();
+	glm::vec3 deviation = this->Deviation();
+
+	for (auto i = 0; i < 3; i++)
+	{
+		float scale = deviation[i];
+		float parallel = (center - point)[i];
+		if (glm::abs(dir[i]) < EPSILON)
+		{
+			if (-parallel - scale > 0 || -parallel + scale > 0)
+			{
+				return false;
+			}
+		}
+
+		float scaling = dir[i];
+		float param0 = (parallel + scale) / scaling;
+		float param1 = (parallel - scale) / scaling;
+
+		if (param0 > param1)
+		{
+			std::swap(param0, param1);
+		}
+		if (param0 > nearHit.distance)
+		{
+			nearHit.distance = param0;
+			nearHit.normal = glm::vec3(i == 0, i == 1, i == 2);
+		}
+		if (param1 < farHit.distance)
+		{
+			farHit.distance = param1;
+			farHit.normal = glm::vec3(i == 0, i == 1, i == 2);
+		}
+		if (nearHit.distance > farHit.distance)
+		{
+			return false;
+		}
+		if (farHit.distance < 0)
+		{
+			return false;
+		}
+	}
+	nearHit.point = nearHit.distance * dir + point;
+	farHit.point = farHit.distance * dir + point;
+	if (nearHit.distance < 0)
+	{
+		std::swap(nearHit, farHit);
+	}
+	return true;
+}
+
+inline constexpr bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
+{
+	glm::vec3 delta = glm::vec3(this->GetCenter()) - point;
+	glm::vec3 deviation = this->Deviation();
+	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
+
+	for (auto i = 0; i < 3; i++)
+	{
+		float scale = deviation[i];
+		float parallel = delta[i];
+		if (glm::abs(dir[i]) < EPSILON)
+		{
+			if (-parallel - scale > 0 || -parallel + scale > 0)
+			{
+				return false;
+			}
+		}
+
+		float scaling = dir[i];
+		float param0 = (parallel + scale) / scaling;
+		float param1 = (parallel - scale) / scaling;
+
+		if (param0 > param1)
+		{
+			std::swap(param0, param1);
+		}
+		if (param0 > nearHit)
+		{
+			nearHit = param0;
+		}
+		if (param1 < farHit)
+		{
+			farHit = param1;
+		}
+		if (nearHit > farHit)
+		{
+			return false;
+		}
+		if (farHit < 0)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)

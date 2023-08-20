@@ -69,6 +69,7 @@ public:
 	typename std::list<T>::const_iterator cend() { return this->items.cend(); }
 
 	std::list<Item> Search(const AABB& area);
+	std::list<Item> DepthSearch(const AABB& area);
 
 	constexpr std::size_t size() const { return this->items.size(); }
 
@@ -103,6 +104,14 @@ template<class T>
 inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::Search(const AABB& area)
 {
 	return this->root.Search(area);
+}
+
+template<class T>
+inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::DepthSearch(const AABB& area)
+{
+	std::list<typename std::list<T>::iterator> temp = this->root.Search(area);
+	// TODO: Depth based sort
+	return temp;
 }
 
 template<class T>

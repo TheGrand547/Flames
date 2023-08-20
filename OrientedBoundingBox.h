@@ -54,6 +54,10 @@ public:
 	inline constexpr void Scale(const glm::vec3& scale);
 	inline void Translate(const glm::vec3& distance) noexcept;
 
+	// TODO: Move these to the classes in lines.h
+	// Don't do any of the extra math beyond determining if an intersection occurs
+	inline constexpr bool FastIntersect(const glm::vec3& start, const glm::vec3& dir) const;
+
 	inline constexpr bool Intersect(const glm::vec3& origin, const glm::vec3& dir) const;
 	
 	// If no intersection is found, distance is undefined
@@ -170,9 +174,15 @@ inline void OrientedBoundingBox::Rotate(const glm::vec3& euler)
 
 inline void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const glm::vec3& point)
 {
+	// TODO: Something feels wrong about this
+	//this->matrix = ((this->matrix * glm::translate(glm::mat4(1), point)) * rotation) * glm::translate(glm::mat4(1), -point);
+	//this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
+	this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
+	/*
 	glm::vec4 center = glm::vec4(glm::vec3(rotation * glm::vec4(glm::vec3(this->matrix[3]) - point, 0)) + point, 1);
 	this->Rotate(rotation);
 	this->matrix[3] = center;
+	*/
 }
 
 inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point)
@@ -188,6 +198,51 @@ inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
 inline void OrientedBoundingBox::Translate(const glm::vec3& distance) noexcept
 {
 	this->matrix[3] += glm::vec4(distance, 0);
+}
+
+inline constexpr bool OrientedBoundingBox::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
+{
+	glm::vec3 delta = glm::vec3(this->matrix[3]) - point;
+	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
+	for (auto i = 0; i < 3; i++)
+	{
+		glm::vec3 axis = this->matrix[i];
+		float scale = this->halfs[i];
+		float parallel = glm::dot(axis, delta);
+		if (glm::abs(glm::dot(dir, axis)) < EPSILON)
+		{
+			if (-parallel - scale > 0 || -parallel + scale > 0)
+			{
+				return false;
+			}
+		}
+
+		float scaling = glm::dot(axis, dir);
+		float param0 = (parallel + scale) / scaling;
+		float param1 = (parallel - scale) / scaling;
+
+		if (param0 > param1)
+		{
+			std::swap(param0, param1);
+		}
+		if (param0 > nearHit)
+		{
+			nearHit = param0;
+		}
+		if (param1 < farHit)
+		{
+			farHit = param1;
+		}
+		if (nearHit > farHit)
+		{
+			return false;
+		}
+		if (farHit < 0)
+		{
+			return false;
+		}
+	}
+	return true;
 }
 
 inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir) const
@@ -218,14 +273,13 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 	nearHit.distance = -std::numeric_limits<float>::infinity();
 	farHit.distance = std::numeric_limits<float>::infinity();
 
-	glm::vec3 center = this->matrix[3];
+	glm::vec3 delta = glm::vec3(this->matrix[3]) - point;
 
-	//for (const auto& axis : this->axes)
 	for (auto i = 0; i < 3; i++)
 	{
 		glm::vec3 axis = this->matrix[i];
 		float scale = this->halfs[i];
-		float parallel = glm::dot(axis, center - point);
+		float parallel = glm::dot(axis, delta);
 		if (glm::abs(glm::dot(dir, axis)) < EPSILON)
 		{
 			if (-parallel - scale > 0 || -parallel + scale > 0)

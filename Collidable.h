@@ -2,7 +2,7 @@
 #ifndef COLLIDABLE_H
 #define COLLIDABLE_H
 #include <glm/glm.hpp>
-#include "AABB.h"
+//#include "AABB.h"
 
 struct Collision
 {
@@ -29,10 +29,11 @@ struct Collision
 	Collision& operator=(const Collision& other) = default;
 };
 
+/*
 class Collidable
 {
 	virtual bool Collide() const = 0;
 	virtual AABB GetBoundingBox() const = 0;
 };
-
+*/
 #endif // COLLIDABLE_H
