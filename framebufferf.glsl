@@ -20,7 +20,8 @@ void main()
 	}
 	float large = max(abs(fColor.x), max(abs(fColor.y), abs(fColor.z)));
 	
-	fColor = 1 - vec4(step(0.5, large));
+	//fColor = 1 - vec4(step(0.5, large));
+	fColor = 1 - vec4(large);
 	fColor.w = 1;
 	//fColor = abs(fColor);
 	//fColor = abs(texture(normal, textureCoords);

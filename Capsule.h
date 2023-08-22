@@ -34,10 +34,19 @@ public:
 	hit.point will hold the point which is furthest into this capsule in Other
 	*/
 	bool Intersect(const Sphere& other, Collision& hit) const noexcept;
+
+	inline constexpr float GetRadius() const noexcept;
+
+	glm::vec3 ClosestPoint(const glm::vec3& other) const;
 };
 
 constexpr Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(other.radius) {}
 
 constexpr Capsule::Capsule(const Capsule&& other) noexcept : line(other.line), radius(other.radius) {}
+
+inline constexpr float Capsule::GetRadius() const noexcept
+{
+	return this->radius;
+}
 
 #endif // CAPSULE_H

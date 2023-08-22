@@ -32,3 +32,8 @@ bool Capsule::Intersect(const Sphere& other, Collision& hit) const noexcept
 	hit.point = closest + hit.normal * other.radius; 
 	return hit.distance > 0;
 }
+
+glm::vec3 Capsule::ClosestPoint(const glm::vec3& other) const
+{
+	return this->line.PointClosestTo(other);
+}

@@ -8,9 +8,11 @@
 #include <glm/glm.hpp>
 #include <limits>
 #include "AABB.h"
+#include "Capsule.h"
 #include "Collidable.h"
 #include "glmHelp.h"
 #include "Plane.h"
+#include "Sphere.h"
 #include "util.h"
 
 class OrientedBoundingBox
@@ -55,6 +57,8 @@ public:
 	inline void Translate(const glm::vec3& distance) noexcept;
 
 	// TODO: Move these to the classes in lines.h
+	// TODO: Figure out why these are all inline
+	// TODO: Pick a lane, constexpr or not
 	// Don't do any of the extra math beyond determining if an intersection occurs
 	inline constexpr bool FastIntersect(const glm::vec3& start, const glm::vec3& dir) const;
 
@@ -73,6 +77,13 @@ public:
 	constexpr bool Overlap(const OrientedBoundingBox& other, Collision& result) const;
 	
 	constexpr bool OverlapWithResponse(const OrientedBoundingBox& other);
+
+	inline bool Overlap(const Sphere& other) const;
+	bool Overlap(const Sphere& other, Collision& collision) const;
+
+	// TODO: Constexpr?
+	bool Overlap(const Capsule& other) const;
+	bool Overlap(const Capsule& other, Collision& collision) const;
 
 	// TODO: constexpr
 	inline bool IntersectionWithResponse(const Plane& plane);
@@ -202,7 +213,7 @@ inline void OrientedBoundingBox::Translate(const glm::vec3& distance) noexcept
 
 inline constexpr bool OrientedBoundingBox::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
 {
-	glm::vec3 delta = glm::vec3(this->matrix[3]) - point;
+	glm::vec3 delta = glm::vec3(this->Center()) - point;
 	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
 	for (auto i = 0; i < 3; i++)
 	{
@@ -253,7 +264,7 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 
 inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const
 {
-	Collision collision;
+	Collision collision{};
 	bool value = this->Intersect(point, dir, collision);
 	distance = collision.distance;
 	return value;
@@ -265,6 +276,7 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 	return this->Intersect(point, dir, first, second);
 }
 
+// TODO: Determine how to get the normal, including "sign" if it intersects the "back"
 // https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
 constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
 {
@@ -273,7 +285,7 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 	nearHit.distance = -std::numeric_limits<float>::infinity();
 	farHit.distance = std::numeric_limits<float>::infinity();
 
-	glm::vec3 delta = glm::vec3(this->matrix[3]) - point;
+	glm::vec3 delta = glm::vec3(this->Center()) - point;
 
 	for (auto i = 0; i < 3; i++)
 	{
@@ -327,7 +339,7 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 // https://web.stanford.edu/class/cs273/refs/obb.pdf
 constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) const
 {
-	Collision collide;
+	Collision collide{};
 	return this->Overlap(other, collide);
 }
 
@@ -343,7 +355,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 			separatingAxes[(std::size_t) i * 5 + 2 + j] = glm::normalize(glm::cross(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j])));
 		}
 	}
-	glm::vec3 delta = this->matrix[3] - other.matrix[3];
+	glm::vec3 delta = this->Center() - other.Center();
 	result.distance = INFINITY;
 	glm::length_t index = 0;
 	for (glm::length_t i = 0; i < separatingAxes.size(); i++)
@@ -369,7 +381,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 		}
 	}
 	glm::vec3 normdir = glm::normalize(-delta); // direction here -> there
-	result.point = glm::vec3(this->matrix[3]) + result.distance * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+	result.point = this->Center() + result.distance * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
 	result.normal = separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
 	return true;
 }
@@ -383,9 +395,15 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 	return fool;
 }
 
+inline bool OrientedBoundingBox::Overlap(const Sphere& other) const
+{
+	Collision local;
+	return this->Overlap(other, local);
+}
+
 inline bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision) const
 {
-	float delta = plane.Facing(this->matrix[3]);
+	float delta = plane.Facing(this->Center());
 	collision.normal = plane.GetNormal();
 
 	// Ensure that the box can always go from out to inbounds

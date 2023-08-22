@@ -417,7 +417,7 @@ void display()
 	expand.SetTextureUnit("screen", 0);
 	expand.SetTextureUnit("edges", 1);
 	expand.SetTextureUnit("depths", 2);
-	expand.SetInt("depth", 5);
+	expand.SetInt("depth", 3);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	
@@ -481,9 +481,9 @@ void idle()
 		//sacounter++;
 		//std::cout << counter << std::endl;
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0.07f, -0.09f), glm::vec3(0, -5, 0));
-	smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
+	//smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
-	//smartBoxColor = smartBoxCollide();
+	smartBoxColor = smartBoxCollide();
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
@@ -650,6 +650,7 @@ int main(int argc, char** argv)
 	debugFlags.fill(false);
 	// Glut
 	glutInit(&argc, argv);
+	// TODO: Maybe transition to OpenGL ES3.1
 	glutInitContextVersion(4, 6);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);

@@ -25,7 +25,7 @@ void main()
 {
 	vec4 sampled = texture(screen, textureCoords);
 	test(ivec2(0, 0));
-	for (int i = 1; i <= depth && dark < required; i++)
+	for (int i = 1; i <= depth && dark <= required; i++)
 	{
 		test(ivec2( i,  0));
 		test(ivec2(-i,  0));
@@ -45,6 +45,7 @@ void main()
 	{
 		//fColor = vec4(1, 1, 1, 1);
 		fColor = sampled;
+		//fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
 	}
 	//fColor = sampled * fColor;
 	fColor.w = 1;
