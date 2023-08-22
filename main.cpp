@@ -249,6 +249,7 @@ VAO rayVAO;
 OBB smartBox;
 bool smartBoxColor = false;
 
+glm::vec3 moveSphere(0, 1.5f, 6.5f);
 
 void display()
 {
@@ -383,7 +384,7 @@ void display()
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
-	sphereModel.translation = glm::vec3(0, 1.5f, 6.5f);
+	sphereModel.translation = moveSphere;
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
@@ -483,7 +484,7 @@ void idle()
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0.07f, -0.09f), glm::vec3(0, -5, 0));
 	//smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
-	smartBoxColor = smartBoxCollide();
+
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
@@ -491,8 +492,16 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = offset;
-	if (keyState[ArrowKeyUp])    smartBox.Translate(smartBox.Forward() * speed);
-	if (keyState[ArrowKeyDown])  smartBox.Translate(smartBox.Forward() * -speed);
+	if (keyState[ArrowKeyUp])
+	{
+		smartBox.Translate(smartBox.Forward() * speed);
+		moveSphere += smartBox.Forward() * speed;
+	}
+	if (keyState[ArrowKeyDown])
+	{
+		smartBox.Translate(smartBox.Forward() * -speed);
+		moveSphere -= smartBox.Forward() * speed;
+	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
 	if (keyState['p'] || keyState['P'])
@@ -537,6 +546,22 @@ void idle()
 		offset = playerOb.Center();
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
+	
+	smartBoxColor = smartBoxCollide();
+
+	Sphere awwYeah(0.5f, moveSphere);
+	auto gamerse = boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius)));
+	for (auto& letsgo : gamerse)
+	{
+		Collision c;
+		if (letsgo->box.Overlap(awwYeah, c))
+		{
+			awwYeah.center -= c.normal * c.depth;
+		}
+	}
+	moveSphere = awwYeah.center;
+	
+	// TODO: Key state is ten kinds of messed up
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
 	lastFrame = now;

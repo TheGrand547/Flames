@@ -22,6 +22,9 @@
 #define LogF(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); printf(__VA_ARGS__);}
 #define Log(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); std::cout << __VA_ARGS__ << std::endl;}
 
+#define Before(...) std::cout << "Before: " << __VA_ARGS__ << std::endl;
+#define After(...) std::cout << "After: " << __VA_ARGS__ << std::endl;
+
 #else // NDEBUG
 
 #define CheckError

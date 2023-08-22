@@ -9,6 +9,8 @@
 #include "Model.h"
 #include "util.h"
 
+struct Sphere;
+
 class AABB
 {
 protected:
@@ -50,6 +52,9 @@ public:
 	// TODO: Other forms without both collisions y'know
 	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
 	constexpr bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const;
+
+	inline bool Overlap(const Sphere& other) const;
+	bool Overlap(const Sphere& other, Collision& collision) const;
 
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
@@ -173,6 +178,12 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 	bool yInside = this->negativeBound.y <= other.negativeBound.y && this->positiveBound.y >= other.positiveBound.y;
 	bool zInside = this->negativeBound.z <= other.negativeBound.z && this->positiveBound.z >= other.positiveBound.z;
 	return xInside && yInside && zInside;
+}
+
+inline bool AABB::Overlap(const Sphere& other) const
+{
+	Collision collide{};
+	return this->Overlap(other, collide);
 }
 
 // Modified version of the OBB code to be in theory "better", ie faster

@@ -91,6 +91,8 @@ public:
 	inline bool Intersection(const Plane& plane, float& distance) const;
 	inline bool Intersection(const Plane& plane, Collision& out) const;
 
+	glm::vec3 WorldToLocal(const glm::vec3& in) const;
+
 	inline Model GetModel() const;
 };
 
