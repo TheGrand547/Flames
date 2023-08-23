@@ -7,6 +7,7 @@
 #include <array>
 #include <vector>
 #include <math.h>
+#include "log.h"
 
 enum TextureMagFilter
 {
@@ -195,13 +196,12 @@ inline GLuint Texture2D::GetGLTexture() const
 
 void Texture2D::BindTexture(GLuint slot) const
 {
-	glActiveTexture(GL_TEXTURE0 + slot);
-	glBindTexture(GL_TEXTURE_2D, this->texture);
+	glBindTextureUnit(slot, this->texture);
 }
 
 inline void Texture2D::GenerateMipmap() const
 {
-	glGenerateMipmap(GL_TEXTURE_2D);
+	glGenerateTextureMipmap(GL_TEXTURE_2D);
 }
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const

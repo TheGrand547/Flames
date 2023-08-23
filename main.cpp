@@ -242,6 +242,7 @@ std::vector<bool> boxColor;
 bool dummyFlag = false;
 bool clear = false;
 static int counter = 0;
+float zNear = 0.1f, zFar = 100.f;
 
 Buffer rayBuffer;
 VAO rayVAO;
@@ -249,7 +250,7 @@ VAO rayVAO;
 OBB smartBox;
 bool smartBoxColor = false;
 
-glm::vec3 moveSphere(0, 1.5f, 6.5f);
+glm::vec3 moveSphere(0, 3.5f, 6.5f);
 
 void display()
 {
@@ -266,7 +267,7 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	uniform.SetActiveShader();
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
 
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(angles);
@@ -276,15 +277,12 @@ void display()
 	universal.BufferSubData(view, 0);
 
 	dither.SetActiveShader();
-	wallTexture.BindTexture(0);
-	ditherTexture.BindTexture(1);
-
 	glm::vec3 colors(.5f, .5f, .5f);
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", offset);
-	dither.SetTextureUnit("textureIn", 0);
-	dither.SetTextureUnit("ditherMap", 1);
+	dither.SetTextureUnit("textureIn", wallTexture, 0);
+	dither.SetTextureUnit("ditherMap", ditherTexture, 1);
 
 	gamerTest.BindArrayObject();
 
@@ -398,26 +396,23 @@ void display()
 	glClear(GL_COLOR_BUFFER_BIT);
 	
 	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);
-	framebufferNormal.BindTexture(0);
-	//framebufferDepth.BindTexture(0);
+	glDisable(GL_CULL_FACE);;
 	CheckError();
 	frameShader.SetActiveShader();
-	frameShader.SetTextureUnit("normal", 0);
+	frameShader.SetTextureUnit("normal", framebufferNormal, 0);
+	frameShader.SetTextureUnit("depth", framebufferDepth, 1);
+	frameShader.SetFloat("zNear", zNear);
+	frameShader.SetFloat("zFar", zFar);
 
 
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-	framebufferColor.BindTexture(0);
-	normalModifier.BindTexture(1);
-	framebufferDepth.BindTexture(2);
 	expand.SetActiveShader();
-	expand.SetTextureUnit("screen", 0);
-	expand.SetTextureUnit("edges", 1);
-	expand.SetTextureUnit("depths", 2);
+	expand.SetTextureUnit("screen", framebufferColor, 0);
+	expand.SetTextureUnit("edges", normalModifier, 1);
+	expand.SetTextureUnit("depths", framebufferDepth, 2);
 	expand.SetInt("depth", 3);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
@@ -444,18 +439,13 @@ bool smartBoxCollide(int depth = 0)
 {
 	if (depth > 4)
 		return true;
-	auto gamerse = boxes.Search(smartBox.GetAABB());
-	//std::cout << "Depth: " << depth << "\t Count: " << gamerse.size() << std::endl;
 	bool val = false;
-	for (auto& letsgo : gamerse)
+	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
 	{
 		if (letsgo->box.Overlap(smartBox))
 		{
 			val = true;
 			smartBox.OverlapWithResponse(letsgo->box);
-			//return true;
-			//if (letsgo->box.Overlap(smartBox))
-				//return smartBoxCollide(forward, depth + 1);
 		}
 	}
 	return val;
@@ -550,8 +540,7 @@ void idle()
 	smartBoxColor = smartBoxCollide();
 
 	Sphere awwYeah(0.5f, moveSphere);
-	auto gamerse = boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius)));
-	for (auto& letsgo : gamerse)
+	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
 	{
 		Collision c;
 		if (letsgo->box.Overlap(awwYeah, c))

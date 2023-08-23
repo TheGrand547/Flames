@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <map>
 #include <string>
+#include "Texture2D.h"
 
 class Shader
 {
@@ -43,9 +44,11 @@ public:
 	inline GLuint GetProgram();
 	inline void SetActiveShader();
 	inline void SetInt(const std::string& name, const int i);
+	inline void SetFloat(const std::string& name, const float i);
 	inline void SetVec3(const std::string& name, const glm::vec3& vec);
 	inline void SetMat4(const std::string& name, const glm::mat4& mat);
 	inline void SetTextureUnit(const std::string& name, const GLuint unit);
+	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
@@ -70,6 +73,11 @@ inline void Shader::SetInt(const std::string& name, const int i)
 	glUniform1i(this->UniformIndex(name), i);
 }
 
+inline void Shader::SetFloat(const std::string& name, const float i)
+{
+	glUniform1f(this->UniformIndex(name), i);
+}
+
 inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
 {
 	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
@@ -82,6 +90,12 @@ inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
 
 inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit)
 {
+	glUniform1i(this->UniformIndex(name), unit);
+}
+
+inline void Shader::SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit)
+{
+	texture.BindTexture(unit);
 	glUniform1i(this->UniformIndex(name), unit);
 }
 

@@ -2,8 +2,15 @@
 #ifndef COLLIDABLE_H
 #define COLLIDABLE_H
 #include <glm/glm.hpp>
-//#include "AABB.h"
 
+/*
+ * For a function A.Overlaps(B) or A.Intersection(B): A will be treated a static entity, B will be a moveable one
+ * 
+ * the resulting Collision struct will have the following format
+ *      point will be the center of B which is closest to A without a collision occuring 
+ *      normal is the direction in which the collision takes place
+ *      depth is the amount of intersection in the direction of normal
+ */
 struct Collision
 {
 	glm::vec3 point, normal;
@@ -28,12 +35,4 @@ struct Collision
 
 	Collision& operator=(const Collision& other) = default;
 };
-
-/*
-class Collidable
-{
-	virtual bool Collide() const = 0;
-	virtual AABB GetBoundingBox() const = 0;
-};
-*/
 #endif // COLLIDABLE_H
