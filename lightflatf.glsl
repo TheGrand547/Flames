@@ -25,7 +25,9 @@ void main()
 	vec3 lightDir = normalize(lightPos - fPos);
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
+	// Quantized
 	vec3 diffuseColor = max(ambient, (ceil(diffuse * 6) - 1) / 5) * lightColor;
+	//vec3 diffuseColor = diffuse * lightColor;
 	
 	vec3 viewDirection = normalize(viewPos - fPos);
 	vec3 reflected = reflect(-lightDir, norm);
@@ -36,8 +38,8 @@ void main()
 	vec3 result = shapeColor * (ambientColor + diffuseColor);
 	if (specular > 0.25)
 	{
-		//fNormOut = -fNormOut;
-		result = vec3(1, 1, 1);
+		fNormOut = -fNormOut;
+		//result = vec3(1, 1, 1);
 	}
 	
 	// TODO: specular thing

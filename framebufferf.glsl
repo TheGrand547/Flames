@@ -4,6 +4,10 @@ in vec2 textureCoords;
 out vec4 fColor;
 
 layout(location = 0) uniform sampler2D normal;
+layout(location = 1) uniform sampler2D depth;
+
+layout(location = 2) uniform float zNear;
+layout(location = 3) uniform float zFar;
 
 void main()
 {	
@@ -14,14 +18,25 @@ void main()
 	);
 
 	fColor = vec4(0, 0, 0, 1);
+	float depthDelta = 0.f;
+	
 	for(int i = 0; i < 9; i++)
 	{
 		fColor += textureOffset(normal, textureCoords, ivec2((i % 3) - 1, floor(i / 3) - 1)) * kernel[i];
+		float foop = textureOffset(depth, textureCoords, ivec2((i % 3) - 1, floor(i / 3) - 1)).r;
+		foop = 2 * foop - 1;
+		foop = 2.0 * zNear * zFar / (zFar + zNear - foop * (zFar - zNear));
+		depthDelta += foop * kernel[i];
 	}
 	float large = max(abs(fColor.x), max(abs(fColor.y), abs(fColor.z)));
 	
-	//fColor = 1 - vec4(step(0.5, large));
-	fColor = 1 - vec4(large);
+	// Calculating "true" difference in depth, world coordinates -- horrendously ugly
+	if (abs(depthDelta) > 1)
+		large = 1.f;
+	
+	fColor = 1 - vec4(step(0.25, large));
+	fColor = 1 - vec4(step(0.25, abs(depthDelta)));
+	//fColor = 1 - vec4(large);
 	fColor.w = 1;
 	//fColor = abs(fColor);
 	//fColor = abs(texture(normal, textureCoords);

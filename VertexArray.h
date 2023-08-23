@@ -175,7 +175,7 @@ inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size
 
 template<typename T> inline void VertexArray::FillArray(Shader& shader, std::size_t strid, std::size_t current) {}*/
 
-
+// TODO: Fully switch to VertexAttribFormat
 template<>
 inline void VertexArray::FillArray<Vertex>(Shader& shader)
 {

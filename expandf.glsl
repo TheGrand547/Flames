@@ -25,6 +25,7 @@ void main()
 {
 	vec4 sampled = texture(screen, textureCoords);
 	test(ivec2(0, 0));
+	/*
 	for (int i = 1; i <= depth && dark <= required; i++)
 	{
 		test(ivec2( i,  0));
@@ -35,6 +36,16 @@ void main()
 		test(ivec2( i, -i));
 		test(ivec2(-i,  i));
 		test(ivec2( i,  i));
+	}
+	*/
+	for (int x = 0; x <= depth && dark <= required; x++)
+	{
+		int m_x = x - depth / 2;
+		for (int y = 0; y <= depth && dark <= required; y++)
+		{
+			int m_y = y - depth / 2;
+			test(ivec2(m_x, m_y));
+		}
 	}
 	if (dark >= required)
 	{
