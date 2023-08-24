@@ -580,7 +580,11 @@ void keyboard(unsigned char key, int x, int y)
 
 
 		Collision nears, fars;
+		smartBox.Intersect(offset, gamer, nears, fars);
+		std::cout << nears << std::endl;
+		std::cout << fars << std::endl;
 		//for (std::size_t i = 0; i < boxes.size(); i++)
+		/*
 		for (auto& box: boxes)
 		{
 			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
@@ -596,7 +600,7 @@ void keyboard(unsigned char key, int x, int y)
 					verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
 				}
 			}
-		}
+		}*/
 		//rayBuffer.BufferSubData(verts);
 	}
 }
@@ -689,28 +693,25 @@ int main(int argc, char** argv)
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
-	CheckError();
-
 	sphereShader.CompileSimple("lightflat");
-	CheckError();
 
 
 	frameShader.CompileSimple("framebuffer");
 
 	texture.Load("text.png");
 	wallTexture.Load("flowed.png");
+	CheckError();
+
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+	CheckError();
 
 	stickBuffer.Generate(ArrayBuffer);
 	stickBuffer.BufferData(stick, StaticDraw);
-
-	CheckError();
 
 	stickVAO.Generate();
 	stickVAO.FillArray<Vertex>(uniform);
 
 
-	//glBindBuffer(GL_ARRAY_BUFFER, texturedPlane);
 	std::array<TextureVertex, 4> verts{};
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
@@ -720,18 +721,12 @@ int main(int argc, char** argv)
 	verts[3].coordinates = glm::vec2(0, 0);
 	texturedPlane.Generate(ArrayBuffer);
 	texturedPlane.BufferData(verts, StaticDraw);
-	//glBufferData(GL_ARRAY_BUFFER, sizeof(TextureVertex) * 4, verts, GL_STATIC_DRAW);
 
-	CheckError();
 	gamerTest.Generate();
 	gamerTest.FillArray<TextureVertex>(dither);
-	CheckError();
 
 	planeBO.Generate(ArrayBuffer);
 	planeBO.BufferData(plane, StaticDraw);
-	/*
-	glBindBuffer(GL_ARRAY_BUFFER, planeBO);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3) * 4, plane, GL_STATIC_DRAW);*/
 	CheckError();
 
 	buffer.Generate(ArrayBuffer);
@@ -778,9 +773,9 @@ int main(int argc, char** argv)
 	Model oops = planes[planes.size() / 2 + 1];
 
 	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
-	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
-	ditherTexture.GenerateMipmap();
+	CheckError();
 
+	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	CheckError();
 
 	glEnable(GL_DEPTH_TEST);

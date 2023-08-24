@@ -201,35 +201,34 @@ void Texture2D::BindTexture(GLuint slot) const
 
 inline void Texture2D::GenerateMipmap() const
 {
-	glGenerateTextureMipmap(GL_TEXTURE_2D);
+	glGenerateTextureMipmap(this->texture);
 }
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_MAG_FILTER, (GLint) value);
 }
 
 inline void Texture2D::SetMinFilter(TextureMinFilter value) const
 {
 	if (!(value == MinLinear || value == MinNearest))
 		this->GenerateMipmap();
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_MIN_FILTER, (GLint) value);
 }
 
 inline void Texture2D::SetWrapBehaviorS(TextureWrapping value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_S, (GLint) value);
 }
 
 inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
 {
-	glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_T, (GLint) value);
 }
 
 inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
 									TextureWrapping sWrapping, TextureWrapping tWrapping) const
 {
-	glBindTexture(GL_TEXTURE_2D, this->texture);
 	this->SetMinFilter(minFilter);
 	this->SetMagFilter(magFilter);
 	this->SetWrapBehaviorS(sWrapping);
@@ -240,7 +239,7 @@ inline void Texture2D::SetAnisotropy(const float value)
 {
 	float max;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max);
-	glTexParameterf(GL_TEXTURE_2D, GL_ARB_texture_filter_anisotropic, (value > max) ? max : value);
+	glTextureParameterf(this->texture, GL_ARB_texture_filter_anisotropic, (value > max) ? max : value);
 }
 
 template<class T> inline void Texture2D::Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat,
