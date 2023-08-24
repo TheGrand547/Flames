@@ -2,6 +2,8 @@
 #ifndef COLLIDABLE_H
 #define COLLIDABLE_H
 #include <glm/glm.hpp>
+#include <iostream>
+#include "glmHelp.h"
 
 /*
  * For a function A.Overlaps(B) or A.Intersection(B): A will be treated a static entity, B will be a moveable one
@@ -35,4 +37,10 @@ struct Collision
 
 	Collision& operator=(const Collision& other) = default;
 };
+
+inline std::ostream& operator<<(std::ostream& os, const Collision& collision)
+{
+	os << collision.point << "\t" << collision.normal << "\t" << collision.depth;
+	return os;
+}
 #endif // COLLIDABLE_H

@@ -278,7 +278,6 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 	return this->Intersect(point, dir, first, second);
 }
 
-// TODO: Determine how to get the normal, including "sign" if it intersects the "back"
 // https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
 constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
 {
@@ -294,7 +293,8 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		glm::vec3 axis = this->matrix[i];
 		float scale = this->halfs[i];
 		float parallel = glm::dot(axis, delta);
-		if (glm::abs(glm::dot(dir, axis)) < EPSILON)
+		float scaling = glm::dot(axis, dir);
+		if (glm::abs(scaling) < EPSILON)
 		{
 			if (-parallel - scale > 0 || -parallel + scale > 0)
 			{
@@ -302,7 +302,6 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 			}
 		}
 
-		float scaling = glm::dot(axis, dir);
 		float param0 = (parallel + scale) / scaling;
 		float param1 = (parallel - scale) / scaling;
 
@@ -313,12 +312,12 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		if (param0 > nearHit.distance)
 		{
 			nearHit.distance = param0;
-			nearHit.normal = axis;
+			nearHit.normal = axis * glm::sign(-parallel);
 		}
 		if (param1 < farHit.distance)
 		{
 			farHit.distance = param1;
-			farHit.normal = axis;
+			farHit.normal = axis * glm::sign(parallel);
 		}
 		if (nearHit.distance > farHit.distance)
 		{

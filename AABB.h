@@ -220,12 +220,12 @@ constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Col
 		if (param0 > nearHit.distance)
 		{
 			nearHit.distance = param0;
-			nearHit.normal = glm::vec3(i == 0, i == 1, i == 2);
+			nearHit.normal = glm::vec3(i == 0, i == 1, i == 2) * glm::sign(-parallel);
 		}
 		if (param1 < farHit.distance)
 		{
 			farHit.distance = param1;
-			farHit.normal = glm::vec3(i == 0, i == 1, i == 2);
+			farHit.normal = glm::vec3(i == 0, i == 1, i == 2) * glm::sign(-parallel);
 		}
 		if (nearHit.distance > farHit.distance)
 		{
