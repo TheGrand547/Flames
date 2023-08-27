@@ -4,8 +4,8 @@
 
 AABB& AABB::operator=(const AABB& other) noexcept
 {
-	this->negativeBound = other.negativeBound;
-	this->positiveBound = other.positiveBound;
+	this->center = other.center;
+	this->halfs = other.halfs;
 	return *this;
 }
 
@@ -20,7 +20,7 @@ Model AABB::GetModel() const
 
 bool AABB::Overlap(const Sphere& other, Collision& collision) const
 {
-	glm::vec3 closest = glm::max(this->negativeBound, glm::min(other.center, this->positiveBound));
+	glm::vec3 closest = glm::max(this->center - this->halfs, glm::min(other.center, this->center + this->halfs));
 	float distance = glm::length(closest - other.center);
 
 	collision.normal = glm::normalize(closest - other.center);

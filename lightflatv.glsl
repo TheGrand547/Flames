@@ -29,7 +29,7 @@ void main()
 	
 	// TODO: Recheck this later, very good
 	// Changing this number is very funny, but keep it small
-	vec4 zoop = fNorm * int(int(gl_VertexID) % 5 == 0) * 0.5;
+	vec3 zoop = vNorm * int(int(gl_VertexID) % 5 == 0) * 0.5 * 0;
 	if (int(gl_VertexID) % 7 == 12)
 		zoop *= 0.5;
 	

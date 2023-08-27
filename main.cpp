@@ -251,6 +251,7 @@ OBB smartBox;
 bool smartBoxColor = false;
 
 glm::vec3 moveSphere(0, 3.5f, 6.5f);
+int kernel = 0;
 
 void display()
 {
@@ -403,6 +404,7 @@ void display()
 	frameShader.SetTextureUnit("depth", framebufferDepth, 1);
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
+	frameShader.SetInt("zoop", kernel);
 
 
 	glBindVertexArray(frameVAO);
@@ -564,6 +566,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'm' || key == 'M') offset.y += 3;
 	if (key == 'n' || key == 'N') offset.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
+	if (key == 't' || key == 'T') kernel = 1 - kernel;
 	if (key == '1') debugFlags[TIGHT_BOXES] = !debugFlags[TIGHT_BOXES];
 	if (key == '2') debugFlags[WIDE_BOXES] = !debugFlags[WIDE_BOXES];
 	if (key == 'g' || key == 'G')
@@ -588,7 +591,7 @@ void keyboard(unsigned char key, int x, int y)
 		for (auto& box: boxes)
 		{
 			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
-			box.color = box.box.Intersect(offset, gamer * 100.f, nears, fars);
+			box.color = box.box.Intersect(offset, gamer * 100.f, nears, fars);q
 			if (box.color && !set)
 			{
 				set = true;

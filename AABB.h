@@ -13,8 +13,12 @@ struct Sphere;
 
 class AABB
 {
+//private:
+//	const static std::array <glm::vec3, 3> Axes = { { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) } };
 protected:
-	glm::vec3 negativeBound, positiveBound;
+	//TODO: Move to center + deviation kinda deal
+	//glm::vec3 negativeBound, positiveBound;
+	glm::vec3 center, halfs;
 public:
 	constexpr AABB();
 	constexpr AABB(const glm::vec3& dimension);
@@ -62,7 +66,7 @@ public:
 
 	constexpr bool operator==(const AABB& other) const
 	{
-		return negativeBound == other.negativeBound && positiveBound == other.positiveBound;
+		return this->center == other.center && this->halfs == other.halfs;
 	}
 	constexpr bool operator!=(const AABB& other) const
 	{
@@ -70,78 +74,73 @@ public:
 	}
 };
 
-constexpr AABB::AABB() : negativeBound(-1), positiveBound(1)
+constexpr AABB::AABB() : center(0), halfs(1)
 {
 
 }
 
-constexpr AABB::AABB(const glm::vec3& dimension) : negativeBound(-glm::abs(dimension) / 2.f), positiveBound(glm::abs(dimension) / 2.f)
+constexpr AABB::AABB(const glm::vec3& dimension) : center(0), halfs(glm::abs(dimension) / 2.f)
 {
 
 }
 
-constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : negativeBound(negativeBound), positiveBound(positiveBound)
+constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : center((negativeBound + positiveBound) / 2.f), 
+																						halfs(glm::abs(negativeBound - positiveBound) / 2.f)
 {
 
 }
 
-constexpr AABB::AABB(const AABB& other) : negativeBound(other.negativeBound), positiveBound(other.positiveBound)
+constexpr AABB::AABB(const AABB& other) : center(other.center), halfs(other.halfs)
 {
 
 }
 
 inline constexpr float AABB::Volume() const
 {
-	glm::vec3 deviation(this->Deviation());
-	return deviation.x * deviation.y * deviation.z * 8.f;
+	return this->halfs.x * this->halfs.y * this->halfs.z * 8.f;
 }
 
 inline constexpr glm::vec3 AABB::GetCenter() const
 {
-	return (this->negativeBound + this->positiveBound) / 2.f;
+	return this->center;
 }
 
 inline constexpr glm::vec3 AABB::Deviation() const
 {
-	return glm::abs((this->positiveBound - this->negativeBound) / 2.f);
+	return this->halfs;
 }
 
 inline constexpr AABB AABB::operator+(const glm::vec3& point) const
 {
-	return AABB(this->negativeBound + point, this->positiveBound + point);
+	return AABB(this->center + point, this->halfs);
 }
 
 inline constexpr AABB AABB::operator-(const glm::vec3& point) const
 {
-	return AABB(this->negativeBound - point, this->positiveBound - point);
+	return AABB(this->center - point, this->halfs);
 }
 
 inline constexpr AABB& AABB::operator+=(const glm::vec3& point) 
 {
-	this->negativeBound += point;
-	this->positiveBound += point;
+	this->center += point;
 	return *this;
 }
 
 inline constexpr AABB& AABB::operator-=(const glm::vec3& point)
 {
-	this->negativeBound -= point;
-	this->positiveBound -= point;
+	this->center -= point;
 	return *this;
 }
 
 inline constexpr void AABB::Center(const glm::vec3& point)
 {
-	glm::vec3 delta = (this->positiveBound - this->negativeBound) / 2.0f;
-	this->negativeBound = point - delta;
-	this->positiveBound = point + delta;
+	this->center = point;
 }
 
+// TODO: This might be wrong
 inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale)
 {
-	glm::vec3 center = (this->positiveBound + this->negativeBound) / 2.0f;
-	this->positiveBound = (this->positiveBound - this->negativeBound) * glm::abs(scale);
-	this->Center(center);
+	this->halfs *= glm::abs(scale);
 }
 
 inline constexpr void AABB::ScaleInPlace(float x, float y, float z)
@@ -151,32 +150,39 @@ inline constexpr void AABB::ScaleInPlace(float x, float y, float z)
 
 inline constexpr void AABB::Translate(const glm::vec3& point)
 {
-	this->positiveBound += point;
-	this->negativeBound += point;
+	this->center += point;
 }
 
 
 inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {
-	bool xInside = this->negativeBound.x <= point.x && point.x <= this->positiveBound.x;
-	bool yInside = this->negativeBound.y <= point.y && point.y <= this->positiveBound.y;
-	bool zInside = this->negativeBound.z <= point.z && point.z <= this->positiveBound.z;
+	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
+	bool xInside = negativeBound.x <= point.x && point.x <= positiveBound.x;
+	bool yInside = negativeBound.y <= point.y && point.y <= positiveBound.y;
+	bool zInside = negativeBound.z <= point.z && point.z <= positiveBound.z;
+	//glm::all(glm::lessThanEqual(negativeBound, point)) && glm::all(glm::lessThanEqual(point, positiveBound))
 	return xInside && yInside && zInside;
 }
 
 inline constexpr bool AABB::Overlap(const AABB& other) const
 {
-	bool xInside = this->negativeBound.x <= other.positiveBound.x && this->positiveBound.x >= other.negativeBound.x;
-	bool yInside = this->negativeBound.y <= other.positiveBound.y && this->positiveBound.y >= other.negativeBound.y;
-	bool zInside = this->negativeBound.z <= other.positiveBound.z && this->positiveBound.z >= other.negativeBound.z;
+	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
+	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
+
+	bool xInside = negativeBoundOther.x <= positiveBound.x && positiveBoundOther.x >= negativeBound.x;
+	bool yInside = negativeBoundOther.y <= positiveBound.y && positiveBoundOther.y >= negativeBound.y;
+	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
 	return xInside && yInside && zInside;
 }
 
 inline constexpr bool AABB::Contains(const AABB& other) const
 {
-	bool xInside = this->negativeBound.x <= other.negativeBound.x && this->positiveBound.x >= other.positiveBound.x;
-	bool yInside = this->negativeBound.y <= other.negativeBound.y && this->positiveBound.y >= other.positiveBound.y;
-	bool zInside = this->negativeBound.z <= other.negativeBound.z && this->positiveBound.z >= other.positiveBound.z;
+	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
+	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
+
+	bool xInside = negativeBound.x <= negativeBoundOther.x && positiveBound.x >= positiveBoundOther.x;
+	bool yInside = negativeBound.y <= negativeBoundOther.y && positiveBound.y >= positiveBoundOther.y;
+	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
 	return xInside && yInside && zInside;
 }
 
@@ -194,13 +200,12 @@ constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Col
 	nearHit.distance = -std::numeric_limits<float>::infinity();
 	farHit.distance = std::numeric_limits<float>::infinity();
 
-	glm::vec3 center = this->GetCenter();
-	glm::vec3 deviation = this->Deviation();
+	glm::vec3 direction = this->center - point;
 
 	for (auto i = 0; i < 3; i++)
 	{
-		float scale = deviation[i];
-		float parallel = (center - point)[i];
+		float scale = this->halfs[i];
+		float parallel = direction[i];
 		if (glm::abs(dir[i]) < EPSILON)
 		{
 			if (-parallel - scale > 0 || -parallel + scale > 0)
@@ -247,13 +252,12 @@ constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Col
 
 inline constexpr bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
 {
-	glm::vec3 delta = glm::vec3(this->GetCenter()) - point;
-	glm::vec3 deviation = this->Deviation();
+	glm::vec3 delta = this->center - point;
 	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
 
 	for (auto i = 0; i < 3; i++)
 	{
-		float scale = deviation[i];
+		float scale = this->halfs[i];
 		float parallel = delta[i];
 		if (glm::abs(dir[i]) < EPSILON)
 		{

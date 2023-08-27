@@ -55,8 +55,8 @@ void main()
 	else
 	{
 		//fColor = vec4(1, 1, 1, 1);
-		fColor = sampled;
-		//fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
+		//fColor = sampled;
+		fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
 	}
 	//fColor = sampled * fColor;
 	fColor.w = 1;
