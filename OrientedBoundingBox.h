@@ -382,6 +382,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 		}
 	}
 	glm::vec3 normdir = glm::normalize(-delta); // direction here -> there
+	// This is where *my* center needs to go to be not intersecting
 	result.point = this->Center() + result.distance * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
 	result.normal = separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
 	return true;
@@ -389,10 +390,59 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 
 constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
 {
+	// SLOPPY
+	if (this == &other) 
+		return false;
+
 	Collision collide;
 	bool fool = this->Overlap(other, collide);
 	if (fool)
+	{
+		glm::vec3 mineAxis{}, otherAxis{};
+		//float myDot = INFINITY, otherDot = INFINITY;
+		float myDot = -INFINITY, otherDot = -INFINITY;
+		float distance = 0.f;
+		for (glm::length_t i = 0; i < 3; i++)
+		{
+			float dotted = glm::abs(glm::dot(glm::vec3(this->matrix[i]), collide.normal));
+			float dotted2 = glm::abs(glm::dot(glm::vec3(other.matrix[i]), collide.normal));
+			distance += glm::abs(this->halfs[i] * dotted);
+			if (myDot < dotted)
+			{
+				mineAxis = this->matrix[i];
+				myDot = dotted;
+			}
+			if (otherDot < dotted2)
+			{
+				otherAxis = other.matrix[i];
+				otherDot = dotted2;
+			}
+
+		}
+		// This is the point that will be rotated about
+		glm::vec3 point = this->Center() + collide.normal * distance;
+		std::cout << point << "\t" << collide.point << std::endl;
+
+		std::cout << distance << "\t" << collide.distance << std::endl;
+
 		this->matrix[3] = glm::vec4(collide.point, 1);
+		// Maybe do epsilon check?
+		if (collide.distance > 0)
+		{
+			// Determine which side of the box the this point is, and rotate the "center" of it towards that
+			float direction = -glm::sign(glm::dot(collide.point, this->Cross()));
+
+			// Cross method needs to be paired with finding minimum of thing
+			//glm::vec3 otherAxis = glm::normalize(other.Center() - point); // Other axis
+			//glm::vec3 cross = glm::cross(otherAxis, collide.normal);
+			glm::vec3 cross = glm::cross(otherAxis, mineAxis);
+			//glm::vec3 cross = mineAxis;
+
+			// TODO: maybe refire the collision detection to stop it from flickering?
+			if (!glm::all(glm::lessThan(glm::abs(cross), glm::vec3(EPSILON))))
+				this->RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, cross), collide.point);
+		}
+	}
 	return fool;
 }
 

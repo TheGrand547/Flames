@@ -176,7 +176,7 @@ GLuint sphereBuf, sphereIndex, sphereCount;
 
 
 // Not explicitly tied to OpenGL Globals
-OBB smartBox;
+OBB smartBox, dumbBox;
 std::vector<Model> planes;
 StaticOctTree<Dummy> boxes(glm::vec3(20));
 
@@ -352,7 +352,10 @@ void display()
 	glPointSize(19.f);
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+
+	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
+	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
 	//glDrawArrays(GL_POINTS, 0, 8);
 
 
@@ -442,6 +445,8 @@ bool smartBoxCollide(int depth = 0)
 			smartBox.OverlapWithResponse(letsgo->box);
 		}
 	}
+	smartBox.OverlapWithResponse(dumbBox);
+
 	return val;
 }
 
@@ -459,7 +464,7 @@ void idle()
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
-	std::cout << "\r" << (float)elapsed / 1000.f << "\t" << 1000.f / float(elapsed) << "\t" << kernel << "\t" << lineWidth;
+	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << 1000.f / float(elapsed) << "\t" << kernel << "\t" << lineWidth;
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
 	//foobar.ToggleTwoSided();
 	//if (!smartBox.IntersectionWithResponse(foobar))
@@ -479,12 +484,12 @@ void idle()
 	if (keyState[ArrowKeyUp])
 	{
 		smartBox.Translate(smartBox.Forward() * speed);
-		moveSphere += smartBox.Forward() * speed;
+		//moveSphere += smartBox.Forward() * speed;
 	}
 	if (keyState[ArrowKeyDown])
 	{
 		smartBox.Translate(smartBox.Forward() * -speed);
-		moveSphere -= smartBox.Forward() * speed;
+		//moveSphere -= smartBox.Forward() * speed;
 	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
@@ -855,9 +860,13 @@ int main(int argc, char** argv)
 	dither.UniformBlockBinding("Camera", 0);
 	sphereShader.UniformBlockBinding("Camera", 0);
 
-	smartBox.ReCenter(glm::vec3(2, 1, 0));
+	smartBox.ReCenter(glm::vec3(2, 0.75f, 0));
 	smartBox.Scale(glm::vec3(0.5f));
-	smartBox.Rotate(glm::vec3(0, 0, 0));
+	smartBox.Rotate(glm::vec3(0, 180, 0));
+
+	dumbBox.ReCenter(glm::vec3(0, 0.75f, -2));
+	dumbBox.Scale(glm::vec3(0.5f));
+	dumbBox.Rotate(glm::vec3(0, 180, 0));
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
