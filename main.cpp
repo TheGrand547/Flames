@@ -26,22 +26,18 @@
 #include "VertexArray.h"
 #include "Wall.h"
 
+struct Dummy
+{
+	OBB box;
+	bool color;
+};
+
 template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
 {
 	left.insert(left.end(), std::make_move_iterator(right.begin()), std::make_move_iterator(right.end()));
 }
 
-// Cringe globals
-Shader uniform;
-Buffer buffer, planeBO;
-
-UniformBuffer universal;
-
-VAO gamerTest, sphereVAO;
-
-GLuint sphereBuf, sphereIndex, sphereCount;
-Shader sphereShader;
-
+// TODO: GRRRRR DO THIS BETTER DUMB DUMB FUCKER
 std::array<ColoredVertex, 8> coloredCubeVertex{
 	{
 		{{-1, -1, -1}, {1, 1, 1}},
@@ -136,21 +132,7 @@ std::array<glm::vec3, 10> stick{
 
 GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
 
-Buffer stickBuffer;
-VAO stickVAO;
-
 GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
-Texture2D texture, wallTexture;
-
-#define TIGHT_BOXES 0
-#define WIDE_BOXES 1
-std::array<bool, 2> debugFlags{};
-
-
-glm::vec3 offset(0, 1.5f, 0);
-glm::vec3 angles(0, 0, 0);
-
-Buffer texturedPlane;
 
 static const std::array<GLubyte, 16 * 16> dither16 = {
 {
@@ -174,8 +156,57 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 
 const int ditherSize = 16;
 
-Texture2D ditherTexture;
-Shader dither;
+// Buffers
+Buffer stickBuffer, texturedPlane, framebufferBuffer, plainCube, planeBO, rayBuffer;
+UniformBuffer universal;
+
+// Shaders
+Shader dither, expand, finalResult, frameShader, sphereShader, uniform;
+
+// Textures
+Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
+
+// Vertex Array Objects
+VAO gamerTest, rayVAO, sphereVAO, stickVAO;
+
+
+// TODO: Make structures around these
+GLuint framebuffer, framebufferMod, frameVAO;
+GLuint sphereBuf, sphereIndex, sphereCount;
+
+
+// Not explicitly tied to OpenGL Globals
+OBB smartBox;
+std::vector<Model> planes;
+StaticOctTree<Dummy> boxes(glm::vec3(20));
+
+static unsigned int frameCounter = 0;
+bool smartBoxColor = false;
+
+glm::vec3 moveSphere(0, 3.5f, 6.5f);
+int kernel = 0;
+int lineWidth = 3;
+
+#define TIGHT_BOXES 1
+#define WIDE_BOXES 2
+// One for each number key
+std::array<bool, '9' - '0' + 1> debugFlags{};
+
+
+// Input Shenanigans
+#define ArrowKeyUp    0
+#define ArrowKeyDown  1
+#define ArrowKeyRight 2
+#define ArrowKeyLeft  3
+
+std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
+constexpr float ANGLE_DELTA = 4;
+
+
+// Camera
+glm::vec3 cameraPosition(0, 1.5f, 0);
+glm::vec3 cameraRotation(0, 0, 0);
+float zNear = 0.1f, zFar = 100.f;
 
 
 enum GeometryThing : unsigned short
@@ -193,11 +224,6 @@ enum GeometryThing : unsigned short
 	All = 0xFF,
 };
 
-GLuint framebuffer, framebufferMod, frameVAO; 
-Texture2D framebufferColor, framebufferDepth, framebufferNormal, normalModifier;
-Buffer framebufferBuffer;
-
-Shader expand, finalResult;
 
 // I do not like this personally tbqh
 static std::array<glm::vec4, 6> FrameBufferVerts = {
@@ -209,8 +235,6 @@ static std::array<glm::vec4, 6> FrameBufferVerts = {
 	{ 1.0f, -1.0f, 1.0f, 0.0f},
 	{ 1.0f,  1.0f, 1.0f, 1.0f}
 }};
-Shader frameShader;
-Texture2D hatching;
 
 std::vector<Model> GetPlaneSegment(const glm::vec3& base, GeometryThing flags)
 {
@@ -228,30 +252,9 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 {
 	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
 }
-std::vector<Model> planes;
 
-struct Dummy
-{
-	OBB box;
-	bool color;
-};
-
-StaticOctTree<Dummy> boxes(glm::vec3(20));
-std::vector<bool> boxColor;
-
-bool dummyFlag = false;
-bool clear = false;
-static int counter = 0;
-float zNear = 0.1f, zFar = 100.f;
-
-Buffer rayBuffer;
-VAO rayVAO;
-
-OBB smartBox;
-bool smartBoxColor = false;
-
-glm::vec3 moveSphere(0, 3.5f, 6.5f);
-int kernel = 0;
+// TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
+// TODO: Move cube stuff into a shader or something I don't know
 
 void display()
 {
@@ -271,17 +274,17 @@ void display()
 	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
 
 	// Camera matrix
-	glm::vec3 angles2 = glm::radians(angles);
+	glm::vec3 angles2 = glm::radians(cameraRotation);
 
 	// Adding pi/2 is necessary because the default camera is facing -z
-	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -offset);
+	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 	universal.BufferSubData(view, 0);
 
 	dither.SetActiveShader();
 	glm::vec3 colors(.5f, .5f, .5f);
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	dither.SetVec3("viewPos", offset);
+	dither.SetVec3("viewPos", cameraPosition);
 	dither.SetTextureUnit("textureIn", wallTexture, 0);
 	dither.SetTextureUnit("ditherMap", ditherTexture, 1);
 
@@ -309,11 +312,11 @@ void display()
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
 		glm::vec3 blue(0, 0, 1);
-		stickVAO.BindArrayBuffer(buffer);
+		stickVAO.BindArrayBuffer(plainCube);
 
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
-		goober.Rotate(glm::radians(glm::vec3(-counter * 2.f, counter * 4.f, counter)));
+		goober.Rotate(glm::radians(glm::vec3(frameCounter * -2.f, frameCounter * 4.f, frameCounter)));
 		uniform.SetMat4("Model", goober.GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
@@ -344,13 +347,13 @@ void display()
 		}
 	}
 	// Alfred
-	stickVAO.BindArrayBuffer(buffer);
+	stickVAO.BindArrayBuffer(plainCube);
 	glLineWidth(19.f);
 	glPointSize(19.f);
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-	glDrawArrays(GL_POINTS, 0, 8);
+	//glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+	//glDrawArrays(GL_POINTS, 0, 8);
 
 
 	// Drawing of the rays
@@ -366,12 +369,14 @@ void display()
 	sphereShader.SetActiveShader();
 	sphereVAO.BindArrayObject();
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
+	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(0.5f);
+	//sphereModel.rotation += glm::vec3(counter * 0.5f, counter * 0.25, counter * 0.125);
 
 	hatching.BindTexture(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	sphereShader.SetVec3("viewPos", offset);
+	sphereShader.SetVec3("viewPos", cameraPosition);
 	sphereShader.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
@@ -415,7 +420,7 @@ void display()
 	expand.SetTextureUnit("screen", framebufferColor, 0);
 	expand.SetTextureUnit("edges", normalModifier, 1);
 	expand.SetTextureUnit("depths", framebufferDepth, 2);
-	expand.SetInt("depth", 3);
+	expand.SetInt("depth", lineWidth);
 	glBindVertexArray(frameVAO);
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 	
@@ -423,19 +428,6 @@ void display()
 	glutSwapBuffers();
 	CheckError();
 }
-
-#define ArrowKeyUp    0
-#define ArrowKeyDown  1
-#define ArrowKeyRight 2
-#define ArrowKeyLeft  3
-
-std::vector<bool> keyState(UCHAR_MAX);
-std::vector<bool> keyStateBackup(UCHAR_MAX);
-std::vector<Wall> walls;
-
-// To get a perpendicular vector to a vector <a, b, c> do that cross <1, 0, 0> to get <0, c, -b>
-
-glm::vec3 rayStart, rayDir;
 
 bool smartBoxCollide(int depth = 0)
 {
@@ -456,18 +448,18 @@ bool smartBoxCollide(int depth = 0)
 void idle()
 {
 	static int lastFrame = 0;
-	counter++;
+	frameCounter++;
 	const int now = glutGet(GLUT_ELAPSED_TIME);
 	const int elapsed = now - lastFrame;
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
-	goober2.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
+	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = (goober2.GetModel().GetNormalMatrix());
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
-	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << smartBox.GetModel().translation;
+	std::cout << "\r" << (float)elapsed / 1000.f << "\t" << 1000.f / float(elapsed) << "\t" << kernel << "\t" << lineWidth;
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
 	//foobar.ToggleTwoSided();
 	//if (!smartBox.IntersectionWithResponse(foobar))
@@ -479,11 +471,11 @@ void idle()
 
 	float speed = 3 * ((float) elapsed) / 1000.f;
 
-	glm::vec3 forward = glm::eulerAngleY(glm::radians(-angles.y)) * glm::vec4(1, 0, 0, 0);
+	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
-	glm::vec3 previous = offset;
+	glm::vec3 previous = cameraPosition;
 	if (keyState[ArrowKeyUp])
 	{
 		smartBox.Translate(smartBox.Forward() * speed);
@@ -499,29 +491,29 @@ void idle()
 	if (keyState['p'] || keyState['P'])
 		std::cout << previous << std::endl;
 	if (keyState['w'] || keyState['W'])
-		offset += forward;
+		cameraPosition += forward;
 	if (keyState['s'] || keyState['S'])
-		offset -= forward;
+		cameraPosition -= forward;
 	if (keyState['d'] || keyState['D'])
-		offset += right;
+		cameraPosition += right;
 	if (keyState['a'] || keyState['A'])
-		offset -= right;
+		cameraPosition -= right;
 	if (keyState['k'])
-		offset.y = -10;
+		cameraPosition.y = -10;
 	if (keyState['b'])
-		offset.y = 10;
-	if (offset != previous)
+		cameraPosition.y = 10;
+	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
 		OBB goober(playerBounds);
-		playerBounds.Center(offset);
+		playerBounds.Center(cameraPosition);
 
 		OBB playerOb(playerBounds);
-		playerOb.Rotate(glm::eulerAngleY(glm::radians(-angles.y)));
+		playerOb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
 		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
 
 		goober.Translate(glm::vec3(2, 0, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, counter * 4.f, 0)));
+		goober.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 		for (auto& wall : boxes)
 		{
 			if (wall.box.Overlap(playerOb))
@@ -535,7 +527,7 @@ void idle()
 		{
 			//offset = previous;
 		}
-		offset = playerOb.Center();
+		cameraPosition = playerOb.Center();
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 	
@@ -563,27 +555,28 @@ void keyboard(unsigned char key, int x, int y)
 {
 	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
-	if (key == 'm' || key == 'M') offset.y += 3;
-	if (key == 'n' || key == 'N') offset.y -= 3;
+	if (key == 'm' || key == 'M') cameraPosition.y += 3;
+	if (key == '[') lineWidth -= 1;
+	if (key == ']') lineWidth += 1;
+	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
-	if (key == '1') debugFlags[TIGHT_BOXES] = !debugFlags[TIGHT_BOXES];
-	if (key == '2') debugFlags[WIDE_BOXES] = !debugFlags[WIDE_BOXES];
-	if (key == 'g' || key == 'G')
-		dummyFlag = !dummyFlag;
-	if (key == 'h' || key == 'H')
-		clear = !clear;
+	if (key >= '1' && key <= '9')
+	{
+		std::size_t value = (std::size_t) key - '0';
+		debugFlags[value] = !debugFlags[value];
+	}
 	if (key == 'r' || key == 'R')
 	{
-		glm::vec3 angles2 = glm::radians(angles);
+		glm::vec3 angles2 = glm::radians(cameraRotation);
 
 		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
-		std::array<glm::vec3, 8> verts = { offset, offset + gamer * 100.f , offset, offset + gamer * 100.f};
+		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f};
 		bool set = false;
 
 
 		Collision nears, fars;
-		smartBox.Intersect(offset, gamer, nears, fars);
+		smartBox.Intersect(cameraPosition, gamer, nears, fars);
 		std::cout << nears << std::endl;
 		std::cout << fars << std::endl;
 		//for (std::size_t i = 0; i < boxes.size(); i++)
@@ -613,7 +606,6 @@ void keyboardOff(unsigned char key, int x, int y)
 	keyState[key] = false;
 }
 
-constexpr float ANGLE_DELTA = 4;
 void mouseFunc(int x, int y)
 {
 	static int previousX, previousY;
@@ -626,8 +618,8 @@ void mouseFunc(int x, int y)
 	float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
 	float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
 
-	angles.x += zDelta;
-	angles.y += yDelta;
+	cameraRotation.x += zDelta;
+	cameraRotation.y += yDelta;
 
 	previousX = x;
 	previousY = y;
@@ -686,6 +678,7 @@ int main(int argc, char** argv)
 		return -1;
 	}
 	glDisable(GL_MULTISAMPLE);
+	//glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEBUG_OUTPUT);
 	CheckError();
 	glDebugMessageCallback(DebugCallback, nullptr);
@@ -732,10 +725,10 @@ int main(int argc, char** argv)
 	planeBO.BufferData(plane, StaticDraw);
 	CheckError();
 
-	buffer.Generate(ArrayBuffer);
-	buffer.BufferData(plainCubeVerts, StaticDraw);
+	plainCube.Generate(ArrayBuffer);
+	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
-	buffer.BindBuffer();
+	plainCube.BindBuffer();
 
 	CheckError();
 
@@ -767,11 +760,9 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
-		walls.push_back(Wall(ref));
 		OBB project(ref);
 		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
-		boxColor.push_back(false);
 	}
 	Model oops = planes[planes.size() / 2 + 1];
 
@@ -784,8 +775,8 @@ int main(int argc, char** argv)
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	glDisable(GL_LINE_SMOOTH);
-	glDisable(GL_POLYGON_SMOOTH);
+	//glDisable(GL_LINE_SMOOTH);
+	//glDisable(GL_POLYGON_SMOOTH);
 
 	glDepthFunc(GL_LESS);
 	glClearColor(0, 0, 0, 1);

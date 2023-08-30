@@ -11,7 +11,7 @@ layout(location = 2) uniform sampler2D depths;
 uniform int depth;
 
 int dark = 0;
-const int required = 3;
+const int required = 4;
 
 void test(ivec2 offset)
 {
@@ -55,8 +55,8 @@ void main()
 	else
 	{
 		//fColor = vec4(1, 1, 1, 1);
-		//fColor = sampled;
-		fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
+		fColor = sampled;
+		//fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
 	}
 	//fColor = sampled * fColor;
 	fColor.w = 1;

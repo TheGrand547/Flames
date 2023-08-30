@@ -35,11 +35,13 @@ void main()
 	
 	for(int i = 0; i < 9; i++)
 	{
-		fColor += textureOffset(normal, textureCoords, ivec2((i % 3) - 1, floor(i / 3) - 1)) * kernel[i] * textureOffset(depth, textureCoords, ivec2((i % 3) - 1, floor(i / 3) - 1)).r;
-		float foop = textureOffset(depth, textureCoords, ivec2((i % 3) - 1, floor(i / 3) - 1)).r;
-		foop = 2 * foop - 1;
-		foop = 2.0 * zNear * zFar / (zFar + zNear - foop * (zFar - zNear));
-		//depthDelta += foop * kernel[i];
+		ivec2 offset = ivec2((i % 3) - 1, floor(i / 3) - 1);
+		float kernelValue = kernel[i];
+		float depthSample = textureOffset(depth, textureCoords, offset).r;
+		fColor += textureOffset(normal, textureCoords, offset) * kernelValue * depthSample;
+		depthSample = 2 * depthSample - 1;
+		depthSample = 2.0 * zNear * zFar / (zFar + zNear - depthSample * (zFar - zNear));
+		//depthDelta += depthSample * kernelValue;
 	}
 	float large = max(abs(fColor.x), max(abs(fColor.y), abs(fColor.z)));
 	
@@ -48,9 +50,14 @@ void main()
 		large = 1.f;
 	
 	fColor = 1 - vec4(step(0.25, large));
+	
+	
 	//fColor = 1 - vec4(step(0.25, abs(depthDelta)));
-	fColor = 1 - vec4(large);
+	//fColor = 1 - vec4(large);
 	fColor.w = 1;
+	
+	
+	
 	//fColor = abs(fColor);
 	//fColor = abs(texture(normal, textureCoords);
 	//fColor = fColor * texture(screen, textureCoords);
