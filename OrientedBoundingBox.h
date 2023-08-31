@@ -433,13 +433,12 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 				otherDot = dotted2;
 			}
 		}
-		// This is the point that will be rotated about
+		// This is the point that will be rotated about, needs to be redone to solve the corner dilemma tm
+		// TODO: CORNER DILEMMA
 		glm::vec3 point = this->Center() + collide.normal * distance;
+		
 		glm::vec3 oldCenter = this->Center();
-		//std::cout << point << "\t" << collide.point << std::endl;
 
-		//std::cout << distance << "\t" << collide.distance << std::endl;
-		//std::cout << mineAxis << ":" << otherAxis << std::endl;
 		this->matrix[3] = glm::vec4(collide.point, 1);
 
 		// Maybe do epsilon check?
@@ -448,13 +447,9 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 			// Determine which side of the box the this point is, and rotate the "center" of it towards that
 			//float direction = -glm::sign(glm::dot(collide.point, this->Cross()));
 			float direction = -glm::sign(glm::dot(collide.point, this->Cross()) - glm::dot(oldCenter, this->Cross()));
-			std::cout << "&" << glm::dot(collide.point, this->Cross()) << "\t" << glm::dot(oldCenter, this->Cross()) << std::endl;
-			// 
+			
 			// Cross method needs to be paired with finding minimum of thing
-			//glm::vec3 otherAxis = glm::normalize(other.Center() - point); // Other axis
-			//glm::vec3 cross = glm::cross(otherAxis, collide.normal);
 			glm::vec3 cross = glm::cross(otherAxis, mineAxis);
-			//glm::vec3 cross = mineAxis;
 
 			// TODO: maybe refire the collision detection to stop it from flickering?
 			if (!glm::all(glm::lessThan(glm::abs(cross), glm::vec3(EPSILON))))

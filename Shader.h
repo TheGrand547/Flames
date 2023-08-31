@@ -8,6 +8,16 @@
 #include <string>
 #include "Texture2D.h"
 
+// TODO: Fill out the rest of the enum
+enum PrimitiveDrawingType : unsigned int
+{
+	Triangle          = GL_TRIANGLES,
+	TriangleStrip     = GL_TRIANGLE_STRIP,
+	TriangleAdjacency = GL_TRIANGLES_ADJACENCY,
+	Lines             = GL_LINES,
+	LineStrip         = GL_LINE_STRIP,
+};
+
 class Shader
 {
 protected:
@@ -52,6 +62,10 @@ public:
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
+
+	template<PrimitiveDrawingType type> inline void DrawElements(const GLuint num, const GLuint offset = 0);
+	// TODO: Maybe concept?
+	template<PrimitiveDrawingType type, class Container> inline void DrawElements(const Container& contents);
 };
 
 constexpr bool Shader::Compiled() const
@@ -104,5 +118,17 @@ inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingP
 	glUniformBlockBinding(this->program, this->UniformBlockIndex(name), bindingPoint);
 }
 
-#endif // FLAMES_SHADER_H
+template<PrimitiveDrawingType type>
+inline void Shader::DrawElements(const GLuint num, const GLuint offset)
+{
+	glDrawArrays((GLenum)type, offset, num);
+}
 
+// TODO: Some kind of type inference thingy for index types bullshit
+template<PrimitiveDrawingType type, class Container>
+inline void Shader::DrawElements(const Container& contents)
+{
+	glDrawElements((GLenum) type, (GLsizei) contents.size(), GL_UNSIGNED_BYTE, contents.data());
+}
+
+#endif // FLAMES_SHADER_H

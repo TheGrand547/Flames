@@ -295,7 +295,7 @@ void display()
 		glm::vec3 color(.5f, .5f, .5f);
 		dither.SetMat4("Model", model.GetModelMatrix());
 		dither.SetVec3("color", color);
-		glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+		dither.DrawElements<TriangleStrip>(4u);
 	}
 
 	/* STICK FIGURE GUY */
@@ -352,12 +352,12 @@ void display()
 	glPointSize(19.f);
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+
+	uniform.DrawElements<Triangle>(cubeIndicies);
+	uniform.DrawElements<Lines>(cubeOutline);
 
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-	//glDrawArrays(GL_POINTS, 0, 8);
-
+	uniform.DrawElements<Lines>(cubeOutline);
 
 	// Drawing of the rays
 	stickVAO.BindArrayBuffer(rayBuffer);
@@ -559,7 +559,7 @@ void idle()
 void smartReset()
 {
 	smartBox.ReCenter(glm::vec3(2, 0.75f, 0));
-	smartBox.Reorient(glm::vec3(0, 180, 0));
+	smartBox.ReOrient(glm::vec3(0, 180, 0));
 }
 
 void keyboard(unsigned char key, int x, int y)
