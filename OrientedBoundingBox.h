@@ -44,8 +44,10 @@ public:
 	// TODO: Rethink the rotate/reorient from mat4 thing, replace with "Apply Transform" 
 	inline void ReCenter(const glm::vec3& center) noexcept;
 
-	inline void Reorient(const glm::mat4& rotation);
-	inline void Reorient(const glm::vec3& euler);
+	inline void ReOrient(const glm::mat4& rotation);
+	inline void ReOrient(const glm::vec3& euler);
+
+	inline void ReScale(const glm::vec3& scale) noexcept;
 
 	inline void Rotate(const glm::mat4& rotation);
 	inline void Rotate(const glm::vec3& euler);
@@ -161,13 +163,21 @@ inline void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
 	this->matrix[3] = glm::vec4(center, 1);
 }
 
-inline void OrientedBoundingBox::Reorient(const glm::vec3& euler)
+inline void OrientedBoundingBox::ReOrient(const glm::vec3& euler)
 {
 	// TODO: Standardize using degrees or radians
-	this->Reorient(glm::eulerAngleXYZ(euler.x, euler.y, euler.z));
+	glm::vec4 center = this->matrix[3];
+	this->matrix = glm::mat4(1.f);
+	this->matrix[3] = center;
+	this->Rotate(euler);
 }
 
-inline void OrientedBoundingBox::Reorient(const glm::mat4& rotation)
+inline void OrientedBoundingBox::ReScale(const glm::vec3& scale) noexcept
+{
+	this->halfs = scale;
+}
+
+inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation)
 {
 	glm::vec4 center = this->matrix[3];
 	this->matrix = glm::mat4(1.f);
@@ -402,11 +412,16 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 		//float myDot = INFINITY, otherDot = INFINITY;
 		float myDot = -INFINITY, otherDot = -INFINITY;
 		float distance = 0.f;
+		
+		bool tooAligned = false;
 		for (glm::length_t i = 0; i < 3; i++)
 		{
 			float dotted = glm::abs(glm::dot(glm::vec3(this->matrix[i]), collide.normal));
 			float dotted2 = glm::abs(glm::dot(glm::vec3(other.matrix[i]), collide.normal));
-			distance += glm::abs(this->halfs[i] * dotted);
+			if (1 - dotted < EPSILON)
+				tooAligned = true;
+			// Need signed projection on axis
+			distance += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), collide.normal));
 			if (myDot < dotted)
 			{
 				mineAxis = this->matrix[i];
@@ -417,21 +432,24 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 				otherAxis = other.matrix[i];
 				otherDot = dotted2;
 			}
-
 		}
 		// This is the point that will be rotated about
 		glm::vec3 point = this->Center() + collide.normal * distance;
-		std::cout << point << "\t" << collide.point << std::endl;
+		glm::vec3 oldCenter = this->Center();
+		//std::cout << point << "\t" << collide.point << std::endl;
 
-		std::cout << distance << "\t" << collide.distance << std::endl;
-
+		//std::cout << distance << "\t" << collide.distance << std::endl;
+		//std::cout << mineAxis << ":" << otherAxis << std::endl;
 		this->matrix[3] = glm::vec4(collide.point, 1);
+
 		// Maybe do epsilon check?
-		if (collide.distance > 0)
+		if (collide.distance > 0 && !tooAligned)
 		{
 			// Determine which side of the box the this point is, and rotate the "center" of it towards that
-			float direction = -glm::sign(glm::dot(collide.point, this->Cross()));
-
+			//float direction = -glm::sign(glm::dot(collide.point, this->Cross()));
+			float direction = -glm::sign(glm::dot(collide.point, this->Cross()) - glm::dot(oldCenter, this->Cross()));
+			std::cout << "&" << glm::dot(collide.point, this->Cross()) << "\t" << glm::dot(oldCenter, this->Cross()) << std::endl;
+			// 
 			// Cross method needs to be paired with finding minimum of thing
 			//glm::vec3 otherAxis = glm::normalize(other.Center() - point); // Other axis
 			//glm::vec3 cross = glm::cross(otherAxis, collide.normal);

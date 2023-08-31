@@ -556,6 +556,12 @@ void idle()
 	glutPostRedisplay();
 }
 
+void smartReset()
+{
+	smartBox.ReCenter(glm::vec3(2, 0.75f, 0));
+	smartBox.Reorient(glm::vec3(0, 180, 0));
+}
+
 void keyboard(unsigned char key, int x, int y)
 {
 	// TODO: Whole key thing needs to be re-written
@@ -566,6 +572,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
+	if (key == 'r' || key == 'R') smartReset();
 	if (key >= '1' && key <= '9')
 	{
 		std::size_t value = (std::size_t) key - '0';
@@ -762,7 +769,7 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 
-	planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
+	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
 		OBB project(ref);
@@ -860,10 +867,8 @@ int main(int argc, char** argv)
 	dither.UniformBlockBinding("Camera", 0);
 	sphereShader.UniformBlockBinding("Camera", 0);
 
-	smartBox.ReCenter(glm::vec3(2, 0.75f, 0));
 	smartBox.Scale(glm::vec3(0.5f));
-	smartBox.Rotate(glm::vec3(0, 180, 0));
-
+	smartReset();
 	dumbBox.ReCenter(glm::vec3(0, 0.75f, -2));
 	dumbBox.Scale(glm::vec3(0.5f));
 	dumbBox.Rotate(glm::vec3(0, 180, 0));
