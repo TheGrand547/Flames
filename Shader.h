@@ -8,14 +8,20 @@
 #include <string>
 #include "Texture2D.h"
 
-// TODO: Fill out the rest of the enum
 enum PrimitiveDrawingType : unsigned int
 {
-	Triangle          = GL_TRIANGLES,
-	TriangleStrip     = GL_TRIANGLE_STRIP,
-	TriangleAdjacency = GL_TRIANGLES_ADJACENCY,
-	Lines             = GL_LINES,
-	LineStrip         = GL_LINE_STRIP,
+	Lines                  = GL_LINES,
+	LinesAdjacency         = GL_LINES_ADJACENCY,          // Only with Geometry Shaders
+	LineLoop               = GL_LINE_LOOP,
+	LineStrip              = GL_LINE_STRIP,
+	LineStripAdjacency     = GL_LINE_STRIP_ADJACENCY,     // Only with Geometry Shaders
+	Patches                = GL_PATCHES,                  // Only with Tesselation Shaders
+	Points                 = GL_POINTS,
+	Triangle               = GL_TRIANGLES,
+	TriangleAdjacency      = GL_TRIANGLES_ADJACENCY,      // Only with Geometry Shaders
+	TriangleFan            = GL_TRIANGLE_FAN,
+	TriangleStrip          = GL_TRIANGLE_STRIP,
+	TriangleStripAdjacency = GL_TRIANGLE_STRIP_ADJACENCY, // Only with Geometry Shaders
 };
 
 class Shader
@@ -65,7 +71,7 @@ public:
 
 	template<PrimitiveDrawingType type> inline void DrawElements(const GLuint num, const GLuint offset = 0);
 	// TODO: Maybe concept?
-	template<PrimitiveDrawingType type, class Container> inline void DrawElements(const Container& contents);
+	template<PrimitiveDrawingType type, class Container> inline void DrawIndexed(const Container& contents);
 };
 
 constexpr bool Shader::Compiled() const
@@ -126,7 +132,7 @@ inline void Shader::DrawElements(const GLuint num, const GLuint offset)
 
 // TODO: Some kind of type inference thingy for index types bullshit
 template<PrimitiveDrawingType type, class Container>
-inline void Shader::DrawElements(const Container& contents)
+inline void Shader::DrawIndexed(const Container& contents)
 {
 	glDrawElements((GLenum) type, (GLsizei) contents.size(), GL_UNSIGNED_BYTE, contents.data());
 }

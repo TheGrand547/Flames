@@ -130,9 +130,9 @@ std::array<glm::vec3, 10> stick{
 	}
 };
 
-GLubyte stickDex[] = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
+std::array<GLubyte, 14> stickDex = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
 
-GLubyte planeOutline[] = { 0, 1, 3, 2, 0 };
+std::array<GLubyte, 5> planeOutline = { 0, 1, 3, 2, 0 }; // Can be done with one less vertex using GL_LINE_LOOP
 
 static const std::array<GLubyte, 16 * 16> dither16 = {
 {
@@ -157,7 +157,7 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer stickBuffer, texturedPlane, framebufferBuffer, plainCube, planeBO, rayBuffer;
+Buffer stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer;
 UniformBuffer universal;
 
 // Shaders
@@ -171,7 +171,7 @@ VAO gamerTest, rayVAO, sphereVAO, stickVAO;
 
 
 // TODO: Make structures around these
-GLuint framebuffer, framebufferMod, frameVAO;
+GLuint framebuffer, framebufferMod;
 GLuint sphereBuf, sphereIndex, sphereCount;
 
 
@@ -224,18 +224,6 @@ enum GeometryThing : unsigned short
 	All = 0xFF,
 };
 
-
-// I do not like this personally tbqh
-static std::array<glm::vec4, 6> FrameBufferVerts = {
-{
-	{-1.0f,  1.0f, 0.0f, 1.0f},
-	{-1.0f, -1.0f, 0.0f, 0.0f},
-	{ 1.0f, -1.0f, 1.0f, 0.0f},
-	{-1.0f,  1.0f, 0.0f, 1.0f},
-	{ 1.0f, -1.0f, 1.0f, 0.0f},
-	{ 1.0f,  1.0f, 1.0f, 1.0f}
-}};
-
 std::vector<Model> GetPlaneSegment(const glm::vec3& base, GeometryThing flags)
 {
 	std::vector<Model> results;
@@ -261,17 +249,15 @@ void display()
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	glDrawBuffers(2, buffers);
-	CheckError();
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
-	// FORWARD IS (0, 0, 1)
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	uniform.SetActiveShader();
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
+	//glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
 
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(cameraRotation);
@@ -295,7 +281,7 @@ void display()
 		glm::vec3 color(.5f, .5f, .5f);
 		dither.SetMat4("Model", model.GetModelMatrix());
 		dither.SetVec3("color", color);
-		dither.DrawElements<TriangleStrip>(4u);
+		dither.DrawElements<TriangleStrip>(4);
 	}
 
 	/* STICK FIGURE GUY */
@@ -306,7 +292,7 @@ void display()
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
-	glDrawElements(GL_LINE_STRIP, sizeof(stickDex), GL_UNSIGNED_BYTE, stickDex);
+	uniform.DrawIndexed<LineStrip>(stickDex);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -348,16 +334,16 @@ void display()
 	}
 	// Alfred
 	stickVAO.BindArrayBuffer(plainCube);
-	glLineWidth(19.f);
-	glPointSize(19.f);
+	glLineWidth(1.f);
+	glPointSize(1.f);
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
 
-	uniform.DrawElements<Triangle>(cubeIndicies);
-	uniform.DrawElements<Lines>(cubeOutline);
+	uniform.DrawIndexed<Triangle>(cubeIndicies);
+	uniform.DrawIndexed<Lines>(cubeOutline);
 
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.DrawElements<Lines>(cubeOutline);
+	uniform.DrawIndexed<Lines>(cubeOutline);
 
 	// Drawing of the rays
 	stickVAO.BindArrayBuffer(rayBuffer);
@@ -414,9 +400,7 @@ void display()
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", kernel);
 
-
-	glBindVertexArray(frameVAO);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	frameShader.DrawElements<TriangleStrip>(4);
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	expand.SetActiveShader();
@@ -424,8 +408,7 @@ void display()
 	expand.SetTextureUnit("edges", normalModifier, 1);
 	expand.SetTextureUnit("depths", framebufferDepth, 2);
 	expand.SetInt("depth", lineWidth);
-	glBindVertexArray(frameVAO);
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	frameShader.DrawElements<TriangleStrip>(4);
 	
 	glFlush();
 	glutSwapBuffers();
@@ -839,17 +822,9 @@ int main(int argc, char** argv)
 		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	
-	// TODO: VAO class
-	glGenVertexArrays(1, &frameVAO);
-	framebufferBuffer.Generate(ArrayBuffer);
-	framebufferBuffer.BufferData(FrameBufferVerts, StaticDraw);
-	framebufferBuffer.BindBuffer();
-	CheckError();
-	glBindVertexArray(frameVAO);
-	glVertexAttribPointer(frameShader.Index("positionAndTexture"), 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4), nullptr);
-	glEnableVertexArrayAttrib(frameVAO, frameShader.Index("positionAndTexture"));
+
 	expand.Compile("framebuffer", "expand");
+
 
 	auto stuff = GenerateSphere(30, 30);
 	sphereBuf = std::get<0>(stuff);
@@ -876,8 +851,8 @@ int main(int argc, char** argv)
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);
 	universal.BindUniform();
-	CheckError();
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, 0.1f, 100.0f);
+
+	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
 	universal.BufferSubData(projection, sizeof(glm::mat4));
 	CheckError();
 
