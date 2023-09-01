@@ -18,7 +18,10 @@ struct NormalVertex
 struct TextureVertex
 {
 	glm::vec3 position;
-	glm::vec2 coordinates;
+	union
+	{
+		glm::vec2 textureCoordinates, coordinates, uvs;
+	};
 };
 
 struct MeshVertex

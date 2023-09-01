@@ -53,35 +53,37 @@ std::array<ColoredVertex, 8> coloredCubeVertex{
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
-		{-1, -1, -1},
-		{ 1, -1, -1},
-		{ 1,  1, -1},
-		{-1,  1, -1},
-		{-1, -1,  1},
-		{ 1, -1,  1},
-		{ 1,  1,  1},
-		{-1,  1,  1},
+		{-1, -1, -1},   // -x, -y, -z
+		{ 1, -1, -1},   // +x, -y, -z
+		{ 1,  1, -1},   // +x, +y, -z
+		{-1,  1, -1},   // -x, +y, -z
+		{-1, -1,  1},   // -x, -y, +z
+		{ 1, -1,  1},   // +x, -y, +z
+		{ 1,  1,  1},   // +x, +y, +z
+		{-1,  1,  1},   // -x, +y, +z
 	}
 };
 
+// TODO: Better indexing so vertiex texture coordinates don't have to be repeated with in the same face
+// If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
 static const std::array<GLubyte, 36> cubeIndicies =
 {
-	0, 1, 4,
-	1, 5, 4,
+	0, 1, 4, // -Y Face
+	1, 5, 4, 
 
-	4, 3, 0,
-	3, 4, 7,
+	0, 4, 3,  // -X Face
+	4, 7, 3,
 
-	7, 4, 6,
+	7, 4, 6, // +Z Face
 	4, 5, 6,
 
-	6, 5, 2,
-	2, 5, 1,
+	6, 5, 2, // +X Face
+	5, 1, 2,
 
-	2, 1, 0,
-	2, 0, 3,
+	1, 0, 2, // -Z Face
+	0, 3, 2,
 
-	6, 2, 7,
+	6, 2, 7, // +Y Face
 	2, 3, 7
 };
 // I don't know what's goign on with this but I didn't like the old thing
@@ -157,7 +159,7 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer;
+Buffer stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer;
 UniformBuffer universal;
 
 // Shaders
@@ -167,7 +169,7 @@ Shader dither, expand, finalResult, frameShader, sphereShader, uniform;
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
 
 // Vertex Array Objects
-VAO gamerTest, rayVAO, sphereVAO, stickVAO;
+VAO gamerTest, rayVAO, sphereVAO, stickVAO, albertVAO;
 
 
 // TODO: Make structures around these
@@ -332,18 +334,27 @@ void display()
 			}
 		}
 	}
-	// Alfred
+
+	// Cubert
 	stickVAO.BindArrayBuffer(plainCube);
+	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
+	uniform.DrawIndexed<Lines>(cubeOutline);
+
+	// Albert
+	albertVAO.BindArrayObject();
+	dither.SetActiveShader();
+	dither.SetTextureUnit("ditherMap", wallTexture, 1);
+	dither.SetTextureUnit("textureIn", ditherTexture, 0);
 	glLineWidth(1.f);
 	glPointSize(1.f);
-	uniform.SetMat4("Model", smartBox.GetModelMatrix());
-	uniform.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
+	dither.SetMat4("Model", smartBox.GetModelMatrix());
+	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
+	dither.DrawElements<Triangle>(36);
+
 
 	uniform.DrawIndexed<Triangle>(cubeIndicies);
 	uniform.DrawIndexed<Lines>(cubeOutline);
 
-	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.DrawIndexed<Lines>(cubeOutline);
 
 	// Drawing of the rays
 	stickVAO.BindArrayBuffer(rayBuffer);
@@ -362,14 +373,13 @@ void display()
 	sphereModel.scale = glm::vec3(0.5f);
 	//sphereModel.rotation += glm::vec3(counter * 0.5f, counter * 0.25, counter * 0.125);
 
-	hatching.BindTexture(0);
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	sphereShader.SetVec3("viewPos", cameraPosition);
 	sphereShader.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
 	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	sphereShader.SetTextureUnit("hatching", 0);
+	sphereShader.SetTextureUnit("hatching", hatching, 0);
 
 	// Doing this while letting the normal be the color will create a cool effect
 	//glDrawArrays(GL_TRIANGLES, 0, 1836);
@@ -428,7 +438,8 @@ bool smartBoxCollide(int depth = 0)
 			smartBox.OverlapWithResponse(letsgo->box);
 		}
 	}
-	smartBox.OverlapWithResponse(dumbBox);
+	//smartBox.OverlapWithResponse(dumbBox);
+	dumbBox.OverlapWithResponse(smartBox);
 
 	return val;
 }
@@ -541,7 +552,7 @@ void idle()
 
 void smartReset()
 {
-	smartBox.ReCenter(glm::vec3(2, 0.75f, 0));
+	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
 	smartBox.ReOrient(glm::vec3(0, 180, 0));
 }
 
@@ -572,8 +583,6 @@ void keyboard(unsigned char key, int x, int y)
 
 		Collision nears, fars;
 		smartBox.Intersect(cameraPosition, gamer, nears, fars);
-		std::cout << nears << std::endl;
-		std::cout << fars << std::endl;
 		//for (std::size_t i = 0; i < boxes.size(); i++)
 		/*
 		for (auto& box: boxes)
@@ -649,7 +658,7 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
-	//printf("%u: %s\n", id, message);
+	printf("%u: %s\n", id, message);
 }
 
 int main(int argc, char** argv)
@@ -723,8 +732,6 @@ int main(int argc, char** argv)
 	plainCube.Generate(ArrayBuffer);
 	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
-	plainCube.BindBuffer();
-
 	CheckError();
 
 	std::array<glm::vec3, 8> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
@@ -766,6 +773,29 @@ int main(int argc, char** argv)
 
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	CheckError();
+
+
+	std::array<TextureVertex, 36> textVert{};
+	for (std::size_t i = 0; i < 36; i++)
+	{
+		textVert[i].position = texturedCubeVerts[i];
+		int j = i % 6;
+		// j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
+		switch (j)
+		{
+		case 0: textVert[i].uvs = glm::vec2(0, 0); break;
+		case 4: textVert[i].uvs = glm::vec2(1, 1); break;
+		case 1: case 3: textVert[i].uvs = glm::vec2(0, 1); break;
+		case 2: case 5: textVert[i].uvs = glm::vec2(1, 0); break;
+		default: break;
+		}
+	}
+	albertBuffer.Generate(ArrayBuffer);
+	albertBuffer.BufferData(textVert, StaticDraw);
+	albertBuffer.BindBuffer();
+	albertVAO.Generate();
+	albertVAO.FillArray<TextureVertex>(dither);
+
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);

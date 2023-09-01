@@ -201,11 +201,6 @@ inline void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const gl
 	//this->matrix = ((this->matrix * glm::translate(glm::mat4(1), point)) * rotation) * glm::translate(glm::mat4(1), -point);
 	//this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
 	this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
-	/*
-	glm::vec4 center = glm::vec4(glm::vec3(rotation * glm::vec4(glm::vec3(this->matrix[3]) - point, 0)) + point, 1);
-	this->Rotate(rotation);
-	this->matrix[3] = center;
-	*/
 }
 
 inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point)
@@ -440,7 +435,7 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 		glm::vec3 oldCenter = this->Center();
 
 		this->matrix[3] = glm::vec4(collide.point, 1);
-
+		// TODO: Still is too eager to turn along instead of towards the wall
 		// Maybe do epsilon check?
 		if (collide.distance > 0 && !tooAligned)
 		{
