@@ -252,6 +252,7 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data, Textur
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei) width, (GLsizei) height, 0, (GLenum) textureFormat, (GLenum) dataFormat, data.data());
+		this->SetFilters();
 	}
 }
 
@@ -274,6 +275,7 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei)width, (GLsizei)height, 0, (GLenum)textureFormat, (GLenum)dataFormat, data.data());
+		this->SetFilters();
 	}
 }
 

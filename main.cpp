@@ -68,23 +68,23 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
 static const std::array<GLubyte, 36> cubeIndicies =
 {
-	0, 1, 4, // -Y Face
-	1, 5, 4, 
-
-	0, 4, 3,  // -X Face
+	0, 4, 3, // -X Face
 	4, 7, 3,
 
-	7, 4, 6, // +Z Face
-	4, 5, 6,
-
-	6, 5, 2, // +X Face
-	5, 1, 2,
+	0, 1, 4, // -Y Face
+	1, 5, 4,
 
 	1, 0, 2, // -Z Face
 	0, 3, 2,
 
+	6, 5, 2, // +X Face
+	5, 1, 2,
+
 	6, 2, 7, // +Y Face
-	2, 3, 7
+	2, 3, 7,
+
+	7, 4, 6, // +Z Face
+	4, 5, 6,
 };
 // I don't know what's goign on with this but I didn't like the old thing
 
@@ -344,7 +344,7 @@ void display()
 	albertVAO.BindArrayObject();
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
-	dither.SetTextureUnit("textureIn", ditherTexture, 0);
+	dither.SetTextureUnit("textureIn", texture, 0);
 	glLineWidth(1.f);
 	glPointSize(1.f);
 	dither.SetMat4("Model", smartBox.GetModelMatrix());
@@ -371,7 +371,7 @@ void display()
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(0.5f);
-	//sphereModel.rotation += glm::vec3(counter * 0.5f, counter * 0.25, counter * 0.125);
+	sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
 
 	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -454,7 +454,7 @@ void idle()
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
 	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
-	glm::mat4 tester = (goober2.GetModel().GetNormalMatrix());
+	glm::mat4 tester = goober2.GetNormalMatrix();
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
@@ -553,7 +553,7 @@ void idle()
 void smartReset()
 {
 	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
-	smartBox.ReOrient(glm::vec3(0, 180, 0));
+	smartBox.ReOrient(glm::vec3(0, 0, 0));
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -700,8 +700,7 @@ int main(int argc, char** argv)
 
 	texture.Load("text.png");
 	wallTexture.Load("flowed.png");
-	CheckError();
-
+	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	CheckError();
 
@@ -788,6 +787,14 @@ int main(int argc, char** argv)
 		case 1: case 3: textVert[i].uvs = glm::vec2(0, 1); break;
 		case 2: case 5: textVert[i].uvs = glm::vec2(1, 0); break;
 		default: break;
+		}
+		// Need to rotate them
+		if (i / 6 < 3)
+		{
+			// Ensure opposite sides have the same alignment
+			textVert[i].uvs = textVert[i].uvs - glm::vec2(0.5f);
+			textVert[i].uvs = glm::mat2(0, -1, 1, 0) * textVert[i].uvs;
+			textVert[i].uvs = textVert[i].uvs + glm::vec2(0.5f);
 		}
 	}
 	albertBuffer.Generate(ArrayBuffer);

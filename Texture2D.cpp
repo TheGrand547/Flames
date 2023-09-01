@@ -60,6 +60,7 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 			internal = (TextureFormatInternal) size;
 		}
 		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, this->width, this->height, 0, size, GL_UNSIGNED_BYTE, data);
+		this->SetFilters();
 	}
 	else
 	{
@@ -74,4 +75,5 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	glTexImage2D(GL_TEXTURE_2D, level, (GLenum) type, (GLsizei) width, (GLsizei) height, 0, (GLenum) type, GL_UNSIGNED_BYTE, NULL);
+	this->SetFilters();
 }
