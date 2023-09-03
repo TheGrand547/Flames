@@ -393,6 +393,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 	return true;
 }
 
+// TODO: Allow response to be applied later, and in different amounts so you can have real physics tm(ie small object moves/rotates more than big one etc)
 constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
 {
 	// SLOPPY
@@ -436,6 +437,8 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 
 		this->matrix[3] = glm::vec4(collide.point, 1);
 		// TODO: Still is too eager to turn along instead of towards the wall
+		// TODO: Find closest corner and rotate towards it?
+		// TODO: FIND THE CLOSEST ***EDGE*** AND ROTATE ALONG IT!!!!!! HOW???? I HAVE NO CLUE
 		// Maybe do epsilon check?
 		if (collide.distance > 0 && !tooAligned)
 		{

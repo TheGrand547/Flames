@@ -163,13 +163,13 @@ Buffer stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer;
 UniformBuffer universal;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, sphereShader, uniform;
+Shader dither, expand, finalResult, frameShader, flatLighting, uniform;
 
 // Textures
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
 
 // Vertex Array Objects
-VAO gamerTest, rayVAO, sphereVAO, stickVAO, albertVAO;
+VAO texturedVAO, normalVAO, plainVAO;
 
 
 // TODO: Make structures around these
@@ -276,7 +276,7 @@ void display()
 	dither.SetTextureUnit("textureIn", wallTexture, 0);
 	dither.SetTextureUnit("ditherMap", ditherTexture, 1);
 
-	gamerTest.BindArrayObject();
+	texturedVAO.BindArrayBuffer(texturedPlane);
 
 	for (Model& model : planes)
 	{
@@ -288,7 +288,7 @@ void display()
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
-	stickVAO.BindArrayBuffer(stickBuffer);
+	plainVAO.BindArrayBuffer(stickBuffer);
 
 	colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
@@ -300,7 +300,7 @@ void display()
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
 		glm::vec3 blue(0, 0, 1);
-		stickVAO.BindArrayBuffer(plainCube);
+		plainVAO.BindArrayBuffer(plainCube);
 
 		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
 		goober.Translate(glm::vec3(2, 0.1, 0));
@@ -336,12 +336,12 @@ void display()
 	}
 
 	// Cubert
-	stickVAO.BindArrayBuffer(plainCube);
+	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	uniform.DrawIndexed<Lines>(cubeOutline);
 
 	// Albert
-	albertVAO.BindArrayObject();
+	texturedVAO.BindArrayBuffer(albertBuffer);
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
 	dither.SetTextureUnit("textureIn", texture, 0);
@@ -357,7 +357,7 @@ void display()
 
 
 	// Drawing of the rays
-	stickVAO.BindArrayBuffer(rayBuffer);
+	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
@@ -366,20 +366,23 @@ void display()
 	// Sphere drawing
 	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	sphereShader.SetActiveShader();
-	sphereVAO.BindArrayObject();
+	flatLighting.SetActiveShader();
+
+	normalVAO.BindArrayObject();
+	glBindVertexBuffer(0, sphereBuf, 0, 2 * sizeof(glm::vec3));
+
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(0.5f);
 	sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
 
-	sphereShader.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	sphereShader.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	sphereShader.SetVec3("viewPos", cameraPosition);
-	sphereShader.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
-	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
-	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	sphereShader.SetTextureUnit("hatching", hatching, 0);
+	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	flatLighting.SetVec3("viewPos", cameraPosition);
+	flatLighting.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
+	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
+	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
+	flatLighting.SetTextureUnit("hatching", hatching, 0);
 
 	// Doing this while letting the normal be the color will create a cool effect
 	//glDrawArrays(GL_TRIANGLES, 0, 1836);
@@ -388,8 +391,8 @@ void display()
 	// Calling with triangle_strip is fucky
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 	sphereModel.translation = moveSphere;
-	sphereShader.SetMat4("modelMat", sphereModel.GetModelMatrix());
-	sphereShader.SetMat4("normMat", sphereModel.GetNormalMatrix());
+	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
+	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
 
 	// Framebuffer stuff
@@ -438,8 +441,9 @@ bool smartBoxCollide(int depth = 0)
 			smartBox.OverlapWithResponse(letsgo->box);
 		}
 	}
-	//smartBox.OverlapWithResponse(dumbBox);
-	dumbBox.OverlapWithResponse(smartBox);
+	// TODO: Draw the lines and things y'know
+	smartBox.OverlapWithResponse(dumbBox);
+	//dumbBox.OverlapWithResponse(smartBox);
 
 	return val;
 }
@@ -682,8 +686,8 @@ int main(int argc, char** argv)
 		return -1;
 	}
 	glDisable(GL_MULTISAMPLE);
-	//glEnable(GL_MULTISAMPLE);
 	glEnable(GL_DEBUG_OUTPUT);
+
 	CheckError();
 	glDebugMessageCallback(DebugCallback, nullptr);
 
@@ -693,7 +697,7 @@ int main(int argc, char** argv)
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
-	sphereShader.CompileSimple("lightflat");
+	flatLighting.CompileSimple("lightflat");
 
 
 	frameShader.CompileSimple("framebuffer");
@@ -707,8 +711,8 @@ int main(int argc, char** argv)
 	stickBuffer.Generate(ArrayBuffer);
 	stickBuffer.BufferData(stick, StaticDraw);
 
-	stickVAO.Generate();
-	stickVAO.FillArray<Vertex>(uniform);
+	plainVAO.Generate();
+	plainVAO.FillArray<Vertex>(uniform);
 
 
 	std::array<TextureVertex, 4> verts{};
@@ -721,8 +725,8 @@ int main(int argc, char** argv)
 	texturedPlane.Generate(ArrayBuffer);
 	texturedPlane.BufferData(verts, StaticDraw);
 
-	gamerTest.Generate();
-	gamerTest.FillArray<TextureVertex>(dither);
+	texturedVAO.Generate();
+	texturedVAO.FillArray<TextureVertex>(dither);
 
 	planeBO.Generate(ArrayBuffer);
 	planeBO.BufferData(plane, StaticDraw);
@@ -799,10 +803,6 @@ int main(int argc, char** argv)
 	}
 	albertBuffer.Generate(ArrayBuffer);
 	albertBuffer.BufferData(textVert, StaticDraw);
-	albertBuffer.BindBuffer();
-	albertVAO.Generate();
-	albertVAO.FillArray<TextureVertex>(dither);
-
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -868,16 +868,15 @@ int main(int argc, char** argv)
 	sphereIndex = std::get<1>(stuff);
 	sphereCount = (GLuint) std::get<2>(stuff);
 
-	glBindBuffer(GL_ARRAY_BUFFER, sphereBuf);
-	sphereVAO.Generate();
-	sphereVAO.FillArray<NormalVertex>(sphereShader);
+	normalVAO.Generate();
+	normalVAO.FillArray<NormalVertex>(flatLighting);
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
-	sphereShader.UniformBlockBinding("Camera", 0);
+	flatLighting.UniformBlockBinding("Camera", 0);
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
