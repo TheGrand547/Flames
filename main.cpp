@@ -161,7 +161,9 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer<ArrayBuffer> stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer;
+Buffer<ArrayBuffer> stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer, sphereBuffer;
+Buffer<ElementArray> sphereIndicies;
+
 UniformBuffer universal;
 
 // Shaders
@@ -176,7 +178,6 @@ VAO texturedVAO, normalVAO, plainVAO;
 
 // TODO: Make structures around these
 GLuint framebuffer, framebufferMod;
-GLuint sphereBuf, sphereIndex, sphereCount;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -370,8 +371,7 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	flatLighting.SetActiveShader();
 
-	normalVAO.BindArrayObject();
-	glBindVertexBuffer(0, sphereBuf, 0, 2 * sizeof(glm::vec3));
+	normalVAO.BindArrayBuffer(sphereBuffer);
 
 	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
 	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
@@ -387,15 +387,13 @@ void display()
 	flatLighting.SetTextureUnit("hatching", hatching, 0);
 
 	// Doing this while letting the normal be the color will create a cool effect
-	//glDrawArrays(GL_TRIANGLES, 0, 1836);
 	
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
 	// Calling with triangle_strip is fucky
-	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	sphereModel.translation = moveSphere;
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	glDrawElements(GL_TRIANGLES, sphereCount, GL_UNSIGNED_INT, nullptr);
+	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 
 	// Framebuffer stuff
 	CheckError();
@@ -865,10 +863,7 @@ int main(int argc, char** argv)
 	expand.Compile("framebuffer", "expand");
 
 
-	auto stuff = GenerateSphere(30, 30);
-	sphereBuf = std::get<0>(stuff);
-	sphereIndex = std::get<1>(stuff);
-	sphereCount = (GLuint) std::get<2>(stuff);
+	GenerateSphere(sphereBuffer, sphereIndicies, 30, 30);
 
 	normalVAO.Generate();
 	normalVAO.FillArray<NormalVertex>(flatLighting);

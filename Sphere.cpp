@@ -4,7 +4,8 @@
 #include "glmHelp.h"
 
 #include <iostream>
-std::tuple<GLuint, GLuint, std::size_t>  GenerateSphere(const unsigned int latitudeSlices, const unsigned int longitudeSlices)
+void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+									const unsigned int latitudeSlices, const unsigned int longitudeSlices)
 {
 	struct temp_struct
 	{
@@ -60,13 +61,9 @@ std::tuple<GLuint, GLuint, std::size_t>  GenerateSphere(const unsigned int latit
 	GLuint sphereVerticies = (GLuint) index.size();
 	std::cout << "Sphere Indices: " << sphereVerticies << std::endl;
 	std::cout << "Sphere Verts: " << points.size() << std::endl;
-	GLuint sphereBuffer, sphereIndex;
-	glGenBuffers(1, &sphereBuffer);
-	glBindBuffer(GL_ARRAY_BUFFER, sphereBuffer);
-	glBufferData(GL_ARRAY_BUFFER, sizeof(temp_struct) * points.size(), points.data(), GL_STATIC_DRAW);
-
-	glGenBuffers(1, &sphereIndex);
-	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, sphereIndex);
-	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(GLuint) * index.size(), index.data(), GL_STATIC_DRAW);
-	return std::make_tuple(sphereBuffer, sphereIndex, index.size());
+	verts.Generate();
+	verts.BufferData(points, StaticDraw);
+	
+	indicies.Generate();
+	indicies.BufferData(index, StaticDraw);
 }

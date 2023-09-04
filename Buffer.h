@@ -45,7 +45,7 @@ protected:
 	GLuint buffer;
 	std::size_t length;
 	GLsizei elementCount;
-	Glenum elementType; // Sloppy, but only for ElementArrayBuffer
+	GLenum elementType; // Sloppy, but only for ElementArrayBuffer
 public:
 	Buffer();
 	Buffer(Buffer<Type>&& other) noexcept;
@@ -76,7 +76,7 @@ public:
 	template<class T> static void GenerateBuffers(std::map<T, Buffer>& buffers);
 };
 
-template<BufferType Type> inline Buffer<Type>::Buffer() : buffer(0), length(0), elementCount(0), elementSize(0)
+template<BufferType Type> inline Buffer<Type>::Buffer() : buffer(0), length(0), elementCount(0), elementType(0)
 {
 
 }
@@ -133,7 +133,7 @@ template<BufferType Type> inline void Buffer<Type>::CleanUp()
 	this->buffer = 0;
 	this->length = 0;
 	this->elementCount = 0;
-	this->elementType = GL_UNSINGED_INT;
+	this->elementType = GL_UNSIGNED_INT;
 }
 
 template<BufferType Type> void Buffer<Type>::Generate(BufferAccess access, GLsizeiptr size)
@@ -167,7 +167,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 		glBindBuffer(Type, this->buffer);
 		glBufferData(Type, data.size() * sizeof(T), data.data(), (GLenum) usage);
 		this->length = data.size() * sizeof(T);
-		this->elementCount = data.size();
+		this->elementCount = (GLsizei) data.size();
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
 	}
 }
@@ -179,7 +179,7 @@ template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Ty
 		glBindBuffer(Type, this->buffer);
 		glBufferData(Type, (GLsizeiptr) i * sizeof(T), data.data(), (GLenum) usage);
 		this->length = i * sizeof(T);
-		this->elementCount = data.size();
+		this->elementCount = (GLsizei) data.size();
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
 	}
 }

@@ -7,6 +7,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <map>
 #include <string>
+#include "Buffer.h"
 #include "Texture2D.h"
 
 enum PrimitiveDrawingType : unsigned int
@@ -146,7 +147,7 @@ inline void Shader::DrawIndexed(PrimitiveDrawingType type, Buffer<ElementArray>&
 	// buffer.GetElementType() will be one of GL_UNSIGNED_INT, SHORT or BYTE
 	// Which % 8 will be 5, 3, 1 respectively(101, 11, 1) -> (100, 10, 1)
 	//unsigned int hack = std::bit_floor(buffer.GetElementType() % 8);
-	unsigned int hack = buffer.GetElementType();
+	std::size_t hack = buffer.GetElementType();
 	hack = (hack == GL_UNSIGNED_INT) ? 4 : ((hack == GL_UNSIGNED_SHORT) ? 2 : 1);
 	glDrawElements((GLenum) type, buffer.GetElementCount() - elementOffset, buffer.GetElementType(), (const void*) (hack * elementOffset));
 }

@@ -21,7 +21,8 @@ constexpr Sphere::Sphere(const float& radius, const glm::vec3& center) : center(
 }
 
 // TODO: Buffer
-std::tuple<GLuint, GLuint, std::size_t> GenerateSphere(const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
+void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+	const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
 
 
 
