@@ -7,6 +7,8 @@
 #include <freeglut.h>
 #include <iostream>
 #include <map>
+#include <sys/utime.h>
+#include <time.h>
 #include "AABB.h"
 #include "Buffer.h"
 #include "Shader.h"
@@ -159,7 +161,7 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer;
+Buffer<ArrayBuffer> stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer;
 UniformBuffer universal;
 
 // Shaders
@@ -294,7 +296,7 @@ void display()
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
-	uniform.DrawIndexed<LineStrip>(stickDex);
+	uniform.DrawIndexedMemory<LineStrip>(stickDex);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -338,7 +340,7 @@ void display()
 	// Cubert
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.DrawIndexed<Lines>(cubeOutline);
+	uniform.DrawIndexedMemory<Lines>(cubeOutline);
 
 	// Albert
 	texturedVAO.BindArrayBuffer(albertBuffer);
@@ -352,8 +354,8 @@ void display()
 	dither.DrawElements<Triangle>(36);
 
 
-	uniform.DrawIndexed<Triangle>(cubeIndicies);
-	uniform.DrawIndexed<Lines>(cubeOutline);
+	uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
+	uniform.DrawIndexedMemory<Lines>(cubeOutline);
 
 
 	// Drawing of the rays
@@ -708,7 +710,7 @@ int main(int argc, char** argv)
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	CheckError();
 
-	stickBuffer.Generate(ArrayBuffer);
+	stickBuffer.Generate();
 	stickBuffer.BufferData(stick, StaticDraw);
 
 	plainVAO.Generate();
@@ -722,17 +724,17 @@ int main(int argc, char** argv)
 	verts[1].coordinates = glm::vec2(1, 0);
 	verts[2].coordinates = glm::vec2(0, 1);
 	verts[3].coordinates = glm::vec2(0, 0);
-	texturedPlane.Generate(ArrayBuffer);
+	texturedPlane.Generate();
 	texturedPlane.BufferData(verts, StaticDraw);
 
 	texturedVAO.Generate();
 	texturedVAO.FillArray<TextureVertex>(dither);
 
-	planeBO.Generate(ArrayBuffer);
+	planeBO.Generate();
 	planeBO.BufferData(plane, StaticDraw);
 	CheckError();
 
-	plainCube.Generate(ArrayBuffer);
+	plainCube.Generate();
 	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
 	CheckError();
@@ -743,7 +745,7 @@ int main(int argc, char** argv)
 	gobs[1] += glm::vec3(-1, 0, 0);
 	gobs[2] += glm::vec3(0, 0, 1);
 	gobs[3] += glm::vec3(0, 0, -1);
-	rayBuffer.Generate(ArrayBuffer);
+	rayBuffer.Generate();
 	rayBuffer.BufferData(gobs, StaticDraw);
 
 	for (int i = -5; i <= 5; i++)
@@ -801,7 +803,7 @@ int main(int argc, char** argv)
 			textVert[i].uvs = textVert[i].uvs + glm::vec2(0.5f);
 		}
 	}
-	albertBuffer.Generate(ArrayBuffer);
+	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
 	glEnable(GL_DEPTH_TEST);

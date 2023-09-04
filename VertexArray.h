@@ -102,7 +102,7 @@ public:
 	inline void BindArrayObject();
 	inline void Generate();
 	
-	inline void BindArrayBuffer(Buffer& buffer, GLintptr offset = 0);
+	inline void BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLintptr offset = 0);
 
 	template<class V> void FillArray(Shader& shader, GLuint bindingPoint = 0);
 	//template<class V> void FillArray2(Shader& shader);
@@ -142,7 +142,7 @@ inline void VertexArray::Generate()
 	glGenVertexArrays(1, &this->array);
 }
 
-inline void VertexArray::BindArrayBuffer(Buffer& buffer, GLintptr offset)
+inline void VertexArray::BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLintptr offset)
 {
 	glBindVertexArray(this->array);
 	glBindVertexBuffer(this->bindingPoint, buffer.GetBuffer(), offset, this->stride);

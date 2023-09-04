@@ -3,7 +3,9 @@
 #define SPHERE_H
 #include <glew.h>
 #include <glm/glm.hpp>
-#include <tuple> 
+#include <tuple>
+#include "Buffer.h"
+#include "Vertex.h"
 
 // TODO: Sphere CLASS YOU DUMMY
 struct Sphere
@@ -18,7 +20,10 @@ constexpr Sphere::Sphere(const float& radius, const glm::vec3& center) : center(
 
 }
 
+// TODO: Buffer
 std::tuple<GLuint, GLuint, std::size_t> GenerateSphere(const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
+
+
 
 #endif // SPHERE_H
 
