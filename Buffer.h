@@ -44,16 +44,19 @@ class Buffer
 protected:
 	GLuint buffer;
 	std::size_t length;
+	// TODO: Maybe union?
 	GLsizei elementCount;
 	GLenum elementType; // Sloppy, but only for ElementArrayBuffer
+	std::size_t elementSize;
 public:
 	Buffer();
 	Buffer(Buffer<Type>&& other) noexcept;
 	~Buffer();
 
 	inline GLuint GetBuffer() const;
-	inline GLenum GetElementType() const;
 	inline GLuint GetElementCount() const;
+	inline GLenum GetElementType() const;
+	inline std::size_t GetElementSize() const;
 
 	std::size_t Size() const;
 
@@ -113,11 +116,15 @@ template<BufferType Type> inline GLuint Buffer<Type>::GetElementCount() const
 	return this->elementCount;
 }
 
+template<BufferType Type> inline std::size_t Buffer<Type>::GetElementSize() const
+{
+	return this->elementSize;
+}
+
 template<BufferType Type> inline GLenum Buffer<Type>::GetElementType() const
 {
 	return this->elementType;
 }
-
 
 template<BufferType Type> inline std::size_t Buffer<Type>::Size() const
 {
@@ -169,6 +176,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 		this->length = data.size() * sizeof(T);
 		this->elementCount = (GLsizei) data.size();
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
+		this->elementSize = sizeof(T);
 	}
 }
 
@@ -181,6 +189,7 @@ template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Ty
 		this->length = i * sizeof(T);
 		this->elementCount = (GLsizei) data.size();
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
+		this->elementSize = sizeof(T);
 	}
 }
 

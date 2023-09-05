@@ -181,8 +181,7 @@ inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size
 
 template<typename T> inline void VertexArray::FillArray(Shader& shader, std::size_t strid, std::size_t current) {}*/
 
-template<>
-inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
@@ -192,8 +191,7 @@ inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bindingPoint)
 	this->bindingPoint = bindingPoint;
 }
 
-template<>
-inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
@@ -206,8 +204,7 @@ inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint binding
 	this->bindingPoint = bindingPoint;
 }
 
-template<>
-inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
@@ -220,8 +217,7 @@ inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLuint binding
 	this->bindingPoint = bindingPoint;
 }
 
-template<>
-inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glBindVertexArray(this->array);
@@ -235,8 +231,7 @@ inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLuint bindingP
 	this->bindingPoint = bindingPoint;
 }
 
-template<>
-inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
@@ -252,8 +247,7 @@ inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint bindingPoi
 	this->bindingPoint = bindingPoint;
 }
 
-template<class T>
-static void VertexArray::GenerateArrays(T& arrays)
+template<class T> static void VertexArray::GenerateArrays(T& arrays)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(arrays))>::type, VertexArray>::value);
 	GLuint *intermediate = (GLuint) new GLuint[std::size(arrays)];
@@ -265,8 +259,7 @@ static void VertexArray::GenerateArrays(T& arrays)
 	delete[] intermediate;
 }
 
-template<class T>
-static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
+template<class T> static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
 {
 	std::vector<GLuint> intermediate(arrays.size());
 	glGenVertexArrays((GLsizei) arrays.size(), intermediate.data());

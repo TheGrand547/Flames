@@ -162,7 +162,7 @@ const int ditherSize = 16;
 
 // Buffers
 Buffer<ArrayBuffer> stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer, sphereBuffer;
-Buffer<ElementArray> sphereIndicies;
+Buffer<ElementArray> sphereIndicies, stickIndicies, cubeOutlineIndex;
 
 UniformBuffer universal;
 
@@ -286,7 +286,7 @@ void display()
 		glm::vec3 color(.5f, .5f, .5f);
 		dither.SetMat4("Model", model.GetModelMatrix());
 		dither.SetVec3("color", color);
-		dither.DrawElements<TriangleStrip>(4);
+		dither.DrawElements<TriangleStrip>(texturedPlane);
 	}
 
 	/* STICK FIGURE GUY */
@@ -297,7 +297,7 @@ void display()
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
-	uniform.DrawIndexedMemory<LineStrip>(stickDex);
+	uniform.DrawIndexed<LineStrip>(stickIndicies, 2);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -312,11 +312,11 @@ void display()
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
-		if (debugFlags[TIGHT_BOXES]) glDrawElements(GL_LINES, (GLuint) cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		if (debugFlags[TIGHT_BOXES]) uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
 
-		if (debugFlags[WIDE_BOXES]) glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
+		if (debugFlags[WIDE_BOXES]) uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 		for (const auto& box: boxes)
 		{
 			glLineWidth((box.color) ? wid * 1.5f : wid);
@@ -325,15 +325,15 @@ void display()
 			{
 				uniform.SetMat4("Model", box.box.GetModelMatrix());
 				uniform.SetVec3("color", (box.color) ? blue : colors);
-				glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-				glDrawArrays(GL_POINTS, 0, 8);
+				uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+				uniform.DrawElements<Points>(8);
 			}
 			if (debugFlags[WIDE_BOXES])
 			{
 				uniform.SetVec3("color", (box.color) ? colors : blue);
 				uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
-				glDrawElements(GL_LINES, (GLuint)cubeOutline.size(), GL_UNSIGNED_BYTE, cubeOutline.data());
-				glDrawArrays(GL_POINTS, 0, 8);
+				uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+				uniform.DrawElements<Points>(8);
 			}
 		}
 	}
@@ -341,7 +341,7 @@ void display()
 	// Cubert
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.DrawIndexedMemory<Lines>(cubeOutline);
+	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Albert
 	texturedVAO.BindArrayBuffer(albertBuffer);
@@ -354,9 +354,9 @@ void display()
 	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
 	dither.DrawElements<Triangle>(36);
 
-
+	// What even is this
 	uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
-	uniform.DrawIndexedMemory<Lines>(cubeOutline);
+	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 
 	// Drawing of the rays
@@ -872,6 +872,12 @@ int main(int argc, char** argv)
 
 	normalVAO.Generate();
 	normalVAO.FillArray<NormalVertex>(flatLighting);
+
+	stickIndicies.Generate();
+	stickIndicies.BufferData(stickDex, StaticDraw);
+
+	cubeOutlineIndex.Generate();
+	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
