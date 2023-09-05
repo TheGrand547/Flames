@@ -175,11 +175,13 @@ template<PrimitiveDrawingType type> inline void Shader::DrawIndexed(Buffer<Eleme
 template<PrimitiveDrawingType type, class Container> inline void Shader::DrawIndexedMemory(const Container& contents)
 {
 	//constexpr GLuint offset = 
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDrawElements((GLenum) type, (GLsizei) contents.size(), GL_UNSIGNED_BYTE, contents.data());
 }
 
 template<class Container> inline void Shader::DrawIndexedMemory(PrimitiveDrawingType type, const Container& contents)
 {
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDrawElements((GLenum)type, (GLsizei)contents.size(), GL_UNSIGNED_BYTE, contents.data());
 }
 

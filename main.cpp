@@ -297,7 +297,7 @@ void display()
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
-	uniform.DrawIndexed<LineStrip>(stickIndicies, 2);
+	uniform.DrawIndexed<LineStrip>(stickIndicies);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -348,16 +348,9 @@ void display()
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
 	dither.SetTextureUnit("textureIn", texture, 0);
-	glLineWidth(1.f);
-	glPointSize(1.f);
 	dither.SetMat4("Model", smartBox.GetModelMatrix());
 	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	dither.DrawElements<Triangle>(36);
-
-	// What even is this
-	uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
-	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
-
+	dither.DrawElements<Triangle>(albertBuffer);
 
 	// Drawing of the rays
 	glDisable(GL_DEPTH_TEST);
@@ -365,7 +358,7 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
-	glDrawArrays(GL_LINES, 0, 8);
+	uniform.DrawElements<Lines>(rayBuffer);
 	glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
