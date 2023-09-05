@@ -79,7 +79,7 @@ public:
 	template<class T> static void GenerateBuffers(std::map<T, Buffer>& buffers);
 };
 
-template<BufferType Type> inline Buffer<Type>::Buffer() : buffer(0), length(0), elementCount(0), elementType(0)
+template<BufferType Type> inline Buffer<Type>::Buffer() : buffer(0), length(0), elementCount(0), elementType(0), elementSize(0)
 {
 
 }
@@ -90,6 +90,7 @@ template<BufferType Type> inline Buffer<Type>::Buffer(Buffer<Type>&& other) noex
 	this->buffer = other.buffer;
 	this->length = other.length;
 	this->elementCount = other.elementCount;
+	this->elementType = other.elementType;
 	this->elementSize = other.elementSize;
 	other.buffer = 0;
 	other.CleanUp();
@@ -140,6 +141,7 @@ template<BufferType Type> inline void Buffer<Type>::CleanUp()
 	this->buffer = 0;
 	this->length = 0;
 	this->elementCount = 0;
+	this->elementSize = 0;
 	this->elementType = GL_UNSIGNED_INT;
 }
 

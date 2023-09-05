@@ -1,3 +1,4 @@
+#include <chrono>
 #include <glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -448,15 +449,17 @@ bool smartBoxCollide(int depth = 0)
 
 void idle()
 {
-	static int lastFrame = 0;
+	static auto lastTimers = std::chrono::high_resolution_clock::now();
 	frameCounter++;
-	const int now = glutGet(GLUT_ELAPSED_TIME);
-	const int elapsed = now - lastFrame;
+	const auto now = std::chrono::high_resolution_clock::now();
+	const auto delta = now - lastTimers;
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
 	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = goober2.GetNormalMatrix();
+	std::cout << "\33[2K\r" << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << "\t" << std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
+
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
@@ -470,7 +473,8 @@ void idle()
 	//smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
 
-	float speed = 3 * ((float) elapsed) / 1000.f;
+	//float speed = 3 * ((float) elapsed) / 1000.f;
+	float speed = 3 * std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -548,7 +552,8 @@ void idle()
 	// TODO: Key state is ten kinds of messed up
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
-	lastFrame = now;
+
+	lastTimers = now;
 	glutPostRedisplay();
 }
 
