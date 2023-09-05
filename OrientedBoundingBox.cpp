@@ -1,7 +1,6 @@
 #include "OrientedBoundingBox.h"
 
-OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : matrix(1.f),
-halfs(glm::abs(deltas))
+OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : matrix(1.f), halfs(glm::abs(deltas))
 {
 	this->Rotate(euler);
 }
@@ -25,19 +24,6 @@ bool OrientedBoundingBox::Overlap(const Capsule& other, Collision& collide) cons
 // TODO: Standarize what the collision.point thingies mean
 bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) const
 {
-	//glm::vec3 axis = this->Center() - other.center;
-	//float distance = glm::length(axis);
-
-	//float projected = 0.f;
-
-	//for (glm::length_t i = 0; i < 3; i++)
-	//	projected += glm::abs(glm::dot(glm::vec3(this->matrix[i] * this->halfs[i]), axis));
-	////std::cout << "D: " << distance << "\tP: " << projected << "\tR: " << other.radius << "\tN: " << glm::normalize(axis) << std::endl;
-	//collision.depth = projected - other.radius;
-	//collision.normal = glm::normalize(axis);
-	//collision.point = glm::vec3(0); // fuck
-	//return projected > other.radius;
-
 	AABB local(this->halfs * 2.f);
 	glm::vec3 transformed = this->WorldToLocal(other.center - this->Center());
 	Sphere temp{ other.radius, transformed };
@@ -51,4 +37,50 @@ bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) con
 glm::vec3 OrientedBoundingBox::WorldToLocal(const glm::vec3& in) const
 {
 	return glm::inverse(glm::mat3(this->matrix)) * in;
+}
+
+static const std::array<const glm::vec3, 8> multiples = {
+	{
+		{-1.f, -1.f, -1.f},
+		{-1.f, -1.f,  1.f},
+		{-1.f,  1.f, -1.f},
+		{-1.f,  1.f,  1.f},
+		{ 1.f, -1.f, -1.f},
+		{ 1.f, -1.f,  1.f},
+		{ 1.f,  1.f, -1.f},
+		{ 1.f,  1.f,  1.f},
+	}
+};
+
+std::vector<glm::vec3> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& point) const
+{
+	std::vector<glm::vec3> segments;
+	std::vector<glm::vec3> points;
+	glm::vec3 center = this->Center();
+	float distance = glm::length2(center - point);
+	for (glm::length_t i = 0; i < 8; i++)
+	{
+		glm::vec3 current = center;
+		for (glm::length_t j = 0; j < 3; j++)
+		{
+			current += (*this)[j] * this->halfs[j] * multiples[i][j];
+		}
+		if (glm::length2(current - point) < distance)
+		{
+			points.push_back(current);
+		}
+	}
+	for (std::size_t i = 0; i < segments.size(); i++)
+	{
+		for (std::size_t j = i + 1; j < segments.size(); j++)
+		{
+			if (true) // TODO: CONDITIONAL THAT THEY AREN'T THE SAME OR SOMETHING
+			{
+				//segments.push_back(LineSegment(points[i], points[j]));
+				LineSegment local(points[i], points[j]);
+				segments.push_back(local.PointClosestTo(point));
+			}
+		}
+	}
+	return segments;
 }

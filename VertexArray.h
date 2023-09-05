@@ -146,7 +146,6 @@ inline void VertexArray::BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLintptr o
 {
 	glBindVertexArray(this->array);
 	glBindVertexBuffer(this->bindingPoint, buffer.GetBuffer(), offset, this->stride);
-	CheckError();
 }
 
 // TODO: Maybe reinvestigate this later?

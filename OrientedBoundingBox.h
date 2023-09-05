@@ -78,7 +78,7 @@ public:
 	constexpr bool Overlap(const OrientedBoundingBox& other) const;
 	constexpr bool Overlap(const OrientedBoundingBox& other, Collision& result) const;
 	
-	constexpr bool OverlapWithResponse(const OrientedBoundingBox& other);
+	inline bool OverlapWithResponse(const OrientedBoundingBox& other);
 
 	inline bool Overlap(const Sphere& other) const;
 	bool Overlap(const Sphere& other, Collision& collision) const;
@@ -94,6 +94,8 @@ public:
 	inline bool Intersection(const Plane& plane, Collision& out) const;
 
 	glm::vec3 WorldToLocal(const glm::vec3& in) const;
+
+	std::vector<glm::vec3> ClosestFacePoints(const glm::vec3& points) const;
 
 	inline Model GetModel() const;
 };
@@ -393,8 +395,11 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 	return true;
 }
 
+
+
+// TODO: This isn't inline or constexpr i'm just too lazy to move it
 // TODO: Allow response to be applied later, and in different amounts so you can have real physics tm(ie small object moves/rotates more than big one etc)
-constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
+inline bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& other)
 {
 	// SLOPPY
 	if (this == &other) 
@@ -429,6 +434,7 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 				otherDot = dotted2;
 			}
 		}
+
 		// This is the point that will be rotated about, needs to be redone to solve the corner dilemma tm
 		// TODO: CORNER DILEMMA
 		glm::vec3 point = this->Center() + collide.normal * distance;
@@ -440,6 +446,31 @@ constexpr bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBo
 		// TODO: Find closest corner and rotate towards it?
 		// TODO: FIND THE CLOSEST ***EDGE*** AND ROTATE ALONG IT!!!!!! HOW???? I HAVE NO CLUE
 		// Maybe do epsilon check?
+
+		std::vector<glm::vec3> myPairs = this->ClosestFacePoints(other.Center()), otherPairs = other.ClosestFacePoints(this->Center());
+		glm::vec3 myCenter = this->Center();
+		glm::vec3 otherCenter = other.Center();
+		float distanced = INFINITY;
+		glm::vec3 bestRotate = glm::vec3(0);
+		for (const glm::vec3& point : myPairs)
+		{
+			if (glm::length2(point - otherCenter) < distanced)
+			{
+				distanced = glm::length2(point - otherCenter);
+				bestRotate = point;
+			}
+		}
+		for (const glm::vec3& point : otherPairs)
+		{
+			if (glm::length2(point - myCenter) < distanced)
+			{
+				distanced = glm::length2(point - myCenter);
+				bestRotate = point;
+			}
+		}
+		collide.point = bestRotate;
+
+
 		if (collide.distance > 0 && !tooAligned)
 		{
 			// Determine which side of the box the this point is, and rotate the "center" of it towards that

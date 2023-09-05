@@ -360,11 +360,13 @@ void display()
 
 
 	// Drawing of the rays
+	glDisable(GL_DEPTH_TEST);
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
 	glDrawArrays(GL_LINES, 0, 8);
+	glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
 	glEnable(GL_CULL_FACE);
@@ -435,8 +437,11 @@ bool smartBoxCollide(int depth = 0)
 	bool val = false;
 	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
 	{
-		if (letsgo->box.Overlap(smartBox))
+		Collision c;
+		if (smartBox.Overlap(letsgo->box, c))
 		{
+			std::array<glm::vec3, 2> pointerss = { c.point, c.point + c.normal };
+			rayBuffer.BufferSubData(pointerss);
 			val = true;
 			smartBox.OverlapWithResponse(letsgo->box);
 		}
