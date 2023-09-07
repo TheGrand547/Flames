@@ -68,6 +68,11 @@ float LineSegment::SquaredLength() const noexcept
 	return glm::length2(this->A - this->B);
 }
 
+glm::vec3 LineSegment::MidPoint() const noexcept
+{
+	return (this->A + this->B) / 2.f;
+}
+
 glm::vec3 Line::PointClosestTo(const glm::vec3& point) const noexcept
 {
 	return this->point + glm::dot(this->point - point, this->dir) * this->dir;

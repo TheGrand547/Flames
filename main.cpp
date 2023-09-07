@@ -359,7 +359,9 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f));
-	uniform.DrawElements<Lines>(rayBuffer);
+	//uniform.DrawElements<Lines>(rayBuffer);
+	glPointSize(15.f);
+	uniform.DrawElements<Points>(rayBuffer);
 	glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
@@ -584,12 +586,20 @@ void keyboard(unsigned char key, int x, int y)
 		glm::vec3 angles2 = glm::radians(cameraRotation);
 
 		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
-		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f};
+		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
 		bool set = false;
 
-
+		/*
 		Collision nears, fars;
 		smartBox.Intersect(cameraPosition, gamer, nears, fars);
+		auto foosball = smartBox.ClosestFacePoints(cameraPosition);
+		std::array<glm::vec3, 12> localpoints;
+		for (std::size_t i = 0; i < localpoints.size() && i < foosball.size(); i++)
+		{
+			localpoints[i] = foosball[i];
+		}
+		rayBuffer.BufferSubData(localpoints);
+		*/
 		//for (std::size_t i = 0; i < boxes.size(); i++)
 		/*
 		for (auto& box: boxes)
@@ -740,7 +750,7 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	std::array<glm::vec3, 8> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
+	std::array<glm::vec3, 32> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
 	gobs.fill(glm::vec3(0, -5, 0));
 	gobs[0] += glm::vec3(1, 0, 0);
 	gobs[1] += glm::vec3(-1, 0, 0);

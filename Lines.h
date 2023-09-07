@@ -94,6 +94,8 @@ struct LineSegment : public LineBase
 	float Magnitude() const noexcept;
 	float SquaredLength() const noexcept;
 
+	glm::vec3 MidPoint() const noexcept;
+	
 	virtual constexpr glm::vec3 PointA() const noexcept;
 	virtual constexpr glm::vec3 PointB() const noexcept;
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept;

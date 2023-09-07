@@ -95,7 +95,7 @@ public:
 
 	glm::vec3 WorldToLocal(const glm::vec3& in) const;
 
-	std::vector<glm::vec3> ClosestFacePoints(const glm::vec3& points) const;
+	std::vector<LineSegment> ClosestFacePoints(const glm::vec3& points) const;
 
 	inline Model GetModel() const;
 };
@@ -447,29 +447,40 @@ inline bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& 
 		// TODO: FIND THE CLOSEST ***EDGE*** AND ROTATE ALONG IT!!!!!! HOW???? I HAVE NO CLUE
 		// Maybe do epsilon check?
 
-		std::vector<glm::vec3> myPairs = this->ClosestFacePoints(other.Center()), otherPairs = other.ClosestFacePoints(this->Center());
+		/* TODO: THIS IS ALL HORSESHIT FUCK YOU
+		std::vector<LineSegment> myPairs = this->ClosestFacePoints(other.Center()), otherPairs = other.ClosestFacePoints(this->Center());
 		glm::vec3 myCenter = this->Center();
 		glm::vec3 otherCenter = other.Center();
 		float distanced = INFINITY;
 		glm::vec3 bestRotate = glm::vec3(0);
-		for (const glm::vec3& point : myPairs)
+		LineSegment midpoint;
+		bool isMine = false;
+		for (const auto& point : myPairs)
 		{
-			if (glm::length2(point - otherCenter) < distanced)
+			float currentValue = glm::length2(point.PointClosestTo(myCenter) - myCenter) + glm::length2(point.PointClosestTo(otherCenter) - otherCenter);
+			if (currentValue < distanced)
 			{
-				distanced = glm::length2(point - otherCenter);
-				bestRotate = point;
+				distanced = currentValue;
+				midpoint = point;
+				isMine = true;
 			}
 		}
-		for (const glm::vec3& point : otherPairs)
+		for (const auto& point : otherPairs)
 		{
-			if (glm::length2(point - myCenter) < distanced)
+			float currentValue = glm::length2(point.PointClosestTo(myCenter) - myCenter) + glm::length2(point.PointClosestTo(otherCenter) - otherCenter);
+			if (currentValue < distanced)
 			{
-				distanced = glm::length2(point - myCenter);
-				bestRotate = point;
+				distanced = currentValue;
+				midpoint = point;
+				isMine = false;
 			}
 		}
-		collide.point = bestRotate;
-
+		// TODO: Line segment averaging bullshit
+		if (isMine)
+			collide.point = midpoint.MidPoint();
+		else
+			collide.point = midpoint.PointClosestTo(myCenter);
+		*/
 
 		if (collide.distance > 0 && !tooAligned)
 		{

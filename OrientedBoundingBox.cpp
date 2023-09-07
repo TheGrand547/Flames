@@ -1,4 +1,5 @@
 #include "OrientedBoundingBox.h"
+#include <bit>
 
 OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) : matrix(1.f), halfs(glm::abs(deltas))
 {
@@ -52,9 +53,9 @@ static const std::array<const glm::vec3, 8> multiples = {
 	}
 };
 
-std::vector<glm::vec3> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& point) const
+std::vector<LineSegment> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& point) const
 {
-	std::vector<glm::vec3> segments;
+	std::vector<LineSegment> segments;
 	std::vector<glm::vec3> points;
 	glm::vec3 center = this->Center();
 	float distance = glm::length2(center - point);
@@ -65,20 +66,18 @@ std::vector<glm::vec3> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& p
 		{
 			current += (*this)[j] * this->halfs[j] * multiples[i][j];
 		}
-		if (glm::length2(current - point) < distance)
-		{
-			points.push_back(current);
-		}
+		points.push_back(current);
 	}
-	for (std::size_t i = 0; i < segments.size(); i++)
+	for (std::size_t i = 0; i < points.size(); i++)
 	{
-		for (std::size_t j = i + 1; j < segments.size(); j++)
+		for (std::size_t j = i + 1; j < points.size(); j++)
 		{
-			if (true) // TODO: CONDITIONAL THAT THEY AREN'T THE SAME OR SOMETHING
+			if (std::has_single_bit(i ^ j)) // TODO: CONDITIONAL THAT THEY AREN'T THE SAME OR SOMETHING
 			{
-				//segments.push_back(LineSegment(points[i], points[j]));
-				LineSegment local(points[i], points[j]);
-				segments.push_back(local.PointClosestTo(point));
+				//std::cout << multiples[i] << "\t" << multiples[j] << std::endl;
+				segments.push_back(LineSegment(points[i], points[j]));
+				//LineSegment local(points[i], points[j]);
+				//segments.push_back(local.PointClosestTo(point));
 			}
 		}
 	}
