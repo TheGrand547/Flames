@@ -181,6 +181,7 @@ inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size
 
 template<typename T> inline void VertexArray::FillArray(Shader& shader, std::size_t strid, std::size_t current) {}*/
 
+// NOTE TO FUTURE READERS, IF ONE OF THESE IS THROWING AN ERROR, SOME VERTEX ATTRIBUTE WAS OPTIMIZED OUT
 template<> inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);

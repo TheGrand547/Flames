@@ -8,10 +8,12 @@ in vec4 fPos;
 in vec4 fNorm;
 in vec2 fTex;
 
+//uniform samplerCube textureIn;
 uniform sampler2D textureIn;
 
 void main()
 {
 	normalOut = abs(fNorm);
+	//colorOut = texture(textureIn, fNorm.xyz);
 	colorOut = texture(textureIn, fTex);
 }

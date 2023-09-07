@@ -12,16 +12,17 @@
 #include <time.h>
 #include "AABB.h"
 #include "Buffer.h"
-#include "Shader.h"
+#include "CubeMap.h"
 #include "glmHelp.h"
 #include "Lines.h"
 #include "log.h"
 #include "Model.h"
 #include "OrientedBoundingBox.h"
 #include "Plane.h"
+#include "Shader.h"
+#include "Sphere.h"
 #include "StaticOctTree.h"
 #include "stbWrangler.h"
-#include "Sphere.h"
 #include "Texture2D.h"
 #include "UniformBuffer.h"
 #include "util.h"
@@ -172,6 +173,7 @@ Shader dither, expand, finalResult, frameShader, flatLighting, uniform, sphereMe
 
 // Textures
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
+CubeMap mapper;
 
 // Vertex Array Objects
 VAO texturedVAO, normalVAO, plainVAO, meshVAO;
@@ -393,6 +395,8 @@ void display()
 	sphereMesh.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereMesh.SetMat4("normalMat", sphereModel.GetNormalMatrix());
 	sphereMesh.SetTextureUnit("textureIn", texture, 0);
+	//mapper.BindTexture(0);
+	//sphereMesh.SetTextureUnit("textureIn", 0);
 	sphereMesh.DrawIndexed(Triangle, sphereIndicies);
 	// Calling with triangle_strip is fucky
 	/*
@@ -718,6 +722,7 @@ int main(int argc, char** argv)
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
 	Shader::SetBasePath("Shaders/");
+	// TODO: texture loading base path thingy
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
@@ -733,6 +738,10 @@ int main(int argc, char** argv)
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	CheckError();
 
+	/*
+	mapper.Generate({ "Textures/skybox/right.jpg", "Textures/skybox/left.jpg", "Textures/skybox/top.jpg",
+		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
+	*/
 	stickBuffer.Generate();
 	stickBuffer.BufferData(stick, StaticDraw);
 
@@ -889,31 +898,46 @@ int main(int argc, char** argv)
 
 
 	GenerateSphereMesh(sphereBuffer, sphereIndicies, 30, 30);
-
+	CheckError();
 	meshVAO.Generate();
+	CheckError();
 	meshVAO.FillArray<MeshVertex>(sphereMesh);
 
 	normalVAO.Generate();
+	CheckError();
 	normalVAO.FillArray<NormalVertex>(flatLighting);
+
+	CheckError();
 
 	stickIndicies.Generate();
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
+	CheckError();
+
 	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
+
+	CheckError();
 
 	hatching.Load("Textures/hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
+	CheckError();
+
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
+	sphereMesh.UniformBlockBinding("Camera", 0);
+
+	CheckError();
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
 	dumbBox.ReCenter(glm::vec3(0, 0.75f, -2));
 	dumbBox.Scale(glm::vec3(0.5f));
 	dumbBox.Rotate(glm::vec3(0, 180, 0));
+
+	CheckError();
 
 	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	universal.SetBindingPoint(0);

@@ -264,7 +264,7 @@ bool Shader::CompileExplicit(const char* vertex, const char* fragment)
 // TODO: Maybe store in an unordered_map?
 GLuint Shader::Index(const std::string& name) 
 {
-	return glGetAttribLocation(this->program, name.c_str());
+	return (GLuint) glGetAttribLocation(this->program, name.c_str());
 }
 
 GLuint Shader::UniformIndex(const std::string& name)
