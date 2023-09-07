@@ -23,6 +23,7 @@ void test(ivec2 offset)
 
 void main()
 {
+	// TODO: GUASSIAN INSTEAD BECAUSE THAT'S COOLER
 	vec4 sampled = texture(screen, textureCoords);
 	test(ivec2(0, 0));
 	/*

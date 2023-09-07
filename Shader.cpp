@@ -8,6 +8,13 @@
 #include "log.h"
 
 static std::map<std::string, std::string> shaderIncludeMapping;
+static std::string shaderBasePath = "";
+
+void Shader::SetBasePath(const std::string& basePath)
+{
+	shaderBasePath = basePath;
+}
+
 
 static void ApplyShaderIncludes(std::string& data)
 {
@@ -122,9 +129,9 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 {
 	this->CleanUp();
 	std::string combined = (vert == frag) ? vert : vert + frag;
-	std::filesystem::path compiledPath(combined + ".csp");
-	std::filesystem::path vertexPath(vert + "v.glsl");
-	std::filesystem::path fragmentPath(frag + "f.glsl");
+	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
+	std::filesystem::path vertexPath(shaderBasePath + vert + "v.glsl");
+	std::filesystem::path fragmentPath(shaderBasePath + frag + "f.glsl");
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
@@ -310,7 +317,7 @@ void Shader::ExportCompiled()
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;
-	std::ofstream output(this->name + ".csp", std::ios::binary);
+	std::ofstream output(shaderBasePath + this->name + ".csp", std::ios::binary);
 	if (output.is_open())
 	{
 		GLint length = 0;

@@ -717,6 +717,7 @@ int main(int argc, char** argv)
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
+	Shader::SetBasePath("Shaders/");
 
 	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
@@ -726,8 +727,8 @@ int main(int argc, char** argv)
 	frameShader.CompileSimple("framebuffer");
 	sphereMesh.CompileSimple("mesh");
 
-	texture.Load("text.png");
-	wallTexture.Load("flowed.png");
+	texture.Load("Textures/text.png");
+	wallTexture.Load("Textures/flowed.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	CheckError();
@@ -901,7 +902,7 @@ int main(int argc, char** argv)
 	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
-	hatching.Load("hatching.png");
+	hatching.Load("Textures/hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
 	uniform.UniformBlockBinding("Camera", 0);

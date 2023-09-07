@@ -146,6 +146,7 @@
     <ClCompile Include="Capsule.cpp" />
     <ClCompile Include="Collidable.cpp" />
     <ClCompile Include="Cube.cpp" />
+    <ClCompile Include="CubeMap.cpp" />
     <ClCompile Include="Cylinder.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="glmHelp.cpp" />
@@ -176,6 +177,7 @@
     <ClInclude Include="Capsule.h" />
     <ClInclude Include="Collidable.h" />
     <ClInclude Include="Cube.h" />
+    <ClInclude Include="CubeMap.h" />
     <ClInclude Include="Cylinder.h" />
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
@@ -190,6 +192,7 @@
     <ClInclude Include="stbWrangler.h" />
     <ClInclude Include="stb_perlin.h" />
     <ClInclude Include="stb_truetype.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="typedefs.h" />
     <ClInclude Include="UniformBuffer.h" />

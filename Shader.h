@@ -69,6 +69,7 @@ public:
 	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
+	static void SetBasePath(const std::string& basePath);
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 
 	inline void DrawElements(PrimitiveDrawingType type, const GLuint num, const GLuint elementOffset = 0);
