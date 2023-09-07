@@ -168,13 +168,13 @@ Buffer<ElementArray> sphereIndicies, stickIndicies, cubeOutlineIndex;
 UniformBuffer universal;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, uniform;
+Shader dither, expand, finalResult, frameShader, flatLighting, uniform, sphereMesh;
 
 // Textures
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
 
 // Vertex Array Objects
-VAO texturedVAO, normalVAO, plainVAO;
+VAO texturedVAO, normalVAO, plainVAO, meshVAO;
 
 
 // TODO: Make structures around these
@@ -371,11 +371,12 @@ void display()
 
 	normalVAO.BindArrayBuffer(sphereBuffer);
 
-	Model sphereModel(glm::vec3(6.5f, 1.5f, 0.f));
+	Model sphereModel(glm::vec3(6.5f, 5.5f, 0.f));
 	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
-	sphereModel.scale = glm::vec3(0.5f);
-	sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
-
+	sphereModel.scale = glm::vec3(1.5f);
+	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
+	sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
+	/*
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	flatLighting.SetVec3("viewPos", cameraPosition);
@@ -383,15 +384,24 @@ void display()
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	flatLighting.SetTextureUnit("hatching", hatching, 0);
+	*/
 
 	// Doing this while letting the normal be the color will create a cool effect
 	
+	sphereMesh.SetActiveShader();
+	meshVAO.BindArrayBuffer(sphereBuffer);
+	sphereMesh.SetMat4("modelMat", sphereModel.GetModelMatrix());
+	sphereMesh.SetMat4("normalMat", sphereModel.GetNormalMatrix());
+	sphereMesh.SetTextureUnit("textureIn", texture, 0);
+	sphereMesh.DrawIndexed(Triangle, sphereIndicies);
 	// Calling with triangle_strip is fucky
+	/*
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	sphereModel.translation = moveSphere;
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
+	*/
 
 	// Framebuffer stuff
 	CheckError();
@@ -714,6 +724,7 @@ int main(int argc, char** argv)
 
 
 	frameShader.CompileSimple("framebuffer");
+	sphereMesh.CompileSimple("mesh");
 
 	texture.Load("text.png");
 	wallTexture.Load("flowed.png");
@@ -876,7 +887,10 @@ int main(int argc, char** argv)
 	expand.Compile("framebuffer", "expand");
 
 
-	GenerateSphere(sphereBuffer, sphereIndicies, 30, 30);
+	GenerateSphereMesh(sphereBuffer, sphereIndicies, 30, 30);
+
+	meshVAO.Generate();
+	meshVAO.FillArray<MeshVertex>(sphereMesh);
 
 	normalVAO.Generate();
 	normalVAO.FillArray<NormalVertex>(flatLighting);

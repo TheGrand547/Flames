@@ -20,10 +20,13 @@ constexpr Sphere::Sphere(const float& radius, const glm::vec3& center) : center(
 
 }
 
-// TODO: Buffer
-void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+// TODO: This feels exceptionally sloppy so fix it dumbo
+void GenerateSphereNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
 	const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
-
+void GenerateSphereMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+	const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
+void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+	const unsigned int latitudeSlices = 18, const unsigned int longitudeSlices = 18);
 
 
 #endif // SPHERE_H
