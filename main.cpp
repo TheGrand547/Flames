@@ -432,7 +432,7 @@ void display()
 	expand.SetTextureUnit("screen", framebufferColor, 0);
 	expand.SetTextureUnit("edges", normalModifier, 1);
 	expand.SetTextureUnit("depths", framebufferDepth, 2);
-	expand.SetInt("depth", lineWidth);
+	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
 	glFlush();
@@ -689,7 +689,7 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
-	printf("%u: %s\n", id, message);
+	//printf("%u: %s\n", id, message);
 }
 
 int main(int argc, char** argv)
@@ -795,6 +795,9 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
+
+	// Slope
+	planes.push_back(Model(glm::vec3(11.8f, .5f, 0), glm::vec3(0, 0.f, 25.0f), glm::vec3(1, 1, 1)));
 
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
