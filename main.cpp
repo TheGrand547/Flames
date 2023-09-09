@@ -909,10 +909,11 @@ int main(int argc, char** argv)
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
 	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	framebufferDepth.CreateEmpty(1000, 1000, InternalDepth);
+	framebufferDepth.CreateEmpty(1000, 1000, InternalDepthFloat32);
 	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	framebufferNormal.CreateEmpty(1000, 1000, InternalRGB);
+	framebufferNormal.CreateEmpty(1000, 1000, InternalFloatRGB32);
+	//framebufferNormal.CreateEmpty(1000, 1000, InternalUnsignedIntRGB32);
 	framebufferNormal.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	normalModifier.CreateEmpty(1000, 1000, InternalRGBA);

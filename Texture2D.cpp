@@ -74,6 +74,29 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
-	glTexImage2D(GL_TEXTURE_2D, level, (GLenum) type, (GLsizei) width, (GLsizei) height, 0, (GLenum) type, GL_UNSIGNED_BYTE, NULL);
+	GLenum internalFormat = type, format = type, typed = GL_UNSIGNED_BYTE;
+	switch (type)
+	{
+	case InternalDepth16:
+	case InternalDepth24:
+	case InternalDepthFloat32:
+		format = GL_DEPTH_COMPONENT;
+		break;
+	case InternalFloatRed16:
+	case InternalFloatRedGreen16: 
+	case InternalFloatRGB16:
+	case InternalFloatRGBA16:
+	case InternalFloatRed32 :
+	case InternalFloatRedGreen32:
+	case InternalFloatRGB32:
+	case InternalFloatRGBA32:
+	case InternalFloatR11G11B10:
+	case InternalFloatShared5RGB9:
+	case InternalFloatBPTCRGB:
+	case InternalUnsignedFloatBPTCRGB:
+		format = GL_RED; // Can't have floating point format
+		break;
+	}
+	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, (GLsizei) width, (GLsizei) height, 0, format, typed, nullptr);
 	this->SetFilters();
 }
