@@ -31,6 +31,7 @@ void main()
 		);
 	}
 	*/
+	// 5x5 Sharpen Kernel
 	kernel = float[](
 			-1, -1, -1, -1, -1,
 			-1, -1, -1, -1, -1,
@@ -38,26 +39,42 @@ void main()
 			-1, -1, -1, -1, -1,
 			-1, -1, -1, -1, -1
 			);
+	// 5x5 Unsharp Masking
+	kernel = float[]
+	(
+		-1,  -4,  -6,  -4, -1,
+		-4, -16, -24, -16, -4,
+		-6, -24, 476-256, -24, -6,
+		-4, -16, -24, -16, -4,
+		-1,  -4,  -6,  -4, -1
+	);
+	// Approximated 5x5 Guassian Kernel
 	kernel = float[] 
-(
-	1,  4,  6,  4, 1,
-	4, 16, 24, 16, 4,
-	6, 24, 36, 24, 6,
-	4, 16, 24, 16, 4,
-	1,  4,  6,  4, 1
-);
+	(
+		1,  4,  6,  4, 1,
+		4, 16, 24, 16, 4,
+		6, 24, 36, 24, 6,
+		4, 16, 24, 16, 4,
+		1,  4,  6,  4, 1
+	);
+	
 			
 
 	fColor = vec4(0, 0, 0, 1);
 	float depthDelta = 0.f;
-	
+	float dev = 9;
+	float dev2 = dev * dev;
+	float constant = inversesqrt(2 * acos(-1) * dev2);
+
 	for(int i = 0; i < 25; i++)
 	{
-		ivec2 offset = ivec2((i % 5) - 5/2, floor(i / 5) - 5/2);
+		ivec2 offset = ivec2((i % 5) - (5/2), floor(i / 5) - (5/2));
 		float kernelValue = kernel[i];
 		float depthSample = textureOffset(depth, textureCoords, offset).r;
 		//fColor += textureOffset(normal, textureCoords, offset) * kernelValue * depthSample;
 		fColor += textureOffset(normal, textureCoords, offset) * kernelValue / 256.f;
+		//fColor += textureOffset(normal, textureCoords, offset) * constant * exp(-length(offset) / dev2);
+		//fColor += textureOffset(normal, textureCoords, offset) / 25.f;
 		
 		
 		depthSample = 2 * depthSample - 1;

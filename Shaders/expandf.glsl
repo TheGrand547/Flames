@@ -22,11 +22,18 @@ void test(ivec2 offset)
 }
 
 
-float guassian[] = float[](
+float guassian[] = float[] (
+-1, -1, -1, -1, -1,
+-1, -1, -1, -1, -1,
+-1, -1, 24, -1, -1,
+-1, -1, -1, -1, -1,
+-1, -1, -1, -1, -1
+);
+/* float[](
 			-1.5, -1, -1.5,
 			-1,	 10, -1,
 			-1.5, -1, -1.5
-		);
+		);*/
 /*
 float[] 
 (
@@ -45,21 +52,29 @@ void main()
 	
 	float blurred = 0.f;
 	vec4 mid = vec4(0, 0, 0, 0);
-	for (int x = 0; x < 3; x++)
+	
+	int sizer = 5;
+	for (int x = 0; x < sizer; x++)
 	{
-		int m_x = x - 3 / 2;
-		for (int y = 0; y < 3; y++)
+		int m_x = x - (sizer / 2);
+		for (int y = 0; y < sizer; y++)
 		{
-			int m_y = y - 3 / 2;
+			int m_y = y - (sizer / 2);
 			
-			mid += textureOffset(edges, textureCoords, ivec2(m_x, m_y)) * guassian[x * 3 + y];
+			mid += textureOffset(edges, textureCoords, ivec2(m_x, m_y)) * guassian[x * sizer + y];
 			// guassian[x * 5 + y]
 			//blurred += (1 - textureOffset(edges, textureCoords, ivec2(m_x, m_y)).r) / 25.f;
 			//blurred += atan(1 - textureOffset(edges, textureCoords, ivec2(m_x, m_y)).r) * guassian[x * 5 + y] / 256.f;
 		}
 	}
+	mid = abs(mid);
 	blurred = max(mid.x, max(mid.y, mid.z));
-	fColor = sqrt(abs(mid));
+	fColor = vec4(length(mid));
+	fColor = mix(sampled, fColor, pow(blurred, 0.9f));
+	//fColor = vec4(step(0.2, length(mid)));
+	//fColor = abs(mid);
+	
+	//fColor = exp(-fColor);
 	//blurred = step(.2, blurred) * blurred;
 	//fColor = sampled + vec4(pow(blurred, 1.5f));
 	/*
