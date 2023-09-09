@@ -689,7 +689,42 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
-	//printf("%u: %s\n", id, message);
+	// FROM https://gist.github.com/liam-middlebrook/c52b069e4be2d87a6d2f
+	const char* _source;
+	const char* _type;
+	const char* _severity;
+
+	switch (source) {
+	case GL_DEBUG_SOURCE_API: _source = "API"; break;
+	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: _source = "WINDOW SYSTEM"; break;
+	case GL_DEBUG_SOURCE_SHADER_COMPILER: _source = "SHADER COMPILER"; break;
+	case GL_DEBUG_SOURCE_THIRD_PARTY: _source = "THIRD PARTY"; break;
+	case GL_DEBUG_SOURCE_APPLICATION: _source = "APPLICATION"; break;
+	case GL_DEBUG_SOURCE_OTHER: _source = "UNKNOWN"; break;
+	default: _source = "UNKNOWN"; break;
+	}
+
+	switch (type) {
+	case GL_DEBUG_TYPE_ERROR: _type = "ERROR"; break;
+	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:_type = "DEPRECATED BEHAVIOR"; break;
+	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:_type = "UDEFINED BEHAVIOR"; break;
+	case GL_DEBUG_TYPE_PORTABILITY:_type = "PORTABILITY"; break;
+	case GL_DEBUG_TYPE_PERFORMANCE:_type = "PERFORMANCE"; break;
+	case GL_DEBUG_TYPE_OTHER:_type = "OTHER"; break;
+	case GL_DEBUG_TYPE_MARKER:_type = "MARKER"; break;
+	default:_type = "UNKNOWN"; break;
+	}
+
+	switch (severity) {
+	case GL_DEBUG_SEVERITY_HIGH:_severity = "HIGH"; break;
+	case GL_DEBUG_SEVERITY_MEDIUM:_severity = "MEDIUM"; break;
+	case GL_DEBUG_SEVERITY_LOW:_severity = "LOW"; break;
+	case GL_DEBUG_SEVERITY_NOTIFICATION:_severity = "NOTIFICATION"; break;
+	default:_severity = "UNKNOWN"; break;
+	}
+
+	printf("%d: %s of %s severity, raised from %s: %s\n",
+		id, _type, _severity, _source, message);
 }
 
 int main(int argc, char** argv)
@@ -703,7 +738,33 @@ int main(int argc, char** argv)
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
 	glutInitWindowSize(1000, 1000);
+	glutInitContextFlags(GLUT_DEBUG);
 	glutCreateWindow("Wowie a window");
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
+
+	//glDisable(GL_LINE_SMOOTH);
+	//glDisable(GL_POLYGON_SMOOTH);
+
+	glDepthFunc(GL_LESS);
+	glClearColor(0, 0, 0, 1);
+	glLineWidth(5);
+
+	glFrontFace(GL_CCW);
+
+	glutDisplayFunc(display);
+	glutIdleFunc(idle);
+
+	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
+	glutKeyboardFunc(keyboard);
+	glutKeyboardUpFunc(keyboardOff);
+	glutSpecialFunc(specialKeys);
+	glutSpecialUpFunc(specialKeysUp);
+
+	glutMotionFunc(mouseFunc);
+	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
+
 
 	glewExperimental = GL_TRUE;
 	// Glew
@@ -717,6 +778,9 @@ int main(int argc, char** argv)
 
 	CheckError();
 	glDebugMessageCallback(DebugCallback, nullptr);
+	// Get rid of Line_width_deprecated messages
+	GLuint toDisable = 7; 
+	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
 
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
@@ -841,30 +905,6 @@ int main(int argc, char** argv)
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-
-	//glDisable(GL_LINE_SMOOTH);
-	//glDisable(GL_POLYGON_SMOOTH);
-
-	glDepthFunc(GL_LESS);
-	glClearColor(0, 0, 0, 1);
-	glLineWidth(5);
-
-	glFrontFace(GL_CCW);
-
-	glutDisplayFunc(display);
-	glutIdleFunc(idle);
-
-	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
-	glutKeyboardFunc(keyboard);
-	glutKeyboardUpFunc(keyboardOff);
-	glutSpecialFunc(specialKeys);
-	glutSpecialUpFunc(specialKeysUp);
-
-	glutMotionFunc(mouseFunc);
-	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
-
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
 	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
@@ -872,7 +912,7 @@ int main(int argc, char** argv)
 	framebufferDepth.CreateEmpty(1000, 1000, InternalDepth);
 	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	framebufferNormal.CreateEmpty(1000, 1000, InternalRGBA);
+	framebufferNormal.CreateEmpty(1000, 1000, InternalRGB);
 	framebufferNormal.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	normalModifier.CreateEmpty(1000, 1000, InternalRGBA);
@@ -886,14 +926,20 @@ int main(int argc, char** argv)
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferDepth.GetGLTexture(), 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
 		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
+		exit(-1);
+	}
 
 
 	glGenFramebuffers(1, &framebufferMod);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
 	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, normalModifier.GetGLTexture(), 0);
 	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
+	{
 		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
+		exit(-1);
+	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
