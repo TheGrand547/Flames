@@ -370,7 +370,7 @@ void display()
 	uniform.SetVec3("color", glm::vec3(0.7f, 0.5f, 1.f));
 	//uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(15.f);
-	uniform.DrawElements<Lines>(rayBuffer);
+	//uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(1.f);
 	glEnable(GL_DEPTH_TEST);
 
@@ -584,6 +584,12 @@ void idle()
 		glm::vec3 max = glm::vec3(0, 0, 0), maxdir = glm::vec3(0, 1, 0);
 		float least = -INFINITY;
 		bool paired = false;
+		std::vector<float> stored, stored2;
+
+		stored.reserve(12);
+		stored2.reserve(12);
+		// TODO: stored 2
+		float correction = 1.f;
 
 		for (std::size_t i = 0; i < 12; i++)
 		{
@@ -593,9 +599,11 @@ void idle()
 			{
 				if (!(outed.distance >= 1.f && outed2.distance >= 1.f))
 				{
-					//std::cout << "AXIS: " << glm::normalize(axes[i].Direction()) << ": " << axes[i].A <<"->" << axes[i].B << std::endl;
-					//std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
-					//std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					/*
+					std::cout << "AXIS: " << glm::normalize(axes[i].Direction()) << ": " << axes[i].A <<"->" << axes[i].B << std::endl;
+					std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
+					std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					*/
 					//outed2.depth = abs(outed2.depth);
 					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
 					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
@@ -611,9 +619,24 @@ void idle()
 					//std::cout << "Intersection Length: " << rectified << std::endl << std::endl;
 					if (rectified == least && least == 1.f)
 					{
+						// TODO: AVERAGE THEM YOU DUMB BASTARD
+						std::cout << "PAIRED" << std::endl;
 						paired = true;
 						break;
 					}
+					if (std::find(stored.begin(), stored.end(), rectified) != stored.end())
+					{
+						//std::cout << "Sneaky bastard: " << axes[i].Direction() << " : " << maxdir << " : " << least << std::endl;
+						if (rectified == least)
+						{
+							max = (axes[i].Lerp((outed2.distance + outed.distance)) + max) / 2.f;
+							least = -INFINITY;
+							max = glm::vec3(0);
+							maxdir = glm::vec3(0, 1, 0);
+						}
+						continue;
+					}
+					stored.push_back(rectified);
 					if (rectified > least && rectified > EPSILON)
 					{
 						least = rectified;
@@ -627,9 +650,11 @@ void idle()
 			{
 				//if (abs(outed.distance) < 1 && abs(outed2.distance) < 1)
 				{
-					//std::cout << "Other AXIS: " << glm::normalize(axes[i].Direction()) << std::endl;
-					//std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
-					//std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					/*
+					std::cout << "Other AXIS: " << glm::normalize(axes[i].Direction()) << std::endl;
+					std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
+					std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					*/
 					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
 					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
 
@@ -647,6 +672,18 @@ void idle()
 						paired = true;
 						break;
 					}
+					if (std::find(stored2.begin(), stored2.end(), rectified) != stored2.end())
+					{
+						if (rectified == least)
+						{
+							max = (fumoBox[i].Lerp((outed2.distance + outed.distance)) + max) / 2.f;
+							least = -INFINITY;
+							maxdir = glm::vec3(0, 1, 0);
+							max = glm::vec3(0);
+						}
+						continue;
+					}
+					stored2.push_back(rectified);
 					if (rectified > least)
 					{
 						least = rectified;
@@ -667,15 +704,22 @@ void idle()
 		// TODO: Signed distance thingy from before to make sure the orientation is correct
 		if (!paired && std::_Is_finite(least) && least > EPSILON)
 		{
+			std::cout << maxdir << ":" << correction << ":" << least << std::endl;
 			if (glm::abs(glm::dot(maxdir, glm::vec3(0, 1, 0))) < EPSILON)
 			{
 				std::cout << maxdir << "\t" << least << std::endl;
 			}
 			// TODO: Get the orientation thing
-			float direction = -glm::sign(glm::dot(max, maxdir) - glm::dot(oldCenter, maxdir));
-			direction = 1.f;
+			float direction = -glm::sign(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross()));
+			/*
+			std::cout << glm::dot(max, smartBox.Cross()) << ":" << glm::dot(smartBox.Center(), smartBox.Cross()) << std::endl;
+			std::cout << glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross()) << std::endl;
+			std::cout << glm::sign(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross())) << std::endl;
+			*/
+			if (abs(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross())) > EPSILON)
+			//direction = 1.f;
 			//std::cout << direction << std::endl;
-			smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, maxdir), max);
+				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, maxdir), max);
 		}
 		//After(smartBox.Center());
 		//std::cout << "END OF FRAME" << std::endl << std::endl << std::endl;
@@ -889,6 +933,7 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 int main(int argc, char** argv)
 {
+	std::cout << std::boolalpha << (-0.f == 0.f) << std::endl;
 	int error = 0;
 	debugFlags.fill(false);
 	// Glut
