@@ -288,6 +288,7 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 // https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
 constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
 {
+	// TODO: For line segments do the clamp thingy
 	nearHit.Clear();
 	farHit.Clear();
 	nearHit.distance = -std::numeric_limits<float>::infinity();

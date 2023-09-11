@@ -4,8 +4,8 @@
 #include "glmHelp.h"
 
 // TODO: Uh this might be a terrible idea
-#define EPSILON std::numeric_limits<float>::epsilon() * 10.f
-#define D_EPSILON std::numeric_limits<double>::epsilon() * 10.f
+#define EPSILON std::numeric_limits<float>::epsilon() * 1000.f
+#define D_EPSILON std::numeric_limits<double>::epsilon() * 1000.f
 
 inline glm::vec3 SlideAlongPlane(const glm::vec3& plane, const glm::vec3& direction) noexcept;
 

@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <chrono>
 #include <glew.h>
 #include <glm/glm.hpp>
@@ -579,38 +580,41 @@ void idle()
 		std::array<glm::vec3, 24> movingUp{};
 		movingUp.fill(glm::vec3(0));
 		auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
-		glm::vec3 average = glm::vec3(0.f), axisAverage = glm::vec3(0.f);
-		float count = 0;
-		glm::quat rotationg{};
 
 		glm::vec3 max = glm::vec3(0, 0, 0), maxdir = glm::vec3(0, 1, 0);
 		float least = -INFINITY;
+		bool paired = false;
 
 		for (std::size_t i = 0; i < 12; i++)
 		{
 			Collision outed{}, outed2{};
-			//movingUp[2 * i] = axes[i].A;
-			//movingUp[2 * i + 1] = axes[i].A + axes[i].Direction();
 			
 			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), outed, outed2))
 			{
-				if (outed.distance < 1 && outed2.distance < 1)
+				if (!(outed.distance >= 1.f && outed2.distance >= 1.f))
 				{
-					movingUp[2 * i] = axes[i].A;
-					movingUp[2 * i + 1] = axes[i].B;// outed2.point;
-					average += outed.point;
-					count += 1;
-					axisAverage += axes[i].Direction();
-					rotationg = glm::rotate(rotationg, collide.distance, axes[i].Direction());
-					std::cout << "[]" << outed.distance << ":" << outed2.depth << std::endl;
-					//std::cout << axes[i].A << "->" << axes[i].B << "\t" << outed.point << "->" << outed2.point << std::endl;
+					//std::cout << "AXIS: " << glm::normalize(axes[i].Direction()) << ": " << axes[i].A <<"->" << axes[i].B << std::endl;
+					//std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
+					//std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					//outed2.depth = abs(outed2.depth);
+					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
+					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
+
+					movingUp[2 * i] = outed.point;
+					movingUp[2 * i + 1] = outed2.point;// outed2.point;
 					if (outed.distance > outed2.distance)
 					{
 						std::swap(outed, outed2);
 					}
 
 					float rectified = outed2.distance - outed.distance;
-					if (rectified > least)
+					//std::cout << "Intersection Length: " << rectified << std::endl << std::endl;
+					if (rectified == least && least == 1.f)
+					{
+						paired = true;
+						break;
+					}
+					if (rectified > least && rectified > EPSILON)
 					{
 						least = rectified;
 						max = axes[i].Lerp((outed2.distance + outed.distance) / 2);
@@ -621,22 +625,28 @@ void idle()
 			}
 			if(smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), outed, outed2))
 			{
-				if (outed.distance < 1 && outed2.distance < 1)
+				//if (abs(outed.distance) < 1 && abs(outed2.distance) < 1)
 				{
+					//std::cout << "Other AXIS: " << glm::normalize(axes[i].Direction()) << std::endl;
+					//std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
+					//std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
+					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
+					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
+
 					movingUp[2 * i] = fumoBox[i].A;// outed.point;
-					movingUp[2 * i + 1] = fumoBox[i].B;//outed2.point;
-					average += outed.point;
-					count += 1;
-					rotationg = glm::rotate(rotationg, collide.distance, axes[i].Direction());
-					axisAverage += fumoBox[i].Direction();
-					std::cout << outed.distance << ":" << outed2.depth << std::endl;
-					//std::cout << "[]" << fumoBox[i].A << "->" << fumoBox[i].B << "^" << fumoBox[i].Direction() << "\t" << outed.point << "->" << outed2.point << std::endl;
+					movingUp[2 * i + 1] = fumoBox[i].Lerp(0.5f);//outed2.point;
 					if (outed.distance > outed2.distance)
 					{
 						std::swap(outed, outed2);
 					}
 
 					float rectified = outed2.distance - outed.distance;
+					//std::cout << "Intersection Length: " << rectified << std::endl << std::endl;
+					if (rectified == least && least == 1.f)
+					{
+						paired = true;
+						break;
+					}
 					if (rectified > least)
 					{
 						least = rectified;
@@ -649,13 +659,26 @@ void idle()
 			}
 
 		}
-		std::cout << least << ":" << maxdir << std::endl;
+		//std::cout << "Length: " << least << "\tAxis: " << maxdir << "\tPoint: " << max << std::endl;
+		glm::vec3 oldCenter = smartBox.Center();
 		rayBuffer.BufferSubData(movingUp);
 		smartBox.OverlapWithResponse(dumbBox);
 		//Before(smartBox.Center());
-		smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance, maxdir), max);
+		// TODO: Signed distance thingy from before to make sure the orientation is correct
+		if (!paired && std::_Is_finite(least) && least > EPSILON)
+		{
+			if (glm::abs(glm::dot(maxdir, glm::vec3(0, 1, 0))) < EPSILON)
+			{
+				std::cout << maxdir << "\t" << least << std::endl;
+			}
+			// TODO: Get the orientation thing
+			float direction = -glm::sign(glm::dot(max, maxdir) - glm::dot(oldCenter, maxdir));
+			direction = 1.f;
+			//std::cout << direction << std::endl;
+			smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, maxdir), max);
+		}
 		//After(smartBox.Center());
-		std::cout << "END OF FRAME" << std::endl;
+		//std::cout << "END OF FRAME" << std::endl << std::endl << std::endl;
 	}
 
 	Sphere awwYeah(0.5f, moveSphere);
@@ -693,6 +716,11 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
+	if (key == 'h' || key == 'H')
+	{
+		smartBox.ReOrient(glm::vec3(0, 89, 0));
+		smartBox.ReCenter(glm::vec3(-0.625, 1.f, 0));
+	}
 	if (key >= '1' && key <= '9')
 	{
 		std::size_t value = (std::size_t) key - '0';
@@ -967,7 +995,7 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	std::array<glm::vec3, 32> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
+	std::array<glm::vec3, 48> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
 	gobs.fill(glm::vec3(0, -5, 0));
 	gobs[0] += glm::vec3(1, 0, 0);
 	gobs[1] += glm::vec3(-1, 0, 0);
