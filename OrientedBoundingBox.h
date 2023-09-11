@@ -293,19 +293,28 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 	nearHit.distance = -std::numeric_limits<float>::infinity();
 	farHit.distance = std::numeric_limits<float>::infinity();
 
-	glm::vec3 delta = glm::vec3(this->Center()) - point;
-
+	glm::vec3 delta = this->Center() - point;
 	for (auto i = 0; i < 3; i++)
 	{
 		glm::vec3 axis = this->matrix[i];
 		float scale = this->halfs[i];
-		float parallel = glm::dot(axis, delta);
-		float scaling = glm::dot(axis, dir);
+
+		float parallel = glm::dot(axis, delta); // Distance from Point to my center, in the direction of this axis
+		float scaling = glm::dot(axis, dir);    // Length of projection of dir onto this axis
+
+		//std::cout << scaling <<" : " << parallel << ":" << delta <<  " : " << axis << " : ";
+		// Check if the direction is parallel to one of the faces
 		if (glm::abs(scaling) < EPSILON)
 		{
-			if (-parallel - scale > 0 || -parallel + scale > 0)
+			//if (-parallel - scale > 0 || -parallel + scale > 0)
+			if (abs(parallel) > scale)
 			{
+				//std::cout << "Parallel check" << std::endl;
 				return false;
+			}
+			else
+			{
+				//continue;
 			}
 		}
 
@@ -328,12 +337,15 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		}
 		if (nearHit.distance > farHit.distance)
 		{
+			//std::cout << "Inversion check" << std::endl;
 			return false;
 		}
 		if (farHit.distance < 0)
 		{
+			//std::cout << "Farness test" << std::endl;
 			return false;
 		}
+		//std::cout << std::endl;
 	}
 	nearHit.point = nearHit.distance * dir + point;
 	farHit.point = farHit.distance * dir + point;
@@ -482,6 +494,7 @@ inline bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& 
 			collide.point = midpoint.PointClosestTo(myCenter);
 		*/
 
+		/*
 		if (collide.distance > 0 && !tooAligned)
 		{
 			// Determine which side of the box the this point is, and rotate the "center" of it towards that
@@ -495,6 +508,7 @@ inline bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& 
 			if (!glm::all(glm::lessThan(glm::abs(cross), glm::vec3(EPSILON))))
 				this->RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, cross), collide.point);
 		}
+		*/
 	}
 	return fool;
 }

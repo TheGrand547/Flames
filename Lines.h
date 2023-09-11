@@ -96,6 +96,10 @@ struct LineSegment : public LineBase
 
 	glm::vec3 MidPoint() const noexcept;
 	
+	inline constexpr glm::vec3 Lerp(float t) const noexcept;
+
+	inline constexpr glm::vec3 Direction() const noexcept;
+
 	virtual constexpr glm::vec3 PointA() const noexcept;
 	virtual constexpr glm::vec3 PointB() const noexcept;
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept;
@@ -115,6 +119,16 @@ constexpr LineSegment& LineSegment::operator=(const LineSegment&& other) noexcep
 	return *this;
 }
 
+
+inline constexpr glm::vec3 LineSegment::Direction() const noexcept
+{
+	return this->B - this->A;
+}
+
+inline constexpr glm::vec3 LineSegment::Lerp(float t) const noexcept
+{
+	return this->A + (this->B - this->A) * t;
+}
 
 constexpr glm::vec3 LineSegment::PointA() const noexcept
 {

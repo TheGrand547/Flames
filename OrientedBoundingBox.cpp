@@ -53,6 +53,12 @@ static const std::array<const glm::vec3, 8> multiples = {
 	}
 };
 
+static const std::array<std::pair<int, int>, 12> linePairs = {
+	{
+		{0, 1}, {0, 2}, {0, 4}, {1, 3}, {1, 5}, {2, 3}, {2, 6}, {3, 7}, {4, 5}, {4, 6}, {5, 7}, {6, 7}
+	}
+};
+
 std::vector<LineSegment> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& point) const
 {
 	std::vector<LineSegment> segments;
@@ -68,18 +74,9 @@ std::vector<LineSegment> OrientedBoundingBox::ClosestFacePoints(const glm::vec3&
 		}
 		points.push_back(current);
 	}
-	for (std::size_t i = 0; i < points.size(); i++)
+	for (std::pair<int, int> indexPair : linePairs)
 	{
-		for (std::size_t j = i + 1; j < points.size(); j++)
-		{
-			if (std::has_single_bit(i ^ j)) // TODO: CONDITIONAL THAT THEY AREN'T THE SAME OR SOMETHING
-			{
-				//std::cout << multiples[i] << "\t" << multiples[j] << std::endl;
-				segments.push_back(LineSegment(points[i], points[j]));
-				//LineSegment local(points[i], points[j]);
-				//segments.push_back(local.PointClosestTo(point));
-			}
-		}
+		segments.push_back(LineSegment(points[indexPair.first], points[indexPair.second]));
 	}
 	return segments;
 }

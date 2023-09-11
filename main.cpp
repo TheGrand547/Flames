@@ -216,6 +216,9 @@ glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 float zNear = 0.1f, zFar = 100.f;
 
+// Random Misc temporary testing things
+int axisIndex;
+std::vector<LineSegment> axes;
 
 enum GeometryThing : unsigned short
 {
@@ -347,23 +350,27 @@ void display()
 	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Albert
+	/*
 	texturedVAO.BindArrayBuffer(albertBuffer);
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
 	dither.SetTextureUnit("textureIn", texture, 0);
 	dither.SetMat4("Model", smartBox.GetModelMatrix());
 	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	dither.DrawElements<Triangle>(albertBuffer);
+	*/
+	uniform.SetMat4("Model", smartBox.GetModelMatrix());
+	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	glDisable(GL_DEPTH_TEST);
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
-	uniform.SetVec3("color", glm::vec3(0.7f));
+	uniform.SetVec3("color", glm::vec3(0.7f, 0.5f, 1.f));
 	//uniform.DrawElements<Lines>(rayBuffer);
-	glPointSize(15.f);
-	uniform.DrawElements<Points>(rayBuffer);
+	glLineWidth(15.f);
+	uniform.DrawElements<Lines>(rayBuffer);
+	glLineWidth(1.f);
 	glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
@@ -474,7 +481,7 @@ void idle()
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
 	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = goober2.GetNormalMatrix();
-	std::cout << "\33[2K\r" << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << "\t" << std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
+	//std::cout << "\33[2K\r" << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << "\t" << std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
@@ -552,7 +559,104 @@ void idle()
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 	
-	smartBoxColor = smartBoxCollide();
+	//smartBoxColor = smartBoxCollide();
+	axes = smartBox.ClosestFacePoints(glm::vec3(0.f));
+	/*
+	for (auto& temop : dumbBox.ClosestFacePoints(glm::vec3(0.f)))
+	{
+		if (smartBox.Intersect(temop.A, temop.Direction() * 1000.f))
+		{
+			std::cout << "We got one" << std::endl;
+		}
+	}*/
+	//smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), 0.01f, axes[axisIndex % axes.size()].Direction()), axes[axisIndex % axes.size()].MidPoint());
+	auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
+	Collision collide;
+	if (smartBox.Overlap(dumbBox, collide))
+	{
+		//std::cout << "Gaming" << std::endl;
+		//axes = smartBox.ClosestFacePoints(glm::vec3(0.f));
+		std::array<glm::vec3, 24> movingUp{};
+		movingUp.fill(glm::vec3(0));
+		auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
+		glm::vec3 average = glm::vec3(0.f), axisAverage = glm::vec3(0.f);
+		float count = 0;
+		glm::quat rotationg{};
+
+		glm::vec3 max = glm::vec3(0, 0, 0), maxdir = glm::vec3(0, 1, 0);
+		float least = -INFINITY;
+
+		for (std::size_t i = 0; i < 12; i++)
+		{
+			Collision outed{}, outed2{};
+			//movingUp[2 * i] = axes[i].A;
+			//movingUp[2 * i + 1] = axes[i].A + axes[i].Direction();
+			
+			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), outed, outed2))
+			{
+				if (outed.distance < 1 && outed2.distance < 1)
+				{
+					movingUp[2 * i] = axes[i].A;
+					movingUp[2 * i + 1] = axes[i].B;// outed2.point;
+					average += outed.point;
+					count += 1;
+					axisAverage += axes[i].Direction();
+					rotationg = glm::rotate(rotationg, collide.distance, axes[i].Direction());
+					std::cout << "[]" << outed.distance << ":" << outed2.depth << std::endl;
+					//std::cout << axes[i].A << "->" << axes[i].B << "\t" << outed.point << "->" << outed2.point << std::endl;
+					if (outed.distance > outed2.distance)
+					{
+						std::swap(outed, outed2);
+					}
+
+					float rectified = outed2.distance - outed.distance;
+					if (rectified > least)
+					{
+						least = rectified;
+						max = axes[i].Lerp((outed2.distance + outed.distance) / 2);
+						maxdir = axes[i].Direction();
+					}
+				}
+				//break;
+			}
+			if(smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), outed, outed2))
+			{
+				if (outed.distance < 1 && outed2.distance < 1)
+				{
+					movingUp[2 * i] = fumoBox[i].A;// outed.point;
+					movingUp[2 * i + 1] = fumoBox[i].B;//outed2.point;
+					average += outed.point;
+					count += 1;
+					rotationg = glm::rotate(rotationg, collide.distance, axes[i].Direction());
+					axisAverage += fumoBox[i].Direction();
+					std::cout << outed.distance << ":" << outed2.depth << std::endl;
+					//std::cout << "[]" << fumoBox[i].A << "->" << fumoBox[i].B << "^" << fumoBox[i].Direction() << "\t" << outed.point << "->" << outed2.point << std::endl;
+					if (outed.distance > outed2.distance)
+					{
+						std::swap(outed, outed2);
+					}
+
+					float rectified = outed2.distance - outed.distance;
+					if (rectified > least)
+					{
+						least = rectified;
+						max = fumoBox[i].Lerp((outed2.distance + outed.distance) / 2);
+						maxdir = fumoBox[i].Direction();
+					}
+				}
+				//break;
+				//std::cout << "We got one2" << std::endl;
+			}
+
+		}
+		std::cout << least << ":" << maxdir << std::endl;
+		rayBuffer.BufferSubData(movingUp);
+		smartBox.OverlapWithResponse(dumbBox);
+		//Before(smartBox.Center());
+		smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance, maxdir), max);
+		//After(smartBox.Center());
+		std::cout << "END OF FRAME" << std::endl;
+	}
 
 	Sphere awwYeah(0.5f, moveSphere);
 	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
@@ -576,7 +680,7 @@ void idle()
 void smartReset()
 {
 	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
-	smartBox.ReOrient(glm::vec3(0, 0, 0));
+	smartBox.ReOrient(glm::vec3(0, 135, 0));
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -589,7 +693,6 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
-	if (key == 'r' || key == 'R') smartReset();
 	if (key >= '1' && key <= '9')
 	{
 		std::size_t value = (std::size_t) key - '0';
@@ -597,15 +700,24 @@ void keyboard(unsigned char key, int x, int y)
 	}
 	if (key == 'r' || key == 'R')
 	{
+		axisIndex = (axisIndex + 1) % 12;
+		if (axes.size() > axisIndex)
+		{
+			//std::array<glm::vec3, 2> verts = { axes[axisIndex].A, axes[axisIndex].B };
+			//rayBuffer.BufferSubData(verts);
+		}
+		
 		glm::vec3 angles2 = glm::radians(cameraRotation);
 
 		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
 		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
+		
 		bool set = false;
-
-		/*
+		
+		
 		Collision nears, fars;
-		smartBox.Intersect(cameraPosition, gamer, nears, fars);
+		//smartBox.Intersect(cameraPosition, gamer, nears, fars);
+		/*
 		auto foosball = smartBox.ClosestFacePoints(cameraPosition);
 		std::array<glm::vec3, 12> localpoints;
 		for (std::size_t i = 0; i < localpoints.size() && i < foosball.size(); i++)
@@ -615,24 +727,44 @@ void keyboard(unsigned char key, int x, int y)
 		rayBuffer.BufferSubData(localpoints);
 		*/
 		//for (std::size_t i = 0; i < boxes.size(); i++)
-		/*
+		
+		
 		for (auto& box: boxes)
 		{
 			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
-			box.color = box.box.Intersect(offset, gamer * 100.f, nears, fars);q
+			box.color = box.box.Intersect(cameraPosition, gamer * 100.f, nears, fars);
 			if (box.color && !set)
 			{
 				set = true;
-				glm::vec3 point = offset + gamer * nears.distance * 100.f;
+				glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
 				for (std::size_t j = 0; j < 3; j++)
 				{
 					verts[2 + 2 * j] = point;
 					glm::vec3 cur = glm::normalize(box.box[j]);
 					verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
 				}
+				break;
 			}
-		}*/
-		//rayBuffer.BufferSubData(verts);
+		}
+		//std::cout << glm::vec3(-1, 1.2f, -2) << "->" << dumbBox.Center() << std::endl;
+		//bool flopped = dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), glm::normalize(glm::vec3(2, 0.f, 0)), nears, fars);
+		// dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), (glm::vec3(2, 0.f, 0)), nears, fars);
+		//if (flopped || !flopped)
+		//{
+		//	std::cout << std::boolalpha << flopped << std::endl;
+		//	//glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
+		//	glm::vec3 point = glm::vec3(-1, 1.2f, -2) + (glm::vec3(2, 0.1f, 0) * 100.f);
+		//	verts[0] = point;
+		//	verts[1] = glm::vec3(-1, 1.2f, -2);
+		//	/*
+		//	for (std::size_t j = 0; j < 3; j++)
+		//	{
+		//		verts[2 + 2 * j] = point;
+		//		glm::vec3 cur = glm::normalize(dumbBox[j]);
+		//		verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, glm::vec3(2, 0, 0)) * 100.f;
+		//	}*/
+		//}
+		rayBuffer.BufferSubData(verts);
 	}
 }
 
@@ -983,8 +1115,8 @@ int main(int argc, char** argv)
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
-	dumbBox.ReCenter(glm::vec3(0, 0.75f, -2));
-	dumbBox.Scale(glm::vec3(0.5f));
+	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
+	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, 180, 0));
 
 	CheckError();
