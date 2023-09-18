@@ -81,6 +81,7 @@ void GenerateSphereMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indici
 		float angle = std::numbers::pi_v<float> / 2.f - i * longitudeStep;
 		float width = cos(angle);
 		float height = sin(angle);
+		//height += (i >= longitudeSlices / 2) ? -0.5 : 0.5;
 		for (unsigned int j = 0; j <= latitudeSlices; j++)
 		{
 			float miniAngle = j * latitudeStep;
@@ -88,7 +89,11 @@ void GenerateSphereMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indici
 			vertex.x = width * cos(miniAngle);
 			vertex.y = height;
 			vertex.z = width * sin(miniAngle);
+			glm::vec3 fool = -glm::normalize(vertex);
 			glm::vec2 uvs = { (float)j / latitudeSlices, (float)i / longitudeSlices };
+			//glm::vec2 uvs = { vertex.x / (1 - vertex.y), vertex.z / (1 - vertex.y) }; // Recusively bad mapping
+			//glm::vec2 uvs = { 0.5f + glm::atan(fool.z, fool.x) / glm::two_pi<float>(), 0.5f + glm::asin(fool.y) / glm::pi<float>()}; // Recusively bad mapping
+			
 			points.push_back({ vertex, vertex, uvs});
 		}
 	}

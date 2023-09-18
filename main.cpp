@@ -431,7 +431,7 @@ void display()
 	frameShader.SetTextureUnit("depth", framebufferDepth, 1);
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
-	frameShader.SetInt("zoop", kernel);
+	frameShader.SetInt("zoop", 0);
 
 	frameShader.DrawElements<TriangleStrip>(4);
 
@@ -620,7 +620,6 @@ void idle()
 					if (rectified == least && least == 1.f)
 					{
 						// TODO: AVERAGE THEM YOU DUMB BASTARD
-						std::cout << "PAIRED" << std::endl;
 						paired = true;
 						break;
 					}
@@ -648,13 +647,8 @@ void idle()
 			}
 			if(smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), outed, outed2))
 			{
-				//if (abs(outed.distance) < 1 && abs(outed2.distance) < 1)
+				if (!(outed.distance >= 1.f && outed2.distance >= 1.f))
 				{
-					/*
-					std::cout << "Other AXIS: " << glm::normalize(axes[i].Direction()) << std::endl;
-					std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
-					std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
-					*/
 					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
 					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
 
@@ -704,22 +698,37 @@ void idle()
 		// TODO: Signed distance thingy from before to make sure the orientation is correct
 		if (!paired && std::_Is_finite(least) && least > EPSILON)
 		{
-			std::cout << maxdir << ":" << correction << ":" << least << std::endl;
+			//std::cout << maxdir << ":" << correction << ":" << least << std::endl;
 			if (glm::abs(glm::dot(maxdir, glm::vec3(0, 1, 0))) < EPSILON)
 			{
-				std::cout << maxdir << "\t" << least << std::endl;
+				//std::cout << maxdir << "\t" << least << std::endl;
 			}
+			glm::vec3 lastAxis = glm::normalize(glm::cross(maxdir, collide.normal));
+			glm::vec3 evilAxis = collide.normal;
 			// TODO: Get the orientation thing
-			float direction = -glm::sign(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross()));
-			/*
-			std::cout << glm::dot(max, smartBox.Cross()) << ":" << glm::dot(smartBox.Center(), smartBox.Cross()) << std::endl;
-			std::cout << glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross()) << std::endl;
-			std::cout << glm::sign(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross())) << std::endl;
-			*/
-			if (abs(glm::dot(max, smartBox.Cross()) - glm::dot(smartBox.Center(), smartBox.Cross())) > EPSILON)
+			float direction = -glm::sign(glm::dot(max, evilAxis) - glm::dot(smartBox.Center(), evilAxis));
+
+			std::array<glm::vec3, 2> whoop;
+			whoop.fill(max);
+			whoop[0] += lastAxis;
+			rayBuffer.BufferSubData(whoop);
+			if (kernel)
+			{
+				std::cout << std::endl << glm::dot(lastAxis, max) << "\t" << glm::dot(lastAxis, smartBox.Center()) << std::endl;
+				std::cout << glm::dot(lastAxis, max) - glm::dot(lastAxis, smartBox.Center()) << std::endl;
+			}
+			direction = -(glm::dot(lastAxis, max) - glm::dot(lastAxis, smartBox.Center()));
+
+			//std::cout << evilAxis << std::endl;
+			//std::cout << glm::dot(max, evilAxis) << ":" << glm::dot(smartBox.Center(), evilAxis) << std::endl;
+			//std::cout << glm::dot(max, evilAxis) - glm::dot(smartBox.Center(), evilAxis) << std::endl;
+			
+			//std::cout << glm::sign(glm::dot(max,evilAxis) - glm::dot(smartBox.Center(), evilAxis)) << std::endl;
+			
+			if (glm::abs(direction) > EPSILON)
 			//direction = 1.f;
 			//std::cout << direction << std::endl;
-				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, maxdir), max);
+				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), maxdir), max);
 		}
 		//After(smartBox.Center());
 		//std::cout << "END OF FRAME" << std::endl << std::endl << std::endl;
@@ -933,7 +942,6 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 int main(int argc, char** argv)
 {
-	std::cout << std::boolalpha << (-0.f == 0.f) << std::endl;
 	int error = 0;
 	debugFlags.fill(false);
 	// Glut
