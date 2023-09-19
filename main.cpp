@@ -527,10 +527,6 @@ void idle()
 		cameraPosition += right;
 	if (keyState['a'] || keyState['A'])
 		cameraPosition -= right;
-	if (keyState['k'])
-		cameraPosition.y = -10;
-	if (keyState['b'])
-		cameraPosition.y = 10;
 	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
@@ -573,15 +569,15 @@ void idle()
 	//smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), 0.01f, axes[axisIndex % axes.size()].Direction()), axes[axisIndex % axes.size()].MidPoint());
 	auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
 	Collision collide;
+	static float lastDirection = 0.f;
+	static glm::vec3 previousAxis(0.f);
 	if (smartBox.Overlap(dumbBox, collide))
 	{
-		//std::cout << "Gaming" << std::endl;
-		//axes = smartBox.ClosestFacePoints(glm::vec3(0.f));
 		std::array<glm::vec3, 24> movingUp{};
 		movingUp.fill(glm::vec3(0));
 		auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
 
-		glm::vec3 max = glm::vec3(0, 0, 0), maxdir = glm::vec3(0, 1, 0);
+		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(0, 1, 0);
 		float least = -INFINITY;
 		bool paired = false;
 		std::vector<float> stored, stored2;
@@ -597,7 +593,7 @@ void idle()
 			
 			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), outed, outed2))
 			{
-				if (!(outed.distance >= 1.f && outed2.distance >= 1.f))
+				if (!(outed.distance > 1.f && outed2.distance > 1.f))
 				{
 					/*
 					std::cout << "AXIS: " << glm::normalize(axes[i].Direction()) << ": " << axes[i].A <<"->" << axes[i].B << std::endl;
@@ -625,13 +621,13 @@ void idle()
 					}
 					if (std::find(stored.begin(), stored.end(), rectified) != stored.end())
 					{
-						//std::cout << "Sneaky bastard: " << axes[i].Direction() << " : " << maxdir << " : " << least << std::endl;
+						//std::cout << "Sneaky bastard: " << axes[i].Direction() << " : " << rotationAxis << " : " << least << std::endl;
 						if (rectified == least)
 						{
-							max = (axes[i].Lerp((outed2.distance + outed.distance)) + max) / 2.f;
+							rotationPoint = (axes[i].Lerp((outed2.distance + outed.distance) / 2.f) + rotationPoint) / 2.f;
 							least = -INFINITY;
-							max = glm::vec3(0);
-							maxdir = glm::vec3(0, 1, 0);
+							rotationPoint = glm::vec3(0);
+							rotationAxis = glm::vec3(0, 1, 0);
 						}
 						continue;
 					}
@@ -639,15 +635,15 @@ void idle()
 					if (rectified > least && rectified > EPSILON)
 					{
 						least = rectified;
-						max = axes[i].Lerp((outed2.distance + outed.distance) / 2);
-						maxdir = axes[i].Direction();
+						rotationPoint = axes[i].Lerp((outed2.distance + outed.distance) / 2.f);
+						rotationAxis = axes[i].Direction();
 					}
 				}
 				//break;
 			}
 			if(smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), outed, outed2))
 			{
-				if (!(outed.distance >= 1.f && outed2.distance >= 1.f))
+				if (!(outed.distance > 1.f && outed2.distance > 1.f))
 				{
 					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
 					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
@@ -670,10 +666,10 @@ void idle()
 					{
 						if (rectified == least)
 						{
-							max = (fumoBox[i].Lerp((outed2.distance + outed.distance)) + max) / 2.f;
+							rotationPoint = (fumoBox[i].Lerp((outed2.distance + outed.distance) / 2.f) + rotationPoint) / 2.f;
 							least = -INFINITY;
-							maxdir = glm::vec3(0, 1, 0);
-							max = glm::vec3(0);
+							rotationAxis = glm::vec3(0, 1, 0);
+							rotationPoint = glm::vec3(0);
 						}
 						continue;
 					}
@@ -681,16 +677,13 @@ void idle()
 					if (rectified > least)
 					{
 						least = rectified;
-						max = fumoBox[i].Lerp((outed2.distance + outed.distance) / 2);
-						maxdir = fumoBox[i].Direction();
+						rotationPoint = fumoBox[i].Lerp((outed2.distance + outed.distance) / 2.f);
+						rotationAxis = fumoBox[i].Direction();
 					}
 				}
-				//break;
-				//std::cout << "We got one2" << std::endl;
 			}
-
 		}
-		//std::cout << "Length: " << least << "\tAxis: " << maxdir << "\tPoint: " << max << std::endl;
+		//std::cout << "Length: " << least << "\tAxis: " << rotationAxis << "\tPoint: " << rotationPoint << std::endl;
 		glm::vec3 oldCenter = smartBox.Center();
 		rayBuffer.BufferSubData(movingUp);
 		smartBox.OverlapWithResponse(dumbBox);
@@ -698,40 +691,51 @@ void idle()
 		// TODO: Signed distance thingy from before to make sure the orientation is correct
 		if (!paired && std::_Is_finite(least) && least > EPSILON)
 		{
-			//std::cout << maxdir << ":" << correction << ":" << least << std::endl;
-			if (glm::abs(glm::dot(maxdir, glm::vec3(0, 1, 0))) < EPSILON)
+			glm::vec3 mostAlignedVector(0.f), mostAlignedVector2(0.f);
+			float mostAlignedDot = -INFINITY, mostAlignedDot2(0.f);
+			for (glm::length_t i = 0; i < 3; i++)
 			{
-				//std::cout << maxdir << "\t" << least << std::endl;
+				float local = glm::abs(glm::dot(smartBox[i], collide.normal));
+				float local2 = glm::abs(glm::dot(dumbBox[i], collide.normal));
+				if (local > mostAlignedDot)
+				{
+					mostAlignedDot = local;
+					mostAlignedVector = smartBox[i];
+				}
+				if (local2 > mostAlignedDot2)
+				{
+					mostAlignedDot2 = local2;
+					mostAlignedVector2 = dumbBox[i];
+				}
 			}
-			glm::vec3 lastAxis = glm::normalize(glm::cross(maxdir, collide.normal));
+			glm::vec3 lastAxis = glm::normalize(glm::cross(rotationAxis, collide.normal));
 			glm::vec3 evilAxis = collide.normal;
-			// TODO: Get the orientation thing
-			float direction = -glm::sign(glm::dot(max, evilAxis) - glm::dot(smartBox.Center(), evilAxis));
+			float direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, smartBox.Center()));
+			direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
 
-			std::array<glm::vec3, 2> whoop;
-			whoop.fill(max);
-			whoop[0] += lastAxis;
-			rayBuffer.BufferSubData(whoop);
-			if (kernel)
-			{
-				std::cout << std::endl << glm::dot(lastAxis, max) << "\t" << glm::dot(lastAxis, smartBox.Center()) << std::endl;
-				std::cout << glm::dot(lastAxis, max) - glm::dot(lastAxis, smartBox.Center()) << std::endl;
-			}
-			direction = -(glm::dot(lastAxis, max) - glm::dot(lastAxis, smartBox.Center()));
-
-			//std::cout << evilAxis << std::endl;
-			//std::cout << glm::dot(max, evilAxis) << ":" << glm::dot(smartBox.Center(), evilAxis) << std::endl;
-			//std::cout << glm::dot(max, evilAxis) - glm::dot(smartBox.Center(), evilAxis) << std::endl;
-			
-			//std::cout << glm::sign(glm::dot(max,evilAxis) - glm::dot(smartBox.Center(), evilAxis)) << std::endl;
-			
 			if (glm::abs(direction) > EPSILON)
-			//direction = 1.f;
-			//std::cout << direction << std::endl;
-				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), maxdir), max);
+			{
+				//std::cout << glm::length(mostAlignedVector) << ":" << glm::length(mostAlignedVector) << std::endl;
+				if (collide.distance > 1 - glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector)))
+					collide.distance = 1 - glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector));
+				std::cout << glm::dot(mostAlignedVector2, mostAlignedVector) << std::endl;
+				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
+				lastDirection = collide.distance * glm::sign(direction);
+				previousAxis = rotationAxis;
+			}
+			else
+			{
+				lastDirection = 0.f;
+				previousAxis = glm::vec3(0.f);
+			}
 		}
 		//After(smartBox.Center());
 		//std::cout << "END OF FRAME" << std::endl << std::endl << std::endl;
+	}
+	else
+	{
+		lastDirection = 0.f;
+		previousAxis = glm::vec3(0.f);
 	}
 
 	Sphere awwYeah(0.5f, moveSphere);
@@ -769,6 +773,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
+	if (key == 'v') std::cout << std::endl;
 	if (key == 'h' || key == 'H')
 	{
 		smartBox.ReOrient(glm::vec3(0, 89, 0));

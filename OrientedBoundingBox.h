@@ -93,6 +93,8 @@ public:
 	inline bool Intersection(const Plane& plane, float& distance) const;
 	inline bool Intersection(const Plane& plane, Collision& out) const;
 
+	inline float ProjectionLength(const glm::vec3& vector) const;
+
 	glm::vec3 WorldToLocal(const glm::vec3& in) const;
 
 	std::vector<LineSegment> ClosestFacePoints(const glm::vec3& points) const;
@@ -537,6 +539,15 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& col
 	collision.distance = projected - glm::abs(delta);
 	collision.point = this->Center() + glm::sign(delta) * glm::abs(collision.distance) * collision.normal; // This might be wrong?
 	return glm::abs(projected) > glm::abs(delta);
+}
+
+inline float OrientedBoundingBox::ProjectionLength(const glm::vec3& vector) const
+{
+	float contribution = 0.f;
+	// TODO: Investigate unrolling?
+	for (glm::length_t i = 0; i < 3; i++)
+		contribution += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), vector));
+	return contribution;
 }
 
 inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const
