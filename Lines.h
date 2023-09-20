@@ -6,7 +6,7 @@
 #include "util.h"
 
 struct Ray;
-struct LineSgement;
+struct LineSegment;
 
 struct LineBase
 {
@@ -80,15 +80,14 @@ struct LineSegment : public LineBase
 	{
 		glm::vec3 pointB, point2, end, B;
 	};
-	LineSegment() = default;
-	constexpr LineSegment(const glm::vec3& a, const glm::vec3& b) : A(a), B(b) {}
+	constexpr LineSegment(const glm::vec3& a = glm::vec3(0.f), const glm::vec3& b = glm::vec3(1.f)) : A(a), B(b) {}
 	constexpr LineSegment(const LineSegment& other) noexcept : A(other.A), B(other.B) {}
 	constexpr LineSegment(const LineSegment&& other) noexcept : A(other.A), B(other.B) {}
 	constexpr LineSegment& operator=(const LineSegment& other) noexcept;
 	constexpr LineSegment& operator=(const LineSegment&& other) noexcept;
 
-	bool operator==(const LineSegment& other) const = default;
-	bool operator!=(const LineSegment& other) const = default;
+	constexpr bool operator==(const LineSegment& other) const { return this->A == other.A && this->B == other.B; }
+	constexpr bool operator!=(const LineSegment& other) const { return this->A != other.A || this->B != other.B; }
 
 	float Length() const noexcept;
 	float Magnitude() const noexcept;
@@ -99,6 +98,7 @@ struct LineSegment : public LineBase
 	inline constexpr glm::vec3 Lerp(float t) const noexcept;
 
 	inline constexpr glm::vec3 Direction() const noexcept;
+	inline glm::vec3 UnitDirection() const noexcept;
 
 	virtual constexpr glm::vec3 PointA() const noexcept;
 	virtual constexpr glm::vec3 PointB() const noexcept;
@@ -124,6 +124,12 @@ inline constexpr glm::vec3 LineSegment::Direction() const noexcept
 {
 	return this->B - this->A;
 }
+
+inline glm::vec3 LineSegment::UnitDirection() const noexcept
+{
+	return glm::normalize(this->B - this->A);
+}
+
 
 inline constexpr glm::vec3 LineSegment::Lerp(float t) const noexcept
 {

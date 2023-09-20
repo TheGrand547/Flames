@@ -515,6 +515,14 @@ void idle()
 		smartBox.Translate(smartBox.Forward() * -speed);
 		//moveSphere -= smartBox.Forward() * speed;
 	}
+	if (keyState['z'])
+	{
+		dumbBox.Translate(dumbBox.Forward() * speed);
+	}
+	if (keyState['x'])
+	{
+		dumbBox.Translate(dumbBox.Forward() * -speed);
+	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
 	if (keyState['p'] || keyState['P'])
@@ -576,121 +584,164 @@ void idle()
 		std::array<glm::vec3, 24> movingUp{};
 		movingUp.fill(glm::vec3(0));
 		auto fumoBox = dumbBox.ClosestFacePoints(glm::vec3(0.f));
-
-		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(0, 1, 0);
-		float least = -INFINITY;
-		bool paired = false;
-		std::vector<float> stored, stored2;
+		// TODO: Everything in duplicate, keep rotation points/axis/amount for each box, compare the distance and default to the others axis
+		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(2, 1, 0);
+		glm::vec3 otherRotationPoint = glm::vec3(0, 0, 0), otherRotationAxis = glm::vec3(2, 1, 0);
+		float mostOverlap = -INFINITY, otherMostOverlap = -INFINITY;
+		LineSegment edge;
+		bool paired = false, otherPaired = false;
+		std::vector<float> stored, otherStored;
 
 		stored.reserve(12);
-		stored2.reserve(12);
+		otherStored.reserve(12);
 		// TODO: stored 2
 		float correction = 1.f;
+		int myInter = 0, myInnerInter = 0;
+		int myInter2 = 0, myInnerInter2 = 0;
 
 		for (std::size_t i = 0; i < 12; i++)
 		{
-			Collision outed{}, outed2{};
+			Collision nearIntersection{}, farIntersection{};
 			
-			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), outed, outed2))
+			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), nearIntersection, farIntersection))
 			{
-				if (!(outed.distance > 1.f && outed2.distance > 1.f))
+				myInter2++;
+				if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
 				{
-					/*
-					std::cout << "AXIS: " << glm::normalize(axes[i].Direction()) << ": " << axes[i].A <<"->" << axes[i].B << std::endl;
-					std::cout << "NEAR: " << outed.depth << " : " << outed.point << " : " << std::endl;
-					std::cout << "Far: " << outed2.depth << " : " << outed2.point << " : " << std::endl;
-					*/
+					myInnerInter2++;
 					//outed2.depth = abs(outed2.depth);
-					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
-					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
+					nearIntersection.depth = std::clamp(nearIntersection.depth, 0.f, 1.f);
+					farIntersection.depth = std::clamp(farIntersection.depth, 0.f, 1.f);
 
-					movingUp[2 * i] = outed.point;
-					movingUp[2 * i + 1] = outed2.point;// outed2.point;
-					if (outed.distance > outed2.distance)
+					if (nearIntersection.distance > farIntersection.distance)
 					{
-						std::swap(outed, outed2);
+						std::swap(nearIntersection, farIntersection);
 					}
 
-					float rectified = outed2.distance - outed.distance;
+					float rectified = (farIntersection.distance - nearIntersection.distance) * axes[i].Length();
 					//std::cout << "Intersection Length: " << rectified << std::endl << std::endl;
-					if (rectified == least && least == 1.f)
+					if (rectified == mostOverlap && mostOverlap == 1.f)
 					{
-						// TODO: AVERAGE THEM YOU DUMB BASTARD
+						std::cout << "Paired2" << std::endl;
 						paired = true;
 						break;
 					}
 					if (std::find(stored.begin(), stored.end(), rectified) != stored.end())
 					{
-						//std::cout << "Sneaky bastard: " << axes[i].Direction() << " : " << rotationAxis << " : " << least << std::endl;
-						if (rectified == least)
+						std::cout << "Weird thing continue2" << std::endl;
+						if (glm::abs(glm::dot(axes[i].UnitDirection(), rotationAxis) - 1) < EPSILON)
 						{
-							rotationPoint = (axes[i].Lerp((outed2.distance + outed.distance) / 2.f) + rotationPoint) / 2.f;
-							least = -INFINITY;
+							std::cout << "FOUND2" << std::endl;
+							mostOverlap += rectified;
+							paired = true;
+							/*
+							mostOverlap = -INFINITY;
 							rotationPoint = glm::vec3(0);
 							rotationAxis = glm::vec3(0, 1, 0);
+							*/
 						}
 						continue;
 					}
 					stored.push_back(rectified);
-					if (rectified > least && rectified > EPSILON)
+					if (rectified > mostOverlap && rectified > EPSILON)
 					{
-						least = rectified;
-						rotationPoint = axes[i].Lerp((outed2.distance + outed.distance) / 2.f);
-						rotationAxis = axes[i].Direction();
+						mostOverlap = rectified;
+						rotationPoint = axes[i].Lerp((nearIntersection.distance + farIntersection.distance) / 2.f);
+						rotationAxis = axes[i].UnitDirection();
+						edge = axes[i];
+						paired = false;
 					}
 				}
-				//break;
-			}
-			if(smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), outed, outed2))
-			{
-				if (!(outed.distance > 1.f && outed2.distance > 1.f))
+				else
 				{
-					outed.depth = std::clamp(outed.depth, 0.f, 1.f);
-					outed2.depth = std::clamp(outed2.depth, 0.f, 1.f);
-
-					movingUp[2 * i] = fumoBox[i].A;// outed.point;
-					movingUp[2 * i + 1] = fumoBox[i].Lerp(0.5f);//outed2.point;
-					if (outed.distance > outed2.distance)
+					//std::cout << "Other Box Intesect but no good:" << nearIntersection.distance << "\t" << farIntersection.distance << std::endl;
+				}
+			}
+			if (smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), nearIntersection, farIntersection))
+			{
+				myInter++;
+				if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
+				{
+					//std::cout << outed.depth << "\t" << outed2.depth << std::endl;
+					myInnerInter++;
+					nearIntersection.depth = std::clamp(nearIntersection.depth, 0.f, 1.f);
+					farIntersection.depth = std::clamp(farIntersection.depth, 0.f, 1.f);
+					if (nearIntersection.distance > farIntersection.distance)
 					{
-						std::swap(outed, outed2);
+						std::swap(nearIntersection, farIntersection);
 					}
 
-					float rectified = outed2.distance - outed.distance;
+					float rectified = (farIntersection.distance - nearIntersection.distance) * fumoBox[i].Length();
 					//std::cout << "Intersection Length: " << rectified << std::endl << std::endl;
-					if (rectified == least && least == 1.f)
+					if (rectified == otherMostOverlap && otherMostOverlap == 1.f)
 					{
+						std::cout << "Paired" << std::endl;
 						paired = true;
 						break;
 					}
-					if (std::find(stored2.begin(), stored2.end(), rectified) != stored2.end())
+					if (std::find(otherStored.begin(), otherStored.end(), rectified) != otherStored.end())
 					{
-						if (rectified == least)
+						std::cout << "Weird thing continue" << std::endl;
+						if (glm::abs(glm::dot(fumoBox[i].UnitDirection(), otherRotationAxis) - 1) < EPSILON)
 						{
-							rotationPoint = (fumoBox[i].Lerp((outed2.distance + outed.distance) / 2.f) + rotationPoint) / 2.f;
-							least = -INFINITY;
-							rotationAxis = glm::vec3(0, 1, 0);
-							rotationPoint = glm::vec3(0);
+							std::cout << "FOUND" << std::endl;
+							otherMostOverlap += rectified;
+							otherPaired = true;
+							//otherMostOverlap = -INFINITY;
+							//otherRotationAxis = glm::vec3(0, 1, 0);
+							//otherRotationPoint = glm::vec3(0);
 						}
 						continue;
 					}
-					stored2.push_back(rectified);
-					if (rectified > least)
+					otherStored.push_back(rectified);
+					if (rectified > otherMostOverlap)
 					{
-						least = rectified;
-						rotationPoint = fumoBox[i].Lerp((outed2.distance + outed.distance) / 2.f);
-						rotationAxis = fumoBox[i].Direction();
+						otherMostOverlap = rectified;
+						otherRotationPoint = fumoBox[i].Lerp(((nearIntersection.distance + farIntersection.distance) / 2.f));
+						otherRotationAxis = fumoBox[i].UnitDirection();
+						edge = fumoBox[i];
+						otherPaired = false;
 					}
+				}
+				else
+				{
+					//std::cout << "My Box Intesect but no good:" << nearIntersection.distance << "\t" << farIntersection.distance << std::endl;
 				}
 			}
 		}
-		//std::cout << "Length: " << least << "\tAxis: " << rotationAxis << "\tPoint: " << rotationPoint << std::endl;
 		glm::vec3 oldCenter = smartBox.Center();
 		rayBuffer.BufferSubData(movingUp);
 		smartBox.OverlapWithResponse(dumbBox);
+		bool swappered = false;
 		//Before(smartBox.Center());
-		// TODO: Signed distance thingy from before to make sure the orientation is correct
-		if (!paired && std::_Is_finite(least) && least > EPSILON)
+		Before(rotationAxis << "\t" << rotationPoint << "\t" << mostOverlap);
+		Before(otherRotationAxis << "\t" << otherRotationPoint << "\t" << otherMostOverlap);
+		if (std::_Is_finite(mostOverlap) && mostOverlap <= otherMostOverlap)
 		{
+			mostOverlap = otherMostOverlap;
+			rotationAxis = otherRotationAxis;
+			rotationPoint = otherRotationPoint;
+			After(rotationAxis << "\t" << rotationPoint << "\t" << mostOverlap);
+			swappered = true;
+			paired = otherPaired;
+			std::cout << "SWAPPED" << std::endl << std::endl;
+		}
+
+		if (std::_Is_finite(mostOverlap) && mostOverlap > EPSILON)
+		{
+			//if (std::find(axes.cbegin(), axes.cend(), edge) != axes.cend())
+			if (!swappered)
+			{
+				std::cout << paired << "\t" << otherPaired << std::endl;
+				// There is something rotten here
+				std::cout << "MINE: " << mostOverlap << std::endl;
+				std::cout << "My Lines: " << myInter2 << "\t" << myInnerInter2 << std::endl;
+				std::cout << "Other's Lines: " << myInter << "\t" << myInnerInter << std::endl;
+			}
+			else
+			{
+				//std::cout << "OTHER" << std::endl;
+			}
 			glm::vec3 mostAlignedVector(0.f), mostAlignedVector2(0.f);
 			float mostAlignedDot = -INFINITY, mostAlignedDot2(0.f);
 			for (glm::length_t i = 0; i < 3; i++)
@@ -712,13 +763,19 @@ void idle()
 			glm::vec3 evilAxis = collide.normal;
 			float direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, smartBox.Center()));
 			direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
-
+			std::cout << direction << std::endl << std::endl;
+			//std::cout << lastAxis << "\t" << glm::dot(lastAxis, rotationPoint) << "\t" << glm::dot(lastAxis, oldCenter) << std::endl;
 			if (glm::abs(direction) > EPSILON)
 			{
+				//std::cout << direction << std::endl;
 				//std::cout << glm::length(mostAlignedVector) << ":" << glm::length(mostAlignedVector) << std::endl;
-				if (collide.distance > 1 - glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector)))
-					collide.distance = 1 - glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector));
-				std::cout << glm::dot(mostAlignedVector2, mostAlignedVector) << std::endl;
+				float maxRotateVal = glm::acos(glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector)));
+
+				if (!swappered && collide.distance > maxRotateVal)
+					collide.distance = maxRotateVal;
+				
+				// TODO: if this is too small then get it out of here to prevent undue sliding 
+				//std::cout << glm::dot(mostAlignedVector2, mostAlignedVector) << std::endl;
 				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
 				lastDirection = collide.distance * glm::sign(direction);
 				previousAxis = rotationAxis;
@@ -729,8 +786,6 @@ void idle()
 				previousAxis = glm::vec3(0.f);
 			}
 		}
-		//After(smartBox.Center());
-		//std::cout << "END OF FRAME" << std::endl << std::endl << std::endl;
 	}
 	else
 	{
@@ -792,15 +847,15 @@ void keyboard(unsigned char key, int x, int y)
 			//std::array<glm::vec3, 2> verts = { axes[axisIndex].A, axes[axisIndex].B };
 			//rayBuffer.BufferSubData(verts);
 		}
-		
+
 		glm::vec3 angles2 = glm::radians(cameraRotation);
 
 		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
 		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
-		
+
 		bool set = false;
-		
-		
+
+
 		Collision nears, fars;
 		//smartBox.Intersect(cameraPosition, gamer, nears, fars);
 		/*
@@ -813,8 +868,7 @@ void keyboard(unsigned char key, int x, int y)
 		rayBuffer.BufferSubData(localpoints);
 		*/
 		//for (std::size_t i = 0; i < boxes.size(); i++)
-		
-		
+
 		for (auto& box: boxes)
 		{
 			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
@@ -1201,9 +1255,11 @@ int main(int argc, char** argv)
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
+	smartBox.ReCenter(glm::vec3(1.2f, 1.f, 0));
+	smartBox.ReOrient(glm::vec3(0, 90, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
-	dumbBox.Rotate(glm::vec3(0, 180, 0));
+	dumbBox.Rotate(glm::vec3(0, -90, 0));
 
 	CheckError();
 
