@@ -449,69 +449,11 @@ inline bool OrientedBoundingBox::OverlapWithResponse(const OrientedBoundingBox& 
 				otherDot = dotted2;
 			}
 		}
-
-		// This is the point that will be rotated about, needs to be redone to solve the corner dilemma tm
-		// TODO: CORNER DILEMMA
 		glm::vec3 point = this->Center() + collide.normal * distance;
 		
 		glm::vec3 oldCenter = this->Center();
 
 		this->matrix[3] = glm::vec4(collide.point, 1);
-		// TODO: Still is too eager to turn along instead of towards the wall
-		// TODO: Find closest corner and rotate towards it?
-		// TODO: FIND THE CLOSEST ***EDGE*** AND ROTATE ALONG IT!!!!!! HOW???? I HAVE NO CLUE
-		// Maybe do epsilon check?
-
-		/* TODO: THIS IS ALL HORSESHIT FUCK YOU
-		std::vector<LineSegment> myPairs = this->ClosestFacePoints(other.Center()), otherPairs = other.ClosestFacePoints(this->Center());
-		glm::vec3 myCenter = this->Center();
-		glm::vec3 otherCenter = other.Center();
-		float distanced = INFINITY;
-		glm::vec3 bestRotate = glm::vec3(0);
-		LineSegment midpoint;
-		bool isMine = false;
-		for (const auto& point : myPairs)
-		{
-			float currentValue = glm::length2(point.PointClosestTo(myCenter) - myCenter) + glm::length2(point.PointClosestTo(otherCenter) - otherCenter);
-			if (currentValue < distanced)
-			{
-				distanced = currentValue;
-				midpoint = point;
-				isMine = true;
-			}
-		}
-		for (const auto& point : otherPairs)
-		{
-			float currentValue = glm::length2(point.PointClosestTo(myCenter) - myCenter) + glm::length2(point.PointClosestTo(otherCenter) - otherCenter);
-			if (currentValue < distanced)
-			{
-				distanced = currentValue;
-				midpoint = point;
-				isMine = false;
-			}
-		}
-		// TODO: Line segment averaging bullshit
-		if (isMine)
-			collide.point = midpoint.MidPoint();
-		else
-			collide.point = midpoint.PointClosestTo(myCenter);
-		*/
-
-		/*
-		if (collide.distance > 0 && !tooAligned)
-		{
-			// Determine which side of the box the this point is, and rotate the "center" of it towards that
-			//float direction = -glm::sign(glm::dot(collide.point, this->Cross()));
-			float direction = -glm::sign(glm::dot(collide.point, this->Cross()) - glm::dot(oldCenter, this->Cross()));
-			
-			// Cross method needs to be paired with finding minimum of thing
-			glm::vec3 cross = glm::cross(otherAxis, mineAxis);
-
-			// TODO: maybe refire the collision detection to stop it from flickering?
-			if (!glm::all(glm::lessThan(glm::abs(cross), glm::vec3(EPSILON))))
-				this->RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * direction, cross), collide.point);
-		}
-		*/
 	}
 	return fool;
 }

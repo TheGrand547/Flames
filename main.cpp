@@ -566,22 +566,13 @@ void idle()
 	
 	//smartBoxColor = smartBoxCollide();
 	axes = smartBox.GetLineSegments();
-	/*
-	for (auto& temop : dumbBox.ClosestFacePoints(glm::vec3(0.f)))
-	{
-		if (smartBox.Intersect(temop.A, temop.Direction() * 1000.f))
-		{
-			std::cout << "We got one" << std::endl;
-		}
-	}*/
-	//smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), 0.01f, axes[axisIndex % axes.size()].Direction()), axes[axisIndex % axes.size()].MidPoint());
+
 	Collision collide;
 	if (smartBox.Overlap(dumbBox, collide))
 	{
 		std::array<LineSegment, 12> fumoBox = dumbBox.GetLineSegments();
 		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(2, 1, 0);
-		glm::vec3 otherRotationPoint = glm::vec3(0, 0, 0), otherRotationAxis = glm::vec3(2, 1, 0);
-		float mostOverlap = -INFINITY, otherMostOverlap = -INFINITY;
+		float mostOverlap = -INFINITY;
 
 		struct rotation_help
 		{
@@ -594,9 +585,8 @@ void idle()
 
 		for (std::size_t i = 0; i < 12; i++)
 		{
-			Collision nearIntersection{}, farIntersection{};
 			std::size_t index = i % 3;
-			auto lambda = [](LineSegment& line, OBB& target, rotation_help& local) 
+			auto lambda = [](LineSegment& line, OBB& target, rotation_help& local)
 				{
 					Collision nearIntersection{}, farIntersection{};
 					if (target.Intersect(line.A, line.Direction(), nearIntersection, farIntersection))
@@ -621,47 +611,6 @@ void idle()
 				};
 			lambda(axes[i], dumbBox, myAxisStruct[index]);
 			lambda(fumoBox[i], smartBox, otherAxisStruct[index]);
-			
-			/*
-			if (dumbBox.Intersect(axes[i].A, axes[i].Direction(), nearIntersection, farIntersection))
-			{
-				if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
-				{
-					nearIntersection.depth = std::clamp(nearIntersection.depth, 0.f, 1.f);
-					farIntersection.depth = std::clamp(farIntersection.depth, 0.f, 1.f);
-
-					if (nearIntersection.distance > farIntersection.distance)
-					{
-						std::swap(nearIntersection, farIntersection);
-					}
-
-					float rectified = (farIntersection.distance - nearIntersection.distance) * axes[i].Length();
-					rotation_help& local = myAxisStruct[index];
-					local.count++;
-					local.overlap += rectified;
-					local.total += axes[i].Lerp((nearIntersection.distance + farIntersection.distance) / 2.f);
-					local.axis = axes[i].UnitDirection();
-				}
-			}
-			if (smartBox.Intersect(fumoBox[i].A, fumoBox[i].Direction(), nearIntersection, farIntersection))
-			{
-				if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
-				{
-					nearIntersection.depth = std::clamp(nearIntersection.depth, 0.f, 1.f);
-					farIntersection.depth = std::clamp(farIntersection.depth, 0.f, 1.f);
-					if (nearIntersection.distance > farIntersection.distance)
-					{
-						std::swap(nearIntersection, farIntersection);
-					}
-					float rectified = (farIntersection.distance - nearIntersection.distance) * fumoBox[i].Length();
-					rotation_help& local = otherAxisStruct[index];
-					local.count++;
-					local.overlap += rectified;
-					local.total += fumoBox[i].Lerp((nearIntersection.distance + farIntersection.distance) / 2.f);
-					local.axis = fumoBox[i].UnitDirection();
-				}
-			}
-			*/
 		}
 
 		rotation_help myPlaceHolder = { .overlap = -INFINITY, .axis = glm::vec3(2, 1, 0), .total = glm::vec3(0.f), .count = 0 };
@@ -694,35 +643,13 @@ void idle()
 		smartBox.OverlapWithResponse(dumbBox);
 		if (!skipRotate && std::_Is_finite(mostOverlap) && mostOverlap > EPSILON)
 		{
-			glm::vec3 mostAlignedVector(0.f), mostAlignedVector2(0.f);
-			float mostAlignedDot = -INFINITY, mostAlignedDot2(0.f);
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				float local = glm::abs(glm::dot(smartBox[i], collide.normal));
-				float local2 = glm::abs(glm::dot(dumbBox[i], collide.normal));
-				if (local > mostAlignedDot)
-				{
-					mostAlignedDot = local;
-					mostAlignedVector = smartBox[i];
-				}
-				if (local2 > mostAlignedDot2)
-				{
-					mostAlignedDot2 = local2;
-					mostAlignedVector2 = dumbBox[i];
-				}
-			}
 			glm::vec3 lastAxis = glm::normalize(glm::cross(rotationAxis, collide.normal));
 			float direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, smartBox.Center()));
 			direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
 			if (glm::abs(direction) > EPSILON)
 			{
-				/*
-				float maxRotateVal = glm::acos(glm::abs(glm::dot(mostAlignedVector2, mostAlignedVector)));
-				if (collide.distance > maxRotateVal)
-					collide.distance = maxRotateVal;
-				*/
-				// TODO: if this is too small then get it out of here to prevent undue sliding 
-				smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
+				if (collide.distance > EPSILON)
+					smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
 			}
 		}
 	}
