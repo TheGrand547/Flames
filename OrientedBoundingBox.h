@@ -97,7 +97,7 @@ public:
 
 	glm::vec3 WorldToLocal(const glm::vec3& in) const;
 
-	std::vector<LineSegment> ClosestFacePoints(const glm::vec3& points) const;
+	std::array<LineSegment, 12> GetLineSegments() const;
 
 	inline Model GetModel() const;
 };

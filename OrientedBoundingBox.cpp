@@ -70,24 +70,22 @@ static const std::array<std::pair<int, int>, 12> linePairs = {
 	}
 };
 
-std::vector<LineSegment> OrientedBoundingBox::ClosestFacePoints(const glm::vec3& point) const
+std::array<LineSegment, 12> OrientedBoundingBox::GetLineSegments() const
 {
-	std::vector<LineSegment> segments;
-	std::vector<glm::vec3> points;
+	std::array<LineSegment, 12> segments{};
+	std::array<glm::vec3, 8> points{};
 	glm::vec3 center = this->Center();
-	float distance = glm::length2(center - point);
+	points.fill(center);
 	for (glm::length_t i = 0; i < 8; i++)
 	{
-		glm::vec3 current = center;
 		for (glm::length_t j = 0; j < 3; j++)
 		{
-			current += (*this)[j] * this->halfs[j] * multiples[i][j];
+			points[i] += (*this)[j] * this->halfs[j] * multiples[i][j];
 		}
-		points.push_back(current);
 	}
-	for (std::pair<int, int> indexPair : linePairs)
+	for (std::size_t i = 0; i < 12; i++)
 	{
-		segments.push_back(LineSegment(points[indexPair.first], points[indexPair.second]));
+		segments[i] = LineSegment(points[linePairs[i].first], points[linePairs[i].second]);
 	}
 	return segments;
 }
