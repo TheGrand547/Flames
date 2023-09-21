@@ -461,12 +461,12 @@ bool smartBoxCollide(int depth = 0)
 			std::array<glm::vec3, 2> pointerss = { c.point, c.point + c.normal };
 			rayBuffer.BufferSubData(pointerss);
 			val = true;
-			smartBox.OverlapWithResponse(letsgo->box);
+			smartBox.OverlapAndSlide(letsgo->box);
 		}
 	}
 	// TODO: Draw the lines and things y'know
-	smartBox.OverlapWithResponse(dumbBox);
-	//dumbBox.OverlapWithResponse(smartBox);
+	smartBox.OverlapAndSlide(dumbBox);
+	//dumbBox.OverlapAndSlide(smartBox);
 
 	return val;
 }
@@ -551,7 +551,7 @@ void idle()
 		{
 			if (wall.box.Overlap(playerOb))
 			{
-				playerOb.OverlapWithResponse(wall.box);
+				playerOb.OverlapAndSlide(wall.box);
 				//offset = previous;
 				//break;
 			}
@@ -567,92 +567,7 @@ void idle()
 	//smartBoxColor = smartBoxCollide();
 	axes = smartBox.GetLineSegments();
 
-	Collision collide;
-	if (smartBox.Overlap(dumbBox, collide))
-	{
-		std::array<LineSegment, 12> fumoBox = dumbBox.GetLineSegments();
-		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(2, 1, 0);
-		float mostOverlap = -INFINITY;
-
-		struct rotation_help
-		{
-			float overlap = 0.f;
-			glm::vec3 axis{ 2.f, 1.f, 0.f }, total{ 0.f };
-			unsigned char count = 0;
-		};
-
-		std::array<rotation_help, 3> myAxisStruct{}, otherAxisStruct{};
-
-		for (std::size_t i = 0; i < 12; i++)
-		{
-			std::size_t index = i % 3;
-			auto lambda = [](LineSegment& line, OBB& target, rotation_help& local)
-				{
-					Collision nearIntersection{}, farIntersection{};
-					if (target.Intersect(line.A, line.Direction(), nearIntersection, farIntersection))
-					{
-						if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
-						{
-							nearIntersection.depth = std::clamp(nearIntersection.depth, 0.f, 1.f);
-							farIntersection.depth = std::clamp(farIntersection.depth, 0.f, 1.f);
-
-							if (nearIntersection.distance > farIntersection.distance)
-							{
-								std::swap(nearIntersection, farIntersection);
-							}
-
-							float rectified = (farIntersection.distance - nearIntersection.distance) * line.Length();
-							local.count++;
-							local.overlap += rectified;
-							local.total += line.Lerp((nearIntersection.distance + farIntersection.distance) / 2.f);
-							local.axis = line.UnitDirection();
-						}
-					}
-				};
-			lambda(axes[i], dumbBox, myAxisStruct[index]);
-			lambda(fumoBox[i], smartBox, otherAxisStruct[index]);
-		}
-
-		rotation_help myPlaceHolder = { .overlap = -INFINITY, .axis = glm::vec3(2, 1, 0), .total = glm::vec3(0.f), .count = 0 };
-		rotation_help otherPlaceHolder = { .overlap = -INFINITY, .axis = glm::vec3(2, 1, 0), .total = glm::vec3(0.f), .count = 0 };
-		for (std::size_t i = 0; i < 3; i++)
-		{
-			if (myPlaceHolder.overlap < myAxisStruct[i].overlap)
-				myPlaceHolder = myAxisStruct[i];
-			if (otherPlaceHolder.overlap < otherAxisStruct[i].overlap)
-				otherPlaceHolder = otherAxisStruct[i];
-		}
-		bool skipRotate = false;
-		if (myPlaceHolder.count == 0 && otherPlaceHolder.count == 0)
-		{
-			skipRotate = true;
-		}
-		else
-		{
-			// At least one has non-zero overlap, ensuring this will work
-			if (myPlaceHolder.overlap <= otherPlaceHolder.overlap)
-				myPlaceHolder = otherPlaceHolder;
-			myPlaceHolder.total /= myPlaceHolder.count;
-			
-			mostOverlap = myPlaceHolder.overlap;
-			rotationAxis = myPlaceHolder.axis;
-			rotationPoint = myPlaceHolder.total;
-		}
-
-		glm::vec3 oldCenter = smartBox.Center();
-		smartBox.OverlapWithResponse(dumbBox);
-		if (!skipRotate && std::_Is_finite(mostOverlap) && mostOverlap > EPSILON)
-		{
-			glm::vec3 lastAxis = glm::normalize(glm::cross(rotationAxis, collide.normal));
-			float direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, smartBox.Center()));
-			direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
-			if (glm::abs(direction) > EPSILON)
-			{
-				if (collide.distance > EPSILON)
-					smartBox.RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
-			}
-		}
-	}
+	smartBox.OverlapCompleteResponse(dumbBox);
 
 	Sphere awwYeah(0.5f, moveSphere);
 	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
