@@ -6,11 +6,14 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/hash.hpp>
 #include <freeglut.h>
 #include <iostream>
 #include <map>
+#include <queue>
 #include <sys/utime.h>
 #include <time.h>
+#include <unordered_map>
 #include "AABB.h"
 #include "Buffer.h"
 #include "CubeMap.h"
@@ -348,7 +351,7 @@ void display()
 	// Cubert
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Albert
 	/*
@@ -452,20 +455,56 @@ bool smartBoxCollide(int depth = 0)
 {
 	if (depth > 4)
 		return true;
+	std::list<std::pair<OBB*, Collision>> gamers;
 	bool val = false;
 	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
 	{
 		Collision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
-			std::array<glm::vec3, 2> pointerss = { c.point, c.point + c.normal };
-			rayBuffer.BufferSubData(pointerss);
+			gamers.push_back({ &(letsgo->box), c });
+		}
+		//val |= smartBox.OverlapCompleteResponse(letsgo->box);
+		//if (val)
+			//break;
+		/*
+		if (smartBox.Overlap(letsgo->box, c))
+		{
 			val = true;
-			smartBox.OverlapAndSlide(letsgo->box);
+			smartBox.OverlapCompleteResponse(letsgo->box);
+		}*/
+	}
+	if (gamers.size() == 1)
+	{
+		smartBox.OverlapCompleteResponse(*gamers.front().first);
+	}
+	else
+	{
+		std::unordered_map<glm::vec3, std::list<OBB*>> haha;
+		for (auto& lerp : gamers)
+		{
+			//std::cout << lerp.second.normal << std::endl;
+			//smartBox.OverlapAndSlide(*lerp.first);
+			haha[lerp.second.normal].push_back(lerp.first);
+		}
+		// YOU REALLY NEED AN 'APPLY COLLIDE RESULT' THINGY DUMBASS
+
+		for (auto& pade : haha)
+		{
+			if (pade.second.size() > 1)
+			{
+				for (auto& inner : pade.second)
+				{
+					smartBox.OverlapAndSlide(*inner);
+				}
+			}
+			else
+			{
+				smartBox.OverlapCompleteResponse(*pade.second.front());
+			}
 		}
 	}
-	// TODO: Draw the lines and things y'know
-	smartBox.OverlapAndSlide(dumbBox);
+	//smartBox.OverlapCompleteResponse(dumbBox);
 	//dumbBox.OverlapAndSlide(smartBox);
 
 	return val;
@@ -515,6 +554,7 @@ void idle()
 		smartBox.Translate(smartBox.Forward() * -speed);
 		//moveSphere -= smartBox.Forward() * speed;
 	}
+	smartBox.Translate(glm::vec3(0, -0.25f, 0) * speed);
 	if (keyState['z'])
 	{
 		dumbBox.Translate(dumbBox.Forward() * speed);
@@ -564,10 +604,10 @@ void idle()
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 	
-	//smartBoxColor = smartBoxCollide();
+	smartBoxColor = smartBoxCollide();
 	axes = smartBox.GetLineSegments();
 
-	smartBox.OverlapCompleteResponse(dumbBox);
+	//smartBox.OverlapCompleteResponse(dumbBox);
 
 	Sphere awwYeah(0.5f, moveSphere);
 	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
@@ -1036,6 +1076,7 @@ int main(int argc, char** argv)
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
+	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 
 	CheckError();
 
