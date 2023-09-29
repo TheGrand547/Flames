@@ -455,11 +455,11 @@ bool smartBoxCollide(int depth = 0)
 {
 	if (depth > 4)
 		return true;
-	std::list<std::pair<OBB*, Collision>> gamers;
+	std::list<std::pair<OBB*, SlidingCollision>> gamers;
 	bool val = false;
 	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
 	{
-		Collision c;
+		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
 			gamers.push_back({ &(letsgo->box), c });
@@ -672,7 +672,7 @@ void keyboard(unsigned char key, int x, int y)
 		bool set = false;
 
 
-		Collision nears, fars;
+		RayCollision nears, fars;
 		//smartBox.Intersect(cameraPosition, gamer, nears, fars);
 		/*
 		auto foosball = smartBox.ClosestFacePoints(cameraPosition);

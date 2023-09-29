@@ -54,14 +54,12 @@ bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) con
 	return result;
 }
 
-bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& other)
+bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingCollision& slide, RotationCollision& rotate) const
 {
-	Collision collide;
-	if (this->Overlap(other, collide))
+	rotate.Clear();
+	if (this->Overlap(other, slide))
 	{
 		std::array<LineSegment, 12> axes = this->GetLineSegments(), fumoBox = other.GetLineSegments();
-		glm::vec3 rotationPoint = glm::vec3(0, 0, 0), rotationAxis = glm::vec3(2, 1, 0);
-		float mostOverlap = -INFINITY;
 
 		struct rotation_help
 		{
@@ -77,7 +75,7 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 			std::size_t index = i % 3;
 			auto lambda = [](LineSegment& line, const OBB& target, rotation_help& local)
 				{
-					Collision nearIntersection{}, farIntersection{};
+					RayCollision nearIntersection{}, farIntersection{};
 					if (target.Intersect(line.A, line.Direction(), nearIntersection, farIntersection))
 					{
 						if (!(nearIntersection.distance > 1.f && farIntersection.distance > 1.f))
@@ -106,7 +104,7 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 		rotation_help otherPlaceHolder = { .overlap = -INFINITY, .axis = glm::vec3(2, 1, 0), .total = glm::vec3(0.f), .count = 0 };
 
 		struct rotation_help_sorter {
-			bool operator()(const rotation_help& lhs, const rotation_help& rhs) 
+			bool operator()(const rotation_help& lhs, const rotation_help& rhs)
 			{
 				return lhs.overlap < rhs.overlap;
 			}
@@ -115,20 +113,11 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 		std::sort(otherAxisStruct.begin(), otherAxisStruct.end(), rotation_help_sorter());
 		myPlaceHolder = myAxisStruct[2];
 		otherPlaceHolder = otherAxisStruct[2];
-		/*
-		for (std::size_t i = 0; i < 3; i++)
-		{
-			if (myPlaceHolder.overlap < myAxisStruct[i].overlap)
-				myPlaceHolder = myAxisStruct[i];
-			if (otherPlaceHolder.overlap < otherAxisStruct[i].overlap)
-				otherPlaceHolder = otherAxisStruct[i];
-		}*/
-		//std::cout << myAxisStruct[0].overlap << "\t" << myAxisStruct[1].overlap << "\t" << myAxisStruct[2].overlap << std::endl;
-		//std::cout << otherAxisStruct[0].overlap << "\t" << otherAxisStruct[1].overlap << "\t" << otherAxisStruct[2].overlap << std::endl;
 		bool skipRotate = false;
+		// If two sides have equal overlap or both fully overlap this is an invalid collision
 		if ((myAxisStruct[2].overlap > 1.f && myAxisStruct[1].overlap > 1.f) ||
 			(otherAxisStruct[2].overlap > 1.f && otherAxisStruct[1].overlap > 1.f) ||
-			myAxisStruct[2].overlap == myAxisStruct[1].overlap || 
+			myAxisStruct[2].overlap == myAxisStruct[1].overlap ||
 			otherAxisStruct[2].overlap == otherAxisStruct[1].overlap)
 		{
 			skipRotate = true;
@@ -142,24 +131,22 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 			// At least one has non-zero overlap, ensuring this will work
 			if (myPlaceHolder.overlap <= otherPlaceHolder.overlap || myPlaceHolder.count == 0)
 				myPlaceHolder = otherPlaceHolder;
-			
+
 			myPlaceHolder.total /= myPlaceHolder.count;
 
-			mostOverlap = myPlaceHolder.overlap;
-			rotationAxis = myPlaceHolder.axis;
-			rotationPoint = myPlaceHolder.total;
+			rotate.axis = myPlaceHolder.axis;
+			rotate.point = myPlaceHolder.total;
 		}
 
 		glm::vec3 oldCenter = this->Center();
-		this->matrix[3] = glm::vec4(collide.point, 1);
-		if (!skipRotate && std::_Is_finite(mostOverlap) && mostOverlap > EPSILON)
+		if (!skipRotate && std::_Is_finite(myPlaceHolder.overlap) && myPlaceHolder.overlap > EPSILON)
 		{
 			glm::vec3 mostAlignedVector(0.f), mostAlignedVector2(0.f);
 			float mostAlignedDot = -INFINITY, mostAlignedDot2(0.f);
 			for (glm::length_t i = 0; i < 3; i++)
 			{
-				float local = glm::abs(glm::dot((*this)[i], collide.normal));
-				float local2 = glm::abs(glm::dot(other[i], collide.normal));
+				float local = glm::abs(glm::dot((*this)[i], slide.normal));
+				float local2 = glm::abs(glm::dot(other[i], slide.normal));
 				if (local > mostAlignedDot)
 				{
 					mostAlignedDot = local;
@@ -172,20 +159,39 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 				}
 			}
 
-			glm::vec3 lastAxis = glm::normalize(glm::cross(rotationAxis, collide.normal));
-			float direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, this->Center()));
+			glm::vec3 lastAxis = glm::normalize(glm::cross(rotate.axis, slide.normal));
+			float direction = -(glm::dot(lastAxis, rotate.point) - glm::dot(lastAxis, this->Center()));
 			//direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
 			if (glm::abs(direction) > EPSILON)
 			{
 				//float maximum = glm::acos(1 - (glm::abs(glm::dot(mostAlignedVector, rotationAxis))));
-				float maximum = glm::acos(glm::abs(glm::dot(mostAlignedVector, rotationAxis)));
+				float maximum = glm::acos(glm::abs(glm::dot(mostAlignedVector, rotate.axis)));
 				//collide.distance = glm::min(maximum, collide.distance);
 				//if (collide.distance > EPSILON)
-					this->RotateAbout(glm::rotate(glm::mat4(1.f), collide.distance * glm::sign(direction), rotationAxis), rotationPoint);
+				rotate.distance = slide.distance * glm::sign(direction);
+			}
+			else
+			{
+				rotate.distance = 0.f;
 			}
 		}
+		return true;
 	}
 	return false;
+}
+
+bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& other)
+{
+	
+	SlidingCollision slide{};
+	RotationCollision rotate{};
+	bool result = this->Overlap(other, slide, rotate);
+	if (result)
+	{
+		this->ApplyCollision(slide);
+		this->ApplyCollision(rotate);
+	}
+	return result;
 }
 
 // World is in normalized coordinates so this is trivial

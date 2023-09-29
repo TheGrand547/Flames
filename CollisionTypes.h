@@ -1,6 +1,6 @@
 #pragma once
-#ifndef COLLIDABLE_H
-#define COLLIDABLE_H
+#ifndef COLLISION_TYPES_H
+#define COLLISION_TYPES_H
 #include <glm/glm.hpp>
 #include <iostream>
 #include "glmHelp.h"
@@ -17,7 +17,16 @@
  */
 struct Collision
 {
-	glm::vec3 point, normal;
+	union
+	{
+		glm::vec3 point, center;
+	};
+
+	union
+	{
+		glm::vec3 normal, axis;
+	};
+
 	union
 	{
 		float distance, depth;
@@ -40,9 +49,13 @@ struct Collision
 	Collision& operator=(const Collision& other) = default;
 };
 
+struct RotationCollision : public Collision {};
+struct SlidingCollision : public Collision {};
+struct RayCollision : public Collision {};
+
 inline std::ostream& operator<<(std::ostream& os, const Collision& collision)
 {
 	os << collision.point << "\t" << collision.normal << "\t" << collision.depth;
 	return os;
 }
-#endif // COLLIDABLE_H
+#endif // COLLISION_TYPES_H

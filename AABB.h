@@ -4,7 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/ext/vector_common.hpp>
 #include <vector>
-#include "Collidable.h"
+#include "CollisionTypes.h"
 #include "glmHelp.h"
 #include "Model.h"
 #include "util.h"

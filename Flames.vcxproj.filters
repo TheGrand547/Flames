@@ -54,7 +54,7 @@
     <ClCompile Include="AABB.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Collidable.cpp">
+    <ClCompile Include="CollisionTypes.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Cylinder.cpp">
@@ -140,7 +140,7 @@
     <ClInclude Include="AABB.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Collidable.h">
+    <ClInclude Include="CollisionTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Cylinder.h">

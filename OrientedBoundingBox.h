@@ -9,7 +9,7 @@
 #include <limits>
 #include "AABB.h"
 #include "Capsule.h"
-#include "Collidable.h"
+#include "CollisionTypes.h"
 #include "glmHelp.h"
 #include "Plane.h"
 #include "Sphere.h"
@@ -71,13 +71,14 @@ public:
 	inline constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const;
 	
 	// If no intersection is found, result is undefined
-	inline constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& result) const;
+	inline constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& result) const;
 	
 	// If no intersection is found, near and far hit are undefined
-	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& nearHit, RayCollision& farHit) const;
 	
 	inline constexpr bool Overlap(const OrientedBoundingBox& other) const;
-	constexpr bool Overlap(const OrientedBoundingBox& other, Collision& result) const;
+	constexpr bool Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const;
+	bool Overlap(const OrientedBoundingBox& other, SlidingCollision& slide, RotationCollision& rotate) const;
 	
 	// These both assume 'this' is dynamic, and the other is static, other methods will handle the case of both being dynamic
 	inline bool OverlapAndSlide(const OrientedBoundingBox& other);
@@ -104,6 +105,10 @@ public:
 	std::array<LineSegment, 12> GetLineSegments() const;
 
 	inline Model GetModel() const;
+
+	// Trust the user to not do this erroneously
+	inline constexpr void ApplyCollision(const SlidingCollision& collision);
+	inline constexpr void ApplyCollision(const RotationCollision& collision);
 };
 
 constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other) : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), 
@@ -164,6 +169,17 @@ inline Model OrientedBoundingBox::GetModel() const
 	glm::vec3 angles{ 0.f, 0.f, 0.f };
 	glm::extractEulerAngleXYZ(this->matrix, angles.x, angles.y, angles.z);
 	return Model(this->matrix[3], glm::degrees(angles), this->halfs);
+}
+
+inline constexpr void OrientedBoundingBox::ApplyCollision(const SlidingCollision& collision)
+{
+	this->matrix[3] += collision.normal * collision.distance;
+}
+
+inline constexpr void OrientedBoundingBox::ApplyCollision(const RotationCollision& collision)
+{
+	if (glm::abs(collision.distance) > EPSILON)
+		this->RotateAbout(glm::rotate(glm::mat4(1.f), collision.distance, collision.axis), collision.point);
 }
 
 inline void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
@@ -277,20 +293,20 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 
 inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const
 {
-	Collision collision{};
+	RayCollision collision{};
 	bool value = this->Intersect(point, dir, collision);
 	distance = collision.distance;
 	return value;
 }
 
-inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& first) const
+inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& first) const
 {
-	Collision second;
+	RayCollision second;
 	return this->Intersect(point, dir, first, second);
 }
 
 // https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
-constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
+constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& nearHit, RayCollision& farHit) const
 {
 	// TODO: For line segments do the clamp thingy
 	nearHit.Clear();
@@ -362,11 +378,11 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 // https://web.stanford.edu/class/cs273/refs/obb.pdf
 inline constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) const
 {
-	Collision collide{};
+	SlidingCollision collide{};
 	return this->Overlap(other, collide);
 }
 
-constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Collision& result) const
+constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const
 {
 	std::array<glm::vec3, 15> separatingAxes{};
 	for (glm::length_t i = 0; i < 3; i++)
@@ -403,10 +419,10 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Co
 			result.distance = right - left;
 		}
 	}
-	glm::vec3 normdir = glm::normalize(-delta); // direction here -> there
+	glm::vec3 normdir = glm::normalize(delta); // direction here -> there
 	// This is where *my* center needs to go to be not intersecting
-	result.point = this->Center() + result.distance * separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
-	result.normal = separatingAxes[index] * glm::sign(-glm::dot(normdir, separatingAxes[index]));
+	result.normal = separatingAxes[index] * glm::sign(glm::dot(normdir, separatingAxes[index]));
+	result.point = this->Center() + result.distance * result.normal;
 	return true;
 }
 
@@ -420,11 +436,11 @@ inline bool OrientedBoundingBox::OverlapAndSlide(const OrientedBoundingBox& othe
 	if (this == &other) 
 		return false;
 
-	Collision collide;
+	SlidingCollision collide;
 	bool fool = this->Overlap(other, collide);
 	if (fool)
 	{
-		this->matrix[3] = glm::vec4(collide.point, 1);
+		this->ApplyCollision(collide);
 	}
 	return fool;
 }

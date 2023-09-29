@@ -4,7 +4,7 @@
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
-#include "Collidable.h"
+#include "CollisionTypes.h"
 #include "Lines.h"
 #include "Sphere.h"
 
