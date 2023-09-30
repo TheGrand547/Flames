@@ -173,7 +173,7 @@ inline Model OrientedBoundingBox::GetModel() const
 
 inline constexpr void OrientedBoundingBox::ApplyCollision(const SlidingCollision& collision)
 {
-	this->matrix[3] += collision.normal * collision.distance;
+	this->matrix[3] += glm::vec4(collision.normal * collision.distance, 0);
 }
 
 inline constexpr void OrientedBoundingBox::ApplyCollision(const RotationCollision& collision)

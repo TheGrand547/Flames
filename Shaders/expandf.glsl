@@ -70,7 +70,8 @@ void main()
 	mid = abs(mid);
 	blurred = max(mid.x, max(mid.y, mid.z));
 	fColor = vec4(length(mid));
-	fColor = mix(sampled, fColor, pow(blurred, 0.9f));
+	//fColor = mix(sampled, fColor, pow(blurred, 0.9f));
+	fColor = sampled;
 	//fColor = vec4(step(0.2, length(mid)));
 	//fColor = abs(mid);
 	

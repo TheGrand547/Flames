@@ -173,7 +173,7 @@ Buffer<ElementArray> sphereIndicies, stickIndicies, cubeOutlineIndex;
 UniformBuffer universal;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, uniform, sphereMesh;
+Shader dither, expand, finalResult, frameShader, flatLighting, uniform, sphereMesh, widget;
 
 // Textures
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
@@ -419,16 +419,15 @@ void display()
 	*/
 
 	// Framebuffer stuff
-	CheckError();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
 	glDrawBuffers(1, buffers);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
+
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);;
-	CheckError();
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", framebufferNormal, 0);
 	frameShader.SetTextureUnit("depth", framebufferDepth, 1);
@@ -446,6 +445,10 @@ void display()
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
+	glLineWidth(1.f);
+	widget.SetActiveShader();
+	widget.DrawElements<Lines>(6);
+
 	glFlush();
 	glutSwapBuffers();
 	CheckError();
@@ -489,6 +492,8 @@ bool smartBoxCollide(int depth = 0)
 		}
 		// YOU REALLY NEED AN 'APPLY COLLIDE RESULT' THINGY DUMBASS
 
+		OBB* pointer = nullptr;
+		float maxd = -INFINITY;
 		for (auto& pade : haha)
 		{
 			if (pade.second.size() > 1)
@@ -500,8 +505,25 @@ bool smartBoxCollide(int depth = 0)
 			}
 			else
 			{
-				smartBox.OverlapCompleteResponse(*pade.second.front());
+				SlidingCollision slider{};
+				RotationCollision rot{};
+				if (smartBox.Overlap(*pade.second.front(), slider, rot))
+				{
+					if (maxd < rot.distance && glm::abs(rot.distance) > EPSILON)
+					{
+						pointer = pade.second.front();
+						maxd = rot.distance;
+					}
+					else
+					{
+						smartBox.ApplyCollision(slider);
+					}
+				}
 			}
+		}
+		if (pointer)
+		{
+			smartBox.OverlapCompleteResponse(*pointer);
 		}
 	}
 	//smartBox.OverlapCompleteResponse(dumbBox);
@@ -880,6 +902,7 @@ int main(int argc, char** argv)
 	dither.CompileSimple("light_text_dither");
 	flatLighting.CompileSimple("lightflat");
 
+	widget.CompileSimple("widget");
 
 	frameShader.CompileSimple("framebuffer");
 	sphereMesh.CompileSimple("mesh");
