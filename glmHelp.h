@@ -17,6 +17,8 @@
 #define Vec4to3(vec4) glm::vec3(vec4.x, vec4.y, vec4.z)
 #define Vec3to4(vec3) glm::vec4(vec3.x, vec3.y, vec3.z, 1.f)
 
+#define absdot(x, y) glm::abs(glm::dot(x, y))
+
 //std::ostream& operator<<(std::ostream& os, const glm::vec3& vec);
 
 template<glm::length_t T, typename W, glm::qualifier Q>
@@ -34,5 +36,14 @@ std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)
 }
 
 template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::vec3>;
+
+namespace glm 
+{
+	// Returns the absolute value of the dot product of x on y
+	template<length_t L, typename T, qualifier Q> inline T adot(vec<L, T, Q> const& x, vec<L, T, Q> const& y)
+	{
+		return glm::abs(glm::dot(x, y));
+	}
+}
 
 #endif // GLM_HELP_H

@@ -371,7 +371,7 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	uniform.SetVec3("color", glm::vec3(0.7f, 0.5f, 1.f));
-	//uniform.DrawElements<Lines>(rayBuffer);
+	uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(15.f);
 	//uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(1.f);
@@ -445,6 +445,7 @@ void display()
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
+	// TODO: This is reversed
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawElements<Lines>(6);
@@ -468,16 +469,22 @@ bool smartBoxCollide()
 	bool val = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
 	float dotValue = 0.f;
-	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
+	auto boxers = boxes.Search(smartBox.GetAABB());
+	int collides = 0;
+	//std::cout << "\r" << boxers.size();
+	//Before(smartBoxPhysics.velocity);
+	for (auto& letsgo : boxers)
 	{
 		//smartBox.OverlapAndSlide(letsgo->box);
 		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
-			if (glm::abs(glm::dot(GravityAxis, c.normal)) > EPSILON && glm::abs(glm::dot(GravityAxis, c.normal)) > dotValue)
+			collides++;
+			float orientation = glm::dot(GravityAxis, c.normal);
+			if (glm::abs(orientation) > EPSILON && orientation < dotValue)
 			{
 				//std::cout << "OLD: " << smartBoxPhysics.axisOfGaming << "\tNew: " << c.normal << std::endl;
-				dotValue = glm::abs(glm::dot(GravityAxis, c.normal));
+				dotValue = orientation;
 				smartBoxPhysics.axisOfGaming = c.normal;
 			}
 			//Before(smartBox.Center());
@@ -488,6 +495,8 @@ bool smartBoxCollide()
 			//gamers.push_back({ &(letsgo->box), c });
 		}
 	}
+	//After(smartBoxPhysics.velocity);
+	//std::cout << ":" << collides;
 	return val;
 }
 
@@ -518,7 +527,9 @@ void idle()
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
 
 	//float speed = 3 * ((float) elapsed) / 1000.f;
-	float speed = 3 * std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
+	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
+
+	float speed = 3 * timeDelta;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -576,24 +587,49 @@ void idle()
 
 	// Physics attempt
 	smartBoxPhysics.acceleration = glm::vec3(0.f);
-	if (keyState[ArrowKeyUp])
-	{
-		smartBoxPhysics.acceleration += smartBox.Forward() * speed * 0.02f;
-	}
-	if (keyState[ArrowKeyDown])
-	{
-		smartBoxPhysics.acceleration -= smartBox.Forward() * speed * 0.02f;
-	}
+	const float BoxAcceleration = 0.06f;
+	const float BoxMass = 1;
+	const float frictionCoeff = 1.f;
+	const float GravityRate = 1.f;
+	const glm::vec3 boxGravity = GravityAxis * BoxMass * GravityRate;
+
+
+	glm::vec3 boxForces{ 0.f };
+	boxForces += boxGravity;
+
+	if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
+	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
 	if (smartBoxPhysics.axisOfGaming != glm::vec3(0.f))
 	{
-		// TODO: Make less bad
-		//LogF("Gravity'd");
-		smartBoxPhysics.acceleration += GravityAxis * glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityAxis)) * speed * 0.02f;
+		// Box is colliding with *something* pointing up
+		float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityAxis));
+		float sine = glm::sqrt(1.f - cose * cose);
+
+		//                      Direction                      Magnitude
+		glm::vec3 normalForce = smartBoxPhysics.axisOfGaming * glm::length(boxGravity) * sine;
+
+	
+		// This is the "up the slope" vector, sine is removed due to it being irrelevent, but it would be properly scaled there
+		glm::vec3 friction{ 0.f };
+		if (smartBoxPhysics.axisOfGaming != glm::abs(GravityAxis))
+		{
+			friction = glm::normalize(glm::abs(GravityAxis) - smartBoxPhysics.axisOfGaming * cose) * glm::length(normalForce) * frictionCoeff;
+		}
+		
+		boxForces += normalForce + friction;
+		std::cout << glm::length(normalForce + friction + boxGravity) << "\t" << sine << std::endl;
+		std::array<glm::vec3, 6> visuals;
+		visuals.fill(glm::vec3(0.f));
+		visuals[1] = GravityAxis;
+		visuals[3] = normalForce;
+		visuals[5] = friction;
+		rayBuffer.BufferSubData(visuals);
+		//std::cout << friction << std::endl;
+		//std::cout << "\r" << GravityAxis * transformed * timeDelta * 0.02f << "\t";
 	}
-	else
-	{
-		smartBoxPhysics.acceleration += GravityAxis * speed * 0.02f;
-	}
+	// A = F / M
+	//std::cout << boxForces << std::endl;
+	smartBoxPhysics.acceleration = boxForces / BoxMass * timeDelta;
 
 	smartBoxPhysics.velocity += smartBoxPhysics.acceleration;
 	if (glm::length(smartBoxPhysics.velocity) > 2.f)
@@ -922,14 +958,33 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	std::array<glm::vec3, 48> gobs = {glm::vec3(4, 1, -1), glm::vec3(4, 1, 1)};
+	// RAY SETUP
+	std::array<glm::vec3, 10> rays = {};
+	rays.fill(glm::vec3(0.f));
+	glm::vec3 a{ 2, 1, 1 };
+	glm::vec3 fooey = glm::normalize(a);
+
+	// Despite the dot product usually being the cosine bewtween the angles this is wrong due to the coordinate orientation hackery
+	float aCose = glm::dot(fooey, glm::vec3(0, 1, 0));
+	float aSine = glm::sqrt(1 - aCose * aCose);
+	std::cout << aSine << ":" << aCose << std::endl;
+	rays[1] = fooey;
+	rays[3] = GravityAxis;
+	rays[5] = glm::normalize(glm::vec3(0, 1, 0) - fooey * aCose) * aSine;
+	rays[9] = glm::vec3(-1, 2, 0);
+	std::cout << ":" << glm::length(fooey * aCose) << ":" << glm::length(rays[5]) << std::endl;
+	rays.fill(glm::vec3(0.f));
+	//std::cout << glm::dot(rays[5], fooey) << "\t" << EPSILON << "\t" << std::numeric_limits<float>::epsilon() << std::endl;
+	/*
 	gobs.fill(glm::vec3(0, -5, 0));
 	gobs[0] += glm::vec3(1, 0, 0);
 	gobs[1] += glm::vec3(-1, 0, 0);
 	gobs[2] += glm::vec3(0, 0, 1);
 	gobs[3] += glm::vec3(0, 0, -1);
+	*/
+
 	rayBuffer.Generate();
-	rayBuffer.BufferData(gobs, StaticDraw);
+	rayBuffer.BufferData(rays, StaticDraw);
 
 	for (int i = -5; i <= 5; i++)
 	{
@@ -948,7 +1003,7 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 
 	// Slope
-	planes.push_back(Model(glm::vec3(11.8f, .5f, 0), glm::vec3(0, 0.f, 25.0f), glm::vec3(1, 1, 1)));
+	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
 
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
