@@ -329,8 +329,8 @@ void display()
 		if (debugFlags[WIDE_BOXES]) uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 		for (const auto& box: boxes)
 		{
-			glLineWidth((box.color) ? wid * 1.5f : wid);
-			glPointSize((box.color) ? wid * 1.5f : wid);
+			//glLineWidth((box.color) ? wid * 1.5f : wid);
+			//glPointSize((box.color) ? wid * 1.5f : wid);
 			if (debugFlags[TIGHT_BOXES])
 			{
 				uniform.SetMat4("Model", box.box.GetModelMatrix());
@@ -454,81 +454,40 @@ void display()
 	CheckError();
 }
 
-bool smartBoxCollide(int depth = 0)
+static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
+
+struct
 {
-	if (depth > 4)
-		return true;
-	std::list<std::pair<OBB*, SlidingCollision>> gamers;
+	glm::vec3 acceleration{ 0.f };
+	glm::vec3 velocity{ 0.f };
+	glm::vec3 axisOfGaming{ 0.f };
+} smartBoxPhysics;
+
+bool smartBoxCollide()
+{
 	bool val = false;
+	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
+	float dotValue = 0.f;
 	for (auto& letsgo : boxes.Search(smartBox.GetAABB()))
 	{
+		//smartBox.OverlapAndSlide(letsgo->box);
 		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
-			gamers.push_back({ &(letsgo->box), c });
-		}
-		//val |= smartBox.OverlapCompleteResponse(letsgo->box);
-		//if (val)
-			//break;
-		/*
-		if (smartBox.Overlap(letsgo->box, c))
-		{
+			if (glm::abs(glm::dot(GravityAxis, c.normal)) > EPSILON && glm::abs(glm::dot(GravityAxis, c.normal)) > dotValue)
+			{
+				//std::cout << "OLD: " << smartBoxPhysics.axisOfGaming << "\tNew: " << c.normal << std::endl;
+				dotValue = glm::abs(glm::dot(GravityAxis, c.normal));
+				smartBoxPhysics.axisOfGaming = c.normal;
+			}
+			//Before(smartBox.Center());
+			smartBox.ApplyCollision(c);
+			//After(smartBox.Center());
+			smartBoxPhysics.velocity += c.normal * glm::abs(glm::dot(smartBoxPhysics.velocity, c.normal));
 			val = true;
-			smartBox.OverlapCompleteResponse(letsgo->box);
-		}*/
-	}
-	if (gamers.size() == 1)
-	{
-		smartBox.OverlapCompleteResponse(*gamers.front().first);
-	}
-	else
-	{
-		std::unordered_map<glm::vec3, std::list<OBB*>> haha;
-		for (auto& lerp : gamers)
-		{
-			//std::cout << lerp.second.normal << std::endl;
-			//smartBox.OverlapAndSlide(*lerp.first);
-			haha[lerp.second.normal].push_back(lerp.first);
-		}
-		// YOU REALLY NEED AN 'APPLY COLLIDE RESULT' THINGY DUMBASS
-
-		OBB* pointer = nullptr;
-		float maxd = -INFINITY;
-		for (auto& pade : haha)
-		{
-			if (pade.second.size() > 1)
-			{
-				for (auto& inner : pade.second)
-				{
-					smartBox.OverlapAndSlide(*inner);
-				}
-			}
-			else
-			{
-				SlidingCollision slider{};
-				RotationCollision rot{};
-				if (smartBox.Overlap(*pade.second.front(), slider, rot))
-				{
-					if (maxd < rot.distance && glm::abs(rot.distance) > EPSILON)
-					{
-						pointer = pade.second.front();
-						maxd = rot.distance;
-					}
-					else
-					{
-						smartBox.ApplyCollision(slider);
-					}
-				}
-			}
-		}
-		if (pointer)
-		{
-			smartBox.OverlapCompleteResponse(*pointer);
+			//gamers.push_back({ &(letsgo->box), c });
 		}
 	}
-	//smartBox.OverlapCompleteResponse(dumbBox);
-	//dumbBox.OverlapAndSlide(smartBox);
-
 	return val;
 }
 
@@ -566,17 +525,6 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = cameraPosition;
-	if (keyState[ArrowKeyUp])
-	{
-		smartBox.Translate(smartBox.Forward() * speed);
-		//moveSphere += smartBox.Forward() * speed;
-	}
-	if (keyState[ArrowKeyDown])
-	{
-		smartBox.Translate(smartBox.Forward() * -speed);
-		//moveSphere -= smartBox.Forward() * speed;
-	}
-	smartBox.Translate(glm::vec3(0, -0.25f, 0) * speed);
 	if (keyState['z'])
 	{
 		dumbBox.Translate(dumbBox.Forward() * speed);
@@ -625,9 +573,37 @@ void idle()
 		cameraPosition = playerOb.Center();
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
-	
+
+	// Physics attempt
+	smartBoxPhysics.acceleration = glm::vec3(0.f);
+	if (keyState[ArrowKeyUp])
+	{
+		smartBoxPhysics.acceleration += smartBox.Forward() * speed * 0.02f;
+	}
+	if (keyState[ArrowKeyDown])
+	{
+		smartBoxPhysics.acceleration -= smartBox.Forward() * speed * 0.02f;
+	}
+	if (smartBoxPhysics.axisOfGaming != glm::vec3(0.f))
+	{
+		// TODO: Make less bad
+		//LogF("Gravity'd");
+		smartBoxPhysics.acceleration += GravityAxis * glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityAxis)) * speed * 0.02f;
+	}
+	else
+	{
+		smartBoxPhysics.acceleration += GravityAxis * speed * 0.02f;
+	}
+
+	smartBoxPhysics.velocity += smartBoxPhysics.acceleration;
+	if (glm::length(smartBoxPhysics.velocity) > 2.f)
+		smartBoxPhysics.velocity = glm::normalize(smartBoxPhysics.velocity) * 2.f;
+	smartBox.Translate(smartBoxPhysics.velocity);
+	smartBoxPhysics.velocity *= 0.99f;
+
 	smartBoxColor = smartBoxCollide();
 	axes = smartBox.GetLineSegments();
+
 
 	//smartBox.OverlapCompleteResponse(dumbBox);
 
@@ -1094,7 +1070,7 @@ int main(int argc, char** argv)
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
-	smartBox.ReCenter(glm::vec3(1.2f, 1.f, 0));
+	smartBox.ReCenter(glm::vec3(1.2f, 0.6f, 0));
 	smartBox.ReOrient(glm::vec3(0, 90, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));

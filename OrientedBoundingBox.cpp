@@ -189,6 +189,7 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 	if (result)
 	{
 		this->ApplyCollision(slide);
+		std::cout << "Rotation axis: " << rotate.axis << std::endl;
 		this->ApplyCollision(rotate);
 	}
 	return result;

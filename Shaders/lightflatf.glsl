@@ -16,6 +16,7 @@ uniform sampler2D hatching;
 
 void main()
 {
+	// SAMPLE A TEXTURE BASED ON SCREEN POSITION AND TEXTURE COORDINATE PAIRS
 	fNormOut = abs(fNorm);
 
 	float ambient = 0.25f; // TODO: material setting
