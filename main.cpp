@@ -456,6 +456,7 @@ void display()
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
+static const glm::vec3 GravityUp{ 0.f, 1.f, 0.f };
 
 struct
 {
@@ -592,7 +593,8 @@ void idle()
 	const float staticFrictionCoeff = 1.5f;
 	const float slidingFrictionCoeff = 0.57f;
 	const float GravityRate = 1.f;
-	const glm::vec3 boxGravity = GravityAxis * BoxMass * GravityRate;
+	const float BoxGravityMagnitude = BoxMass * GravityRate;
+	const glm::vec3 boxGravity = GravityAxis * BoxGravityMagnitude;
 
 
 	glm::vec3 boxForces{ 0.f };
@@ -600,37 +602,41 @@ void idle()
 
 	if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
 	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
-	if (smartBoxPhysics.axisOfGaming != glm::vec3(0.f))
+	
+	// Box is colliding with *something* pointing up
+	if (smartBoxPhysics.axisOfGaming != glm::vec3(0.f))  
 	{
-		// Box is colliding with *something* pointing up
-		float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityAxis));
+		float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityUp));
 		float sine = glm::sqrt(1.f - cose * cose);
 
 		//                      Direction                      Magnitude
-		glm::vec3 normalForce = smartBoxPhysics.axisOfGaming * glm::length(boxGravity) * sine;
+		glm::vec3 normalForce = smartBoxPhysics.axisOfGaming * BoxGravityMagnitude * cose;
 
 	
 		// This is the "up the slope" vector, sine is removed due to it being irrelevent, but it would be properly scaled there
 		glm::vec3 friction{ 0.f };
 		// TODO: Make sure that if it's already sliding to ignore this
-		if (smartBoxPhysics.axisOfGaming != glm::abs(GravityAxis))// && glm::length(smartBoxPhysics.velocity) < EPSILON)
+		if (smartBoxPhysics.axisOfGaming != GravityUp)// && glm::length(smartBoxPhysics.velocity) < EPSILON)
 		{
 			// WORKING VERSION
-			//friction = glm::normalize(glm::abs(GravityAxis) - smartBoxPhysics.axisOfGaming * cose) * glm::length(normalForce) * staticFrictionCoeff;
-			friction = glm::normalize(glm::abs(GravityAxis) - smartBoxPhysics.axisOfGaming * cose) *
-				glm::min(glm::length(normalForce) * staticFrictionCoeff, glm::length(boxGravity) * sine);
+			//friction = glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming * cose) * glm::length(normalForce) * staticFrictionCoeff;
+			friction = glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming * cose) * glm::min(cose * staticFrictionCoeff, sine) * BoxGravityMagnitude;
 		}
 		if (glm::length(smartBoxPhysics.velocity) > EPSILON)
 		{
 			//friction += glm::normalize(-smartBoxPhysics.velocity) * glm::length(normalForce) * slidingFrictionCoeff;
 		}
 		boxForces += normalForce + friction;
-		std::array<glm::vec3, 6> visuals;
+		std::array<glm::vec3, 8> visuals{};
 		visuals.fill(glm::vec3(0.f));
 		visuals[1] = GravityAxis;
 		visuals[3] = normalForce;
 		visuals[5] = friction;
+		// This feels wrong but I can't explaain why
+		visuals[7] = glm::normalize(GravityUp - glm::vec3(smartBoxPhysics.axisOfGaming.x, 0, smartBoxPhysics.axisOfGaming.y));//glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming);
 		rayBuffer.BufferSubData(visuals);
+		Before(glm::dot(normalForce, glm::normalize(friction)));
+		After(glm::dot(normalForce, visuals[7]));
 	}
 	// A = F / M
 	//std::cout << boxForces << std::endl;
