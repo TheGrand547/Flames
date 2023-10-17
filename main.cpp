@@ -469,17 +469,18 @@ bool smartBoxCollide()
 {
 	bool val = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
-	float dotValue = 0.f;
+	float dotValue = INFINITY;
 	auto boxers = boxes.Search(smartBox.GetAABB());
 	int collides = 0;
 	//std::cout << "\r" << boxers.size();
-	//Before(smartBoxPhysics.velocity);
+	//Before(smartBoxPhysics.axisOfGaming);
 	for (auto& letsgo : boxers)
 	{
 		//smartBox.OverlapAndSlide(letsgo->box);
 		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
+			/*
 			collides++;
 			float orientation = glm::dot(GravityAxis, c.normal);
 			if (glm::abs(orientation) > EPSILON && orientation < dotValue)
@@ -488,19 +489,25 @@ bool smartBoxCollide()
 				dotValue = orientation;
 				smartBoxPhysics.axisOfGaming = c.normal;
 			}
+			*/
 			//Before(smartBox.Center());
 			smartBox.ApplyCollision(c);
 			//After(smartBox.Center());
-			smartBoxPhysics.velocity += c.normal * glm::abs(glm::dot(smartBoxPhysics.velocity, c.normal));
+			float oldLength = glm::length(smartBoxPhysics.velocity);
+			//smartBoxPhysics.velocity += c.normal * glm::abs(glm::dot(smartBoxPhysics.velocity, c.normal));
+			//if (glm::length(smartBoxPhysics.velocity) > EPSILON)
+				//smartBoxPhysics.velocity = glm::normalize(smartBoxPhysics.velocity) * oldLength;
 			val = true;
 			//gamers.push_back({ &(letsgo->box), c });
 		}
 	}
-	//After(smartBoxPhysics.velocity);
+	//After(smartBoxPhysics.axisOfGaming);
 	//std::cout << ":" << collides;
 	return val;
 }
 
+// TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
+// Like it's a bit pliable
 void idle()
 {
 	static auto lastTimers = std::chrono::high_resolution_clock::now();
@@ -557,6 +564,8 @@ void idle()
 		cameraPosition += right;
 	if (keyState['a'] || keyState['A'])
 		cameraPosition -= right;
+	if (keyState['z']) cameraPosition += GravityUp * speed;
+	if (keyState['x']) cameraPosition -= GravityUp * speed;
 	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
@@ -588,57 +597,95 @@ void idle()
 
 	// Physics attempt
 	smartBoxPhysics.acceleration = glm::vec3(0.f);
-	const float BoxAcceleration = 0.06f;
+	const float BoxAcceleration = 0.06f;// 0.06f;
 	const float BoxMass = 1;
-	const float staticFrictionCoeff = 1.5f;
+	const float staticFrictionCoeff = 1.0f;
 	const float slidingFrictionCoeff = 0.57f;
 	const float GravityRate = 1.f;
 	const float BoxGravityMagnitude = BoxMass * GravityRate;
 	const glm::vec3 boxGravity = GravityAxis * BoxGravityMagnitude;
-
+	const float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityUp));
+	const float sine = glm::sqrt(1.f - cose * cose);
+	const glm::vec3 oldNormal = smartBoxPhysics.axisOfGaming;
 
 	glm::vec3 boxForces{ 0.f };
-	boxForces += boxGravity;
 
 	if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
 	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
-	
 	// Box is colliding with *something* pointing up
-	if (smartBoxPhysics.axisOfGaming != glm::vec3(0.f))  
-	{
-		float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityUp));
-		float sine = glm::sqrt(1.f - cose * cose);
+	//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
+	glm::vec3 lineThing = GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.1f; // Extend to account for slopes a bit
+	AABB lineBox(smartBox.Center(), smartBox.Center() + lineThing);
+	bool gab = false;
+	std::array<glm::vec3, 12> visuals{};
+	//visuals.fill(glm::vec3(0.f));
+	visuals.fill(smartBox.Center());
+	visuals[1] += lineThing;
+	rayBuffer.BufferSubData(visuals);
 
+
+	for (auto& hit : boxes.Search(lineBox))
+	{
+		auto& hitter = hit->box;
+		RayCollision rayd{};
+		//std::cout << std::boolalpha << hitter.Intersect(smartBox.Center(), smartBox.Center() + lineThing) << std::endl;
+		if (hitter.Intersect(smartBox.Center(), lineThing, rayd))
+		{
+			smartBoxPhysics.axisOfGaming = rayd.normal;
+			gab = true;
+			hit->color = true;
+			//std::cout << "GOT ONE" << frameCounter << std::endl;
+			break;
+		}
+	}
+
+	if (gab)//(smartBoxPhysics.axisOfGaming != glm::vec3(0.f))
+	{
 		//                      Direction                      Magnitude
 		glm::vec3 normalForce = smartBoxPhysics.axisOfGaming * BoxGravityMagnitude * cose;
 
-	
+		//std::cout << glm::tan(glm::acos(cose)) << std::endl;
+
+		// If 
+		if (staticFrictionCoeff < glm::tan(glm::acos(cose)))
+		{
+			boxForces += boxGravity - normalForce;
+		}
+		if (glm::length(smartBoxPhysics.velocity) > EPSILON)
+		{
+			//std::cout << "\rMOVING";
+			//boxForces += glm::normalize(-smartBoxPhysics.velocity) * BoxGravityMagnitude * cose * slidingFrictionCoeff;
+		}
+		else
+		{
+			//std::cout << "\rSTOPPED";q
+		}
+
+
 		// This is the "up the slope" vector, sine is removed due to it being irrelevent, but it would be properly scaled there
 		glm::vec3 friction{ 0.f };
+		/*
 		// TODO: Make sure that if it's already sliding to ignore this
 		if (smartBoxPhysics.axisOfGaming != GravityUp)// && glm::length(smartBoxPhysics.velocity) < EPSILON)
 		{
 			// WORKING VERSION
 			//friction = glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming * cose) * glm::length(normalForce) * staticFrictionCoeff;
-			friction = glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming * cose) * glm::min(cose * staticFrictionCoeff, sine) * BoxGravityMagnitude;
+			friction = glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming) * glm::min(cose * staticFrictionCoeff, sine) * BoxGravityMagnitude;
 		}
+		*/
 		if (glm::length(smartBoxPhysics.velocity) > EPSILON)
 		{
 			//friction += glm::normalize(-smartBoxPhysics.velocity) * glm::length(normalForce) * slidingFrictionCoeff;
 		}
-		boxForces += normalForce + friction;
-		std::array<glm::vec3, 8> visuals{};
-		visuals.fill(glm::vec3(0.f));
-		visuals[1] = GravityAxis;
-		visuals[3] = normalForce;
-		visuals[5] = friction;
-		// This feels wrong but I can't explaain why
-		visuals[7] = glm::normalize(GravityUp - glm::vec3(smartBoxPhysics.axisOfGaming.x, 0, smartBoxPhysics.axisOfGaming.y));//glm::normalize(GravityUp - smartBoxPhysics.axisOfGaming);
-		rayBuffer.BufferSubData(visuals);
-		Before(glm::dot(normalForce, glm::normalize(friction)));
-		After(glm::dot(normalForce, visuals[7]));
+		//boxForces += normalForce + friction;
+	}
+	else
+	{
+		std::cout << "Denied " << frameCounter << std::endl;
+		boxForces += boxGravity;
 	}
 	// A = F / M
+	//std::cout << boxForces << std::endl;
 	//std::cout << boxForces << std::endl;
 	smartBoxPhysics.acceleration = boxForces / BoxMass * timeDelta;
 
@@ -649,8 +696,11 @@ void idle()
 	smartBoxPhysics.velocity *= 0.99f;
 
 	smartBoxColor = smartBoxCollide();
+	if (staticFrictionCoeff >= glm::tan(glm::acos(cose)))
+	{
+		//smartBoxPhysics.axisOfGaming = oldNormal;
+	}
 	axes = smartBox.GetLineSegments();
-
 
 	//smartBox.OverlapCompleteResponse(dumbBox);
 
@@ -970,7 +1020,7 @@ int main(int argc, char** argv)
 	CheckError();
 
 	// RAY SETUP
-	std::array<glm::vec3, 10> rays = {};
+	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0.f));
 	glm::vec3 a{ 2, 1, 1 };
 	glm::vec3 fooey = glm::normalize(a);

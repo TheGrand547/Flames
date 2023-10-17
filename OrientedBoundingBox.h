@@ -328,7 +328,7 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		{
 			if (abs(parallel) > scale)
 			{
-				//std::cout << "Parallel check" << std::endl;
+				std::cout << "Parallel check" << std::endl;
 				return false;
 			}
 			else
@@ -453,11 +453,11 @@ inline bool OrientedBoundingBox::Overlap(const Sphere& other) const
 
 inline float OrientedBoundingBox::ProjectionLength(const glm::vec3& vector) const
 {
-	float contribution = 0.f;
-	// TODO: Investigate unrolling?
-	for (glm::length_t i = 0; i < 3; i++)
-		contribution += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), vector));
-	return contribution;
+	float result = 0.f;
+	result += glm::abs(glm::dot(glm::vec3(this->matrix[0]), vector)) * this->halfs[0];
+	result += glm::abs(glm::dot(glm::vec3(this->matrix[1]), vector)) * this->halfs[1];
+	result += glm::abs(glm::dot(glm::vec3(this->matrix[2]), vector)) * this->halfs[2];
+	return result;
 }
 
 inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const
