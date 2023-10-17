@@ -167,8 +167,8 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer<ArrayBuffer> stickBuffer, texturedPlane, plainCube, planeBO, rayBuffer, albertBuffer, sphereBuffer;
-Buffer<ElementArray> sphereIndicies, stickIndicies, cubeOutlineIndex;
+Buffer<ArrayBuffer> albertBuffer, capsuleBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer universal;
 
@@ -258,6 +258,8 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
+
+OBB loom;
 
 void display()
 {
@@ -351,7 +353,10 @@ void display()
 	// Cubert
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	
+	uniform.SetVec3("color", glm::vec3(1, 1, 1));
+	uniform.SetMat4("Model", loom.GetModelMatrix());
+	//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
 
 	// Albert
 	/*
@@ -408,7 +413,18 @@ void display()
 	sphereMesh.SetTextureUnit("textureIn", texture, 0);
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
-	sphereMesh.DrawIndexed(Triangle, sphereIndicies);
+	//sphereMesh.DrawIndexed<Triangle>(sphereIndicies);
+
+	flatLighting.SetActiveShader();
+	meshVAO.BindArrayBuffer(capsuleBuffer);
+	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
+	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	flatLighting.SetVec3("viewPos", cameraPosition);
+	flatLighting.SetMat4("modelMat", loom.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
+	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
+	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
+	flatLighting.DrawIndexed<Triangle>(capsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
@@ -425,6 +441,7 @@ void display()
 	glDrawBuffers(1, buffers);
 	glClear(GL_COLOR_BUFFER_BIT);
 	
+	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);;
@@ -824,23 +841,48 @@ void keyboardOff(unsigned char key, int x, int y)
 	keyState[key] = false;
 }
 
-void mouseFunc(int x, int y)
+static const float Fov = 70.f;
+static bool rightMouseHeld = false;
+static int mousePreviousX = 0, mousePreviousY = 0;
+
+void mouseButtonAction(int button, int state, int x, int y)
 {
-	static int previousX, previousY;
-	float xDif = (float) (x - previousX);
-	float yDif = (float) (y - previousY);
-	if (abs(xDif) > 20)
-		xDif = 0;
-	if (abs(yDif) > 20)
-		yDif = 0;
-	float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
-	float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
+	if (button == GLUT_RIGHT_BUTTON)
+	{
+		rightMouseHeld = (state == GLUT_DOWN);
+	}
+	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
+	{
+		glm::vec3 localCopy = cameraRotation;
+		localCopy.x += (float)(y - glutGet(GLUT_WINDOW_WIDTH) / 2.f) / glutGet(GLUT_WINDOW_WIDTH) * Fov;
+		localCopy.y += (float)(x - glutGet(GLUT_WINDOW_HEIGHT) / 2.f) / glutGet(GLUT_WINDOW_HEIGHT) * Fov;
+		glm::vec3 radians = glm::radians(localCopy);
 
-	cameraRotation.x += zDelta;
-	cameraRotation.y += yDelta;
+		loom.ReOrient(glm::eulerAngleXYZ(-radians.z, -radians.y, -radians.x));
+		loom.ReScale(glm::vec3(5, 0.1f, 0.1f));
+		loom.ReCenter(cameraPosition);
+		loom.Translate(loom.Forward() * 5.5f);
+	}
+}
 
-	previousX = x;
-	previousY = y;
+void mouseMovementFunction(int x, int y)
+{
+	if (rightMouseHeld)
+	{
+		float xDif = (float)(x - mousePreviousX);
+		float yDif = (float)(y - mousePreviousY);
+		if (abs(xDif) > 20)
+			xDif = 0;
+		if (abs(yDif) > 20)
+			yDif = 0;
+		float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
+		float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
+
+		cameraRotation.x += zDelta;
+		cameraRotation.y += yDelta;
+	}
+	mousePreviousX = x;
+	mousePreviousY = y;
 }
 
 void specialKeys(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
@@ -945,7 +987,9 @@ int main(int argc, char** argv)
 	glutSpecialFunc(specialKeys);
 	glutSpecialUpFunc(specialKeysUp);
 
-	glutMotionFunc(mouseFunc);
+	glutMouseFunc(mouseButtonAction);
+	glutMotionFunc(mouseMovementFunction);
+	glutPassiveMotionFunc(mouseMovementFunction);
 	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
 
 
@@ -1150,7 +1194,8 @@ int main(int argc, char** argv)
 	expand.Compile("framebuffer", "expand");
 
 
-	GenerateSphereMesh(sphereBuffer, sphereIndicies, 30, 30);
+	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
+	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 	CheckError();
 	meshVAO.Generate();
 	CheckError();
@@ -1191,6 +1236,8 @@ int main(int argc, char** argv)
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
+
+	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 
 	CheckError();
@@ -1199,7 +1246,7 @@ int main(int argc, char** argv)
 	universal.SetBindingPoint(0);
 	universal.BindUniform();
 
-	glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
+	glm::mat4 projection = glm::perspective(glm::radians(Fov), 1.f, zNear, zFar);
 	universal.BufferSubData(projection, sizeof(glm::mat4));
 	CheckError();
 

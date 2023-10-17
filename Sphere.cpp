@@ -5,7 +5,7 @@
 #include "log.h"
 #include "Vertex.h"
 
-void GenerateSphereNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
 									const std::size_t latitudeSlices, const std::size_t longitudeSlices)
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
@@ -65,7 +65,7 @@ void GenerateSphereNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 	indicies.BufferData(index, StaticDraw);
 }
 
-void GenerateSphereMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
 	const std::size_t latitudeSlices, const std::size_t longitudeSlices)
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
@@ -131,7 +131,7 @@ void GenerateSphereMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indici
 	indicies.BufferData(index, StaticDraw);
 }
 
-void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
 	const std::size_t latitudeSlices, const std::size_t longitudeSlices)
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
@@ -192,7 +192,7 @@ void GenerateSphere(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
 	indicies.BufferData(index, StaticDraw);
 }
 
-void GenerateSphereLines(Buffer<ElementArray>& indicies, const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::size_t latitudeSlices, const std::size_t longitudeSlices)
 {
 	std::vector<unsigned int> index;
 	index.reserve(2 * (2 * longitudeSlices - 1) * latitudeSlices);
