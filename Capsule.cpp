@@ -57,6 +57,8 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 
 	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
 	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
+	
+	const float inverse = 1.f / radius;
 
 	for (unsigned int i = 0; i <= longitudeSlices; i++)
 	{

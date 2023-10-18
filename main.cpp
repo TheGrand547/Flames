@@ -421,7 +421,7 @@ void display()
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	flatLighting.SetVec3("viewPos", cameraPosition);
 	flatLighting.SetMat4("modelMat", loom.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
+	flatLighting.SetMat4("normMat", loom.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
 	flatLighting.DrawIndexed<Triangle>(capsuleIndex);

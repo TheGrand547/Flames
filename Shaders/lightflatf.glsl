@@ -36,4 +36,5 @@ void main()
 	vec3 result = shapeColor + (ambient + diffuse + specular) * lightColor;
 	//result = (ceil(result * 5) - 1) / 4;
 	fColor = vec4(result, 1.0);
+	//fColor = vec4(abs(fNorm.xyz), 1.0);
 }
