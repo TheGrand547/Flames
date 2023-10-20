@@ -10,7 +10,7 @@ out vec3 fPos;
 out vec3 color;
 
 uniform mat4 modelMat;
-uniform mat4 normMat;
+uniform mat4 normalMat;
 
 layout(std140) uniform Camera
 {
@@ -25,7 +25,7 @@ uniform vec3 shapeColor;
 
 void main()
 {
-	fNorm = normMat * vec4(vNorm, 0);
+	fNorm = normalMat * vec4(vNorm, 0);
 	
 	// TODO: Recheck this later, very good
 	// Changing this number is very funny, but keep it small

@@ -39,6 +39,12 @@ glm::vec3 Capsule::ClosestPoint(const glm::vec3& other) const
 	return this->line.PointClosestTo(other);
 }
 
+void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+	const std::size_t latitudeSlices, const std::size_t longitudeSlices) const
+{
+	::Capsule::GenerateMesh(verts, indicies, this->radius, this->line.Length(), latitudeSlices, longitudeSlices);
+}
+
 
 void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
 	const std::size_t latitudeSlices, const std::size_t longitudeSlices)

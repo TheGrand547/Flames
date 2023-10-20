@@ -51,6 +51,9 @@ protected:
 		std::list<Item> Search(const AABB& box) const;
 		void Search(const AABB& box, std::list<Item>& items) const;
 		void Insert(const Item& element, const AABB& box);
+
+		std::list<Item> RayCast(const Line& line) const;
+		void RayCast(const Line& line, std::list<Item>& items) const;
 	};
 
 	StaticOctTreeNode root;
@@ -269,6 +272,19 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 		}
 	}
 	this->objects.push_back({ box, element });
+}
+
+template<class T>
+std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line) const
+{
+	std::list<Item> items{};
+	this->RayCast(line, items);
+	return items;
+}
+
+template<class T>
+void StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line, std::list<Item>& items) const
+{
 }
 
 #endif // STATIC_OCT_TREE_H

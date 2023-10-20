@@ -43,6 +43,9 @@ public:
 
 	glm::vec3 ClosestPoint(const glm::vec3& other) const;
 
+	void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+		const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18) const;
+
 	static void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
 		const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18);
 };
