@@ -356,7 +356,7 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		}
 		if (nearHit.distance > farHit.distance)
 		{
-			//std::cout << "Inversion check" << std::endl;
+			//1std::cout << "Inversion check" << std::endl;
 			return false;
 		}
 		if (farHit.distance < 0)

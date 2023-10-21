@@ -32,19 +32,19 @@ protected:
 		std::array<StaticOctTreeNode*, 8> tree;
 		std::array<AABB, 8> internals;
 
-		std::vector<std::pair<AABB, Item>> objects; 
+		std::vector<std::pair<AABB, Item>> objects;
 		const AABB bounds;
 		const int depth;
 
 		void Generate();
 	public:
-		StaticOctTreeNode(const glm::vec3& negativeBound = glm::vec3(-DEFAULT_OCT_TREE_DIMENSION), 
+		StaticOctTreeNode(const glm::vec3& negativeBound = glm::vec3(-DEFAULT_OCT_TREE_DIMENSION),
 			const glm::vec3& positiveBound = glm::vec3(DEFAULT_OCT_TREE_DIMENSION), int depth = 0);
 		StaticOctTreeNode(const AABB& bound, int depth = 0);
 		~StaticOctTreeNode();
 
 		void Clear();
-		
+
 		std::list<Item> Dump() const;
 		void Dump(std::list<Item>& items) const;
 
@@ -73,6 +73,7 @@ public:
 
 	std::list<Item> Search(const AABB& area);
 	std::list<Item> DepthSearch(const AABB& area);
+	std::list<Item> RayCast(const Line& line) const;
 
 	constexpr std::size_t size() const { return this->items.size(); }
 
@@ -118,6 +119,13 @@ inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::DepthSearch(
 }
 
 template<class T>
+std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCast(const Line& line) const
+{
+	// This *really* needs a depth sort thing
+	return this->root.RayCast(line);
+}
+
+template<class T>
 inline void StaticOctTree<T>::Clear()
 {
 	this->items.clear();
@@ -134,7 +142,7 @@ inline void StaticOctTree<T>::Insert(const T& element, const AABB& box)
 
 // The OctTreeNodes
 template<class T>
-inline StaticOctTree<T>::StaticOctTreeNode::StaticOctTreeNode(const glm::vec3& negativeBound, const glm::vec3& positiveBound, int depth) 
+inline StaticOctTree<T>::StaticOctTreeNode::StaticOctTreeNode(const glm::vec3& negativeBound, const glm::vec3& positiveBound, int depth)
 	: bounds(negativeBound, positiveBound), depth(depth)
 {
 	this->Generate();
@@ -285,6 +293,23 @@ std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::RayCast(const L
 template<class T>
 void StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line, std::list<Item>& items) const
 {
+	if (this->bounds.FastIntersect(line.initial, line.direction))
+	{
+		for (auto& element : this->objects)
+		{
+			if (element.first.FastIntersect(line.initial, line.direction))
+			{
+				items.push_back(element.first);
+			}
+		}
+		for (auto& branch : this->tree)
+		{
+			if (branch)
+			{
+				branch->RayCast(line, items);
+			}
+		}
+	}
 }
 
 #endif // STATIC_OCT_TREE_H
