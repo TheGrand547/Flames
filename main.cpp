@@ -1089,7 +1089,7 @@ int main(int argc, char** argv)
 	*/
 
 	rayBuffer.Generate();
-	rayBuffer.BufferData(rays, StaticDraw);
+	rayBuffer.BufferData(std::span<glm::vec3>(rays), StaticDraw);
 
 	for (int i = -5; i <= 5; i++)
 	{
@@ -1150,7 +1150,7 @@ int main(int argc, char** argv)
 		}
 	}
 	albertBuffer.Generate();
-	albertBuffer.BufferData(textVert, StaticDraw);
+	albertBuffer.BufferData(std::span(textVert), StaticDraw);
 
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
@@ -1193,9 +1193,11 @@ int main(int argc, char** argv)
 
 	expand.Compile("framebuffer", "expand");
 
-
+	Log("SPHERE");
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
+	Log("CAPSULE");
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
+	Log("DONE");
 	CheckError();
 	meshVAO.Generate();
 	CheckError();
@@ -1208,12 +1210,12 @@ int main(int argc, char** argv)
 	CheckError();
 
 	stickIndicies.Generate();
-	stickIndicies.BufferData(stickDex, StaticDraw);
+	stickIndicies.BufferData(std::span<GLubyte>(stickDex), StaticDraw);
 
 	CheckError();
 
 	cubeOutlineIndex.Generate();
-	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
+	cubeOutlineIndex.BufferData(std::span<GLubyte>(cubeOutline), StaticDraw);
 
 	CheckError();
 

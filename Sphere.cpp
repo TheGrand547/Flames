@@ -6,19 +6,19 @@
 #include "Vertex.h"
 
 void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
-									const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+									const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
 {
-	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
+	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%zu) or Longitude(%zu) slice count\n", latitudeSlices, longitudeSlices);
+		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<NormalVertex> points;
 	std::vector<GLuint> index;
 
 	// Avoid unnecessary reallocations
-	points.reserve((latitudeSlices + 1) * (longitudeSlices + 1));
-	index.reserve(6 * (longitudeSlices - 1) * latitudeSlices);
+	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
+	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
 
 	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
 	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
@@ -59,37 +59,37 @@ void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& i
 		}
 	}
 	verts.Generate();
-	verts.BufferData(points, StaticDraw);
+	verts.BufferData(std::span<NormalVertex>(points), StaticDraw);
 	
 	indicies.Generate();
-	indicies.BufferData(index, StaticDraw);
+	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
 }
 
 void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-	const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
 {
-	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
+	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%zu) or Longitude(%zu) slice count\n", latitudeSlices, longitudeSlices);
+		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<MeshVertex> points;
 	std::vector<GLuint> index;
 
 	// Avoid unnecessary reallocations
-	points.reserve((latitudeSlices + 1) * (longitudeSlices + 1));
-	index.reserve(6 * (longitudeSlices - 1) * latitudeSlices);
+	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
+	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
 
 	const float latitudeStep = glm::two_pi<float>() / (float) latitudeSlices;
 	const float longitudeStep = glm::pi<float>() / (float) longitudeSlices;
 
-	for (unsigned int i = 0; i <= longitudeSlices; i++)
+	for (std::uint8_t i = 0; i <= longitudeSlices; i++)
 	{
 		float angle = glm::half_pi<float>() - i * longitudeStep;
 		float width = cos(angle);
 		float height = sin(angle);
 		//height += (i >= longitudeSlices / 2) ? -0.5 : 0.5;
-		for (unsigned int j = 0; j <= latitudeSlices; j++)
+		for (std::uint8_t j = 0; j <= latitudeSlices; j++)
 		{
 			float miniAngle = j * latitudeStep;
 			glm::vec3 vertex{};
@@ -106,6 +106,7 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 	}
 	for (GLuint i = 0; i < longitudeSlices; i++)
 	{
+		std::cout << i << std::endl;
 		GLuint first = i * (latitudeSlices + 1);
 		GLuint last = first + (latitudeSlices + 1);
 		for (GLuint j = 0; j < latitudeSlices; j++, first++, last++)
@@ -124,27 +125,31 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 			}
 		}
 	}
+	std::cout << "All good till here" << std::endl;
 	verts.Generate();
-	verts.BufferData(points, StaticDraw);
+	auto testered = std::span(points);
+	std::cout << testered.size() << std::endl;
+	verts.BufferData(std::span<MeshVertex>(points), StaticDraw);
 
+	std::cout << "Vretex buffer done" << std::endl;
 	indicies.Generate();
-	indicies.BufferData(index, StaticDraw);
+	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
 }
 
 void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-	const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
 {
-	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
+	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%zu) or Longitude(%zu) slice count\n", latitudeSlices, longitudeSlices);
+		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<Vertex> points;
 	std::vector<GLuint> index;
 
 	// Avoid unnecessary reallocations
-	points.reserve((latitudeSlices + 1) * (longitudeSlices + 1));
-	index.reserve(6 * (longitudeSlices - 1) * latitudeSlices);
+	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
+	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
 
 	// because they're based on the other one's step
 	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
@@ -186,16 +191,16 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 		}
 	}
 	verts.Generate();
-	verts.BufferData(points, StaticDraw);
+	verts.BufferData(std::span<Vertex>(points), StaticDraw);
 
 	indicies.Generate();
-	indicies.BufferData(index, StaticDraw);
+	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
 }
 
-void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
 {
 	std::vector<unsigned int> index;
-	index.reserve(2 * (2 * longitudeSlices - 1) * latitudeSlices);
+	index.reserve(2 * std::size_t(2 * longitudeSlices - 1) * latitudeSlices);
 	for (GLuint i = 0; i < longitudeSlices; i++)
 	{
 		GLuint first = i * (latitudeSlices + 1);
@@ -212,5 +217,5 @@ void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::size_t lat
 		}
 	}
 	indicies.Generate();
-	indicies.BufferData(index, StaticDraw);
+	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
 }

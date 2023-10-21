@@ -40,26 +40,26 @@ glm::vec3 Capsule::ClosestPoint(const glm::vec3& other) const
 }
 
 void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
-	const std::size_t latitudeSlices, const std::size_t longitudeSlices) const
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) const
 {
 	::Capsule::GenerateMesh(verts, indicies, this->radius, this->line.Length(), latitudeSlices, longitudeSlices);
 }
 
 
 void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
-	const std::size_t latitudeSlices, const std::size_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
 {
-	if (latitudeSlices == 0 || longitudeSlices == 0 || latitudeSlices >= 500 || longitudeSlices >= 500)
+	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%zu) or Longitude(%zu) slice count\n", latitudeSlices, longitudeSlices);
+		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<MeshVertex> points;
 	std::vector<GLuint> index;
 
 	// Avoid unnecessary reallocations
-	points.reserve((latitudeSlices + 1) * (longitudeSlices + 1));
-	index.reserve(6 * longitudeSlices * latitudeSlices);
+	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
+	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
 
 	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
 	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
@@ -75,7 +75,7 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 		{
 			float miniAngle = j * latitudeStep;
 			glm::vec3 vertex{};
-			vertex.x = width * cos(miniAngle) + ((j >= latitudeSlices / 4 && j <= latitudeSlices * 3.f / 4) ? (-distance / 2.f) : (distance / 2.f));
+			vertex.x = width * cos(miniAngle) + ((j >= latitudeSlices / 4u && j <= latitudeSlices * 3.f / 4) ? (-distance / 2.f) : (distance / 2.f));
 			vertex.y = height;
 			vertex.z = width * sin(miniAngle);
 			glm::vec2 uvs = { 0.f, 0.f };// { (float)j / latitudeSlices, (float)i / longitudeSlices };
@@ -97,8 +97,8 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 		}
 	}
 	verts.Generate();
-	verts.BufferData(points, StaticDraw);
+	verts.BufferData(std::span<const MeshVertex>(points), StaticDraw);
 
 	indicies.Generate();
-	indicies.BufferData(index, StaticDraw);
+	indicies.BufferData(std::span<const GLuint>(index), StaticDraw);
 }

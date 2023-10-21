@@ -15,12 +15,12 @@ struct Sphere
 	constexpr Sphere(const float& radius = 1.f, const glm::vec3& center = glm::vec3(0));
 
 	static void GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-		const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18);
+		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
 	static void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-		const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18);
+		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
 	static void Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-		const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18);
-	static void GenerateLines(Buffer<ElementArray>& indicies, const std::size_t latitudeSlices = 18, const std::size_t longitudeSlices = 18);
+		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
+	static void GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
 };
 
 constexpr Sphere::Sphere(const float& radius, const glm::vec3& center) : center(center), radius(radius)

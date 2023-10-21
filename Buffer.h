@@ -4,6 +4,7 @@
 #include <array>
 #include <glew.h>
 #include <map>
+#include <span>
 #include <vector>
 
 // TODO: Paranoia checks removal in release, ie if RELEASE then don't do a bunch of checks with error messages
@@ -66,13 +67,17 @@ public:
 	void Reserve(BufferAccess access, GLsizeiptr size);
 
 	// TODO: Offer these with BufferAcces as a template argument? 
-	template<class T> Buffer(BufferAccess usage, const std::vector<T>& data);
-	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage);
-	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);
-	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage);
+	template<class T> Buffer(BufferAccess usage, std::span<T> data);
+	template<class T> requires requires(T&& t) { std::span(std::forward<T>(t)); }
+	void BufferData(T&& t, BufferAccess usage);
+	template<class T> void BufferData(std::span<const T> data, BufferAccess usage);
+	template<class T> void BufferData(std::span<T> data, BufferAccess usage);
+	//template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);
+	//template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage);
+
 	template<class T> void BufferSubData(T& data, GLintptr offset = 0);
-	template<class T> void BufferSubData(const std::vector<T>& data, GLintptr offset = 0);
-	template<class T, std::size_t i> void BufferSubData(const std::array<T, i>& data, GLintptr offset = 0);
+	template<class T> void BufferSubData(const std::span<T>& data, GLintptr offset = 0);
+	template<class T, std::size_t i> void BufferSubData(const std::span<T, i>& data, GLintptr offset = 0);
 	template<template<class, class...> class C, class T, class... Args> void BufferSubData(const C<T, Args...>& data, GLintptr offset = 0);
 
 	template<class T> static void GenerateBuffers(T& buffers);
@@ -96,7 +101,7 @@ template<BufferType Type> inline Buffer<Type>::Buffer(Buffer<Type>&& other) noex
 	other.CleanUp();
 }
 
-template<BufferType Type> template<class T> inline Buffer<Type>::Buffer(BufferAccess usage, const std::vector<T>& data)
+template<BufferType Type> template<class T> inline Buffer<Type>::Buffer(BufferAccess usage, std::span<T> data)
 {
 	glGenBuffers(1, &this->buffer);
 	this->BufferData(data, usage);
@@ -169,7 +174,23 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(BufferAccess access,
 	}
 }
 
-template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(const std::vector<T>& data, BufferAccess usage)
+
+template<BufferType Type>
+template<class T>
+requires requires(T&& t) { std::span(std::forward<T>(t)); }
+inline void Buffer<Type>::BufferData(T&& t, BufferAccess usage)
+{
+	std::span spanned(std::forward<T>(t));
+	this->BufferData(spanned);
+}
+
+
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<T> data, BufferAccess usage)
+{
+	this->BufferData(std::span<const T>(data), usage);
+}
+
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<const T> data, BufferAccess usage)
 {
 	if (this->buffer)
 	{
@@ -182,6 +203,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 	}
 }
 
+/*
 template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferData(const std::array<T, i>& data, BufferAccess usage)
 {
 	if (this->buffer)
@@ -194,7 +216,11 @@ template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Ty
 		this->elementSize = sizeof(T);
 	}
 }
+*/
 
+#include <iostream>
+#include "log.h"
+/*
 template<BufferType Type> template<template<class, class...> class C, class T, class... Args> inline void Buffer<Type>::BufferData(const C<T, Args...>& data, BufferAccess usage)
 {
 	if (this->buffer)
@@ -206,7 +232,7 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 		}
 		this->BufferData(reserved, usage);
 	}
-}
+}*/
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(T& data, GLintptr offset)
 {
@@ -217,7 +243,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 	}
 }
 
-template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(const std::vector<T>& data, GLintptr offset)
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(const std::span<T>& data, GLintptr offset)
 {
 	if (this->buffer)
 	{
@@ -233,7 +259,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 }
 
 
-template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(const std::array<T, i>& data, GLintptr offset)
+template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(const std::span<T, i>& data, GLintptr offset)
 {
 	if (this->buffer)
 	{
