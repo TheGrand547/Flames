@@ -59,10 +59,10 @@ void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& i
 		}
 	}
 	verts.Generate();
-	verts.BufferData(std::span<NormalVertex>(points), StaticDraw);
+	verts.BufferData(points, StaticDraw);
 	
 	indicies.Generate();
-	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
+	indicies.BufferData(index, StaticDraw);
 }
 
 void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
@@ -106,7 +106,6 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 	}
 	for (GLuint i = 0; i < longitudeSlices; i++)
 	{
-		std::cout << i << std::endl;
 		GLuint first = i * (latitudeSlices + 1);
 		GLuint last = first + (latitudeSlices + 1);
 		for (GLuint j = 0; j < latitudeSlices; j++, first++, last++)
@@ -125,15 +124,11 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 			}
 		}
 	}
-	std::cout << "All good till here" << std::endl;
 	verts.Generate();
-	auto testered = std::span(points);
-	std::cout << testered.size() << std::endl;
-	verts.BufferData(std::span<MeshVertex>(points), StaticDraw);
+	verts.BufferData(points, StaticDraw);
 
-	std::cout << "Vretex buffer done" << std::endl;
 	indicies.Generate();
-	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
+	indicies.BufferData(index, StaticDraw);
 }
 
 void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
@@ -191,10 +186,10 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 		}
 	}
 	verts.Generate();
-	verts.BufferData(std::span<Vertex>(points), StaticDraw);
+	verts.BufferData(points, StaticDraw);
 
 	indicies.Generate();
-	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
+	indicies.BufferData(index, StaticDraw);
 }
 
 void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
@@ -217,5 +212,5 @@ void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t la
 		}
 	}
 	indicies.Generate();
-	indicies.BufferData(std::span<GLuint>(index), StaticDraw);
+	indicies.BufferData(index, StaticDraw);
 }

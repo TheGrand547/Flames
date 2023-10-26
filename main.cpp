@@ -1072,12 +1072,12 @@ int main(int argc, char** argv)
 	// Despite the dot product usually being the cosine bewtween the angles this is wrong due to the coordinate orientation hackery
 	float aCose = glm::dot(fooey, glm::vec3(0, 1, 0));
 	float aSine = glm::sqrt(1 - aCose * aCose);
-	std::cout << aSine << ":" << aCose << std::endl;
+	//std::cout << aSine << ":" << aCose << std::endl;
 	rays[1] = fooey;
 	rays[3] = GravityAxis;
 	rays[5] = glm::normalize(glm::vec3(0, 1, 0) - fooey * aCose) * aSine;
 	rays[9] = glm::vec3(-1, 2, 0);
-	std::cout << ":" << glm::length(fooey * aCose) << ":" << glm::length(rays[5]) << std::endl;
+	//std::cout << ":" << glm::length(fooey * aCose) << ":" << glm::length(rays[5]) << std::endl;
 	rays.fill(glm::vec3(0.f));
 	//std::cout << glm::dot(rays[5], fooey) << "\t" << EPSILON << "\t" << std::numeric_limits<float>::epsilon() << std::endl;
 	/*
@@ -1089,7 +1089,7 @@ int main(int argc, char** argv)
 	*/
 
 	rayBuffer.Generate();
-	rayBuffer.BufferData(std::span<glm::vec3>(rays), StaticDraw);
+	rayBuffer.BufferData(rays, StaticDraw);
 
 	for (int i = -5; i <= 5; i++)
 	{
@@ -1150,7 +1150,7 @@ int main(int argc, char** argv)
 		}
 	}
 	albertBuffer.Generate();
-	albertBuffer.BufferData(std::span(textVert), StaticDraw);
+	albertBuffer.BufferData(textVert, StaticDraw);
 
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
@@ -1193,11 +1193,9 @@ int main(int argc, char** argv)
 
 	expand.Compile("framebuffer", "expand");
 
-	Log("SPHERE");
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
-	Log("CAPSULE");
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
-	Log("DONE");
+
 	CheckError();
 	meshVAO.Generate();
 	CheckError();
@@ -1210,12 +1208,12 @@ int main(int argc, char** argv)
 	CheckError();
 
 	stickIndicies.Generate();
-	stickIndicies.BufferData(std::span<GLubyte>(stickDex), StaticDraw);
+	stickIndicies.BufferData(stickDex, StaticDraw);
 
 	CheckError();
 
 	cubeOutlineIndex.Generate();
-	cubeOutlineIndex.BufferData(std::span<GLubyte>(cubeOutline), StaticDraw);
+	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
 	CheckError();
 

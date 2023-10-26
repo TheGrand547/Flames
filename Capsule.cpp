@@ -97,8 +97,8 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 		}
 	}
 	verts.Generate();
-	verts.BufferData(std::span<const MeshVertex>(points), StaticDraw);
+	verts.BufferData(points, StaticDraw);
 
 	indicies.Generate();
-	indicies.BufferData(std::span<const GLuint>(index), StaticDraw);
+	indicies.BufferData(index, StaticDraw);
 }
