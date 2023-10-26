@@ -66,16 +66,17 @@ public:
 	void BindBuffer() const;
 	void Reserve(BufferAccess access, GLsizeiptr size);
 
-	// TODO: Offer these with BufferAcces as a template argument? 
-	template<class T> Buffer(const T& data, BufferAccess usage);
-	template<class T> void BufferData(std::span<const T> data, BufferAccess usage);
-	template<class T> void BufferData(std::span<T> data, BufferAccess usage);
-	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage);
-	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage);
+	template<class T> Buffer(const T& data, BufferAccess usage = StaticDraw);
+	template<class T> void BufferData(std::span<const T> data, BufferAccess usage = StaticDraw);
+	template<class T> void BufferData(std::span<T> data, BufferAccess usage = StaticDraw);
+	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage = StaticDraw);
+	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage = StaticDraw);
 
 	template<class T> void BufferSubData(T& data, GLintptr offset = 0);
-	template<class T> void BufferSubData(const std::span<T>& data, GLintptr offset = 0);
-	template<class T, std::size_t i> void BufferSubData(const std::span<T, i>& data, GLintptr offset = 0);
+	template<class T> void BufferSubData(std::span<const T> data, GLintptr offset = 0);
+	template<class T> void BufferSubData(std::span<T> data, GLintptr offset = 0);
+	template<class T, std::size_t i> void BufferSubData(std::span<T, i> data, GLintptr offset = 0);
+	template<class T, std::size_t i> void BufferSubData(std::span<const T, i> data, GLintptr offset = 0);
 	template<template<class, class...> class C, class T, class... Args> void BufferSubData(const C<T, Args...>& data, GLintptr offset = 0);
 
 	template<class T> static void GenerateBuffers(T& buffers);
@@ -227,7 +228,12 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 	}
 }
 
-template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(const std::span<T>& data, GLintptr offset)
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(std::span<T> data, GLintptr offset)
+{
+	this->BufferSubData(std::span<const T>(data), offset);
+}
+
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(std::span<const T> data, GLintptr offset)
 {
 	if (this->buffer)
 	{
@@ -242,8 +248,12 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 	}
 }
 
+template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(std::span<T, i> data, GLintptr offset)
+{
+	this->BufferSubData(std::span<const T, i>(data), offset);
+}
 
-template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(const std::span<T, i>& data, GLintptr offset)
+template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(std::span<const T, i> data, GLintptr offset)
 {
 	if (this->buffer)
 	{
@@ -262,12 +272,13 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 {
 	if (this->buffer)
 	{
-		std::vector<T> reserved(std::distance(data.begin(), data.end()));
+		std::vector<T> reserved{};
+		reserved.reserve(std::distance(data.begin(), data.end()));
 		for (auto& a : data)
 		{
 			reserved.push_back(a);
 		}
-		this->BufferSubData(reserved, offset);
+		this->BufferSubData(std::span<const T>(reserved), offset);
 	}
 }
 
