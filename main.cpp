@@ -315,8 +315,8 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 {
 	buf.CleanUp();
 	std::vector<UIVertex> results{};
-	results.reserve(3 * message.size());
-	std::cout << message.size() << std::endl;
+	results.reserve(6 * message.size());
+	std::cout << x << ":" << y << std::endl;
 	for (char letter : message)
 	{
 		std::cout << x << ", " << y << std::endl;
@@ -325,6 +325,8 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 			stbtt_aligned_quad quad{};
 			//stbtt_GetBakedQuad(chars, 1024, 1024, letter - 32, &xx, &yy, &quad, 1); // 1 Means opengl for some reason
 			stbtt_GetPackedQuad(charts, 1024, 1024, letter - ' ', &x, &y, &quad, 1);
+
+			/*
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
@@ -332,23 +334,20 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
 			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-
-			/*
+			*/
+			
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
 			results.push_back({ {quad.x0, -quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
 			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
-			*/
 		}
 	}
 	for (auto& s : results)
 	{
 		s.position /= 1000.f;
-		//s.position -= 1.f;
-		//s.position.y = -s.position.y;
-		std::cout << s.position << "\t" << s.uv << std::endl;
+		s.position -= 1.f;
 	}
 	buf.Generate();
 	buf.BufferData(results, StaticDraw);
@@ -1324,7 +1323,7 @@ int main(int argc, char** argv)
 	std::cout << "FONT STUFF" << std::endl;
 	init_font_stuff();
 	//printfont(boring, 0, 0, "Hello!");
-	printfont(boring, 40, -40, "Afewafew");
+	printfont(boring, 0, 0, "Afewafew");
 
 
 	CheckError();
