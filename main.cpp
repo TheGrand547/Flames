@@ -261,7 +261,10 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 OBB loom;
 
+
+stbtt_fontinfo fontInfo; // TODO: Remove this because it requires keeping more things in memory
 stbtt_packedchar charts[96];
+stbtt_packedchar charts2[96];
 Texture2D fontTexture;
 Shader fontShader;
 VAO fontVAO;
@@ -269,21 +272,21 @@ Buffer<ArrayBuffer> boring;
 
 void init_font_stuff()
 {
-	unsigned char *packedData = new unsigned char[1024 * 1024];
-	unsigned char* ttf_buffer = new unsigned char[1 << 25];
+	constexpr int sizesd = 1000;
+	unsigned char *packedData = new unsigned char[sizesd * sizesd];
+	unsigned char *ttf_buffer = new unsigned char[1 << 25];
 	FILE* filer = nullptr;
 	fopen_s(&filer, "c:/windows/fonts/times.ttf", "rb");
 	if (filer) 
 	{
-		// TODO: make this a dynamic sized buffer
-		fread(ttf_buffer, 1, 1ull << 20, filer);
-
+		fread(ttf_buffer, 1, 1ull << 25, filer);
+		stbtt_InitFont(&fontInfo, ttf_buffer, 0);
 		struct
 		{
-			const float size = 60.f;
+			const float size = 60;
 			const unsigned int sampleX = 2, sampleY = 2;
 			const char first = ' ', count = '~' - ' ';
-			const int width = 1024, height = 1024;
+			const int width = sizesd, height = sizesd;
 		} FS;
 
 
@@ -291,34 +294,43 @@ void init_font_stuff()
 		// TODO: Allow for better funny labels
 		stbtt_PackBegin(&context, packedData, FS.width, FS.height, 0, 1, nullptr);
 		stbtt_PackSetOversampling(&context, FS.sampleX, FS.sampleY);
-		stbtt_PackFontRange(&context, ttf_buffer, 0, FS.size, FS.first, FS.count, charts);
+		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size), FS.first, FS.count, charts);
+		// TODO: maybe investigate them
+		//stbtt_PackFontRange(&context, ttf_buffer, 1, STBTT_POINT_SIZE(FS.size * 2), FS.first, FS.count, charts2);
 		stbtt_PackEnd(&context);
 
 		GLuint texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FS.width, FS.height, 0, GL_RED, GL_UNSIGNED_BYTE, packedData);
-		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-		fontTexture.ApplyInfo(texture, 1024, 1024, 1);
+		fontTexture.ApplyInfo(texture, FS.width, FS.width, 1);
 		fontTexture.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 		fclose(filer);
 	}
 	delete[] packedData;
-	delete[] ttf_buffer;
+	//delete[] ttf_buffer;
 }
+
+bool spacing = false;
 
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
 {
 	buf.CleanUp();
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
+	float originX = x, originY = y;
+	int a = 0, d = 0, lg = 0;
+	stbtt_GetFontVMetrics(&fontInfo, &a, &d, &lg);
+	// 60 is the font size in pixels
+	float scale2 = 60.f / (a - d);
+	float scale = stbtt_ScaleForMappingEmToPixels(&fontInfo, 60); // this is technically the "correct" one but it looks like shit
+	scale = scale2;
 	for (char letter : message)
 	{
-		std::cout << x << ", " << y << std::endl;
 		if (letter >= 32 && letter < 128)
 		{
 			stbtt_aligned_quad quad{};
-			stbtt_GetPackedQuad(charts, 1024, 1024, letter - ' ', &x, &y, &quad, 1);
+			stbtt_GetPackedQuad(charts, 1000, 1000, letter - ' ', &x, &y, &quad, 1);
 			
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
 			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
@@ -328,10 +340,17 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
 			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 		}
+		else if (letter == '\n')
+		{
+			x = originX;
+			y = originY + float(a - d + lg) * scale;
+			originY = y;
+		}
 	}
 	for (auto& s : results)
 	{
-		s.position.y += 2000.f - 40;
+		// I don't know why this 40 number works, but the size is 60 so i'm lost
+		s.position.y += 2000.f - float(a - d) * scale;
 		s.position /= 1000.f;
 		s.position -= 1.f;
 	}
@@ -619,17 +638,17 @@ void idle()
 	frameCounter++;
 	const auto now = std::chrono::high_resolution_clock::now();
 	const auto delta = now - lastTimers;
+	static std::deque<float> frames;
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
 	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = goober2.GetNormalMatrix();
-	//std::cout << "\33[2K\r" << std::chrono::duration_cast<std::chrono::microseconds>(delta).count() << "\t" << std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
 	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
 	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
-	//std::cout << "\r" << (float)elapsed / 1000.f << "\t" << 1000.f / float(elapsed) << "\t" << kernel << "\t" << lineWidth;
+
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
 	//foobar.ToggleTwoSided();
 	//if (!smartBox.IntersectionWithResponse(foobar))
@@ -641,6 +660,25 @@ void idle()
 
 	//float speed = 3 * ((float) elapsed) / 1000.f;
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
+	
+	// TODO: Rolling buffer size thingy setting
+	frames.push_back(1.f / timeDelta);
+	if (frames.size() > 100)
+	{
+		frames.pop_front();
+	}
+	float averageFps = 0.f;
+	for (auto& i : frames)
+	{
+		averageFps += i / frames.size();
+	}
+	printfont(boring, 0, 0, std::format("FPS: {:7.2f}\nGaming", averageFps));
+	printfont(boring, 0, 0, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do\n\
+		eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,\n\
+quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure\n\
+dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat\n\
+cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;
 
@@ -839,6 +877,7 @@ void keyboard(unsigned char key, int x, int y)
 	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
 	if (key == 'm' || key == 'M') cameraPosition.y += 3;
+	if (key == 'v') spacing = !spacing;
 	if (key == '[') lineWidth -= 1;
 	if (key == ']') lineWidth += 1;
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
@@ -1072,6 +1111,7 @@ int main(int argc, char** argv)
 	glutInitWindowSize(1000, 1000);
 	glutInitContextFlags(GLUT_DEBUG);
 	glutCreateWindow("Wowie a window");
+	glViewport(0, 0, 1000, 1000);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
