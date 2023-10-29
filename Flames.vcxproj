@@ -191,6 +191,7 @@
     <ClInclude Include="StaticOctTree.h" />
     <ClInclude Include="stbWrangler.h" />
     <ClInclude Include="stb_perlin.h" />
+    <ClInclude Include="stb_rect_pack.h" />
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />

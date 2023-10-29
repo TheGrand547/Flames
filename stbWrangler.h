@@ -7,5 +7,6 @@
 
 #include "stb_image.h"
 #include "stb_perlin.h"
+#include "stb_rect_pack.h"
 #include "stb_truetype.h"
 #endif
