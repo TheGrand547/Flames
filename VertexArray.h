@@ -201,7 +201,7 @@ template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint b
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
-	this->stride = sizeof(TextureVertex);
+	this->stride = sizeof(UIVertex);
 	this->bindingPoint = bindingPoint;
 }
 

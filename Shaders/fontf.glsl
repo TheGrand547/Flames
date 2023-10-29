@@ -9,4 +9,8 @@ uniform sampler2D fontTexture;
 void main()
 {
 	color = texture(fontTexture, fTex);
+	if (color.r == 0)
+	{
+		discard;
+	}
 }

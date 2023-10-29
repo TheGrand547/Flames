@@ -263,6 +263,7 @@ OBB loom;
 
 unsigned char ttf_buffer[1 << 20];
 stbtt_bakedchar chars[96];
+stbtt_packedchar charts[96];
 Texture2D fontTexture;
 Shader fontShader;
 VAO fontVAO;
@@ -271,43 +272,82 @@ Buffer<ArrayBuffer> boring;
 void init_font_stuff()
 {
 	unsigned char *locals = new unsigned char[1024 * 1024];
+	unsigned char *packedData = new unsigned char[1024 * 1024];
 	FILE* filer = nullptr;
 	fopen_s(&filer, "c:/windows/fonts/times.ttf", "rb");
 	if (filer) 
 	{
+		// TODO: make this a dynamic sized buffer
 		fread(ttf_buffer, 1, 1ull << 20, filer);
-		stbtt_BakeFontBitmap(ttf_buffer, 0, 64.0, locals, 1024, 1024, 32, 96, chars);
+
+		struct
+		{
+			const float size = 60.f;
+			const unsigned int sampleX = 2, sampleY = 2;
+			const char first = ' ', count = '~' - ' ';
+			const int width = 1024, height = 1024;
+		} FS;
+
+
+		stbtt_pack_context context;
+		// TODO: Allow for better funny labels
+		stbtt_PackBegin(&context, packedData, FS.width, FS.height, 0, 1, nullptr);
+		stbtt_PackSetOversampling(&context, FS.sampleX, FS.sampleY);
+		stbtt_PackFontRange(&context, ttf_buffer, 0, FS.size, FS.first, FS.count, charts);
+		stbtt_PackEnd(&context);
+
+
+		//stbtt_BakeFontBitmap(ttf_buffer, 0, 20.0, locals, 1024, 1024, 32, 96, chars);
 		GLuint texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 1024, 1024, 0, GL_RED, GL_UNSIGNED_BYTE, locals);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FS.width, FS.height, 0, GL_RED, GL_UNSIGNED_BYTE, packedData);
 		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
 		fontTexture.ApplyInfo(texture, 1024, 1024, 1);
+		fontTexture.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 		fclose(filer);
 	}
 	delete[] locals;
+	delete[] packedData;
 }
 
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
 {
 	buf.CleanUp();
-	std::vector<UIVertex> results(message.size() * 4);
-	float xx = x, yy = y;
+	std::vector<UIVertex> results{};
+	results.reserve(3 * message.size());
+	std::cout << message.size() << std::endl;
 	for (char letter : message)
 	{
-		std::cout << xx << ", " << yy << std::endl;
+		std::cout << x << ", " << y << std::endl;
 		if (letter >= 32 && letter < 128)
 		{
 			stbtt_aligned_quad quad{};
-			stbtt_GetBakedQuad(chars, 1024, 1024, letter - 32, &xx, &yy, &quad, 1); // 1 Means opengl for some reason
+			//stbtt_GetBakedQuad(chars, 1024, 1024, letter - 32, &xx, &yy, &quad, 1); // 1 Means opengl for some reason
+			stbtt_GetPackedQuad(charts, 1024, 1024, letter - ' ', &x, &y, &quad, 1);
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+
+			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+
+			/*
+			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x0, -quad.y0}, {quad.s0, quad.t0} });
+			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
+			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
+			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
+			*/
 		}
 	}
 	for (auto& s : results)
 	{
+		s.position /= 1000.f;
+		//s.position -= 1.f;
+		//s.position.y = -s.position.y;
 		std::cout << s.position << "\t" << s.uv << std::endl;
 	}
 	buf.Generate();
@@ -488,11 +528,13 @@ void display()
 	*/
 
 	glDisable(GL_CULL_FACE);
+	//glEnable(GL_BLEND);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
 	fontShader.SetTextureUnit("fontTexture", fontTexture, 0);
 	// TODO: Set object amount in buffer function
-	fontShader.DrawElements(Triangle, 4 * 6);
+	fontShader.DrawElements<Triangle>(boring);
+	//glDisable(GL_BLEND);
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1281,7 +1323,8 @@ int main(int argc, char** argv)
 
 	std::cout << "FONT STUFF" << std::endl;
 	init_font_stuff();
-	printfont(boring, 50, 50, "Hello!");
+	//printfont(boring, 0, 0, "Hello!");
+	printfont(boring, 40, -40, "Afewafew");
 
 
 	CheckError();
