@@ -261,8 +261,6 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 OBB loom;
 
-unsigned char ttf_buffer[1 << 20];
-stbtt_bakedchar chars[96];
 stbtt_packedchar charts[96];
 Texture2D fontTexture;
 Shader fontShader;
@@ -271,8 +269,8 @@ Buffer<ArrayBuffer> boring;
 
 void init_font_stuff()
 {
-	unsigned char *locals = new unsigned char[1024 * 1024];
 	unsigned char *packedData = new unsigned char[1024 * 1024];
+	unsigned char* ttf_buffer = new unsigned char[1 << 25];
 	FILE* filer = nullptr;
 	fopen_s(&filer, "c:/windows/fonts/times.ttf", "rb");
 	if (filer) 
@@ -296,8 +294,6 @@ void init_font_stuff()
 		stbtt_PackFontRange(&context, ttf_buffer, 0, FS.size, FS.first, FS.count, charts);
 		stbtt_PackEnd(&context);
 
-
-		//stbtt_BakeFontBitmap(ttf_buffer, 0, 20.0, locals, 1024, 1024, 32, 96, chars);
 		GLuint texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
@@ -307,8 +303,8 @@ void init_font_stuff()
 		fontTexture.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 		fclose(filer);
 	}
-	delete[] locals;
 	delete[] packedData;
+	delete[] ttf_buffer;
 }
 
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
@@ -316,36 +312,26 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 	buf.CleanUp();
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
-	std::cout << x << ":" << y << std::endl;
 	for (char letter : message)
 	{
 		std::cout << x << ", " << y << std::endl;
 		if (letter >= 32 && letter < 128)
 		{
 			stbtt_aligned_quad quad{};
-			//stbtt_GetBakedQuad(chars, 1024, 1024, letter - 32, &xx, &yy, &quad, 1); // 1 Means opengl for some reason
 			stbtt_GetPackedQuad(charts, 1024, 1024, letter - ' ', &x, &y, &quad, 1);
-
-			/*
-			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
-			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
-
-			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
-			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-			*/
 			
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x0, -quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
+
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
+			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
 		}
 	}
 	for (auto& s : results)
 	{
+		s.position.y += 2000.f - 40;
 		s.position /= 1000.f;
 		s.position -= 1.f;
 	}
@@ -526,14 +512,15 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
-	glDisable(GL_CULL_FACE);
-	//glEnable(GL_BLEND);
+	//glDisable(GL_CULL_FACE);
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
 	fontShader.SetTextureUnit("fontTexture", fontTexture, 0);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(boring);
-	//glDisable(GL_BLEND);
+	glDisable(GL_BLEND);
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

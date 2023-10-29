@@ -8,7 +8,7 @@ uniform sampler2D fontTexture;
 
 void main()
 {
-	color = texture(fontTexture, fTex);
+	color = vec4(1, 1, 1, 1) * texture(fontTexture, fTex).r;
 	if (color.r == 0)
 	{
 		discard;
