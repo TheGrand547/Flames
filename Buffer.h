@@ -6,6 +6,7 @@
 #include <map>
 #include <span>
 #include <vector>
+#include "log.h"q
 
 // TODO: Paranoia checks removal in release, ie if RELEASE then don't do a bunch of checks with error messages
 
@@ -66,17 +67,35 @@ public:
 	void BindBuffer() const;
 	void Reserve(BufferAccess access, GLsizeiptr size);
 
+	// Constructor with buffer creation
 	template<class T> Buffer(const T& data, BufferAccess usage = StaticDraw);
+	Buffer(std::size_t size, BufferAccess usage = StaticDraw);
+
+	void Reserve(std::size_t size, BufferAccess usage = StaticDraw);
+
+	// Generic contiguous data structure data
 	template<class T> void BufferData(std::span<const T> data, BufferAccess usage = StaticDraw);
 	template<class T> void BufferData(std::span<T> data, BufferAccess usage = StaticDraw);
-	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage = StaticDraw);
-	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage = StaticDraw);
 
-	template<class T> void BufferSubData(T& data, GLintptr offset = 0);
+	// Convenience for the easy data structures
+	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage = StaticDraw); 
+	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage = StaticDraw);
+
+	// Generic data structure buffer data
+	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage = StaticDraw);
+	
+	// For inserting a single element
+	template<class T> void BufferSubData(const T& data, GLintptr offset = 0);
+	
+	// Convenience for easy data structures
+	template<class T> void BufferSubData(const std::vector<T>& data, GLintptr offset = 0);
+	template<class T, std::size_t i> void BufferSubData(const std::array<T, i>& data, GLintptr offset = 0);
+
+	// Generic contiguous access templates
 	template<class T> void BufferSubData(std::span<const T> data, GLintptr offset = 0);
 	template<class T> void BufferSubData(std::span<T> data, GLintptr offset = 0);
-	template<class T, std::size_t i> void BufferSubData(std::span<T, i> data, GLintptr offset = 0);
-	template<class T, std::size_t i> void BufferSubData(std::span<const T, i> data, GLintptr offset = 0);
+
+	// Generic data structure template
 	template<template<class, class...> class C, class T, class... Args> void BufferSubData(const C<T, Args...>& data, GLintptr offset = 0);
 
 	template<class T> static void GenerateBuffers(T& buffers);
@@ -86,6 +105,11 @@ public:
 template<BufferType Type> inline Buffer<Type>::Buffer() : buffer(0), length(0), elementCount(0), elementType(0), elementSize(0)
 {
 
+}
+
+template<BufferType Type> inline Buffer<Type>::Buffer(std::size_t size, BufferAccess usage) : buffer(0), length(0), elementCount(0), elementType(0), elementSize(0)
+{
+	this->Reserve(size, usage);
 }
 
 template<BufferType Type> inline Buffer<Type>::Buffer(Buffer<Type>&& other) noexcept 
@@ -173,6 +197,17 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(BufferAccess access,
 	}
 }
 
+template<BufferType Type> inline void Buffer<Type>::Reserve(std::size_t size, BufferAccess usage)
+{
+	this->Generate();
+	glBindBuffer(Type, this->buffer);
+	glBufferData(Type, (GLsizei) size, nullptr, (GLenum) usage);
+	this->length = size;
+	this->elementCount = 0;
+	this->elementSize = 0;
+	this->elementSize = GL_UNSIGNED_INT;
+}
+
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<T> data, BufferAccess usage)
 {
 	this->BufferData(std::span<const T>(data), usage);
@@ -205,6 +240,11 @@ template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Ty
 	}
 }
 
+template<BufferType Type> template<class T> void Buffer<Type>::BufferData(const std::vector<T>& data, BufferAccess usage)
+{
+	this->BufferData(std::span<const T>(data), usage);
+}
+
 template<BufferType Type> template<template<class, class...> class C, class T, class... Args> inline void Buffer<Type>::BufferData(const C<T, Args...>& data, BufferAccess usage)
 {
 	if (this->buffer)
@@ -219,7 +259,7 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 	}
 }
 
-template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(T& data, GLintptr offset)
+template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(const T& data, GLintptr offset)
 {
 	if (this->buffer)
 	{
@@ -229,6 +269,16 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 }
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(std::span<T> data, GLintptr offset)
+{
+	this->BufferSubData(std::span<const T>(data), offset);
+}
+
+template<BufferType Type> template<class T, std::size_t i> void Buffer<Type>::BufferSubData(const std::array<T, i>& data, GLintptr offset)
+{
+	this->BufferSubData(std::span<const T>(data), offset);
+}
+
+template<BufferType Type> template<class T> void Buffer<Type>::BufferSubData(const std::vector<T>& data, GLintptr offset)
 {
 	this->BufferSubData(std::span<const T>(data), offset);
 }
@@ -245,26 +295,6 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 		}
 		glBindBuffer(Type, this->buffer);
 		glBufferSubData(Type, offset, (GLsizeiptr) sizeof(T) * data.size(), data.data());
-	}
-}
-
-template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(std::span<T, i> data, GLintptr offset)
-{
-	this->BufferSubData(std::span<const T, i>(data), offset);
-}
-
-template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferSubData(std::span<const T, i> data, GLintptr offset)
-{
-	if (this->buffer)
-	{
-		std::size_t total = (std::size_t) offset + sizeof(T) * i;
-		if (total > this->length)
-		{
-			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
-			return;
-		}
-		glBindBuffer(Type, this->buffer);
-		glBufferSubData(Type, offset, (GLsizeiptr) sizeof(T) * i, data.data());
 	}
 }
 
