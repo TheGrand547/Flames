@@ -26,6 +26,8 @@ public:
 
 	void CleanUp();
 
+	void ApplyInfo(GLuint texture, int width, int height, int channels);
+
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
 	inline void SetWrapBehaviorS(TextureWrapping value) const;

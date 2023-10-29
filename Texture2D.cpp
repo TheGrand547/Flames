@@ -36,6 +36,15 @@ void Texture2D::CleanUp()
 	this->channels = 0;
 }
 
+void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
+{
+	this->CleanUp();
+	this->texture = texture;
+	this->width = width;
+	this->height = height;
+	this->channels = channels;
+}
+
 void Texture2D::Load(const std::string& filename, TextureFormatInternal internal)
 {
 	this->CleanUp();

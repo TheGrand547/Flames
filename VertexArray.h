@@ -192,6 +192,19 @@ template<> inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bin
 	this->bindingPoint = bindingPoint;
 }
 
+template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint bindingPoint)
+{
+	glBindVertexArray(this->array);
+	glVertexAttribFormat(shader.Index("vPos"), 2, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(UIVertex, uv));
+	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
+	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
+	glEnableVertexAttribArray(shader.Index("vPos"));
+	glEnableVertexAttribArray(shader.Index("vTex"));
+	this->stride = sizeof(TextureVertex);
+	this->bindingPoint = bindingPoint;
+}
+
 template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);

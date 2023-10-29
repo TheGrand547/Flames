@@ -261,6 +261,59 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 OBB loom;
 
+unsigned char ttf_buffer[1 << 20];
+stbtt_bakedchar chars[96];
+Texture2D fontTexture;
+Shader fontShader;
+VAO fontVAO;
+Buffer<ArrayBuffer> boring;
+
+void init_font_stuff()
+{
+	unsigned char *locals = new unsigned char[1024 * 1024];
+	FILE* filer = nullptr;
+	fopen_s(&filer, "c:/windows/fonts/times.ttf", "rb");
+	if (filer) 
+	{
+		fread(ttf_buffer, 1, 1ull << 20, filer);
+		stbtt_BakeFontBitmap(ttf_buffer, 0, 64.0, locals, 1024, 1024, 32, 96, chars);
+		GLuint texture;
+		glGenTextures(1, &texture);
+		glBindTexture(GL_TEXTURE_2D, texture);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, 1024, 1024, 0, GL_RED, GL_UNSIGNED_BYTE, locals);
+		glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+		fontTexture.ApplyInfo(texture, 1024, 1024, 1);
+		fclose(filer);
+	}
+	delete[] locals;
+}
+
+void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
+{
+	buf.CleanUp();
+	std::vector<UIVertex> results(message.size() * 4);
+	float xx = x, yy = y;
+	for (char letter : message)
+	{
+		std::cout << xx << ", " << yy << std::endl;
+		if (letter >= 32 && letter < 128)
+		{
+			stbtt_aligned_quad quad{};
+			stbtt_GetBakedQuad(chars, 1024, 1024, letter - 32, &xx, &yy, &quad, 1); // 1 Means opengl for some reason
+			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
+			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+		}
+	}
+	for (auto& s : results)
+	{
+		std::cout << s.position << "\t" << s.uv << std::endl;
+	}
+	buf.Generate();
+	buf.BufferData(results, StaticDraw);
+}
+
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -434,13 +487,20 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
+	glDisable(GL_CULL_FACE);
+	fontShader.SetActiveShader();
+	fontVAO.BindArrayBuffer(boring);
+	fontShader.SetTextureUnit("fontTexture", fontTexture, 0);
+	// TODO: Set object amount in buffer function
+	fontShader.DrawElements(Triangle, 4 * 6);
+
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
 	glDrawBuffers(1, buffers);
 	glClear(GL_COLOR_BUFFER_BIT);
-	
+
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 
 	glDisable(GL_DEPTH_TEST);
@@ -1043,6 +1103,8 @@ int main(int argc, char** argv)
 	frameShader.CompileSimple("framebuffer");
 	sphereMesh.CompileSimple("mesh");
 
+	fontShader.CompileSimple("font");
+
 	texture.Load("Textures/text.png");
 	wallTexture.Load("Textures/flowed.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
@@ -1144,6 +1206,8 @@ int main(int argc, char** argv)
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	CheckError();
 
+	fontVAO.Generate();
+	fontVAO.FillArray<UIVertex>(fontShader);
 
 	std::array<TextureVertex, 36> textVert{};
 	for (std::size_t i = 0; i < 36; i++)
@@ -1214,6 +1278,11 @@ int main(int argc, char** argv)
 
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
+
+	std::cout << "FONT STUFF" << std::endl;
+	init_font_stuff();
+	printfont(boring, 50, 50, "Hello!");
+
 
 	CheckError();
 	meshVAO.Generate();

@@ -10,6 +10,11 @@ struct ColoredVertex
 	glm::vec3 position, color;
 };
 
+struct UIVertex
+{
+	glm::vec2 position, uv;
+};
+
 struct NormalVertex
 {
 	glm::vec3 position, normal;
