@@ -858,10 +858,29 @@ void mouseButtonAction(int button, int state, int x, int y)
 		localCopy.y += (float)(x - glutGet(GLUT_WINDOW_HEIGHT) / 2.f) / glutGet(GLUT_WINDOW_HEIGHT) * Fov;
 		glm::vec3 radians = glm::radians(localCopy);
 
-		loom.ReOrient(glm::eulerAngleXYZ(-radians.z, -radians.y, -radians.x));
-		loom.ReScale(glm::vec3(5, 0.1f, 0.1f));
+		float rayLength = 50.f;
+
+		auto lookyMat = glm::eulerAngleXYZ(-radians.z, -radians.y, -radians.x);
+
+		Ray liota(cameraPosition, glm::normalize(glm::vec3(lookyMat * glm::vec4(1, 0, 0, 0))));
+		auto itemed = boxes.RayCast(liota);
+		RayCollision rayd{};
+		Dummy* point = nullptr;
+		for (auto& item : itemed)
+		{
+			if (item->box.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
+			{
+				rayLength = rayd.depth;
+				point = &(*item);
+			}
+		}
+		// Point now has the pointer to the closest element
+		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
+		loom.ReOrient(lookyMat);
+		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
+
 		loom.ReCenter(cameraPosition);
-		loom.Translate(loom.Forward() * 5.5f);
+		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
 	}
 }
 

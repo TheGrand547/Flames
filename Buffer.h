@@ -6,7 +6,7 @@
 #include <map>
 #include <span>
 #include <vector>
-#include "log.h"q
+#include "log.h"
 
 // TODO: Paranoia checks removal in release, ie if RELEASE then don't do a bunch of checks with error messages
 

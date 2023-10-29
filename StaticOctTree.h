@@ -52,8 +52,8 @@ protected:
 		void Search(const AABB& box, std::list<Item>& items) const;
 		void Insert(const Item& element, const AABB& box);
 
-		std::list<Item> RayCast(const Line& line) const;
-		void RayCast(const Line& line, std::list<Item>& items) const;
+		std::list<Item> RayCast(const Ray& line) const;
+		void RayCast(const Ray& line, std::list<Item>& items) const;
 	};
 
 	StaticOctTreeNode root;
@@ -73,7 +73,9 @@ public:
 
 	std::list<Item> Search(const AABB& area);
 	std::list<Item> DepthSearch(const AABB& area);
-	std::list<Item> RayCast(const Line& line) const;
+	std::list<Item> RayCast(const Ray& line) const;
+	std::list<Item> RayCastSort(const Ray& line) const;
+	T* RayCastFirst(const Ray& ray) const;
 
 	constexpr std::size_t size() const { return this->items.size(); }
 
@@ -119,10 +121,40 @@ inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::DepthSearch(
 }
 
 template<class T>
-std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCast(const Line& line) const
+std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCast(const Ray& line) const
 {
+	return this->root.RayCast(line);
+}
+
+/*
+template<class T>
+std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCastSort(const Ray& line) const
+{
+	struct RaySort
+	{
+		Item item;
+		float distance;
+	};
+	std::list<Item> items = this->root.RayCast(line);
 	// This *really* needs a depth sort thing
 	return this->root.RayCast(line);
+}*/
+
+template<class T>
+T* StaticOctTree<T>::RayCastFirst(const Ray& line) const
+{
+	std::list<Item> hits = this->root.RayCast(line);
+	if (hits.size())
+	{
+		float furthest = INFINITY;
+		RayCollision collision{};
+		for (Item& item : hits)
+		{
+			
+		}
+		return hits[0];
+	}
+	return nullptr;
 }
 
 template<class T>
@@ -283,7 +315,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 }
 
 template<class T>
-std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line) const
+std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::RayCast(const Ray& line) const
 {
 	std::list<Item> items{};
 	this->RayCast(line, items);
@@ -291,7 +323,7 @@ std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::RayCast(const L
 }
 
 template<class T>
-void StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line, std::list<Item>& items) const
+void StaticOctTree<T>::StaticOctTreeNode::RayCast(const Ray& line, std::list<Item>& items) const
 {
 	if (this->bounds.FastIntersect(line.initial, line.direction))
 	{
@@ -299,7 +331,7 @@ void StaticOctTree<T>::StaticOctTreeNode::RayCast(const Line& line, std::list<It
 		{
 			if (element.first.FastIntersect(line.initial, line.direction))
 			{
-				items.push_back(element.first);
+				items.push_back(element.second);
 			}
 		}
 		for (auto& branch : this->tree)
