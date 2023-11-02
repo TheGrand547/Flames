@@ -17,6 +17,7 @@
 #include "AABB.h"
 #include "Buffer.h"
 #include "CubeMap.h"
+#include "Font.h"
 #include "glmHelp.h"
 #include "Lines.h"
 #include "log.h"
@@ -262,104 +263,21 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 OBB loom;
 
 
-stbtt_fontinfo fontInfo; // TODO: Remove this because it requires keeping more things in memory
-stbtt_packedchar charts[96];
-stbtt_packedchar charts2[96];
-Texture2D fontTexture;
 Shader fontShader;
 VAO fontVAO;
 Buffer<ArrayBuffer> boring;
+ASCIIFont fonter;
 
 void init_font_stuff()
 {
-	// TODO: all of this
-	constexpr int sizesd = 2000;
-	unsigned char *packedData = new unsigned char[sizesd * sizesd];
-	unsigned char *ttf_buffer = new unsigned char[1 << 25];
-	FILE* filer = nullptr;
-	fopen_s(&filer, "Fonts/CommitMono-400-Regular.ttf", "rb");
-	if (filer) 
-	{
-		fread(ttf_buffer, 1, 1ull << 25, filer);
-		stbtt_InitFont(&fontInfo, ttf_buffer, 0);
-		struct
-		{
-			const float size = 60;
-			const unsigned int sampleX = 2, sampleY = 2;
-			const char first = ' ', count = '~' - ' ';
-			const int width = sizesd, height = sizesd;
-		} FS;
-
-		int x0, y0, x1, y1;
-		stbtt_GetFontBoundingBox(&fontInfo, &x0, &y0, &x1, &y1);
-		std::cout << x0 << ", " << y0 << ", " << x1 << ", " << y1 << std::endl;
-
-
-		stbtt_pack_context context;
-		// TODO: Allow for better funny labels <- ????
-		stbtt_PackBegin(&context, packedData, FS.width, FS.height, 0, 1, nullptr);
-		stbtt_PackSetOversampling(&context, FS.sampleX, FS.sampleY);
-		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size), FS.first, FS.count, charts);
-		// TODO: maybe investigate them
-		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size * 3), FS.first, FS.count, charts2);
-		stbtt_PackEnd(&context);
-
-		GLuint texture;
-		glGenTextures(1, &texture);
-		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, FS.width, FS.height, 0, GL_RED, GL_UNSIGNED_BYTE, packedData);
-		fontTexture.ApplyInfo(texture, FS.width, FS.width, 1);
-		fontTexture.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
-		fclose(filer);
-	}
-	delete[] packedData;
-	//delete[] ttf_buffer; // Not freed earlier because the stbtt_fontinfo requires the pointer to be non-null
+	Font::SetFontDirectory("Fonts");
+	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 60.f, 2, 2);
 }
 
 bool switcheroo = false;
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
 {
-	/*
-	buf.CleanUp();
-	std::vector<UIVertex> results{};
-	results.reserve(6 * message.size());
-	float originX = x, originY = y;
-	int a = 0, d = 0, lg = 0;
-	stbtt_GetFontVMetrics(&fontInfo, &a, &d, &lg);
-	// 60 is the font size in pixels
-	float scale = ((switcheroo) ? 60.f : 60.f * 2) / (a - d);
-	for (char letter : message)
-	{
-		if (letter >= 32 && letter < 128)
-		{
-			stbtt_aligned_quad quad{};
-			stbtt_GetPackedQuad((switcheroo) ? charts : charts2, 2000, 2000, letter - ' ', &x, &y, &quad, 1);
-			
-			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
-			results.push_back({ {quad.x0, -quad.y0}, {quad.s0, quad.t0} });
-
-			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
-		}
-		else if (letter == '\n')
-		{
-			x = originX;
-			y = originY + float(a - d + lg) * scale;
-			originY = y;
-		}
-	}
-	for (auto& s : results)
-	{
-		// I don't know why this 40 number works, but the size is 60 so i'm lost
-		s.position.y += 2000.f - float(a - d + lg) * scale;
-		s.position /= 1000.f;
-		s.position -= 1.f;
-	}
-	buf.Generate();
-	buf.BufferData(results, StaticDraw);
-	*/
+	fonter.Render(buf, x, y, message);
 }
 
 void display()
@@ -540,7 +458,7 @@ void display()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
-	fontShader.SetTextureUnit("fontTexture", fontTexture, 0);
+	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(boring);
 	glDisable(GL_BLEND);
@@ -676,12 +594,8 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	printfont(boring, 0, 0, std::format("FPS: {:7.2f}\nGaming", averageFps));
-	printfont(boring, 0, 0, "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do\n\
-		eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam,\n\
-quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure\n\
-dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat\n\
-cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+	printfont(boring, 0, 0, std::format("FPS:{:7.2f}\nGaming", averageFps));
+	//printfont(boring, 0, 0, " !\"#$%&\'()*+,-./0123456789:\n;<=>?@ABCDEFGHIJKLMNOPQRSTUV\nWXYZ[\\]^_`abcdefghijklmno\npqrstuvwxyz{|}~");
 	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;

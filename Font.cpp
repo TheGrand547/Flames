@@ -15,7 +15,7 @@ namespace Font
 }
 
 constexpr std::size_t atlasWidth = 1000; // Magic number of magic numbers
-constexpr std::size_t atlasHeight = 1000; // Magic number of magic numbers
+constexpr std::size_t atlasHeight = 500; // Magic number of magic numbers
 constexpr int fontBufferStride = 0; // Tightly Packed
 constexpr char firstCharInAtlas = ' ';
 constexpr char lastCharInAtlas = '~';
@@ -56,6 +56,10 @@ void ASCIIFont::Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std:
 		}
 		else if (letter == '\t')
 		{
+			// SLOPPY
+			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
+			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
+			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
 		}
 	}
@@ -85,9 +89,9 @@ void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::s
 }
 
 
-bool ASCIIFont::LoadFontASCII(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
+bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
 {
-	std::filesystem::path fontFile(Font::basePath + filename);
+	std::filesystem::path fontFile(Font::basePath + "/" + filename);
 	if (!std::filesystem::exists(fontFile))
 	{
 		LogF("Unable to load font file '%s'\n", fontFile.string().c_str());
@@ -138,6 +142,7 @@ bool ASCIIFont::LoadFontASCII(ASCIIFont& font, const std::string& filename, floa
 		rawFontData.clear();
 		scratchSpace.clear();
 		input.close();
+		return true;
 	}
 	return false;
 }
