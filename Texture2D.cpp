@@ -22,7 +22,6 @@ Texture2D::~Texture2D()
 {
 	this->CleanUp();
 }
-#include <iostream>
 
 void Texture2D::CleanUp()
 {

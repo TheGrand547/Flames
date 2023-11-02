@@ -290,6 +290,10 @@ void init_font_stuff()
 			const int width = sizesd, height = sizesd;
 		} FS;
 
+		int x0, y0, x1, y1;
+		stbtt_GetFontBoundingBox(&fontInfo, &x0, &y0, &x1, &y1);
+		std::cout << x0 << ", " << y0 << ", " << x1 << ", " << y1 << std::endl;
+
 
 		stbtt_pack_context context;
 		// TODO: Allow for better funny labels <- ????
@@ -297,7 +301,7 @@ void init_font_stuff()
 		stbtt_PackSetOversampling(&context, FS.sampleX, FS.sampleY);
 		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size), FS.first, FS.count, charts);
 		// TODO: maybe investigate them
-		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size * 2), FS.first, FS.count, charts2);
+		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size * 3), FS.first, FS.count, charts2);
 		stbtt_PackEnd(&context);
 
 		GLuint texture;
@@ -315,6 +319,7 @@ void init_font_stuff()
 bool switcheroo = false;
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
 {
+	/*
 	buf.CleanUp();
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
@@ -354,6 +359,7 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 	}
 	buf.Generate();
 	buf.BufferData(results, StaticDraw);
+	*/
 }
 
 void display()

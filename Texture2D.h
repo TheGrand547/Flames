@@ -24,6 +24,9 @@ public:
 
 	inline GLuint GetGLTexture() const;
 
+	inline int GetWidth() const;
+	inline int GetHeight() const;
+
 	void CleanUp();
 
 	void ApplyInfo(GLuint texture, int width, int height, int channels);
@@ -50,6 +53,17 @@ inline GLuint Texture2D::GetGLTexture() const
 {
 	return this->texture;
 }
+
+inline int Texture2D::GetWidth() const
+{
+	return this->width;
+}
+
+inline int Texture2D::GetHeight() const
+{
+	return this->height;
+}
+
 
 void Texture2D::BindTexture(GLuint slot) const
 {
