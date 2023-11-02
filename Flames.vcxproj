@@ -148,6 +148,7 @@
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="CubeMap.cpp" />
     <ClCompile Include="Cylinder.cpp" />
+    <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="Lines.cpp" />
@@ -179,6 +180,7 @@
     <ClInclude Include="Cube.h" />
     <ClInclude Include="CubeMap.h" />
     <ClInclude Include="Cylinder.h" />
+    <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="Lines.h" />

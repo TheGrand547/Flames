@@ -272,11 +272,12 @@ Buffer<ArrayBuffer> boring;
 
 void init_font_stuff()
 {
-	constexpr int sizesd = 1000;
+	// TODO: all of this
+	constexpr int sizesd = 2000;
 	unsigned char *packedData = new unsigned char[sizesd * sizesd];
 	unsigned char *ttf_buffer = new unsigned char[1 << 25];
 	FILE* filer = nullptr;
-	fopen_s(&filer, "c:/windows/fonts/times.ttf", "rb");
+	fopen_s(&filer, "Fonts/CommitMono-400-Regular.ttf", "rb");
 	if (filer) 
 	{
 		fread(ttf_buffer, 1, 1ull << 25, filer);
@@ -291,12 +292,12 @@ void init_font_stuff()
 
 
 		stbtt_pack_context context;
-		// TODO: Allow for better funny labels
+		// TODO: Allow for better funny labels <- ????
 		stbtt_PackBegin(&context, packedData, FS.width, FS.height, 0, 1, nullptr);
 		stbtt_PackSetOversampling(&context, FS.sampleX, FS.sampleY);
 		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size), FS.first, FS.count, charts);
 		// TODO: maybe investigate them
-		//stbtt_PackFontRange(&context, ttf_buffer, 1, STBTT_POINT_SIZE(FS.size * 2), FS.first, FS.count, charts2);
+		stbtt_PackFontRange(&context, ttf_buffer, 0, STBTT_POINT_SIZE(FS.size * 2), FS.first, FS.count, charts2);
 		stbtt_PackEnd(&context);
 
 		GLuint texture;
@@ -308,11 +309,10 @@ void init_font_stuff()
 		fclose(filer);
 	}
 	delete[] packedData;
-	//delete[] ttf_buffer;
+	//delete[] ttf_buffer; // Not freed earlier because the stbtt_fontinfo requires the pointer to be non-null
 }
 
-bool spacing = false;
-
+bool switcheroo = false;
 void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
 {
 	buf.CleanUp();
@@ -322,15 +322,13 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 	int a = 0, d = 0, lg = 0;
 	stbtt_GetFontVMetrics(&fontInfo, &a, &d, &lg);
 	// 60 is the font size in pixels
-	float scale2 = 60.f / (a - d);
-	float scale = stbtt_ScaleForMappingEmToPixels(&fontInfo, 60); // this is technically the "correct" one but it looks like shit
-	scale = scale2;
+	float scale = ((switcheroo) ? 60.f : 60.f * 2) / (a - d);
 	for (char letter : message)
 	{
 		if (letter >= 32 && letter < 128)
 		{
 			stbtt_aligned_quad quad{};
-			stbtt_GetPackedQuad(charts, 1000, 1000, letter - ' ', &x, &y, &quad, 1);
+			stbtt_GetPackedQuad((switcheroo) ? charts : charts2, 2000, 2000, letter - ' ', &x, &y, &quad, 1);
 			
 			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
 			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
@@ -350,7 +348,7 @@ void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& me
 	for (auto& s : results)
 	{
 		// I don't know why this 40 number works, but the size is 60 so i'm lost
-		s.position.y += 2000.f - float(a - d) * scale;
+		s.position.y += 2000.f - float(a - d + lg) * scale;
 		s.position /= 1000.f;
 		s.position -= 1.f;
 	}
@@ -877,13 +875,12 @@ void keyboard(unsigned char key, int x, int y)
 	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
 	if (key == 'm' || key == 'M') cameraPosition.y += 3;
-	if (key == 'v') spacing = !spacing;
 	if (key == '[') lineWidth -= 1;
 	if (key == ']') lineWidth += 1;
+	if (key == 'b') switcheroo = !switcheroo;
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
-	if (key == 'v') std::cout << std::endl;
 	if (key == 'h' || key == 'H')
 	{
 		smartBox.ReOrient(glm::vec3(0, 89, 0));
@@ -1138,6 +1135,7 @@ int main(int argc, char** argv)
 	glutMotionFunc(mouseMovementFunction);
 	glutPassiveMotionFunc(mouseMovementFunction);
 	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
+	glutPositionWindow(0, 0);
 
 
 	glewExperimental = GL_TRUE;
