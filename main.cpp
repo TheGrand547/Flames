@@ -171,10 +171,10 @@ const int ditherSize = 16;
 Buffer<ArrayBuffer> albertBuffer, capsuleBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
-UniformBuffer universal;
+UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, uniform, sphereMesh, widget;
+Shader dither, expand, finalResult, frameShader, flatLighting, uiRect, uniform, sphereMesh, widget;
 
 // Textures
 Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
@@ -268,18 +268,6 @@ VAO fontVAO;
 Buffer<ArrayBuffer> boring;
 ASCIIFont fonter;
 
-void init_font_stuff()
-{
-	Font::SetFontDirectory("Fonts");
-	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 60.f, 2, 2);
-}
-
-bool switcheroo = false;
-void printfont(Buffer<ArrayBuffer>& buf, float x, float y, const std::string& message)
-{
-	fonter.Render(buf, x, y, message);
-}
-
 void display()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
@@ -300,7 +288,7 @@ void display()
 
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
-	universal.BufferSubData(view, 0);
+	cameraUniformBuffer.BufferSubData(view, 0);
 
 	dither.SetActiveShader();
 	glm::vec3 colors(.5f, .5f, .5f);
@@ -453,15 +441,37 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
-	//glDisable(GL_CULL_FACE);
+	uiRect.SetActiveShader();
+	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 1));
+	uiRect.SetVec2("screenSize", glm::vec2(1000, 1000));
+	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
+	auto lc = glm::ortho<float>(0, 1000, 1000, 0);
+	uiRect.SetMat4("screenProjection", lc);
+	//uiRect.DrawElements(TriangleStrip, 4);
+	
+	uiRect.SetVec4("rectangle", glm::vec4(800, 0, 200, 100));
+	uiRect.DrawElements(TriangleStrip, 4);
+	
+	uiRect.SetVec4("rectangle", glm::vec4(0, 900, 200, 100));
+	uiRect.DrawElements(TriangleStrip, 4);
+	
+	uiRect.SetVec4("rectangle", glm::vec4(800, 900, 200, 100));
+	uiRect.DrawElements(TriangleStrip, 4);
+
+
+	glDisable(GL_CULL_FACE);
+	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
+	fontShader.SetMat4("screenProjection", lc);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(boring);
 	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_CULL_FACE);
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -594,7 +604,7 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	printfont(boring, 0, 0, std::format("FPS:{:7.2f}\nGaming", averageFps));
+	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}\nGaming\nPumo", averageFps));
 	//printfont(boring, 0, 0, " !\"#$%&\'()*+,-./0123456789:\n;<=>?@ABCDEFGHIJKLMNOPQRSTUV\nWXYZ[\\]^_`abcdefghijklmno\npqrstuvwxyz{|}~");
 	// End of Rolling buffer
 
@@ -797,7 +807,6 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'm' || key == 'M') cameraPosition.y += 3;
 	if (key == '[') lineWidth -= 1;
 	if (key == ']') lineWidth += 1;
-	if (key == 'b') switcheroo = !switcheroo;
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
@@ -1260,16 +1269,14 @@ int main(int argc, char** argv)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
+	uiRect.CompileSimple("ui_rect");
 	expand.Compile("framebuffer", "expand");
 
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 
-	std::cout << "FONT STUFF" << std::endl;
-	init_font_stuff();
-	//printfont(boring, 0, 0, "Hello!");
-	printfont(boring, 0, 0, "Afewafew");
-
+	Font::SetFontDirectory("Fonts");
+	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
 
 	CheckError();
 	meshVAO.Generate();
@@ -1317,12 +1324,13 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	universal.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
-	universal.SetBindingPoint(0);
-	universal.BindUniform();
+	// TODO: 2D drawing drwaing uniform buffer object
+	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
+	cameraUniformBuffer.SetBindingPoint(0);
+	cameraUniformBuffer.BindUniform();
 
 	glm::mat4 projection = glm::perspective(glm::radians(Fov), 1.f, zNear, zFar);
-	universal.BufferSubData(projection, sizeof(glm::mat4));
+	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 	CheckError();
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);

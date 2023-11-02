@@ -15,22 +15,21 @@ namespace Font
 }
 
 constexpr std::size_t atlasWidth = 1000; // Magic number of magic numbers
-constexpr std::size_t atlasHeight = 500; // Magic number of magic numbers
+constexpr std::size_t atlasHeight = 700; // Magic number of magic numbers
 constexpr int fontBufferStride = 0; // Tightly Packed
 constexpr char firstCharInAtlas = ' ';
 constexpr char lastCharInAtlas = '~';
 constexpr int charsInAtlas = lastCharInAtlas - firstCharInAtlas;
 constexpr int fontIndex0 = 0;
 
+// TODO: Version that returns the size of it, and maybe another that doesn't bake the coordinates into the render and stuff
 void ASCIIFont::Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message)
 {
-	// TODO: Get the screen size
-	const float screenWidth = 1000.f;
-	const float screenHeight = 1000.f;
-
 	buffer.CleanUp();
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
+	// TODO: Revisit this potential misalignment
+	y += this->pixelHeight;
 	float originX = x, originY = y;
 	stbtt_aligned_quad quad{};
 	for (char letter : message)
@@ -39,14 +38,13 @@ void ASCIIFont::Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std:
 		{
 			// I don't know why the 'align to integer' param is 1
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
+			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
+			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
 
-			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
-			results.push_back({ {quad.x0, -quad.y0}, {quad.s0, quad.t0} });
-
-			results.push_back({ {quad.x0, -quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y1}, {quad.s1, quad.t1} });
-			results.push_back({ {quad.x1, -quad.y0}, {quad.s1, quad.t0} });
+			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
 		}
 		else if (letter == '\n')
 		{
@@ -62,12 +60,26 @@ void ASCIIFont::Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std:
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
 		}
+		else
+		{
+			LogF("Couldn't find '%i' in dictionary\n", (int)letter);
+		}
 	}
 	for (auto& s : results)
 	{
+		// TODO: REVSIST
+		/*
+		s.position.y -= this->lineSkip;
+		s.position /= glm::vec2(screenWidth, screenHeight);
+		s.position *= 2;
+		s.position += 1;
+		*/
+		
+		/*
 		s.position.y += 2 * screenHeight - this->lineSkip;
 		s.position /= glm::vec2(screenWidth, screenHeight);
 		s.position -= 1.f;
+		*/
 	}
 	buffer.Generate();
 	buffer.BufferData(results, StaticDraw);
@@ -120,6 +132,7 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
 		float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
 
+
 		std::vector<unsigned char> scratchSpace{}; // Has to be the same size as the buffer
 		scratchSpace.reserve(atlasWidth * atlasHeight);
 		stbtt_pack_context contextual{};
@@ -127,7 +140,7 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		stbtt_PackBegin(&contextual, scratchSpace.data(), atlasWidth, atlasHeight, fontBufferStride, padding, nullptr);
 		stbtt_PackSetOversampling(&contextual, sampleX, sampleY);
 		stbtt_PackSetSkipMissingCodepoints(&contextual, true);
-		stbtt_PackFontRange(&contextual, rawFontData.data(), fontIndex0, STBTT_POINT_SIZE(fontSize), firstCharInAtlas, charsInAtlas, font.characters.data());
+		int value = stbtt_PackFontRange(&contextual, rawFontData.data(), fontIndex0, STBTT_POINT_SIZE(fontSize), firstCharInAtlas, charsInAtlas, font.characters.data());
 		stbtt_PackEnd(&contextual);
 
 		font.texture.CleanUp();
@@ -142,7 +155,7 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		rawFontData.clear();
 		scratchSpace.clear();
 		input.close();
-		return true;
+		return value;
 	}
 	return false;
 }

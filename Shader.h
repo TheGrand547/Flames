@@ -63,7 +63,9 @@ public:
 	inline void SetActiveShader();
 	inline void SetInt(const std::string& name, const int i);
 	inline void SetFloat(const std::string& name, const float i);
+	inline void SetVec2(const std::string& name, const glm::vec2& vec);
 	inline void SetVec3(const std::string& name, const glm::vec3& vec);
+	inline void SetVec4(const std::string& name, const glm::vec4& vec);
 	inline void SetMat4(const std::string& name, const glm::mat4& mat);
 	inline void SetTextureUnit(const std::string& name, const GLuint unit);
 	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
@@ -111,9 +113,19 @@ inline void Shader::SetFloat(const std::string& name, const float i)
 	glUniform1f(this->UniformIndex(name), i);
 }
 
+inline void Shader::SetVec2(const std::string& name, const glm::vec2& vec)
+{
+	glUniform2fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+}
+
 inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
 {
 	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+}
+
+inline void Shader::SetVec4(const std::string& name, const glm::vec4& vec)
+{
+	glUniform4fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
