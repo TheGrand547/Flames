@@ -106,5 +106,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		break;
 	}
 	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, (GLsizei) width, (GLsizei) height, 0, format, typed, nullptr);
+	this->width = width;
+	this->height = height;
 	this->SetFilters();
 }

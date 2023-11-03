@@ -18,6 +18,7 @@
 #include "Buffer.h"
 #include "CubeMap.h"
 #include "Font.h"
+#include "Framebuffer.h"
 #include "glmHelp.h"
 #include "Lines.h"
 #include "log.h"
@@ -267,12 +268,21 @@ Shader fontShader;
 VAO fontVAO;
 Buffer<ArrayBuffer> boring;
 ASCIIFont fonter;
+Framebuffer<2, Depth> depthed;
 
+bool flopper = false;
 void display()
 {
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
 	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	glDrawBuffers(2, buffers);
+	if (flopper)
+	{
+		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
+		glDrawBuffers(2, buffers);
+	}
+	else
+	{
+		depthed.Bind();
+	}
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
@@ -482,8 +492,16 @@ void display()
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);;
 	frameShader.SetActiveShader();
-	frameShader.SetTextureUnit("normal", framebufferNormal, 0);
-	frameShader.SetTextureUnit("depth", framebufferDepth, 1);
+	if (flopper)
+	{
+		frameShader.SetTextureUnit("normal", framebufferNormal, 0);
+		frameShader.SetTextureUnit("depth", framebufferDepth, 1);
+	}
+	else
+	{
+		frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
+		frameShader.SetTextureUnit("depth", depthed.GetDepth(), 1);
+	}
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
@@ -492,9 +510,19 @@ void display()
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	expand.SetActiveShader();
-	expand.SetTextureUnit("screen", framebufferColor, 0);
-	expand.SetTextureUnit("edges", normalModifier, 1);
-	expand.SetTextureUnit("depths", framebufferDepth, 2);
+	if (flopper)
+	{
+		expand.SetTextureUnit("screen", framebufferColor, 0);
+		expand.SetTextureUnit("edges", normalModifier, 1);
+		expand.SetTextureUnit("depths", framebufferDepth, 2);
+	}
+	else
+	{
+		expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
+		expand.SetTextureUnit("edges", normalModifier, 1);
+		expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
+	}
+
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
@@ -600,7 +628,7 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}", averageFps));
+	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}\n{}", averageFps, (flopper) ? "Old" : "New"));
 	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;
@@ -805,6 +833,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
+	if (key == 'b') flopper = !flopper;
 	if (key == 'h' || key == 'H')
 	{
 		smartBox.ReOrient(glm::vec3(0, 89, 0));
@@ -1224,6 +1253,17 @@ int main(int argc, char** argv)
 	}
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
+
+	depthed.GetColorBuffer<0>().CreateEmpty(1000, 1000, InternalRGB);
+	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGB);
+	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepthFloat32);
+	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+	depthed.Assemble();
 
 	// Framebuffer stuff
 	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);

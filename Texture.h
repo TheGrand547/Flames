@@ -89,6 +89,8 @@ enum TextureFormatInternal
 	InternalRGBA16               = GL_RGBA16,
 	InternalSRGB8                = GL_SRGB8,
 	InternalSRGBA8               = GL_SRGB8_ALPHA8,
+
+	// FLOAT IS *VERY* SLOW COMPARED TO THE OTHER ONES -- USER BEWARE
 	InternalFloatRed16           = GL_R16F,
 	InternalFloatRedGreen16      = GL_RG16F,
 	InternalFloatRGB16           = GL_RGB16F,
@@ -98,6 +100,7 @@ enum TextureFormatInternal
 	InternalFloatRGB32           = GL_RGB32F,
 	InternalFloatRGBA32          = GL_RGBA32F,
 	InternalFloatR11G11B10       = GL_R11F_G11F_B10F,
+
 	InternalFloatShared5RGB9     = GL_RGB9_E5,
 	InternalIntRed8              = GL_R8I,
 	InternalUnignedIntRed8       = GL_R8UI,

@@ -10,6 +10,7 @@
 #include "log.h"
 #include "Texture.h"
 
+// TODO: some kind of "base" texture class to reduce clutter
 class Texture2D
 {
 private:
