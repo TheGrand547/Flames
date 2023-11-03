@@ -27,7 +27,7 @@ void ASCIIFont::Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std:
 {
 	buffer.CleanUp();
 	std::vector<UIVertex> results{};
-	results.reserve(6 * message.size());
+	//results.reserve(6 * message.size());
 	// TODO: Revisit this potential misalignment
 	y += this->pixelHeight;
 	float originX = x, originY = y;

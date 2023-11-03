@@ -2,7 +2,10 @@
 
 uniform vec4 rectangle;
 
-uniform mat4 screenProjection;
+layout(std140) uniform ScreenSpace
+{
+	mat4 Projection;
+};
 
 void main()
 {
@@ -18,5 +21,5 @@ void main()
 	{
 		pos += vec2(delta.x, 0);
 	}
-	gl_Position = screenProjection * vec4(pos.xy, 0, 1);
+	gl_Position = Projection * vec4(pos.xy, 0, 1);
 }

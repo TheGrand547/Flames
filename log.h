@@ -27,9 +27,9 @@
 
 #else // NDEBUG
 
-#define CheckError
-#define Log(...) CheckError
-#define LogF(...) CheckError
+#define CheckError(...)
+#define Log(...) CheckError()
+#define LogF(...) CheckError()
 
 #endif // NDEBUF
 

@@ -53,7 +53,7 @@ struct RotationCollision : public Collision {};
 struct SlidingCollision : public Collision {};
 struct RayCollision : public Collision {};
 
-inline std::ostream& operator<<(std::ostream& os, const Collision& collision)
+inline std::ostream& operator<<(std::ostream& os, const Collision& collision) noexcept
 {
 	os << collision.point << "\t" << collision.normal << "\t" << collision.depth;
 	return os;

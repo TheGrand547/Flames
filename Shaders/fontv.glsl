@@ -7,8 +7,13 @@ layout(location = 0) out vec2 fTex;
 
 uniform mat4 screenProjection;
 
+layout(std140) uniform ScreenSpace
+{
+	mat4 Projection;
+};
+
 void main()
 {
-	gl_Position = screenProjection * vec4(vPos, 0, 1);
+	gl_Position = Projection * vec4(vPos, 0, 1);
 	fTex = vTex;
 }

@@ -26,7 +26,10 @@ void CubeMap::Generate(const std::array<std::string, 6> files)
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	if (!this->texture)
+	{
 		Log("Unable to generate cubemap texture");
+		return;
+	}
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->texture);
 	int width, height, nrChannels;;
 	for (std::size_t i = 0; i < 6; i++)

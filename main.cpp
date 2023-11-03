@@ -441,13 +441,13 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	uiRect.SetActiveShader();
-	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 1));
+	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 0.25));
 	uiRect.SetVec2("screenSize", glm::vec2(1000, 1000));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
-	auto lc = glm::ortho<float>(0, 1000, 1000, 0);
-	uiRect.SetMat4("screenProjection", lc);
-	//uiRect.DrawElements(TriangleStrip, 4);
+	uiRect.DrawElements(TriangleStrip, 4);
 	
 	uiRect.SetVec4("rectangle", glm::vec4(800, 0, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
@@ -461,12 +461,9 @@ void display()
 
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
-	fontShader.SetMat4("screenProjection", lc);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(boring);
 	glDisable(GL_BLEND);
@@ -501,14 +498,13 @@ void display()
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
-	// TODO: This is reversed
+	// TODO: This is reversed <- wtf are you saying
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawElements<Lines>(6);
 
 	glFlush();
 	glutSwapBuffers();
-	CheckError();
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -604,8 +600,7 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}\nGaming\nPumo", averageFps));
-	//printfont(boring, 0, 0, " !\"#$%&\'()*+,-./0123456789:\n;<=>?@ABCDEFGHIJKLMNOPQRSTUV\nWXYZ[\\]^_`abcdefghijklmno\npqrstuvwxyz{|}~");
+	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}", averageFps));
 	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;
@@ -1309,6 +1304,9 @@ int main(int argc, char** argv)
 	flatLighting.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 
+	uiRect.UniformBlockBinding("ScreenSpace", 1);
+	fontShader.UniformBlockBinding("ScreenSpace", 1);
+
 	CheckError();
 
 	smartBox.Scale(glm::vec3(0.5f));
@@ -1324,7 +1322,11 @@ int main(int argc, char** argv)
 
 	CheckError();
 
-	// TODO: 2D drawing drwaing uniform buffer object
+	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
+	screenSpaceBuffer.SetBindingPoint(1);
+	screenSpaceBuffer.BindUniform();
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, 1000, 1000, 0));
+	
 	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	cameraUniformBuffer.SetBindingPoint(0);
 	cameraUniformBuffer.BindUniform();

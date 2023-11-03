@@ -6,7 +6,7 @@
 #include "Vertex.h"
 
 void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
-									const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
+									const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
@@ -66,7 +66,7 @@ void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& i
 }
 
 void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
@@ -132,7 +132,7 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 }
 
 void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
@@ -142,6 +142,7 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 	std::vector<Vertex> points;
 	std::vector<GLuint> index;
 
+	// TODO: Look into this not playing nice with exception handling bullshit
 	// Avoid unnecessary reallocations
 	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
 	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
@@ -192,7 +193,7 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 	indicies.BufferData(index, StaticDraw);
 }
 
-void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
+void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	std::vector<unsigned int> index;
 	index.reserve(2 * std::size_t(2 * longitudeSlices - 1) * latitudeSlices);
