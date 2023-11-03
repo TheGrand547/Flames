@@ -174,11 +174,15 @@ Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndici
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
+// Framebuffer
+Framebuffer<2, Depth> depthed;
+ColorFrameBuffer scratchSpace;
+
 // Shaders
 Shader dither, expand, finalResult, frameShader, flatLighting, uiRect, uniform, sphereMesh, widget;
 
 // Textures
-Texture2D ditherTexture, framebufferColor, framebufferDepth, framebufferNormal, hatching, normalModifier, texture, wallTexture;
+Texture2D ditherTexture, hatching, normalModifier, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -186,7 +190,7 @@ VAO texturedVAO, normalVAO, plainVAO, meshVAO;
 
 
 // TODO: Make structures around these
-GLuint framebuffer, framebufferMod;
+GLuint framebufferMod;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -268,21 +272,12 @@ Shader fontShader;
 VAO fontVAO;
 Buffer<ArrayBuffer> boring;
 ASCIIFont fonter;
-Framebuffer<2, Depth> depthed;
 
 bool flopper = false;
 void display()
 {
 	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
-	if (flopper)
-	{
-		glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-		glDrawBuffers(2, buffers);
-	}
-	else
-	{
-		depthed.Bind();
-	}
+	depthed.Bind();
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
@@ -482,9 +477,14 @@ void display()
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
+	/*
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
 	glDrawBuffers(1, buffers);
+	*/
+	scratchSpace.Bind();
+
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
@@ -492,36 +492,20 @@ void display()
 	glDisable(GL_DEPTH_TEST);
 	glDisable(GL_CULL_FACE);;
 	frameShader.SetActiveShader();
-	if (flopper)
-	{
-		frameShader.SetTextureUnit("normal", framebufferNormal, 0);
-		frameShader.SetTextureUnit("depth", framebufferDepth, 1);
-	}
-	else
-	{
-		frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
-		frameShader.SetTextureUnit("depth", depthed.GetDepth(), 1);
-	}
+	frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
+	frameShader.SetTextureUnit("depth", depthed.GetDepth(), 1);
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
 
 	frameShader.DrawElements<TriangleStrip>(4);
 
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	BindDefaultFrameBuffer();
 	expand.SetActiveShader();
-	if (flopper)
-	{
-		expand.SetTextureUnit("screen", framebufferColor, 0);
-		expand.SetTextureUnit("edges", normalModifier, 1);
-		expand.SetTextureUnit("depths", framebufferDepth, 2);
-	}
-	else
-	{
-		expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
-		expand.SetTextureUnit("edges", normalModifier, 1);
-		expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
-	}
+	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
+	expand.SetTextureUnit("edges", normalModifier, 1);
+	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
 
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
@@ -1266,41 +1250,10 @@ int main(int argc, char** argv)
 	depthed.Assemble();
 
 	// Framebuffer stuff
-	framebufferColor.CreateEmpty(1000, 1000, InternalRGB);
-	framebufferColor.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
-	framebufferDepth.CreateEmpty(1000, 1000, InternalDepthFloat32);
-	framebufferDepth.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
-	framebufferNormal.CreateEmpty(1000, 1000, InternalFloatRGB32);
-	//framebufferNormal.CreateEmpty(1000, 1000, InternalUnsignedIntRGB32);
-	framebufferNormal.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
-	normalModifier.CreateEmpty(1000, 1000, InternalRGBA);
-	normalModifier.SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
-	// TODO: Framebuffer class to do this stuff
+	scratchSpace.GetColorBuffer().CreateEmpty(1000, 1000, InternalRGBA);
+	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	scratchSpace.Assemble();
 	// TODO: Renderbuffer for buffers that don't need to be directly read
-	glGenFramebuffers(1, &framebuffer);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebuffer);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, framebufferColor.GetGLTexture(), 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT1, GL_TEXTURE_2D, framebufferNormal.GetGLTexture(), 0);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_TEXTURE_2D, framebufferDepth.GetGLTexture(), 0);
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
-		exit(-1);
-	}
-
-
-	glGenFramebuffers(1, &framebufferMod);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
-	glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, normalModifier.GetGLTexture(), 0);
-	if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
-	{
-		std::cout << "Framebuffer incomplete ahhhhh" << std::endl;
-		exit(-1);
-	}
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
@@ -1382,6 +1335,5 @@ int main(int argc, char** argv)
 	CheckError();
 	glutMainLoop();
 
-	glDeleteFramebuffers(1, &framebuffer);
 	return 0;
 }

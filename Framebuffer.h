@@ -26,7 +26,7 @@ enum FrameBufferTypes
 	ReadWriteBuffer = GL_FRAMEBUFFER,
 };
 
-template<std::size_t ColorAttachments, FrameBufferAttachments buffers>
+template<std::size_t ColorAttachments = 1, FrameBufferAttachments buffers = Depth>
 	requires requires
 {
 	ColorAttachments >= 0 && ColorAttachments < 16; // TODO: Get from the GL library thing
@@ -42,7 +42,7 @@ protected:
 	std::conditional_t<HasDepth, Texture2D, std::monostate> depth;
 	std::conditional_t<HasStencil, Texture2D, std::monostate> stencil;
 	std::conditional_t<HasCombined, Texture2D, std::monostate> depthStencil;
-	std::conditional_t<HasColor, std::array<Texture2D, ColorAttachments>, std::monostate> colorBuffers;
+	std::conditional_t<HasColor, std::array<Texture2D, ColorAttachments>, std::monostate> colorBuffers{};
 
 	static constexpr std::conditional_t<HasColor, std::array<GLenum, ColorAttachments>, std::monostate> drawBuffermacro =
 		[]() {
@@ -55,8 +55,13 @@ protected:
 		return temp;
 		}();
 
-	GLuint frameBuffer;
+	GLuint frameBuffer = 0;
 public:
+	~Framebuffer()
+	{
+		this->CleanUp();
+	}
+
 	void CleanUp()
 	{
 		if (this->frameBuffer)
@@ -171,4 +176,11 @@ public:
 	}
 };
 
+typedef Framebuffer<1, OnlyColor> ColorFrameBuffer;
+
+
+inline void BindDefaultFrameBuffer()
+{
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
 #endif // FRAME_BUFFER_H
