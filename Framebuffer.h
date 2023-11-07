@@ -26,6 +26,8 @@ enum FrameBufferTypes
 	ReadWriteBuffer = GL_FRAMEBUFFER,
 };
 
+// TODO: One of these but for renderbuffers instead, faster
+
 template<std::size_t ColorAttachments = 1, FrameBufferAttachments buffers = Depth>
 	requires requires
 {
@@ -38,6 +40,8 @@ protected:
 	static inline constexpr bool HasStencil  = (buffers == Stencil) || (buffers == DepthAndStencil);
 	static inline constexpr bool HasCombined = buffers == DepthStencil;
 	static inline constexpr bool HasColor    = ColorAttachments > 0;
+	static inline constexpr bool SingleColor = ColorAttachments == 1;
+	static inline constexpr bool MultiColor  = ColorAttachments > 1;
 
 	std::conditional_t<HasDepth, Texture2D, std::monostate> depth;
 	std::conditional_t<HasStencil, Texture2D, std::monostate> stencil;
@@ -103,6 +107,11 @@ public:
 	template<typename = std::enable_if_t<HasCombined>> Texture2D& GetDepthStencil()
 	{
 		return this->depthStencil;
+	}
+
+	template<typename = std::enable_if_t<SingleColor>> Texture2D& GetColor()
+	{
+		return this->colorBuffers[0];
 	}
 
 	template<typename = std::enable_if_t<HasColor>> Texture2D& GetColorBuffer(const std::size_t i = 0)

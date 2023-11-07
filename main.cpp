@@ -612,7 +612,7 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	fonter.Render(boring, 0, 0, std::format("FPS:{:7.2f}\n{}", averageFps, (flopper) ? "Old" : "New"));
+	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\n", averageFps));
 	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;
@@ -1264,7 +1264,9 @@ int main(int argc, char** argv)
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 
 	Font::SetFontDirectory("Fonts");
+
 	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
+		
 
 	CheckError();
 	meshVAO.Generate();

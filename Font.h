@@ -3,6 +3,7 @@
 #define FONT_H
 #include <array>
 #include "Buffer.h"
+#include "Framebuffer.h"
 #include "stbWrangler.h"
 #include "Texture2D.h"
 
@@ -26,9 +27,13 @@ public:
 	inline Texture2D& GetTexture();
 
 	// Provide a buffer filled with the position and texture coordinates that with this font's texture can be draw to whatever target
-	void Render(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message);
-	void Render(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message);
+	void RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message);
+	void RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message);
 
+	// TODO: Maybe a renderbuffer?
+	ColorFrameBuffer Render(const std::string& message);
+
+	// TODO: This is bad
 	// Renders directly to the texture
 	void Render(Texture2D& texture, float x, float y, const std::string& message);
 	void Render(Texture2D& texture, const glm::vec2& coords, const std::string& message);
