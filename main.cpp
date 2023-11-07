@@ -179,7 +179,7 @@ Framebuffer<2, Depth> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, uiRect, uniform, sphereMesh, widget;
+Shader dither, expand, finalResult, frameShader, flatLighting, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
 // Textures
 Texture2D ditherTexture, hatching, normalModifier, texture, wallTexture;
@@ -276,7 +276,6 @@ ASCIIFont fonter;
 bool flopper = false;
 void display()
 {
-	GLenum buffers[] = { GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1 };
 	depthed.Bind();
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -300,8 +299,15 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
-	dither.SetTextureUnit("textureIn", wallTexture, 0);
+
+	auto fumod = fonter.Render("lets goo");
+	fumod.GetColor().SetFilters(LinearLinear, MagLinear);
+	depthed.Bind();
+	dither.SetActiveShader();
+	//dither.SetTextureUnit("textureIn", wallTexture, 0);
+	dither.SetTextureUnit("textureIn", fumod.GetColor(), 0);
 	dither.SetTextureUnit("ditherMap", ditherTexture, 1);
+	glViewport(0, 0, 1000, 1000);
 
 	texturedVAO.BindArrayBuffer(texturedPlane);
 
@@ -463,6 +469,11 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(800, 900, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
+	uiRectTexture.SetActiveShader();
+	Texture2D& ref = fumod.GetColor();
+	uiRectTexture.SetVec4("rectangle", glm::vec4(200.f, 200.f, ref.GetWidth(), ref.GetHeight()));
+	uiRectTexture.SetTextureUnit("image", ref, 0);
+	uiRectTexture.DrawElements(TriangleStrip, 4);
 
 	glDisable(GL_CULL_FACE);
 	glDisable(GL_DEPTH_TEST);
@@ -478,11 +489,6 @@ void display()
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	/*
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_FRAMEBUFFER, framebufferMod);
-	glDrawBuffers(1, buffers);
-	*/
 	scratchSpace.Bind();
 
 	glClear(GL_COLOR_BUFFER_BIT);
@@ -1055,7 +1061,6 @@ int main(int argc, char** argv)
 
 	glDepthFunc(GL_LESS);
 	glClearColor(0, 0, 0, 1);
-	glLineWidth(5);
 
 	glFrontFace(GL_CCW);
 
@@ -1091,6 +1096,7 @@ int main(int argc, char** argv)
 	GLuint toDisable = 7; 
 	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
 
+
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
@@ -1107,7 +1113,7 @@ int main(int argc, char** argv)
 	sphereMesh.CompileSimple("mesh");
 
 	fontShader.CompileSimple("font");
-
+	uiRectTexture.CompileSimple("ui_rect_texture");
 	texture.Load("Textures/text.png");
 	wallTexture.Load("Textures/flowed.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
@@ -1300,6 +1306,7 @@ int main(int argc, char** argv)
 	sphereMesh.UniformBlockBinding("Camera", 0);
 
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
+	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
 
 	CheckError();

@@ -3,10 +3,28 @@
 #include <fstream>
 #include <glm/ext/matrix_clip_space.hpp>
 #include "log.h"
+#include "Shader.h"
 #include "Vertex.h"
+#include "VertexArray.h"
+
+static std::string fontVertex = "#version 440 core\nlayout(location = 0)\nin vec2 vPos;layout(location = 1) in vec2 vTex \
+;layout(location = 0) out vec2 fTex;uniform mat4 Projection;void main()\
+{	gl_Position = Projection * vec4(vPos, 0, 1);	fTex = vTex;}";
+static std::string fontFragment = "#version 440 core\nlayout(location = 0) in vec2 fTex;\nout vec4 color;uniform sampler2D fontTexture; \
+void main() { float value = texture(fontTexture, fTex).r; if (value == 0) { discard; } color = vec4(1, 1, 1, 1) * value;}";
 
 namespace Font
 {
+	Shader shader;
+	VAO vao;
+
+	void SetupShader()
+	{
+		shader.CompileExplicit(fontVertex.c_str(), fontFragment.c_str());
+		vao.Generate();
+		vao.FillArray<UIVertex>(shader);
+	}
+
 	static std::string basePath = "/";
 
 	void SetFontDirectory(const std::string& directory)
@@ -112,7 +130,6 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 			width = std::max(width, int(std::ceil(quad.x1)));
 			height = std::max(height, int(std::ceil(quad.y1)));
 
-
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
@@ -143,9 +160,22 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	buffer.Generate();
 	buffer.BufferData(results, StaticDraw);
 
-	framebuffer.GetColor().CreateEmpty(width, height);
+	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA);
+	framebuffer.GetColor().SetFilters(MinNearest, MagLinear);
+	framebuffer.Assemble();
 	glm::mat4 projection = glm::ortho<float>(0, width, height, 0);
-
+	framebuffer.Bind();
+	glViewport(0, 0, width, height);
+	glDisable(GL_CULL_FACE);
+	glClearColor(0, 0, 0, 0);
+	glClear(GL_COLOR_BUFFER_BIT);
+	Font::shader.SetActiveShader();
+	Font::shader.SetTextureUnit("fontTexture", this->texture, 0);
+	Font::shader.SetMat4("Projection", projection);
+	Font::vao.BindArrayBuffer(buffer);
+	Font::shader.DrawElements<Triangle>(buffer);
+	BindDefaultFrameBuffer();
+	glEnable(GL_CULL_FACE);
 	return framebuffer;
 }
 
@@ -162,6 +192,7 @@ void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::s
 
 bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
 {
+	Font::SetupShader();
 	std::filesystem::path fontFile(Font::basePath + "/" + filename);
 	if (!std::filesystem::exists(fontFile))
 	{

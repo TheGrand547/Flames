@@ -61,9 +61,29 @@ protected:
 
 	GLuint frameBuffer = 0;
 public:
+	Framebuffer() = default;
+
+	Framebuffer(Framebuffer<ColorAttachments, buffers>&& other) noexcept
+	{
+		std::swap(this->depth, other.depth);
+		std::swap(this->stencil, other.stencil);
+		std::swap(this->depthStencil, other.depthStencil);
+		std::swap(this->colorBuffers, other.colorBuffers);
+		std::swap(this->frameBuffer, other.frameBuffer);
+	}
+
 	~Framebuffer()
 	{
 		this->CleanUp();
+	}
+
+	Framebuffer<ColorAttachments, buffers>& operator=(Framebuffer<ColorAttachments, buffers>&& other) noexcept
+	{
+		std::swap(this->depth, other.depth);
+		std::swap(this->stencil, other.stencil);
+		std::swap(this->depthStencil, other.depthStencil);
+		std::swap(this->colorBuffers, other.colorBuffers);
+		std::swap(this->frameBuffer, other.frameBuffer);
 	}
 
 	void CleanUp()

@@ -5,8 +5,6 @@ layout(location = 1) in vec2 vTex;
 
 layout(location = 0) out vec2 fTex;
 
-uniform mat4 screenProjection;
-
 layout(std140) uniform ScreenSpace
 {
 	mat4 Projection;

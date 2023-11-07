@@ -157,6 +157,7 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="ScreenSpace.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="StaticOctTree.cpp" />
@@ -188,6 +189,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="ScreenSpace.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="StaticOctTree.h" />

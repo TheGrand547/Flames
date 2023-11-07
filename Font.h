@@ -31,6 +31,7 @@ public:
 	void RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message);
 
 	// TODO: Maybe a renderbuffer?
+	// Standard framebuffer is set to active after this is called
 	ColorFrameBuffer Render(const std::string& message);
 
 	// TODO: This is bad
