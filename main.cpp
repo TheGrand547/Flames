@@ -285,11 +285,7 @@ void display()
 	glEnable(GL_CULL_FACE);
 
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	uniform.SetActiveShader();
-
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(cameraRotation);
 
@@ -297,48 +293,22 @@ void display()
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
 
-	glm::vec3 colors(.5f, .5f, .5f);
+	instancing.SetActiveShader();
+	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+	instancing.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	instancing.SetVec3("viewPos", cameraPosition);
+	instancing.SetTextureUnit("textureIn", wallTexture, 0);
+	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 
-	if (flopper)
-	{
-		dither.SetActiveShader();
-		dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-		dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-		dither.SetVec3("viewPos", cameraPosition);
-		dither.SetTextureUnit("textureIn", wallTexture, 0);
-		//dither.SetTextureUnit("textureIn", fumod.GetColor(), 0);
-		dither.SetTextureUnit("ditherMap", ditherTexture, 1);
-
-		texturedVAO.BindArrayBuffer(texturedPlane);
-
-		for (Model& model : planes)
-		{
-			glm::vec3 color(.5f, .5f, .5f);
-			dither.SetMat4("Model", model.GetModelMatrix());
-			//dither.SetVec3("color", color);
-			dither.DrawElements<TriangleStrip>(texturedPlane);
-		}
-	}
-	else
-	{
-		instancing.SetActiveShader();
-		instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-		instancing.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-		instancing.SetVec3("viewPos", cameraPosition);
-		instancing.SetTextureUnit("textureIn", wallTexture, 0);
-		instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
-
-		instanceVAO.BindArrayBuffer(instanceBuffer);
-		glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
-		GLuint raw = instancing.GetProgram();
-		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, planes.size());
-	}
+	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
+	glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
 	plainVAO.BindArrayBuffer(stickBuffer);
 
-	colors = glm::vec3(1, 0, 0);
+	glm::vec3 colors = glm::vec3(1, 0, 0);
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
@@ -1132,25 +1102,58 @@ int main(int argc, char** argv)
 	uniform.CompileSimple("uniform");
 	widget.CompileSimple("widget");
 
+	uniform.UniformBlockBinding("Camera", 0);
+	dither.UniformBlockBinding("Camera", 0);
+	flatLighting.UniformBlockBinding("Camera", 0);
+	instancing.UniformBlockBinding("Camera", 0);
+	sphereMesh.UniformBlockBinding("Camera", 0);
+
+	uiRect.UniformBlockBinding("ScreenSpace", 1);
+	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
+	fontShader.UniformBlockBinding("ScreenSpace", 1);
+
+	// VAO SETUP
+	// TODO: maybe do away with this annoying generate(); fill() pattern, it's annoying
+	fontVAO.Generate();
+	fontVAO.FillArray<UIVertex>(fontShader);
+	
+	instanceVAO.Generate();
+	instanceVAO.FillArray<TextureVertex>(instancing, 0);
+	instanceVAO.FillArray<glm::mat4>(instancing, 1);
+	instanceVAO.BufferBindingPointDivisor(0, 0);
+	instanceVAO.BufferBindingPointDivisor(1, 1);
+
+	meshVAO.Generate();
+	meshVAO.FillArray<MeshVertex>(sphereMesh);
+
+	normalVAO.Generate();
+	normalVAO.FillArray<NormalVertex>(flatLighting);
+
+	plainVAO.Generate();
+	plainVAO.FillArray<Vertex>(uniform);
+
+	texturedVAO.Generate();
+	texturedVAO.FillArray<TextureVertex>(dither);
 
 	// TEXTURE SETUP
 	// TODO: texture loading base path thingy
+	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
+	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	hatching.Load("Textures/hatching.png");
+	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	texture.Load("Textures/text.png");
-	wallTexture.Load("Textures/flowed.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+	wallTexture.Load("Textures/flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
-	CheckError();
 
 	/*
 	mapper.Generate({ "Textures/skybox/right.jpg", "Textures/skybox/left.jpg", "Textures/skybox/top.jpg",
 		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
 	*/
+
+
 	stickBuffer.Generate();
 	stickBuffer.BufferData(stick, StaticDraw);
-
-	plainVAO.Generate();
-	plainVAO.FillArray<Vertex>(uniform);
-
 
 	std::array<TextureVertex, 4> verts{};
 	for (int i = 0; i < 4; i++)
@@ -1162,17 +1165,12 @@ int main(int argc, char** argv)
 	texturedPlane.Generate();
 	texturedPlane.BufferData(verts, StaticDraw);
 
-	texturedVAO.Generate();
-	texturedVAO.FillArray<TextureVertex>(dither);
-
 	planeBO.Generate();
 	planeBO.BufferData(plane, StaticDraw);
-	CheckError();
 
 	plainCube.Generate();
 	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
-	CheckError();
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
@@ -1234,25 +1232,8 @@ int main(int argc, char** argv)
 		awfulTemp.push_back(ref.GetModelMatrix());
 	}
 
-	instanceVAO.Generate();
-	instanceVAO.FillArray<TextureVertex>(instancing, 0);
-	instanceVAO.FillArray<glm::mat4>(instancing, 1);
-
-	// This takes a BUFFER BINDING POINT for some reason
-	glVertexAttribDivisor(1, 1); // Advance every other primitive?
 	instanceBuffer.Generate();
 	instanceBuffer.BufferData(awfulTemp, StaticDraw);
-
-
-
-	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
-	CheckError();
-
-	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
-	CheckError();
-
-	fontVAO.Generate();
-	fontVAO.FillArray<UIVertex>(fontShader);
 
 	// This sucks
 	std::array<TextureVertex, 36> textVert{};
@@ -1281,6 +1262,9 @@ int main(int argc, char** argv)
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
+
+	// FRAMEBUFFER SETUP
+	// TODO: Renderbuffer for buffers that don't need to be directly read
 	depthed.GetColorBuffer<0>().CreateEmpty(1000, 1000, InternalRGB);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
@@ -1292,12 +1276,9 @@ int main(int argc, char** argv)
 
 	depthed.Assemble();
 
-	// Framebuffer stuff
 	scratchSpace.GetColorBuffer().CreateEmpty(1000, 1000, InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	scratchSpace.Assemble();
-	// TODO: Renderbuffer for buffers that don't need to be directly read
-
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
 
@@ -1308,38 +1289,12 @@ int main(int argc, char** argv)
 
 	// Awkward syntax :(
 	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
-		
-	// TODO: maybe do away with this annoying generate(); fill() pattern, it's annoying
-	meshVAO.Generate();
-	meshVAO.FillArray<MeshVertex>(sphereMesh);
-
-	normalVAO.Generate();
-	normalVAO.FillArray<NormalVertex>(flatLighting);
 
 	stickIndicies.Generate();
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
 	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
-
-	CheckError();
-
-	hatching.Load("Textures/hatching.png");
-	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
-
-	CheckError();
-
-	uniform.UniformBlockBinding("Camera", 0);
-	dither.UniformBlockBinding("Camera", 0);
-	flatLighting.UniformBlockBinding("Camera", 0);
-	instancing.UniformBlockBinding("Camera", 0);
-	sphereMesh.UniformBlockBinding("Camera", 0);
-
-	uiRect.UniformBlockBinding("ScreenSpace", 1);
-	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
-	fontShader.UniformBlockBinding("ScreenSpace", 1);
-
-	CheckError();
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();

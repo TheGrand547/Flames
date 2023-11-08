@@ -54,7 +54,7 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, co
 	float originX = x, originY = y;
 	stbtt_aligned_quad quad{};
 	
-	int width = 0, height = this->lineSkip;
+	int width = 0, height = int(std::ceil(this->lineSkip));
 
 	for (char letter : message)
 	{
@@ -103,6 +103,7 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coo
 	this->RenderToScreen(buffer, coords.x, coords.y, message);
 }
 
+// TODO: this is a mess man
 ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 {
 	ColorFrameBuffer framebuffer;
@@ -118,7 +119,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	float originX = 0, originY = y;
 	stbtt_aligned_quad quad{};
 
-	int width = 0, height = this->lineSkip;
+	int width = 0, height = int(std::ceil(this->lineSkip));
 
 	for (char letter : message)
 	{
@@ -161,12 +162,12 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	buffer.BufferData(results, StaticDraw);
 
 	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA);
-	framebuffer.GetColor().SetFilters(LinearLinear, MagLinear);
+	// Don't want artifacting
+	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
 	framebuffer.Assemble();
-	glm::mat4 projection = glm::ortho<float>(0, width, height, 0);
+	glm::mat4 projection = glm::ortho<float>(0.f, float(width), float(height), 0.f);
 	framebuffer.Bind();
 	glViewport(0, 0, width, height);
-	glDisable(GL_CULL_FACE);
 	glClearColor(0, 0, 0, 0);
 	glClear(GL_COLOR_BUFFER_BIT);
 	Font::shader.SetActiveShader();
@@ -175,7 +176,6 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawElements<Triangle>(buffer);
 	BindDefaultFrameBuffer();
-	glEnable(GL_CULL_FACE);
 	return framebuffer;
 }
 
