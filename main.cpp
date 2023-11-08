@@ -554,6 +554,9 @@ bool smartBoxCollide()
 	return val;
 }
 
+glm::quat oldMan{};
+glm::quat newMan{};
+
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 void idle()
@@ -679,12 +682,13 @@ void idle()
 	glm::vec3 lineThing = GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.1f; // Extend to account for slopes a bit
 	AABB lineBox(smartBox.Center(), smartBox.Center() + lineThing);
 	bool gab = false;
-	std::array<glm::vec3, 12> visuals{};
-	//visuals.fill(glm::vec3(0.f));
-	visuals.fill(smartBox.Center());
-	visuals[1] += lineThing;
-	//rayBuffer.BufferSubData(visuals);
 
+	if (frameCounter % 2000 == 0)
+	{
+		std::swap(oldMan, newMan);
+	}
+	unsigned int modded = frameCounter % 2000;
+	smartBox.ReOrient(glm::toMat4(glm::lerp(oldMan, newMan, modded / 2000.f)));
 
 	for (auto& hit : boxes.Search(lineBox))
 	{
@@ -743,7 +747,7 @@ void idle()
 	}
 	else
 	{
-		std::cout << "Denied " << frameCounter << std::endl;
+		//std::cout << "Denied " << frameCounter << std::endl;
 		boxForces += boxGravity;
 	}
 	// A = F / M
@@ -754,10 +758,10 @@ void idle()
 	smartBoxPhysics.velocity += smartBoxPhysics.acceleration;
 	if (glm::length(smartBoxPhysics.velocity) > 2.f)
 		smartBoxPhysics.velocity = glm::normalize(smartBoxPhysics.velocity) * 2.f;
-	smartBox.Translate(smartBoxPhysics.velocity);
+	//smartBox.Translate(smartBoxPhysics.velocity);
 	smartBoxPhysics.velocity *= 0.99f;
 
-	smartBoxColor = smartBoxCollide();
+	//smartBoxColor = smartBoxCollide();
 	if (staticFrictionCoeff >= glm::tan(glm::acos(cose)))
 	{
 		//smartBoxPhysics.axisOfGaming = oldNormal;
@@ -1336,6 +1340,8 @@ int main(int argc, char** argv)
 	rays[3] = glm::normalize(glm::cross(rays[5], rays[1]));
 
 	std::swap(rays[1], rays[5]);
+
+	glm::mat3 lame{};
 	//rays[1] *= -1;
 
 	rays[2 * leastD + 1] = least;
@@ -1345,6 +1351,15 @@ int main(int argc, char** argv)
 	{
 		rays[2 * newD + 1] *= -1;
 	}
+	lame[leastD] = least;
+	lame[mostD] = newMost;
+	lame[newD] = rays[2 * newD + 1];
+	glm::mat4 newerst(lame);
+	newerst[3].w = 1;
+	oldMan = smartBox.GetModelMatrix();
+	newMan = newerst;
+	//smartBox.ReOrient(newerst);
+	std::cout << glm::degrees(glm::dot(oldMan, newMan)) << std::endl;
 
 	rayBuffer.BufferData(rays, StaticDraw);
 
