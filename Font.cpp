@@ -161,7 +161,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	buffer.BufferData(results, StaticDraw);
 
 	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA);
-	framebuffer.GetColor().SetFilters(MinNearest, MagLinear);
+	framebuffer.GetColor().SetFilters(LinearLinear, MagLinear);
 	framebuffer.Assemble();
 	glm::mat4 projection = glm::ortho<float>(0, width, height, 0);
 	framebuffer.Bind();

@@ -108,5 +108,10 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, (GLsizei) width, (GLsizei) height, 0, format, typed, nullptr);
 	this->width = width;
 	this->height = height;
+}
+
+void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, GLint level)
+{
+	this->CreateEmpty(width, height, type, level);
 	this->SetFilters();
 }

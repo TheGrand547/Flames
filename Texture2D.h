@@ -44,6 +44,7 @@ public:
 	inline void BindTexture(GLuint slot = 0) const;
 	void Load(const std::string& filename, TextureFormatInternal internal = InternalRGBA);
 	void CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, GLint level = 0);
+	void CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, GLint level = 0);
 	template <class T> void Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat, 
 								TextureDataInput dataFormat, std::size_t width, std::size_t height);
 	template <class T, std::size_t L> void Load(const std::array<T, L>& data, TextureFormatInternal internal, TextureFormat textureFormat, 

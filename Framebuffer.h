@@ -7,8 +7,8 @@
 #include "log.h"
 #include "Texture2D.h"
 
+// Absolute hack move, but I can't really find it out at compile time soooooo
 constexpr int MaxFrameBufferColorAttachments = 16;
-
 
 enum FrameBufferAttachments
 {
@@ -19,19 +19,12 @@ enum FrameBufferAttachments
 	DepthAndStencil // Depth and Stencil as seperate textures
 };
 
-enum FrameBufferTypes
-{
-	DrawBuffer      = GL_DRAW_FRAMEBUFFER,
-	ReadBuffer      = GL_READ_FRAMEBUFFER,
-	ReadWriteBuffer = GL_FRAMEBUFFER,
-};
-
-// TODO: One of these but for renderbuffers instead, faster
+// TODO: One of these but with renderbuffers instead, faster
 
 template<std::size_t ColorAttachments = 1, FrameBufferAttachments buffers = Depth>
 	requires requires
 {
-	ColorAttachments >= 0 && ColorAttachments < 16; // TODO: Get from the GL library thing
+	ColorAttachments >= 0 && ColorAttachments < MaxFrameBufferColorAttachments;
 }
 class Framebuffer
 {
@@ -48,7 +41,7 @@ protected:
 	std::conditional_t<HasCombined, Texture2D, std::monostate> depthStencil;
 	std::conditional_t<HasColor, std::array<Texture2D, ColorAttachments>, std::monostate> colorBuffers{};
 
-	static constexpr std::conditional_t<HasColor, std::array<GLenum, ColorAttachments>, std::monostate> drawBuffermacro =
+	static constexpr std::conditional_t<HasColor, std::array<GLenum, ColorAttachments>, std::monostate> drawBufferMacro =
 		[]() {
 		std::array<GLenum, ColorAttachments> temp{};
 		temp.fill(GL_COLOR_ATTACHMENT0);
@@ -148,6 +141,8 @@ public:
 		return this->colorBuffers[i];
 	}
 
+	// TODO: version of assemble where it creates the textures at a specified size and format
+
 	bool Assemble()
 	{
 		if (this->frameBuffer)
@@ -195,14 +190,27 @@ public:
 		return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
 	}
 
+	// Binds the framebuffer to both the read and write positions
 	inline void Bind()
 	{
 		glBindFramebuffer(GL_FRAMEBUFFER, this->frameBuffer);
 		if constexpr (HasColor)
 		{
-			glDrawBuffers(ColorAttachments, drawBuffermacro.data());
+			glDrawBuffers(ColorAttachments, drawBufferMacro.data());
 		}
 	}
+
+	inline void BindDraw()
+	{
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, this->frameBuffer);
+	}
+
+	inline void BindRead()
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, this->frameBuffer);
+	}
+
+	// TODO: Framebuffer blits and reads but I don't wanna do those so who cares
 };
 
 typedef Framebuffer<1, OnlyColor> ColorFrameBuffer;

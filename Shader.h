@@ -184,7 +184,7 @@ template<PrimitiveDrawingType type> inline void Shader::DrawIndexed(Buffer<Eleme
 		(const void*)(buffer.GetElementSize() * elementOffset));
 }
 
-// TODO: Some kind of type inference thingy for index types bullshit
+// TODO: Some kind of type inference thingy for index types bullshit <- What does this mean
 template<PrimitiveDrawingType type, class Container> inline void Shader::DrawIndexedMemory(const Container& contents)
 {
 	//constexpr GLuint offset = 
