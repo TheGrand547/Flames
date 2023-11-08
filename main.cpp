@@ -182,7 +182,7 @@ ColorFrameBuffer scratchSpace;
 Shader dither, expand, finalResult, frameShader, flatLighting, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
 // Textures
-Texture2D ditherTexture, hatching, normalModifier, texture, wallTexture;
+Texture2D ditherTexture, hatching, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -281,9 +281,9 @@ void display()
 
 	depthed.Bind();
 	glViewport(0, 0, 1000, 1000);
+	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	// Camera matrix
@@ -386,7 +386,6 @@ void display()
 	glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
-	glEnable(GL_CULL_FACE);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	flatLighting.SetActiveShader();
 
@@ -454,54 +453,47 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(800, 900, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
-	// TODO: Somehow this is once again borked but I don't care to deal with it now
 	uiRectTexture.SetActiveShader();
 	Texture2D& ref = fumod.GetColor();
 	uiRectTexture.SetVec4("rectangle", glm::vec4(200.f, 200.f, ref.GetWidth(), ref.GetHeight()));
 	uiRectTexture.SetTextureUnit("image", ref, 0);
 	uiRectTexture.DrawElements(TriangleStrip, 4);
 
-	glDisable(GL_CULL_FACE);
-	glDisable(GL_DEPTH_TEST);
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(boring);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(boring);
 	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	scratchSpace.Bind();
-
+	glClearColor(0, 0, 0, 1);
 	glClear(GL_COLOR_BUFFER_BIT);
 
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
-
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_CULL_FACE);;
+	
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
 	frameShader.SetTextureUnit("depth", depthed.GetDepth(), 1);
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
-
-	frameShader.DrawElements<TriangleStrip>(4);
-
-	//glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	BindDefaultFrameBuffer();
-	expand.SetActiveShader();
-	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
-	expand.SetTextureUnit("edges", normalModifier, 1);
-	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
-
-	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 	
+	BindDefaultFrameBuffer();
+	glClearColor(1, 0.5, 0.25, 1);
+	glClear(GL_DEPTH_BUFFER_BIT);
+
+	expand.SetActiveShader();
+	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
+	expand.SetTextureUnit("edges", depthed.GetColorBuffer<1>(), 1);
+	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
+	expand.SetInt("depth", 5);
+	frameShader.DrawElements<TriangleStrip>(4);
+
 	// TODO: This is reversed <- wtf are you saying
 	glLineWidth(1.f);
 	widget.SetActiveShader();
@@ -1045,7 +1037,8 @@ int main(int argc, char** argv)
 	//glDisable(GL_LINE_SMOOTH);
 	//glDisable(GL_POLYGON_SMOOTH);
 
-	glDepthFunc(GL_LESS);
+	//glDepthFunc(GL_LESS);
+	glDepthFunc(GL_LEQUAL);
 	glClearColor(0, 0, 0, 1);
 
 	glFrontFace(GL_CCW);
@@ -1324,7 +1317,6 @@ int main(int argc, char** argv)
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
-	//glClearColor(1.f, 1.f, 1.f, 1.f);
 	glClearColor(0.f, 0.f, 0.f, 0.f);
 	CheckError();
 	glutMainLoop();

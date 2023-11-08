@@ -22,11 +22,11 @@ enum TextureMinFilter
 
 	// Quantized, with quantized mipmapping
 	NearestNearest = GL_NEAREST_MIPMAP_NEAREST,
-	// Quantized, with linear mipmapping
+	// Quantized, with trilinear filtered mipmapping
 	NearestLinear  = GL_NEAREST_MIPMAP_LINEAR,
 	// Bilinear, with quantized mipmapping
 	LinearNearest  = GL_LINEAR_MIPMAP_NEAREST,
-	// Bilinear, with linear mipmapping - aka Trilinear
+	// Bilinear, with trilinear filtered mipmapping
 	LinearLinear   = GL_LINEAR_MIPMAP_LINEAR
 };
 

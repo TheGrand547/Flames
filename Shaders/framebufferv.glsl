@@ -14,6 +14,6 @@ vec2 uvCoords[] = {
 
 void main()
 {
-	gl_Position = vec4(positions[gl_VertexID], 0, 1);
+	gl_Position = vec4(positions[gl_VertexID].xy, 0, 1);
 	textureCoords = uvCoords[gl_VertexID];
 }

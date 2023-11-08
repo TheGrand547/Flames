@@ -68,8 +68,8 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, co
 
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
@@ -132,8 +132,8 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 			height = std::max(height, int(std::ceil(quad.y1)));
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
