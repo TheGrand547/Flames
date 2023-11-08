@@ -370,6 +370,7 @@ void display()
 	dither.SetMat4("Model", smartBox.GetModelMatrix());
 	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
 	*/
+	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
@@ -378,10 +379,8 @@ void display()
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
-	uniform.SetVec3("color", glm::vec3(0.7f, 0.5f, 1.f));
-	uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(15.f);
-	//uniform.DrawElements<Lines>(rayBuffer);
+	uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(1.f);
 	glEnable(GL_DEPTH_TEST);
 
@@ -475,6 +474,7 @@ void display()
 
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 	
+	/*
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
 	frameShader.SetTextureUnit("depth", depthed.GetDepth(), 1);
@@ -482,7 +482,7 @@ void display()
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
 	frameShader.DrawElements<TriangleStrip>(4);
-	
+	*/
 	BindDefaultFrameBuffer();
 	glClearColor(1, 0.5, 0.25, 1);
 	glClear(GL_DEPTH_BUFFER_BIT);
@@ -683,7 +683,7 @@ void idle()
 	//visuals.fill(glm::vec3(0.f));
 	visuals.fill(smartBox.Center());
 	visuals[1] += lineThing;
-	rayBuffer.BufferSubData(visuals);
+	//rayBuffer.BufferSubData(visuals);
 
 
 	for (auto& hit : boxes.Search(lineBox))
@@ -877,7 +877,7 @@ void keyboard(unsigned char key, int x, int y)
 		//		verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, glm::vec3(2, 0, 0)) * 100.f;
 		//	}*/
 		//}
-		rayBuffer.BufferSubData(verts);
+		//rayBuffer.BufferSubData(verts);
 	}
 }
 
@@ -1255,13 +1255,12 @@ int main(int argc, char** argv)
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
-
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
-	depthed.GetColorBuffer<0>().CreateEmpty(1000, 1000, InternalRGB);
+	depthed.GetColorBuffer<0>().CreateEmpty(1000, 1000, InternalRGBA);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGB);
+	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGBA);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepthFloat32);
@@ -1292,13 +1291,62 @@ int main(int argc, char** argv)
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
 	smartBox.ReCenter(glm::vec3(1.2f, 0.6f, 0));
-	smartBox.ReOrient(glm::vec3(0, 90, 0));
+	smartBox.ReOrient(glm::vec3(0, 0, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
+
+	OBB checked(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
+	checked.Scale(glm::vec3(1, 0.0625f, 1));
+	rays.fill(glm::vec3(0));
+	float minDot = INFINITY, maxDot = -INFINITY;
+	int minDotI = 0, maxDotI = 0;
+	for (std::size_t i = 0; i < 3; i++)
+	{
+		float local = glm::abs(glm::dot(smartBox[i], checked.Up()));
+		if (local < minDot)
+		{
+			minDot = local;
+			minDotI = i;
+		}
+		if (local > maxDot)
+		{
+			maxDot = local;
+			maxDotI = i;
+		}
+		//rays[6 + i * 2] = smartBox[i];
+	}
+	// Leasted aligned keeps its index
+	// Middle is replaced with least cross intersection
+	// Most is replaced with the negative of new middle cross least
+	glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
+	glm::vec3 newMost = checked.Up();                              // goes in smartbox[maxDotI]
+	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
+
+	int leastD = minDotI;
+	int mostD = maxDotI;
+	int newD = 3 - leastD - mostD;
+
+	//std::cout << "L:" << minDotI << "," << smartBox[minDotI] << std::endl << "M:" << maxDotI << ", " << smartBox[maxDotI] << std::endl;
+	rays[1] = smartBox[minDotI];
+	rays[5] = glm::normalize(glm::cross(smartBox[minDotI], checked.Up()));
+	rays[3] = glm::normalize(glm::cross(rays[5], rays[1]));
+
+	std::swap(rays[1], rays[5]);
+	//rays[1] *= -1;
+
+	rays[2 * leastD + 1] = least;
+	rays[2 * mostD + 1]  = newMost;
+	rays[2 * newD + 1]   = newest;
+	if (leastD > mostD)
+	{
+		rays[2 * newD + 1] *= -1;
+	}
+
+	rayBuffer.BufferData(rays, StaticDraw);
 
 	CheckError();
 
