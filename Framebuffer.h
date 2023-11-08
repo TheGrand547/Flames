@@ -147,8 +147,7 @@ public:
 	{
 		if (this->frameBuffer)
 		{
-			glDeleteFramebuffers(1, &this->frameBuffer);
-			this->frameBuffer = 0;
+			this->CleanUp();
 		}
 		glGenFramebuffers(1, &this->frameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, this->frameBuffer);

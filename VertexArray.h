@@ -261,6 +261,26 @@ template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint
 	this->bindingPoint = bindingPoint;
 }
 
+// Sloppy but who gives a shit(me)
+template<> inline void VertexArray::FillArray<glm::mat4>(Shader& shader, GLuint bindingPoint)
+{
+	glBindVertexArray(this->array);
+	glVertexAttribFormat(shader.Index("Model"), 4, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(shader.Index("Model") + 1, 4, GL_FLOAT, GL_FALSE, 16);
+	glVertexAttribFormat(shader.Index("Model") + 2, 4, GL_FLOAT, GL_FALSE, 32);
+	glVertexAttribFormat(shader.Index("Model") + 3, 4, GL_FLOAT, GL_FALSE, 48);
+	glVertexAttribBinding(shader.Index("Model"), bindingPoint);
+	glVertexAttribBinding(shader.Index("Model") + 1, bindingPoint);
+	glVertexAttribBinding(shader.Index("Model") + 2, bindingPoint);
+	glVertexAttribBinding(shader.Index("Model") + 3, bindingPoint);
+	glEnableVertexAttribArray(shader.Index("Model"));
+	glEnableVertexAttribArray(shader.Index("Model") + 1);
+	glEnableVertexAttribArray(shader.Index("Model") + 2);
+	glEnableVertexAttribArray(shader.Index("Model") + 3);
+	this->stride = sizeof(glm::mat4);
+	this->bindingPoint = bindingPoint;
+}
+
 template<class T> static void VertexArray::GenerateArrays(T& arrays)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(arrays))>::type, VertexArray>::value);

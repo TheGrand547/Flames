@@ -3,9 +3,9 @@
 layout(location = 0) in vec3 vPos;
 layout(location = 1) in vec2 vTex;
 
-out vec3 fNorm;
-out vec3 fPos;
-out vec2 fTex;
+layout(location = 0) out vec3 fPos;
+layout(location = 1) out vec3 fNorm;
+layout(location = 2) out vec2 fTex;
 
 uniform mat4 Model;
 // TODO: Normal matrix

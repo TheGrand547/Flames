@@ -1,8 +1,8 @@
 #version 440 core
 
-in vec3 fNorm;
-in vec3 fPos;
-in vec2 fTex;
+layout(location = 0) in vec3 fPos;
+layout(location = 1) in vec3 fNorm;
+layout(location = 2) in vec2 fTex;
 
 layout(location = 0) out vec4 colorOut;
 layout(location = 1) out vec4 normalOut;

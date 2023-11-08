@@ -169,7 +169,7 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 const int ditherSize = 16;
 
 // Buffers
-Buffer<ArrayBuffer> albertBuffer, capsuleBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+Buffer<ArrayBuffer> albertBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -179,14 +179,14 @@ Framebuffer<2, Depth> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, uiRect, uiRectTexture, uniform, sphereMesh, widget;
+Shader dither, expand, finalResult, frameShader, flatLighting, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
 // Textures
 Texture2D ditherTexture, hatching, normalModifier, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
-VAO texturedVAO, normalVAO, plainVAO, meshVAO;
+VAO instanceVAO, meshVAO, normalVAO, plainVAO, texturedVAO;
 
 
 // TODO: Make structures around these
@@ -276,7 +276,11 @@ ASCIIFont fonter;
 bool flopper = false;
 void display()
 {
+	auto fumod = fonter.Render("lets goo");
+	fumod.GetColor().SetFilters(LinearLinear, MagLinear);
+
 	depthed.Bind();
+	glViewport(0, 0, 1000, 1000);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 
@@ -285,7 +289,6 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	uniform.SetActiveShader();
-	//glm::mat4 projection = glm::perspective(glm::radians(70.f), 1.f, zNear, zFar);
 
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(cameraRotation);
@@ -294,29 +297,41 @@ void display()
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
 
-	dither.SetActiveShader();
 	glm::vec3 colors(.5f, .5f, .5f);
-	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	dither.SetVec3("viewPos", cameraPosition);
 
-	auto fumod = fonter.Render("lets goo");
-	fumod.GetColor().SetFilters(LinearLinear, MagLinear);
-	depthed.Bind();
-	dither.SetActiveShader();
-	//dither.SetTextureUnit("textureIn", wallTexture, 0);
-	dither.SetTextureUnit("textureIn", fumod.GetColor(), 0);
-	dither.SetTextureUnit("ditherMap", ditherTexture, 1);
-	glViewport(0, 0, 1000, 1000);
-
-	texturedVAO.BindArrayBuffer(texturedPlane);
-
-	for (Model& model : planes)
+	if (flopper)
 	{
-		glm::vec3 color(.5f, .5f, .5f);
-		dither.SetMat4("Model", model.GetModelMatrix());
-		dither.SetVec3("color", color);
-		dither.DrawElements<TriangleStrip>(texturedPlane);
+		dither.SetActiveShader();
+		dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+		dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+		dither.SetVec3("viewPos", cameraPosition);
+		dither.SetTextureUnit("textureIn", wallTexture, 0);
+		//dither.SetTextureUnit("textureIn", fumod.GetColor(), 0);
+		dither.SetTextureUnit("ditherMap", ditherTexture, 1);
+
+		texturedVAO.BindArrayBuffer(texturedPlane);
+
+		for (Model& model : planes)
+		{
+			glm::vec3 color(.5f, .5f, .5f);
+			dither.SetMat4("Model", model.GetModelMatrix());
+			//dither.SetVec3("color", color);
+			dither.DrawElements<TriangleStrip>(texturedPlane);
+		}
+	}
+	else
+	{
+		instancing.SetActiveShader();
+		instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+		instancing.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+		instancing.SetVec3("viewPos", cameraPosition);
+		instancing.SetTextureUnit("textureIn", wallTexture, 0);
+		instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
+
+		instanceVAO.BindArrayBuffer(instanceBuffer);
+		glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
+		GLuint raw = instancing.GetProgram();
+		glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, planes.size());
 	}
 
 	/* STICK FIGURE GUY */
@@ -469,6 +484,7 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(800, 900, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
+	// TODO: Somehow this is once again borked but I don't care to deal with it now
 	uiRectTexture.SetActiveShader();
 	Texture2D& ref = fumod.GetColor();
 	uiRectTexture.SetVec4("rectangle", glm::vec4(200.f, 200.f, ref.GetWidth(), ref.GetHeight()));
@@ -618,7 +634,7 @@ void idle()
 	{
 		averageFps += i / frames.size();
 	}
-	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\n", averageFps));
+	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\n{}", averageFps, (flopper) ? "true" : "false"));
 	// End of Rolling buffer
 
 	float speed = 3 * timeDelta;
@@ -1100,20 +1116,25 @@ int main(int argc, char** argv)
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
+
+
+	// SHADER SETUP
 	Shader::SetBasePath("Shaders/");
-	// TODO: texture loading base path thingy
-
-	uniform.CompileSimple("uniform");
 	dither.CompileSimple("light_text_dither");
+	expand.Compile("framebuffer", "expand");
+	fontShader.CompileSimple("font");
 	flatLighting.CompileSimple("lightflat");
-
+	frameShader.CompileSimple("framebuffer");
+	instancing.CompileSimple("instance");
+	sphereMesh.CompileSimple("mesh");
+	uiRect.CompileSimple("ui_rect");
+	uiRectTexture.CompileSimple("ui_rect_texture");
+	uniform.CompileSimple("uniform");
 	widget.CompileSimple("widget");
 
-	frameShader.CompileSimple("framebuffer");
-	sphereMesh.CompileSimple("mesh");
 
-	fontShader.CompileSimple("font");
-	uiRectTexture.CompileSimple("ui_rect_texture");
+	// TEXTURE SETUP
+	// TODO: texture loading base path thingy
 	texture.Load("Textures/text.png");
 	wallTexture.Load("Textures/flowed.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
@@ -1181,6 +1202,9 @@ int main(int argc, char** argv)
 	rayBuffer.Generate();
 	rayBuffer.BufferData(rays, StaticDraw);
 
+
+	// CREATING OF THE PLANES
+
 	for (int i = -5; i <= 5; i++)
 	{
 		if (abs(i) <= 1)
@@ -1197,17 +1221,29 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 
-	// Slope
 	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
 
+	std::vector<glm::mat4> awfulTemp{};
+	awfulTemp.reserve(planes.size());
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
 		OBB project(ref);
 		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
+		awfulTemp.push_back(ref.GetModelMatrix());
 	}
-	Model oops = planes[planes.size() / 2 + 1];
+
+	instanceVAO.Generate();
+	instanceVAO.FillArray<TextureVertex>(instancing, 0);
+	instanceVAO.FillArray<glm::mat4>(instancing, 1);
+
+	// This takes a BUFFER BINDING POINT for some reason
+	glVertexAttribDivisor(1, 1); // Advance every other primitive?
+	instanceBuffer.Generate();
+	instanceBuffer.BufferData(awfulTemp, StaticDraw);
+
+
 
 	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
 	CheckError();
@@ -1218,6 +1254,7 @@ int main(int argc, char** argv)
 	fontVAO.Generate();
 	fontVAO.FillArray<UIVertex>(fontShader);
 
+	// This sucks
 	std::array<TextureVertex, 36> textVert{};
 	for (std::size_t i = 0; i < 36; i++)
 	{
@@ -1263,32 +1300,24 @@ int main(int argc, char** argv)
 
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-	uiRect.CompileSimple("ui_rect");
-	expand.Compile("framebuffer", "expand");
 
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 
 	Font::SetFontDirectory("Fonts");
 
+	// Awkward syntax :(
 	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
 		
-
-	CheckError();
+	// TODO: maybe do away with this annoying generate(); fill() pattern, it's annoying
 	meshVAO.Generate();
-	CheckError();
 	meshVAO.FillArray<MeshVertex>(sphereMesh);
 
 	normalVAO.Generate();
-	CheckError();
 	normalVAO.FillArray<NormalVertex>(flatLighting);
-
-	CheckError();
 
 	stickIndicies.Generate();
 	stickIndicies.BufferData(stickDex, StaticDraw);
-
-	CheckError();
 
 	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
@@ -1303,6 +1332,7 @@ int main(int argc, char** argv)
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
+	instancing.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 
 	uiRect.UniformBlockBinding("ScreenSpace", 1);

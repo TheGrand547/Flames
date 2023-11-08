@@ -218,7 +218,9 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 	if (this->buffer)
 	{
 		glBindBuffer(Type, this->buffer);
+		CheckError();
 		glBufferData(Type, data.size() * sizeof(T), data.data(), (GLenum) usage);
+		CheckError();
 		this->length = data.size() * sizeof(T);
 		this->elementCount = (GLsizei) data.size();
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
