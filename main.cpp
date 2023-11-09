@@ -528,6 +528,106 @@ bool smartBoxCollide()
 		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
+			float minDot = INFINITY, maxDot = -INFINITY;
+			int minDotI = 0, maxDotI = 0;
+			float minSign = 0, maxSign = 0;
+			glm::vec3 upper = c.axis;
+			for (std::size_t i = 0; i < 3; i++)
+			{
+				float sign = glm::sign(glm::dot(smartBox[i], upper));
+				float local = glm::abs(glm::dot(smartBox[i], upper));
+				if (local < minDot)
+				{
+					minDot = local;
+					minDotI = i;
+					minSign = sign;
+				}
+				if (local > maxDot)
+				{
+					maxDot = local;
+					maxDotI = i;
+					maxSign = sign;
+				}
+			}
+			//if (glm::abs(maxDotI - 1) < EPSILON)
+			{
+				if (glm::abs(minSign) < EPSILON)
+				{
+					minSign = 1.f;
+				}
+				//std::cout << "Dots: " << minDotI << ", " << maxDotI << std::endl;
+				//std::cout << "Signs" << minSign << ", " << maxSign << std::endl;
+				glm::mat3 goobers{smartBox[0], smartBox[1], smartBox[2]};
+				// Leasted aligned keeps its index
+				// Middle is replaced with least cross intersection
+				// Most is replaced with the negative of new middle cross least
+				glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
+				glm::vec3 newMost = upper;                              // goes in smartbox[maxDotI]
+				glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
+
+				//std::cout << least << "," << newMost << std::endl;
+				int leastD = minDotI;
+				int mostD = maxDotI;
+				int newD = 3 - leastD - mostD;
+				/*
+				0, 1 -> no adjustment needed
+				0, 2 -> multiplied by -1
+				1, 0 -> multiplied by -1
+				1, 2 -> no adjustment
+				2, 0 -> no adjustment
+				2, 1 -> multiplied by -1
+				*/
+				//if ((leastD == 0 && mostD == 2) || (leastD == 1 && mostD == 2) || (leastD == 2 && mostD == 1))
+					//newest *= -1;
+				least *= glm::sign(glm::dot(least, goobers[minDotI]));
+				newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
+				newest *= glm::sign(glm::dot(newest, goobers[newD]));
+				//std::cout << glm::dot(newest, goobers[maxDotI]) << std::endl;
+				// Correct for the wrong cross product ordering
+				//if (leastD > mostD)
+					//newest *= -1;
+
+				// WIP
+				//newest *= minSign;
+				//newMost *= maxSign;
+
+				glm::mat3 lame{};
+				lame[leastD] = least;
+				lame[mostD] = newMost;
+				lame[newD] = newest;
+				glm::mat4 newerst(lame);
+				newerst[3].w = 1;
+				glm::quat older = smartBox.GetNormalMatrix();
+				glm::quat newer = newerst;
+				older = glm::normalize(older);
+				newer = glm::normalize(newer);
+				float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+				float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
+				/*
+				std::cout << maxDelta << "," << glm::degrees(maxDelta) <<  std::endl;
+				std::cout << glm::acos(glm::dot(older, newer)) << std::endl;
+				std::cout << older << std::endl;
+				std::cout << newer << std::endl;
+				*/
+				if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+				{
+					smartBox.ReOrient(glm::toMat4(glm::normalize(glm::lerp(older, newer, maxDelta / 2.f))));
+				}
+				std::array<glm::vec3, 12> rays{};
+				rays.fill(glm::vec3(0));
+				rays[1] = lame[0];
+				rays[3] = lame[1];
+				rays[5] = lame[2];
+
+				glm::vec3 miniOff(0, 1, 0);
+				rays[6] = miniOff;
+				rays[7] = miniOff + goobers[0];
+				rays[8] = miniOff;
+				rays[9] = miniOff + goobers[1];
+				rays[10] = miniOff;
+				rays[11] = miniOff + goobers[2];
+				rayBuffer.BufferData(rays, StaticDraw);
+			}
 			/*
 			collides++;
 			float orientation = glm::dot(GravityAxis, c.normal);
@@ -602,7 +702,8 @@ void idle()
 	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\n{}", averageFps, (flopper) ? "true" : "false"));
 	// End of Rolling buffer
 
-	float speed = 3 * timeDelta;
+	float speed = 4 * timeDelta;
+	float turnSpeed = 100 * timeDelta;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -617,8 +718,8 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0));
-	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0));
+	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
+	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState['p'] || keyState['P'])
 		std::cout << previous << std::endl;
 	if (keyState['w'] || keyState['W'])
@@ -676,7 +777,9 @@ void idle()
 	glm::vec3 boxForces{ 0.f };
 
 	if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
+	if (keyState[ArrowKeyUp])   smartBox.Translate(smartBox.Forward() * speed);
 	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
+	if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
 	// Box is colliding with *something* pointing up
 	//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 	glm::vec3 lineThing = GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.1f; // Extend to account for slopes a bit
@@ -688,7 +791,7 @@ void idle()
 		std::swap(oldMan, newMan);
 	}
 	unsigned int modded = frameCounter % 2000;
-	smartBox.ReOrient(glm::toMat4(glm::lerp(oldMan, newMan, modded / 2000.f)));
+	//smartBox.ReOrient(glm::toMat4(glm::lerp(oldMan, newMan, modded / 2000.f)));
 
 	for (auto& hit : boxes.Search(lineBox))
 	{
@@ -761,7 +864,7 @@ void idle()
 	//smartBox.Translate(smartBoxPhysics.velocity);
 	smartBoxPhysics.velocity *= 0.99f;
 
-	//smartBoxColor = smartBoxCollide();
+	smartBoxColor = smartBoxCollide();
 	if (staticFrictionCoeff >= glm::tan(glm::acos(cose)))
 	{
 		//smartBoxPhysics.axisOfGaming = oldNormal;
@@ -1359,7 +1462,6 @@ int main(int argc, char** argv)
 	oldMan = smartBox.GetModelMatrix();
 	newMan = newerst;
 	//smartBox.ReOrient(newerst);
-	std::cout << glm::degrees(glm::dot(oldMan, newMan)) << std::endl;
 
 	rayBuffer.BufferData(rays, StaticDraw);
 

@@ -328,7 +328,7 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		{
 			if (abs(parallel) > scale)
 			{
-				std::cout << "Parallel check" << std::endl;
+				//std::cout << "Parallel check" << std::endl;
 				return false;
 			}
 			else

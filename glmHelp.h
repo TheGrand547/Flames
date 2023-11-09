@@ -3,6 +3,7 @@
 #define GLM_HELP_H
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <iostream>
 
 #define RotateX(matrix, radians) glm::rotate(matrix, radians, glm::vec3(1.f, 0.f, 0.f))
@@ -29,6 +30,20 @@ std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)
 	{
 		os << vec[i];
 		if (i != T - 1)
+			os << ", ";
+	}
+	os << ")";
+	return os;
+}
+
+//  SLOPPY
+inline std::ostream& operator<<(std::ostream& os, const glm::quat& vec)
+{
+	os << "(";
+	for (glm::length_t i = 0; i < 4; i++)
+	{
+		os << vec[i];
+		if (i != 4 - 1)
 			os << ", ";
 	}
 	os << ")";
