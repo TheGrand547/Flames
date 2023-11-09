@@ -529,10 +529,9 @@ bool smartBoxCollide()
 		if (smartBox.Overlap(letsgo->box, c))
 		{
 			float minDot = INFINITY, maxDot = -INFINITY;
-			int minDotI = 0, maxDotI = 0;
-			float minSign = 0, maxSign = 0;
+			glm::length_t minDotI = 0, maxDotI = 0;
 			glm::vec3 upper = c.axis;
-			for (std::size_t i = 0; i < 3; i++)
+			for (glm::length_t i = 0; i < 3; i++)
 			{
 				float sign = glm::sign(glm::dot(smartBox[i], upper));
 				float local = glm::abs(glm::dot(smartBox[i], upper));
@@ -540,23 +539,17 @@ bool smartBoxCollide()
 				{
 					minDot = local;
 					minDotI = i;
-					minSign = sign;
 				}
 				if (local > maxDot)
 				{
 					maxDot = local;
 					maxDotI = i;
-					maxSign = sign;
 				}
 			}
-			//if (glm::abs(maxDotI - 1) < EPSILON)
+			// TODO: look into this
+			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
+			if (c.depth > 0.002) // Why this number
 			{
-				if (glm::abs(minSign) < EPSILON)
-				{
-					minSign = 1.f;
-				}
-				//std::cout << "Dots: " << minDotI << ", " << maxDotI << std::endl;
-				//std::cout << "Signs" << minSign << ", " << maxSign << std::endl;
 				glm::mat3 goobers{smartBox[0], smartBox[1], smartBox[2]};
 				// Leasted aligned keeps its index
 				// Middle is replaced with least cross intersection
@@ -565,31 +558,12 @@ bool smartBoxCollide()
 				glm::vec3 newMost = upper;                              // goes in smartbox[maxDotI]
 				glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
 
-				//std::cout << least << "," << newMost << std::endl;
-				int leastD = minDotI;
-				int mostD = maxDotI;
-				int newD = 3 - leastD - mostD;
-				/*
-				0, 1 -> no adjustment needed
-				0, 2 -> multiplied by -1
-				1, 0 -> multiplied by -1
-				1, 2 -> no adjustment
-				2, 0 -> no adjustment
-				2, 1 -> multiplied by -1
-				*/
-				//if ((leastD == 0 && mostD == 2) || (leastD == 1 && mostD == 2) || (leastD == 2 && mostD == 1))
-					//newest *= -1;
+				glm::length_t leastD = minDotI;
+				glm::length_t mostD = maxDotI;
+				glm::length_t newD = 3 - leastD - mostD;
 				least *= glm::sign(glm::dot(least, goobers[minDotI]));
 				newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
 				newest *= glm::sign(glm::dot(newest, goobers[newD]));
-				//std::cout << glm::dot(newest, goobers[maxDotI]) << std::endl;
-				// Correct for the wrong cross product ordering
-				//if (leastD > mostD)
-					//newest *= -1;
-
-				// WIP
-				//newest *= minSign;
-				//newMost *= maxSign;
 
 				glm::mat3 lame{};
 				lame[leastD] = least;
@@ -603,12 +577,9 @@ bool smartBoxCollide()
 				newer = glm::normalize(newer);
 				float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
 				float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
-				/*
-				std::cout << maxDelta << "," << glm::degrees(maxDelta) <<  std::endl;
-				std::cout << glm::acos(glm::dot(older, newer)) << std::endl;
-				std::cout << older << std::endl;
-				std::cout << newer << std::endl;
-				*/
+
+				// TODO: Clamp with some better method
+
 				if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
 				{
 					smartBox.ReOrient(glm::toMat4(glm::normalize(glm::lerp(older, newer, maxDelta / 2.f))));
@@ -627,20 +598,12 @@ bool smartBoxCollide()
 				rays[10] = miniOff;
 				rays[11] = miniOff + goobers[2];
 				rayBuffer.BufferData(rays, StaticDraw);
+				smartBox.OverlapAndSlide(letsgo->box);
 			}
-			/*
-			collides++;
-			float orientation = glm::dot(GravityAxis, c.normal);
-			if (glm::abs(orientation) > EPSILON && orientation < dotValue)
-			{
-				//std::cout << "OLD: " << smartBoxPhysics.axisOfGaming << "\tNew: " << c.normal << std::endl;
-				dotValue = orientation;
-				smartBoxPhysics.axisOfGaming = c.normal;
+			else
+			{ 
+				smartBox.ApplyCollision(c);
 			}
-			*/
-			//Before(smartBox.Center());
-			smartBox.ApplyCollision(c);
-			//After(smartBox.Center());
 			float oldLength = glm::length(smartBoxPhysics.velocity);
 			//smartBoxPhysics.velocity += c.normal * glm::abs(glm::dot(smartBoxPhysics.velocity, c.normal));
 			//if (glm::length(smartBoxPhysics.velocity) > EPSILON)
@@ -690,16 +653,16 @@ void idle()
 	
 	// TODO: Rolling buffer size thingy setting
 	frames.push_back(1.f / timeDelta);
-	if (frames.size() > 100)
+	if (frames.size() > 300)
 	{
 		frames.pop_front();
 	}
-	float averageFps = 0.f;
-	for (auto& i : frames)
+	float averageFps = 0.f, averageTime = 0.f;
+	for (std::size_t i = 0; i < frames.size(); i++)
 	{
-		averageFps += i / frames.size();
+		averageFps += frames[i] / frames.size();
 	}
-	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\n{}", averageFps, (flopper) ? "true" : "false"));
+	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}", averageFps, 1000.f / averageFps, (flopper) ? "true" : "false"));
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1251,7 +1214,6 @@ int main(int argc, char** argv)
 		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
 	*/
 
-
 	stickBuffer.Generate();
 	stickBuffer.BufferData(stick, StaticDraw);
 
@@ -1274,32 +1236,9 @@ int main(int argc, char** argv)
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
-	rays.fill(glm::vec3(0.f));
-	glm::vec3 a{ 2, 1, 1 };
-	glm::vec3 fooey = glm::normalize(a);
-
-	// Despite the dot product usually being the cosine bewtween the angles this is wrong due to the coordinate orientation hackery
-	float aCose = glm::dot(fooey, glm::vec3(0, 1, 0));
-	float aSine = glm::sqrt(1 - aCose * aCose);
-	//std::cout << aSine << ":" << aCose << std::endl;
-	rays[1] = fooey;
-	rays[3] = GravityAxis;
-	rays[5] = glm::normalize(glm::vec3(0, 1, 0) - fooey * aCose) * aSine;
-	rays[9] = glm::vec3(-1, 2, 0);
-	//std::cout << ":" << glm::length(fooey * aCose) << ":" << glm::length(rays[5]) << std::endl;
-	rays.fill(glm::vec3(0.f));
-	//std::cout << glm::dot(rays[5], fooey) << "\t" << EPSILON << "\t" << std::numeric_limits<float>::epsilon() << std::endl;
-	/*
-	gobs.fill(glm::vec3(0, -5, 0));
-	gobs[0] += glm::vec3(1, 0, 0);
-	gobs[1] += glm::vec3(-1, 0, 0);
-	gobs[2] += glm::vec3(0, 0, 1);
-	gobs[3] += glm::vec3(0, 0, -1);
-	*/
-
+	rays.fill(glm::vec3(0));
 	rayBuffer.Generate();
 	rayBuffer.BufferData(rays, StaticDraw);
-
 
 	// CREATING OF THE PLANES
 
@@ -1405,67 +1344,6 @@ int main(int argc, char** argv)
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
-
-	OBB checked(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
-	checked.Scale(glm::vec3(1, 0.0625f, 1));
-	rays.fill(glm::vec3(0));
-	float minDot = INFINITY, maxDot = -INFINITY;
-	int minDotI = 0, maxDotI = 0;
-	for (std::size_t i = 0; i < 3; i++)
-	{
-		float local = glm::abs(glm::dot(smartBox[i], checked.Up()));
-		if (local < minDot)
-		{
-			minDot = local;
-			minDotI = i;
-		}
-		if (local > maxDot)
-		{
-			maxDot = local;
-			maxDotI = i;
-		}
-		//rays[6 + i * 2] = smartBox[i];
-	}
-	// Leasted aligned keeps its index
-	// Middle is replaced with least cross intersection
-	// Most is replaced with the negative of new middle cross least
-	glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
-	glm::vec3 newMost = checked.Up();                              // goes in smartbox[maxDotI]
-	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
-
-	int leastD = minDotI;
-	int mostD = maxDotI;
-	int newD = 3 - leastD - mostD;
-
-	//std::cout << "L:" << minDotI << "," << smartBox[minDotI] << std::endl << "M:" << maxDotI << ", " << smartBox[maxDotI] << std::endl;
-	rays[1] = smartBox[minDotI];
-	rays[5] = glm::normalize(glm::cross(smartBox[minDotI], checked.Up()));
-	rays[3] = glm::normalize(glm::cross(rays[5], rays[1]));
-
-	std::swap(rays[1], rays[5]);
-
-	glm::mat3 lame{};
-	//rays[1] *= -1;
-
-	rays[2 * leastD + 1] = least;
-	rays[2 * mostD + 1]  = newMost;
-	rays[2 * newD + 1]   = newest;
-	if (leastD > mostD)
-	{
-		rays[2 * newD + 1] *= -1;
-	}
-	lame[leastD] = least;
-	lame[mostD] = newMost;
-	lame[newD] = rays[2 * newD + 1];
-	glm::mat4 newerst(lame);
-	newerst[3].w = 1;
-	oldMan = smartBox.GetModelMatrix();
-	newMan = newerst;
-	//smartBox.ReOrient(newerst);
-
-	rayBuffer.BufferData(rays, StaticDraw);
-
-	CheckError();
 
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
