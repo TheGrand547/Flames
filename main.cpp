@@ -550,7 +550,7 @@ bool smartBoxCollide()
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
 			if (c.depth > 0.002) // Why this number
 			{
-				glm::mat3 goobers{smartBox[0], smartBox[1], smartBox[2]};
+				glm::mat3 goobers{ smartBox[0], smartBox[1], smartBox[2] };
 				// Leasted aligned keeps its index
 				// Middle is replaced with least cross intersection
 				// Most is replaced with the negative of new middle cross least
@@ -582,8 +582,10 @@ bool smartBoxCollide()
 
 				if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
 				{
-					smartBox.ReOrient(glm::toMat4(glm::normalize(glm::lerp(older, newer, maxDelta / 2.f))));
+					// Slerp interpolates along the shortest axis on the great circle
+					smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 2.f))));
 				}
+
 				std::array<glm::vec3, 12> rays{};
 				rays.fill(glm::vec3(0));
 				rays[1] = lame[0];
@@ -743,6 +745,8 @@ void idle()
 	if (keyState[ArrowKeyUp])   smartBox.Translate(smartBox.Forward() * speed);
 	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
 	if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
+	if (keyState['v']) smartBox.Translate(GravityAxis * speed);
+	if (keyState['c']) smartBox.Translate(GravityUp * speed);
 	// Box is colliding with *something* pointing up
 	//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 	glm::vec3 lineThing = GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.1f; // Extend to account for slopes a bit
