@@ -41,6 +41,8 @@ public:
 	inline glm::vec3 operator[](const std::size_t& t) const;
 	inline glm::vec3 Center() const noexcept;
 
+	inline glm::vec3 GetScale() const noexcept;
+
 	// TODO: Rethink the rotate/reorient from mat4 thing, replace with "Apply Transform" 
 	inline void ReCenter(const glm::vec3& center) noexcept;
 
@@ -162,6 +164,11 @@ inline glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const
 inline glm::vec3 OrientedBoundingBox::Center() const noexcept
 {
 	return this->matrix[3];
+}
+
+inline glm::vec3 OrientedBoundingBox::GetScale() const noexcept
+{
+	return this->halfs;
 }
 
 inline Model OrientedBoundingBox::GetModel() const

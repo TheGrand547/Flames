@@ -528,6 +528,143 @@ bool smartBoxCollide()
 		SlidingCollision c;
 		if (smartBox.Overlap(letsgo->box, c))
 		{
+			{
+				OBB& other = letsgo->box;
+				glm::vec3 smartScale = smartBox.GetScale();
+				glm::vec3 dumbScale = other.GetScale();
+				std::array<glm::vec3, 15> separatingAxes{};
+				glm::vec3 delt = other.Center() - smartBox.Center();
+				for (glm::length_t i = 0; i < 3; i++)
+				{
+					separatingAxes[(std::size_t)i * 5] = smartBox[i];
+					separatingAxes[(std::size_t)i * 5 + 1] = other[i];
+					for (glm::length_t j = 0; j < 3; j++)
+					{
+						separatingAxes[(std::size_t)i * 5 + 2 + j] = glm::normalize(glm::cross(glm::vec3(smartBox[i]), glm::vec3(other[j])));
+					}
+				}
+				bool leave = false;
+				//std::cout << "Delta: " << delt << std::endl;
+				for (int i = 0; i < 15; i++)
+				{
+					glm::vec3& local = separatingAxes[i];
+					if (local.x >= 0.9)
+					{
+						//std::cout << "DProj:" << glm::abs(glm::dot(local, delt)) << std::endl;
+						float myProj = 0.f, scaledProj = 0.f;
+						float myProj2 = 0.f, scaledProj2 = 0.f;
+						for (int j = 0; j < 3; j++)
+						{
+							myProj += glm::abs(glm::dot(local, smartBox[j]));
+							myProj2 += glm::abs(glm::dot(local, other[j]));
+							scaledProj += glm::abs(glm::dot(local, smartBox[j])) * smartScale[j];
+							scaledProj2 += glm::abs(glm::dot(local, smartBox[j])) * dumbScale[j];
+						}
+						//std::cout << local << ": " << myProj << "," << scaledProj << std::endl;
+						//std::cout << ">: " << myProj2 << "," << scaledProj2 << std::endl;
+
+						// Candidate for rotating around a corner
+						if (glm::abs(glm::dot(local, delt)) > scaledProj2)
+						{
+							//std::cout << local << std::endl;
+							// Take the one of "this" axis that most aligns with the axis of intersection
+							// create a rotation that takes that vector to the value in local
+							// apply said rotation to current to get the ideal result
+
+							// Apply inverse of the current rotation, then map exclusively
+							// that axis to the desired one, then apply the original rotation again
+
+							glm::vec3 stored = c.axis;
+							//std::cout << "Tipping?" << std::endl;
+							//c.axis = local;
+
+							float minDot = INFINITY, maxDot = -INFINITY;
+							glm::length_t minDotI = 0, maxDotI = 0;
+							glm::vec3 upper = c.axis;
+							for (glm::length_t i = 0; i < 3; i++)
+							{
+								float sign = glm::sign(glm::dot(smartBox[i], upper));
+								float local = glm::abs(glm::dot(smartBox[i], upper));
+								if (local < minDot)
+								{
+									minDot = local;
+									minDotI = i;
+								}
+								if (local > maxDot)
+								{
+									maxDot = local;
+									maxDotI = i;
+								}
+							}
+							glm::quat french = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
+							glm::quat polish = glm::normalize(glm::inverse(french));
+
+							glm::quat pain = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], local)), glm::cross(smartBox[maxDotI], local));
+
+							glm::length_t last = 3 - maxDotI - minDotI;
+							// Now make the least aligned go to local
+							// Most to Local cross middle and the last one to the proper one
+							//std::cout << "Boxer: " << smartBox[minDotI] << std::endl;
+							//std::cout << "Boxer2: " << smartBox[last] << std::endl;
+							glm::mat3 goobers{};
+							//goobers[maxDotI] = local;
+							//goobers[minDotI] = glm::normalize(glm::cross(local, smartBox[last]));
+							//goobers[last] = glm::normalize(glm::cross(local, goobers[minDotI]));
+							//std::cout << goobers[minDotI] << std::endl;
+							//std::cout << goobers[last] << std::endl << std::endl;
+
+							goobers = glm::toMat3(glm::normalize(french * pain));
+							//goobers = glm::toMat3(pain);
+
+							std::array<glm::vec3, 12> rays{};
+							rays.fill(glm::vec3(10, 0, 0));
+							rays[1] += smartBox[0];
+							rays[3] += smartBox[1];
+							rays[5] += smartBox[2];
+
+							glm::vec3 miniOff(10, 1, 0);
+							rays[6] = miniOff;
+							rays[7] = miniOff + goobers[0];
+							rays[8] = miniOff;
+							rays[9] = miniOff + goobers[1];
+							rays[10] = miniOff;
+							rays[11] = miniOff + goobers[2];
+							rayBuffer.BufferData(rays, StaticDraw);
+
+							glm::mat4 newerst(goobers);
+							newerst[3].w = 1;
+							glm::quat older = smartBox.GetNormalMatrix();
+							glm::quat newer = french * pain;
+
+							older = glm::normalize(older);
+							newer = glm::normalize(newer);
+							float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+							float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
+							
+							// TODO: Clamp with some better method
+
+							if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+							{
+								// Slerp interpolates along the shortest axis on the great circle
+								smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 8.f))));
+							}
+
+
+							smartBox.OverlapAndSlide(letsgo->box);
+
+
+							//c.axis = stored;
+							//smartBox.ApplyCollision(c);
+							leave = true; // Stop the execution of funny code
+							break;
+						}
+					}
+				}
+				if (leave) continue;
+			}
+
+
+
 			float minDot = INFINITY, maxDot = -INFINITY;
 			glm::length_t minDotI = 0, maxDotI = 0;
 			glm::vec3 upper = c.axis;
@@ -569,10 +706,8 @@ bool smartBoxCollide()
 				lame[leastD] = least;
 				lame[mostD] = newMost;
 				lame[newD] = newest;
-				glm::mat4 newerst(lame);
-				newerst[3].w = 1;
 				glm::quat older = smartBox.GetNormalMatrix();
-				glm::quat newer = newerst;
+				glm::quat newer = glm::quat_cast(lame);
 				older = glm::normalize(older);
 				newer = glm::normalize(newer);
 				float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
@@ -599,7 +734,7 @@ bool smartBoxCollide()
 				rays[9] = miniOff + goobers[1];
 				rays[10] = miniOff;
 				rays[11] = miniOff + goobers[2];
-				rayBuffer.BufferData(rays, StaticDraw);
+				//rayBuffer.BufferData(rays, StaticDraw);
 				smartBox.OverlapAndSlide(letsgo->box);
 			}
 			else
@@ -747,6 +882,8 @@ void idle()
 	if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
 	if (keyState['v']) smartBox.Translate(GravityAxis * speed);
 	if (keyState['c']) smartBox.Translate(GravityUp * speed);
+	if (keyState['f']) smartBox.Translate(glm::vec3(0, 0, 1) * speed);
+	if (keyState['g']) smartBox.Translate(-glm::vec3(0, 0, 1) * speed);
 	// Box is colliding with *something* pointing up
 	//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 	glm::vec3 lineThing = GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.1f; // Extend to account for slopes a bit
@@ -1341,6 +1478,7 @@ int main(int argc, char** argv)
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
 	smartBox.ReCenter(glm::vec3(1.2f, 0.6f, 0));
+	smartBox.ReCenter(glm::vec3(11.2f, 1.6f, 0));
 	smartBox.ReOrient(glm::vec3(0, 0, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
