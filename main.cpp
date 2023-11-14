@@ -532,137 +532,223 @@ bool smartBoxCollide()
 				OBB& other = letsgo->box;
 				glm::vec3 smartScale = smartBox.GetScale();
 				glm::vec3 dumbScale = other.GetScale();
-				std::array<glm::vec3, 15> separatingAxes{};
-				glm::vec3 delt = other.Center() - smartBox.Center();
-				for (glm::length_t i = 0; i < 3; i++)
-				{
-					separatingAxes[(std::size_t)i * 5] = smartBox[i];
-					separatingAxes[(std::size_t)i * 5 + 1] = other[i];
-					for (glm::length_t j = 0; j < 3; j++)
-					{
-						separatingAxes[(std::size_t)i * 5 + 2 + j] = glm::normalize(glm::cross(glm::vec3(smartBox[i]), glm::vec3(other[j])));
-					}
-				}
 				bool leave = false;
+				glm::vec3 delta = other.Center() - smartBox.Center();
 				//std::cout << "Delta: " << delt << std::endl;
-				for (int i = 0; i < 15; i++)
+
+				// Maintain right handedness
+				int indexA[3] = { 0, 0, 1 };
+				int indexB[3] = { 1, 2, 2 };
+				for (int i = 0; i < 3; i++)
 				{
-					glm::vec3& local = separatingAxes[i];
-					if (local.x >= 0.9)
+					glm::vec3 local = other[0];
+					
+					int indexedA = indexA[i];
+					int indexedB = indexB[i];
+					int indexedC = 2;
+
+					glm::vec3 axisA = other[indexedA];
+					glm::vec3 axisB = other[indexedB];
+					glm::vec3 axisC = other[indexedC];
+
+					// Calculate the distance along each of these axes 
+					float projectionA = glm::dot(delta, axisA);
+					float projectionB = glm::dot(delta, axisB);
+					float projectionC = glm::dot(delta, axisC);
+					
+					// See if the extent in that direction is more than covered by these axes
+					bool testA = glm::abs(projectionA) >= dumbScale[indexedA];
+					bool testB = glm::abs(projectionB) >= dumbScale[indexedB];
+					bool testC = glm::abs(projectionC) >= dumbScale[indexedC];
+
+					//std::cout << delta << std::endl;
+					//std::cout << projectionC << "," << dumbScale[indexedC] << std::endl;
+
+					// smartBox collides entirely because of its own sides, therefore it might need to rotate
+					//std::cout << std::boolalpha << testA << "," << testB << "," << testC << std::endl;
+					if (testA && testB)
 					{
-						//std::cout << "DProj:" << glm::abs(glm::dot(local, delt)) << std::endl;
-						float myProj = 0.f, scaledProj = 0.f;
-						float myProj2 = 0.f, scaledProj2 = 0.f;
-						for (int j = 0; j < 3; j++)
+						float minDot = INFINITY, maxDot = -INFINITY;
+						glm::length_t minDotI = 0, maxDotI = 0;
+						glm::vec3 upper = c.axis;
+						for (glm::length_t i = 0; i < 3; i++)
 						{
-							myProj += glm::abs(glm::dot(local, smartBox[j]));
-							myProj2 += glm::abs(glm::dot(local, other[j]));
-							scaledProj += glm::abs(glm::dot(local, smartBox[j])) * smartScale[j];
-							scaledProj2 += glm::abs(glm::dot(local, smartBox[j])) * dumbScale[j];
+							float sign = glm::sign(glm::dot(smartBox[i], upper));
+							float local = glm::abs(glm::dot(smartBox[i], upper));
+							if (local < minDot)
+							{
+								minDot = local;
+								minDotI = i;
+							}
+							if (local > maxDot)
+							{
+								maxDot = local;
+								maxDotI = i;
+							}
 						}
-						//std::cout << local << ": " << myProj << "," << scaledProj << std::endl;
-						//std::cout << ">: " << myProj2 << "," << scaledProj2 << std::endl;
 
-						// Candidate for rotating around a corner
-						if (glm::abs(glm::dot(local, delt)) > scaledProj2)
+						// Will be the other axis
+						glm::vec3 rotateAxis = other[3ull - indexedA - indexedB];
+						//std::cout << rotateAxis << std::endl;
+						glm::quat current = glm::quat_cast(smartBox.GetNormalMatrix());
+						glm::quat othered = glm::quat_cast(other.GetNormalMatrix());
+;						// The negative is a hack, need to calculate the proper correction factor
+						//glm::quat rotation = glm::angleAxis(-glm::half_pi<float>(), rotateAxis);
+						//glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], local)), rotateAxis);
+						glm::quat rotation = glm::angleAxis(-0.002f, rotateAxis);
+
+						glm::mat3 goobers = glm::mat3_cast(current * rotation);
+
+
+						std::array<glm::vec3, 12> rays{};
+						rays.fill(glm::vec3(10, 0, 0));
+						rays[1] += smartBox[0];
+						rays[3] += smartBox[1];
+						rays[5] += smartBox[2];
+
+						glm::vec3 miniOff(10, 1, 0);
+						rays[6] = miniOff;
+						rays[7] = miniOff + goobers[0];
+						rays[8] = miniOff;
+						rays[9] = miniOff + goobers[1];
+						rays[10] = miniOff;
+						rays[11] = miniOff + goobers[2];
+						rayBuffer.BufferData(rays, StaticDraw);
+
+						glm::quat newer = current * rotation;
+
+						glm::quat older = glm::normalize(current);
+						newer = glm::normalize(newer);
+						float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+						float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
+
+						// TODO: Clamp with some better method
+
+						if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
 						{
-							//std::cout << local << std::endl;
-							// Take the one of "this" axis that most aligns with the axis of intersection
-							// create a rotation that takes that vector to the value in local
-							// apply said rotation to current to get the ideal result
-
-							// Apply inverse of the current rotation, then map exclusively
-							// that axis to the desired one, then apply the original rotation again
-
-							glm::vec3 stored = c.axis;
-							//std::cout << "Tipping?" << std::endl;
-							//c.axis = local;
-
-							float minDot = INFINITY, maxDot = -INFINITY;
-							glm::length_t minDotI = 0, maxDotI = 0;
-							glm::vec3 upper = c.axis;
-							for (glm::length_t i = 0; i < 3; i++)
-							{
-								float sign = glm::sign(glm::dot(smartBox[i], upper));
-								float local = glm::abs(glm::dot(smartBox[i], upper));
-								if (local < minDot)
-								{
-									minDot = local;
-									minDotI = i;
-								}
-								if (local > maxDot)
-								{
-									maxDot = local;
-									maxDotI = i;
-								}
-							}
-							glm::quat french = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
-							glm::quat polish = glm::normalize(glm::inverse(french));
-
-							glm::quat pain = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], local)), glm::cross(smartBox[maxDotI], local));
-
-							glm::length_t last = 3 - maxDotI - minDotI;
-							// Now make the least aligned go to local
-							// Most to Local cross middle and the last one to the proper one
-							//std::cout << "Boxer: " << smartBox[minDotI] << std::endl;
-							//std::cout << "Boxer2: " << smartBox[last] << std::endl;
-							glm::mat3 goobers{};
-							//goobers[maxDotI] = local;
-							//goobers[minDotI] = glm::normalize(glm::cross(local, smartBox[last]));
-							//goobers[last] = glm::normalize(glm::cross(local, goobers[minDotI]));
-							//std::cout << goobers[minDotI] << std::endl;
-							//std::cout << goobers[last] << std::endl << std::endl;
-
-							goobers = glm::toMat3(glm::normalize(french * pain));
-							//goobers = glm::toMat3(pain);
-
-							std::array<glm::vec3, 12> rays{};
-							rays.fill(glm::vec3(10, 0, 0));
-							rays[1] += smartBox[0];
-							rays[3] += smartBox[1];
-							rays[5] += smartBox[2];
-
-							glm::vec3 miniOff(10, 1, 0);
-							rays[6] = miniOff;
-							rays[7] = miniOff + goobers[0];
-							rays[8] = miniOff;
-							rays[9] = miniOff + goobers[1];
-							rays[10] = miniOff;
-							rays[11] = miniOff + goobers[2];
-							rayBuffer.BufferData(rays, StaticDraw);
-
-							glm::mat4 newerst(goobers);
-							newerst[3].w = 1;
-							glm::quat older = smartBox.GetNormalMatrix();
-							glm::quat newer = french * pain;
-
-							older = glm::normalize(older);
-							newer = glm::normalize(newer);
-							float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-							float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
-							
-							// TODO: Clamp with some better method
-
-							if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
-							{
-								// Slerp interpolates along the shortest axis on the great circle
-								smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 8.f))));
-							}
-
-
-							smartBox.OverlapAndSlide(letsgo->box);
-
-
-							//c.axis = stored;
-							//smartBox.ApplyCollision(c);
-							leave = true; // Stop the execution of funny code
-							break;
+							// Slerp interpolates along the shortest axis on the great circle
+							//smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 8.f))));
 						}
+						break;
 					}
+
+
+					//std::cout << "DProj:" << glm::abs(glm::dot(local, delt)) << std::endl;
+					float myProj = 0.f, scaledProj = 0.f;
+					float myProj2 = 0.f, scaledProj2 = 0.f;
+					for (int j = 0; j < 3; j++)
+					{
+						myProj += glm::abs(glm::dot(local, smartBox[j]));
+						myProj2 += glm::abs(glm::dot(local, other[j]));
+						scaledProj += glm::abs(glm::dot(local, smartBox[j])) * smartScale[j];
+						scaledProj2 += glm::abs(glm::dot(local, smartBox[j])) * dumbScale[j];
+					}
+					//std::cout << local << ": " << myProj << "," << scaledProj << std::endl;
+					//std::cout << ">: " << myProj2 << "," << scaledProj2 << std::endl;
+
+					// Candidate for rotating around a corner
+#if 0
+					if (glm::abs(glm::dot(local, delta)) > scaledProj2)
+					{
+						//std::cout << local << std::endl;
+						// Take the one of "this" axis that most aligns with the axis of intersection
+						// create a rotation that takes that vector to the value in local
+						// apply said rotation to current to get the ideal result
+
+						// Apply inverse of the current rotation, then map exclusively
+						// that axis to the desired one, then apply the original rotation again
+
+						glm::vec3 stored = c.axis;
+						//std::cout << "Tipping?" << std::endl;
+						//c.axis = local;
+
+						float minDot = INFINITY, maxDot = -INFINITY;
+						glm::length_t minDotI = 0, maxDotI = 0;
+						glm::vec3 upper = c.axis;
+						for (glm::length_t i = 0; i < 3; i++)
+						{
+							float sign = glm::sign(glm::dot(smartBox[i], upper));
+							float local = glm::abs(glm::dot(smartBox[i], upper));
+							if (local < minDot)
+							{
+								minDot = local;
+								minDotI = i;
+							}
+							if (local > maxDot)
+							{
+								maxDot = local;
+								maxDotI = i;
+							}
+						}
+						//std::cout << "Axis: " << local << std::endl;
+						//std::cout << smartBox[minDotI] << ", " << smartBox[maxDotI] << std::endl;
+						glm::quat french = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
+						glm::quat polish = glm::normalize(glm::inverse(french));
+
+						// Sometimes this is oriented wrong?
+						glm::quat pain = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], local)), glm::cross(smartBox[maxDotI], local));
+
+						glm::length_t last = 3 - maxDotI - minDotI;
+						// Now make the least aligned go to local
+						// Most to Local cross middle and the last one to the proper one
+						//std::cout << "Boxer: " << smartBox[minDotI] << std::endl;
+						//std::cout << "Boxer2: " << smartBox[last] << std::endl;
+						glm::mat3 goobers{};
+						//goobers[maxDotI] = local;
+						//goobers[minDotI] = glm::normalize(glm::cross(local, smartBox[last]));
+						//goobers[last] = glm::normalize(glm::cross(local, goobers[minDotI]));
+
+						goobers = glm::toMat3(glm::normalize(french * pain));
+						goobers = glm::toMat3(glm::normalize(french * pain));
+						//goobers = glm::toMat3(pain);
+
+						std::array<glm::vec3, 12> rays{};
+						rays.fill(glm::vec3(10, 0, 0));
+						rays[1] += smartBox[0];
+						rays[3] += smartBox[1];
+						rays[5] += smartBox[2];
+
+						glm::vec3 miniOff(10, 1, 0);
+						rays[6] = miniOff;
+						rays[7] = miniOff + goobers[0];
+						rays[8] = miniOff;
+						rays[9] = miniOff + goobers[1];
+						rays[10] = miniOff;
+						rays[11] = miniOff + goobers[2];
+						rayBuffer.BufferData(rays, StaticDraw);
+
+						glm::mat4 newerst(goobers);
+						newerst[3].w = 1;
+						glm::quat older = smartBox.GetNormalMatrix();
+						glm::quat newer = french * pain;
+						newer = pain * french;
+
+						older = glm::normalize(older);
+						newer = glm::normalize(newer);
+						float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+						float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
+							
+						// TODO: Clamp with some better method
+
+						if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+						{
+							// Slerp interpolates along the shortest axis on the great circle
+							smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 8.f))));
+						}
+
+
+						smartBox.OverlapAndSlide(letsgo->box);
+
+
+						//c.axis = stored;
+						//smartBox.ApplyCollision(c);
+						leave = true; // Stop the execution of funny code
+						break;
+					}
+#endif // 0
 				}
 				if (leave) continue;
 			}
-
 
 
 			float minDot = INFINITY, maxDot = -INFINITY;
@@ -1407,6 +1493,7 @@ int main(int argc, char** argv)
 	for (const auto& ref : planes)
 	{
 		OBB project(ref);
+		//project.Scale(glm::vec3(1, .625f, 1));
 		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix());
