@@ -513,6 +513,8 @@ struct
 	glm::vec3 axisOfGaming{ 0.f };
 } smartBoxPhysics;
 
+static float maxRotatePerFrame = 0.f;
+
 bool smartBoxCollide()
 {
 	bool val = false;
@@ -541,11 +543,13 @@ bool smartBoxCollide()
 				int indexB[3] = { 1, 2, 2 };
 				for (int i = 0; i < 3; i++)
 				{
+					// Used to be one of the projecting axes, equivalent of the vector that is being rotated *toward*
 					glm::vec3 local = other[0];
 					
 					int indexedA = indexA[i];
 					int indexedB = indexB[i];
-					int indexedC = 2;
+					//int indexedC = 2;
+					int indexedC = 3 - indexedA - indexedB;
 
 					glm::vec3 axisA = other[indexedA];
 					glm::vec3 axisB = other[indexedB];
@@ -565,7 +569,6 @@ bool smartBoxCollide()
 					//std::cout << projectionC << "," << dumbScale[indexedC] << std::endl;
 
 					// smartBox collides entirely because of its own sides, therefore it might need to rotate
-					//std::cout << std::boolalpha << testA << "," << testB << "," << testC << std::endl;
 					if (testA && testB)
 					{
 						float minDot = INFINITY, maxDot = -INFINITY;
@@ -588,19 +591,48 @@ bool smartBoxCollide()
 						}
 
 						// Will be the other axis
-						glm::vec3 rotateAxis = other[3ull - indexedA - indexedB];
-						//std::cout << rotateAxis << std::endl;
 						glm::quat current = glm::quat_cast(smartBox.GetNormalMatrix());
 						glm::quat othered = glm::quat_cast(other.GetNormalMatrix());
+
 ;						// The negative is a hack, need to calculate the proper correction factor
 						//glm::quat rotation = glm::angleAxis(-glm::half_pi<float>(), rotateAxis);
-						//glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], local)), rotateAxis);
-						glm::quat rotation = glm::angleAxis(-0.002f, rotateAxis);
+						//glm::quat rotation = glm::angleAxis(-0.5f, rotateAxis);
+						//std::cout << "A:" << projectionA << std::endl;
+						//std::cout << "B:" << projectionB << std::endl;
+						//std::cout << "Major: " << std::boolalpha << (glm::abs(projectionA) > glm::abs(projectionB)) << std::endl;
 
-						glm::mat3 goobers = glm::mat3_cast(current * rotation);
+						// Something is whacky here for +/-z direction
+						bool axisTest = glm::abs(projectionA) > glm::abs(projectionB);
 
+						// This is the axis of smartBox that will be rotated towards?
+						glm::vec3 localAxis = (axisTest) ? axisA : axisB;
+						//std::cout << "LA" << localAxis << std::endl;
+						if (glm::sign(glm::dot(localAxis, delta)) > 0)
+						{
+							localAxis *= -1;
+						}
+						// For negative x direction(1.018, -0.5625) it is wrong orientation
+						// For postive  x direction(-1.00, -0.5625) it is properly oriented
 
-						std::array<glm::vec3, 12> rays{};
+						glm::vec3 rotationAxis = glm::normalize(glm::cross(smartBox[maxDotI], localAxis));
+
+						// In this case I know it's axisA but I don't know how to programmatically arrive at this conclusion
+						glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], localAxis)), rotationAxis);
+
+						//std::cout << "FROM:" << smartBox[maxDotI] << ", TO:" << localAxis << std::endl;
+						
+						//std::cout << "ABOUT: " << rotationAxis << std::endl;
+
+						// Need to get the 
+
+						//std::cout << "PRIOR:" << glm::mat3_cast(current)[maxDotI] << std::endl;
+						glm::mat3 goobers = glm::mat3_cast(rotation * current); // This is backwards right? why does this work
+						
+						//goobers = glm::mat3_cast(glm::rotate(current, glm::acos(glm::dot(smartBox[maxDotI], localAxis)), rotationAxis));
+
+						//std::cout << "RESULT: " << glm::mat3_cast(current * rotation)[maxDotI] << std::endl;
+
+						std::array<glm::vec3, 14> rays{};
 						rays.fill(glm::vec3(10, 0, 0));
 						rays[1] += smartBox[0];
 						rays[3] += smartBox[1];
@@ -613,21 +645,23 @@ bool smartBoxCollide()
 						rays[9] = miniOff + goobers[1];
 						rays[10] = miniOff;
 						rays[11] = miniOff + goobers[2];
+						rays[13] += 2.f * glm::normalize(glm::cross(smartBox[maxDotI], localAxis));
 						rayBuffer.BufferData(rays, StaticDraw);
 
-						glm::quat newer = current * rotation;
+						//glm::quat newer = current * rotation;
+						glm::quat newer = rotation * current;
 
 						glm::quat older = glm::normalize(current);
 						newer = glm::normalize(newer);
 						float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-						float clamped = std::clamp(c.depth / maxDelta, 0.f, 1.f);
+						float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
 
 						// TODO: Clamp with some better method
 
 						if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
 						{
 							// Slerp interpolates along the shortest axis on the great circle
-							//smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, maxDelta / 8.f))));
+							smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
 						}
 						break;
 					}
@@ -890,6 +924,7 @@ void idle()
 
 	float speed = 4 * timeDelta;
 	float turnSpeed = 100 * timeDelta;
+	maxRotatePerFrame = glm::radians(90.f) * timeDelta;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -1084,8 +1119,12 @@ void idle()
 
 void smartReset()
 {
+	smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
+	smartBox.ReOrient(glm::vec3(0, 0, 0));
+	/*
 	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
 	smartBox.ReOrient(glm::vec3(0, 135, 0));
+	*/
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -1101,8 +1140,7 @@ void keyboard(unsigned char key, int x, int y)
 	if (key == 'b') flopper = !flopper;
 	if (key == 'h' || key == 'H')
 	{
-		smartBox.ReOrient(glm::vec3(0, 89, 0));
-		smartBox.ReCenter(glm::vec3(-0.625, 1.f, 0));
+		smartReset();
 	}
 	if (key >= '1' && key <= '9')
 	{
@@ -1487,6 +1525,8 @@ int main(int argc, char** argv)
 
 	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
 
+	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
+
 	std::vector<glm::mat4> awfulTemp{};
 	awfulTemp.reserve(planes.size());
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
@@ -1564,8 +1604,8 @@ int main(int argc, char** argv)
 
 	smartBox.Scale(glm::vec3(0.5f));
 	smartReset();
-	smartBox.ReCenter(glm::vec3(1.2f, 0.6f, 0));
-	smartBox.ReCenter(glm::vec3(11.2f, 1.6f, 0));
+	//smartBox.ReCenter(glm::vec3(1.2f, 0.6f, 0));
+	smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
 	smartBox.ReOrient(glm::vec3(0, 0, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
