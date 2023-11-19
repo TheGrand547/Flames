@@ -224,6 +224,9 @@ constexpr float ANGLE_DELTA = 4;
 // Camera
 glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
+
+glm::quat cameraFacing{glm::vec3(0.f)};
+
 float zNear = 0.1f, zFar = 100.f;
 
 // Random Misc temporary testing things
@@ -286,13 +289,23 @@ void display()
 	glEnable(GL_CULL_FACE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	// Camera matrix
-	glm::vec3 angles2 = glm::radians(cameraRotation);
+	
+	if (!flopper)
+	{
+		// Camera matrix
+		glm::vec3 angles2 = glm::radians(cameraRotation);
 
-	// Adding pi/2 is necessary because the default camera is facing -z
-	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
-	cameraUniformBuffer.BufferSubData(view, 0);
-
+		// Adding pi/2 is necessary because the default camera is facing -z
+		glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
+		cameraUniformBuffer.BufferSubData(view, 0);
+	}
+	else
+	{
+		glm::quat swapped = glm::angleAxis(glm::half_pi<float>(), glm::vec3(0, 1, 0));
+		glm::mat4 view = glm::mat4_cast(cameraFacing);
+		view[3] = glm::vec4(-cameraPosition, 1);
+		cameraUniformBuffer.BufferSubData(view, 0);
+	}
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	instancing.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -765,7 +778,7 @@ void idle()
 	{
 		averageFps += frames[i] / frames.size();
 	}
-	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}", averageFps, 1000.f / averageFps, (flopper) ? "true" : "false"));
+	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}", averageFps, 1000.f / averageFps, (flopper) ? "New" : "Old"));
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1071,6 +1084,33 @@ static const float Fov = 70.f;
 static bool rightMouseHeld = false;
 static int mousePreviousX = 0, mousePreviousY = 0;
 
+glm::vec2 GetProjectionHalfs(glm::mat4& mat)
+{
+	glm::vec2 result{};
+	Plane nearPlane(mat[0][3] + mat[0][2], mat[1][3] + mat[1][2], mat[2][3] + mat[2][2], -mat[3][3] - mat[3][2]);
+
+	Plane rightPlane(mat[0][3] - mat[0][0], mat[1][3] - mat[1][0], mat[2][3] - mat[2][0], -mat[3][3] + mat[3][0]);
+
+	Plane topPlane(mat[0][3] - mat[0][1], mat[1][3] - mat[1][1], mat[2][3] - mat[2][1], -mat[3][3] + mat[3][1]);
+
+	// TODO: make this a proper function, triple plane intersection or something, idk what it means
+	Plane& a = nearPlane, &b = rightPlane, &c = topPlane;
+	glm::vec3 n0 = a.GetNormal(), n1 = b.GetNormal(), n2 = c.GetNormal();
+	float denom = glm::dot(glm::cross(n0, n1), n2);
+	// If not shits fucked
+	if (glm::abs(denom) > EPSILON)
+	{
+		glm::vec3 temp = glm::cross(n1, n2) * a.GetConstant();
+		temp += glm::cross(n2, n0) * b.GetConstant();
+		temp += glm::cross(n0, n1) * c.GetConstant();
+		temp /= denom;
+		result.x = temp.x;
+		result.y = temp.y;
+	}
+
+	return result;
+}
+
 void mouseButtonAction(int button, int state, int x, int y)
 {
 	if (button == GLUT_RIGHT_BUTTON)
@@ -1080,15 +1120,72 @@ void mouseButtonAction(int button, int state, int x, int y)
 	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
 	{
 		glm::vec3 localCopy = cameraRotation;
-		localCopy.x += (float)(y - glutGet(GLUT_WINDOW_WIDTH) / 2.f) / glutGet(GLUT_WINDOW_WIDTH) * Fov;
-		localCopy.y += (float)(x - glutGet(GLUT_WINDOW_HEIGHT) / 2.f) / glutGet(GLUT_WINDOW_HEIGHT) * Fov;
+		glm::vec3 radians2 = glm::radians(localCopy);
+		glm::quat court(glm::vec3(-radians2.z, -radians2.y, -radians2.x));
 		glm::vec3 radians = glm::radians(localCopy);
+
+		/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
+		> Get Viewport size
+		> Get camera projection, zNear being defined by the depth you want it to be
+		> Get the half lengths of the camera projection
+		> Given the input (x,y) coordinates compute
+		> newX = (x / size.x) * 2.0 - 1.0
+		> newY = (1.0 - (y / size.y)) * 2.0 - 1.0
+		> (newX, newY) *= half lengths
+		> Proejctioned vector, called p = (newX, newY, -depth)
+		> Get the camera transform(?) then apply the function(below) to p
+		newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
+		*/
+		glm::vec2 viewPortSize{ glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT) };
+		//x = glutGet(GLUT_WINDOW_WIDTH) / 2.f;
+		//y = glutGet(GLUT_WINDOW_HEIGHT) / 2.f;
+		glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
+		//std::cout << "Size: " << sizes << std::endl;
+
+		// Lets have depth = 0.01;
+		float depth = 0.01f;
+		// 0 is the thing it is
+		glm::mat4 projection = glm::perspective(glm::radians(Fov), 1.f, depth, zFar); // cringe
+		sizes *= GetProjectionHalfs(projection);
+		glm::vec3 project(sizes.x, sizes.y, -depth);
+		// I still don't know why they are backwards *and* negated
+		//auto lookyMat2 = glm::eulerAngleXYZ(-radians.z, -radians.y, -radians.x);
+		auto lookyMat2 = glm::eulerAngleXYZ(radians2.x, radians2.y + glm::half_pi<float>(), radians2.z);
+
+		glm::vec3 faced{0.f};
+		for (int i = 0; i < 3; i++)
+		{
+			std::cout << lookyMat2[i] << std::endl;
+			faced[i] = glm::dot(glm::vec3(lookyMat2[i]), project);
+		}
+		faced = glm::normalize(faced);
+		std::cout << "NEW: " << faced << std::endl;
+
+
+		localCopy.x += (float)(y - (glutGet(GLUT_WINDOW_HEIGHT) / 2.f)) / glutGet(GLUT_WINDOW_HEIGHT) * Fov;
+		localCopy.y += (float)(x - (glutGet(GLUT_WINDOW_WIDTH) / 2.f)) / glutGet(GLUT_WINDOW_WIDTH) * Fov;
+
+		auto temper = glm::quat(glm::radians(glm::vec3(0, -localCopy.y, -localCopy.x)));
+
+		court = temper * court;
+
 
 		float rayLength = 50.f;
 
 		auto lookyMat = glm::eulerAngleXYZ(-radians.z, -radians.y, -radians.x);
+		//std::cout << "OLD: " << glm::vec3(lookyMat * glm::vec4(1, 0, 0, 0)) << std::endl;
+		lookyMat = glm::mat4_cast(temper);
+		//std::cout << "OLD2: " << glm::vec3(lookyMat * glm::vec4(1, 0, 0, 0)) << std::endl;
 
-		Ray liota(cameraPosition, glm::normalize(glm::vec3(lookyMat * glm::vec4(1, 0, 0, 0))));
+		glm::vec3 fops = glm::normalize(glm::cross(glm::vec3(1, 0, 0), faced));
+		float dist = glm::acos(glm::dot(glm::vec3(1, 0, 0), faced));
+		lookyMat2 = glm::mat4_cast(glm::normalize(glm::angleAxis(dist, fops)));
+		std::cout << lookyMat2 * glm::vec4(1, 0, 0, 0) << ":" << faced << std::endl;
+
+
+		//Ray liota(cameraPosition, glm::normalize(glm::vec3(lookyMat * glm::vec4(1, 0, 0, 0))));
+		Ray liota(cameraPosition, glm::normalize(faced));
+		std::cout << "Dirt: " << liota.dir << std::endl;
 		auto itemed = boxes.RayCast(liota);
 		RayCollision rayd{};
 		Dummy* point = nullptr;
@@ -1102,11 +1199,19 @@ void mouseButtonAction(int button, int state, int x, int y)
 		}
 		// Point now has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
-		loom.ReOrient(lookyMat);
+		loom.ReOrient(lookyMat2);
+		std::cout << loom.Forward() << std::endl;
+		std::cout << glm::degrees(glm::acos(glm::dot(loom.Forward(), glm::vec3(1, 0, 0)))) << "," << Fov << std::endl;
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 
 		loom.ReCenter(cameraPosition);
 		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+		std::array<glm::vec3, 6> visuals{};
+		visuals.fill(cameraPosition);
+		visuals[1] += glm::vec3(glm::angleAxis(glm::radians(35.f), glm::vec3(0, 1, 0)) * glm::vec4(1, 0, 0, 0));
+		visuals[3] += glm::vec3(glm::angleAxis(-glm::radians(35.f), glm::vec3(0, 1, 0)) * glm::vec4(1, 0, 0, 0));
+		visuals[5] += faced;
+		rayBuffer.BufferData(visuals);
 	}
 }
 
@@ -1120,11 +1225,23 @@ void mouseMovementFunction(int x, int y)
 			xDif = 0;
 		if (abs(yDif) > 20)
 			yDif = 0;
+		// Why 50??
 		float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
 		float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
 
 		cameraRotation.x += zDelta;
 		cameraRotation.y += yDelta;
+
+		//glm::eulerAngleXY(zDelta, yDelta);
+		//cameraFacing = glm::angleAxis(glm::radians(yDelta), glm::vec3(0, 1, 0)) * cameraFacing;
+		//glm::quat(glm::vec3(zDelta, yDelta, 0));
+		cameraFacing = glm::quat(glm::radians(glm::vec3(-zDelta, -yDelta, 0))) * cameraFacing;
+		//cameraFacing = glm::angleAxis(glm::radians(zDelta), glm::vec3(0, 0, 1)) * cameraFacing;
+		//cameraFacing = glm::angleAxis(glm::radians(yDelta), glm::vec3(0, 1, 0)) * cameraFacing;
+		//cameraFacing = cameraFacing * glm::angleAxis(glm::radians(zDelta), glm::vec3(0, 0, 1));
+		//cameraFacing = cameraFacing * glm::angleAxis(glm::radians(yDelta), glm::vec3(0, 1, 0));
+		//cameraFacing = cameraFacing * glm::angleAxis(glm::radians(zDelta), glm::vec3(0, 0, 1));
+
 	}
 	mousePreviousX = x;
 	mousePreviousY = y;
@@ -1197,6 +1314,7 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 		id, _type, _severity, _source, message);
 }
 
+// TODO: investigate *massive* memory footprint increase when resizing window
 int main(int argc, char** argv)
 {
 	int error = 0;

@@ -28,9 +28,10 @@ public:
 	Plane(Plane&& other) noexcept = default;
 
 	inline bool TwoSided() const noexcept;
+	inline float GetConstant() const noexcept;
+	inline glm::vec3 GetNormal() const noexcept;
+	inline void Normalize();
 	inline void ToggleTwoSided() noexcept;
-
-	inline glm::vec3 GetNormal() const;
 
 	inline Plane& operator=(const Plane& other) noexcept;
 
@@ -39,24 +40,27 @@ public:
 	inline bool IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept;
 	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
 };
+// TODO: reorder these dummy
 
-inline Plane::Plane(float a, float b, float c, float d, bool twoSided) noexcept : normal(glm::normalize(glm::vec3(a, b, c))), constant(d), 
+inline Plane::Plane(float a, float b, float c, float d, bool twoSided) noexcept : normal(a, b, c), constant(d), 
 																					point(), twoSided(twoSided)
 {
 	assert(normal != glm::vec3(0));
+	this->Normalize();
 	this->CalculatePoint();
 }
 
-inline Plane::Plane(const glm::vec3& vector, float f, bool twoSided) noexcept : normal(glm::normalize(vector)), constant(f), point(), twoSided(twoSided)
+inline Plane::Plane(const glm::vec3& vector, float f, bool twoSided) noexcept : normal(vector), constant(f), point(), twoSided(twoSided)
 {
 	assert(normal != glm::vec3(0));
+	this->Normalize();
 	this->CalculatePoint();
 }
 
-inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point, bool twoSided) noexcept : normal(glm::normalize(normal)), point(point), 
+inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point, bool twoSided) noexcept : normal(normal), point(point), 
 																				constant(glm::dot(normal, point)), twoSided(twoSided)
 {
-
+	this->Normalize();
 }
 
 inline bool Plane::TwoSided() const noexcept
@@ -64,12 +68,25 @@ inline bool Plane::TwoSided() const noexcept
 	return this->twoSided;
 }
 
+inline void Plane::Normalize()
+{
+	float length = glm::length(this->normal);
+	this->normal /= length;
+	this->constant /= length;
+}
+
 inline void Plane::ToggleTwoSided() noexcept
 {
 	this->twoSided = !this->twoSided;
 }
 
-inline glm::vec3 Plane::GetNormal() const
+inline float Plane::GetConstant() const noexcept
+{
+	return this->constant;
+}
+
+
+inline glm::vec3 Plane::GetNormal() const noexcept
 {
 	return this->normal;
 }
