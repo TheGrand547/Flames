@@ -10,6 +10,27 @@ Plane::Plane(const Plane& other) noexcept
 	this->twoSided = other.twoSided;
 }
 
+bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB) const noexcept
+{
+	glm::vec3 _dummy{};
+	return this->TripleIntersect(planeA, planeB, _dummy);
+}
+
+bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, glm::vec3& result) const noexcept
+{
+	glm::vec3 n0 = this->normal, n1 = planeA.normal, n2 = planeB.normal;
+	float denom = glm::dot(glm::cross(n0, n1), n2);
+	if (glm::abs(denom) > EPSILON)
+	{
+		result = glm::cross(n1, n2) * this->constant;
+		result += glm::cross(n2, n0) * planeA.constant;
+		result += glm::cross(n0, n1) * planeB.constant;
+		result /= denom;
+		return true;
+	}
+	return false;
+}
+
 void Plane::CalculatePoint()
 {
 	glm::vec3 vec(0);

@@ -39,6 +39,12 @@ public:
 	inline bool Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept;
 	inline bool IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept;
 	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
+
+	bool TripleIntersect(const Plane& planeA, const Plane& planeB) const noexcept;
+	bool TripleIntersect(const Plane& planeA, const Plane& planeB, glm::vec3& result) const noexcept;
+
+	static inline bool TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC);
+	static inline bool TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC, glm::vec3& result);
 };
 // TODO: reorder these dummy
 
@@ -131,4 +137,15 @@ inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& direction, const gl
 	float t = glm::dot(this->point - point, direction) / dot;
 	return point + t * direction;
 }
+
+inline bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC)
+{
+	return planeA.TripleIntersect(planeA, planeB, planeC);
+}
+
+inline bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC, glm::vec3& result)
+{
+	return planeA.TripleIntersect(planeA, planeB, planeC, result);
+}
+
 #endif
