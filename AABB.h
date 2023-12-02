@@ -208,7 +208,8 @@ constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Col
 		float parallel = direction[i];
 		if (glm::abs(dir[i]) < EPSILON)
 		{
-			if (-parallel - scale > 0 || -parallel + scale > 0)
+			//if (-parallel - scale > 0 || -parallel + scale > 0)
+			if (abs(parallel) > scale)
 			{
 				return false;
 			}
@@ -261,7 +262,8 @@ inline constexpr bool AABB::FastIntersect(const glm::vec3& point, const glm::vec
 		float parallel = delta[i];
 		if (glm::abs(dir[i]) < EPSILON)
 		{
-			if (-parallel - scale > 0 || -parallel + scale > 0)
+			//if (-parallel - scale > 0 || -parallel + scale > 0)
+			if (abs(parallel) > scale)
 			{
 				return false;
 			}

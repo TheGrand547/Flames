@@ -126,6 +126,13 @@ std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCast(const Ray& 
 	return this->root.RayCast(line);
 }
 
+template<class T>
+std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCastSort(const Ray& line) const
+{
+	Log("TODO IMPLEMENT DUMMY");
+	return std::list<Item>();
+}
+
 /*
 template<class T>
 std::list<typename std::list<T>::iterator> StaticOctTree<T>::RayCastSort(const Ray& line) const
