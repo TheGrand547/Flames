@@ -26,17 +26,33 @@ enum PrimitiveDrawingType : unsigned int
 	TriangleStripAdjacency = GL_TRIANGLE_STRIP_ADJACENCY, // Only with Geometry Shaders
 };
 
+// Compute shaders will be their own thing
+
+enum ShaderStages : unsigned char
+{
+	None                   = 1,
+	Geometry               = 2,
+	Tesselation            = 4,
+	GeometryAndTesselation = Geometry | Tesselation,
+};
+
 class Shader
 {
 protected:
 	bool compiled, precompiled;
 	GLuint program;
+	ShaderStages stages;
+
 	std::string name;
-	std::map<std::string, GLuint> mapping;
+	std::map<std::string, GLuint> mapping; // This is dumb
+
+	bool TryLoadCompiled(const std::string& filename);
+
+	void CobbleTogether(std::vector<GLuint> shaders);
 public:
-	Shader();
-	Shader(const std::string& name, bool forceRecompile = false);
-	Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile = false);
+	Shader(ShaderStages stages = None);
+	Shader(const std::string& name);
+	Shader(const std::string& vertex, const std::string& fragment);
 	Shader(const char* vertex, const char* fragment);
 	Shader(const Shader& other) = delete;
 	Shader(Shader&& other) noexcept;
@@ -45,9 +61,24 @@ public:
 	Shader& operator=(const Shader& other) = delete;
 	Shader& operator=(Shader&& other) noexcept;
 
-	bool CompileSimple(const std::string& name, bool recompile = false);
-	bool Compile(const std::string& vertex, const std::string& frag, bool recompile = false);
-	bool CompileExplicit(const char* vertex, const char* fragment);
+	// TODO: This sucks, don't do this
+
+	// Compiles all stages available starting with the given filename
+	// [name]v, [name]f,  [name]g,            [name]tc,             [name]te 
+	// Vertex, fragment, geometry, tesselation control, tesselation evaluate, respectively
+	bool CompileSimple(const std::string& name);
+
+
+	bool Compile(const std::string& vertex, const std::string& frag);
+
+	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry);
+	bool Compile(const std::string& vertex, const std::string& frag, const std::string& tessControl, const std::string& tessEval);
+	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry, const std::string& tessControl, const std::string& tessEval);
+	bool CompileEmbedded(const std::string& vertex, const std::string& fragment);
+	bool CompileEmbeddedGeometry(const std::string& vertex, const std::string& fragment, const std::string& geometry);
+	bool CompileEmbeddedGeometryTesselation(const std::string& vertex, const std::string& fragment, 
+		const std::string& tessControl, const std::string& tessEval);
+	bool CompileEmbeddedTesselation(const std::string& vertex, const std::string& fragment, const std::string& tessControl, const std::string& tessEval);
 
 	constexpr bool Compiled() const;
 
@@ -59,7 +90,7 @@ public:
 	void CleanUp();
 	void ExportCompiled();
 
-	inline GLuint GetProgram();
+	inline GLuint GetProgram() const;
 	inline void SetActiveShader();
 	inline void SetInt(const std::string& name, const int i);
 	inline void SetFloat(const std::string& name, const float i);
@@ -70,9 +101,6 @@ public:
 	inline void SetTextureUnit(const std::string& name, const GLuint unit);
 	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
-
-	static void SetBasePath(const std::string& basePath);
-	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 
 	inline void DrawElements(PrimitiveDrawingType type, const GLuint num, const GLuint elementOffset = 0);
 	inline void DrawElements(PrimitiveDrawingType type, Buffer<ArrayBuffer>& buffer, const GLuint elementOffset = 0);
@@ -87,13 +115,17 @@ public:
 
 	template<PrimitiveDrawingType type> inline void DrawIndexed(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
 	inline void DrawIndexed(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+
+	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
+	static void SetBasePath(const std::string& basePath);
+	static void SetRecompilationFlag(bool flag);
 };
 
 constexpr bool Shader::Compiled() const
 {
 	return this->compiled;
 }
-inline GLuint Shader::GetProgram()
+inline GLuint Shader::GetProgram() const
 {
 	return this->program;
 }

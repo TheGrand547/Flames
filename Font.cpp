@@ -20,7 +20,7 @@ namespace Font
 
 	void SetupShader()
 	{
-		shader.CompileExplicit(fontVertex.c_str(), fontFragment.c_str());
+		shader.CompileEmbedded(fontVertex.c_str(), fontFragment.c_str());
 		vao.Generate();
 		vao.FillArray<UIVertex>(shader);
 	}

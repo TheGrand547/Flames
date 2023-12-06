@@ -4,15 +4,22 @@
 #include <iostream>
 #include <iterator>
 #include <map>
+#include <optional>
 #include <vector>
 #include "log.h"
 
 static std::map<std::string, std::string> shaderIncludeMapping;
 static std::string shaderBasePath = "";
+static bool Recompile = false;
 
 void Shader::SetBasePath(const std::string& basePath)
 {
 	shaderBasePath = basePath;
+}
+
+void Shader::SetRecompilationFlag(bool flag)
+{
+	Recompile = flag;
 }
 
 
@@ -71,7 +78,7 @@ static GLuint CompileShader(GLenum type, std::string data)
 	return vertex;
 }
 
-Shader::Shader() : compiled(false), precompiled(false), program(0), mapping()
+Shader::Shader(ShaderStages stages) : compiled(false), precompiled(false), program(0), stages(stages), mapping()
 {
 
 }
@@ -79,19 +86,19 @@ Shader::Shader() : compiled(false), precompiled(false), program(0), mapping()
 
 // If force is not set it will first check if a 'name.csp' (compiled shader program? no clue what industry standard is)
 // Takes name for a shader, and reads the files 'namev.glsl' and 'namef.glsl'
-Shader::Shader(const std::string& name, bool recompile) : compiled(false), precompiled(false), name(name), program(0), mapping()
+Shader::Shader(const std::string& name) : compiled(false), precompiled(false), name(name), program(0), mapping()
 {
-	this->CompileSimple(name, recompile);
+	this->CompileSimple(name);
 }
 
-Shader::Shader(const std::string& vertex, const std::string& fragment, bool forceRecompile) : compiled(false), precompiled(false), 
+Shader::Shader(const std::string& vertex, const std::string& fragment) : compiled(false), precompiled(false), 
 																		name(""), program(0), mapping()
 {
-	this->Compile(vertex, fragment, forceRecompile);
+	this->Compile(vertex, fragment);
 }
 Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0), mapping()
 {
-	this->CompileExplicit(vertex, fragment);
+	this->CompileEmbedded(vertex, fragment);
 }
 
 Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0), mapping()
@@ -120,18 +127,86 @@ Shader& Shader::operator=(Shader&& other) noexcept
 	return *this;
 }
 
-bool Shader::CompileSimple(const std::string& name, bool recompile)
+// TODO: Something about the error log stuff
+
+bool Shader::TryLoadCompiled(const std::string& filename)
 {
-	return this->Compile(name, name, recompile);
+	return false;
 }
 
-bool Shader::Compile(const std::string& vert, const std::string& frag, bool recompile)
+// All will be non-zero
+void Shader::CobbleTogether(std::vector<GLuint> shaders)
+{
+	if ((this->program = glCreateProgram()))
+	{
+		for (GLuint shader: shaders)
+		{
+			glAttachShader(this->program, shader);
+		}
+		glLinkProgram(this->program);
+		for (GLuint& shader : shaders)
+		{
+			glDeleteShader(shader);
+			shader = 0;
+		}
+		int result;
+		glGetProgramiv(this->program, GL_LINK_STATUS, &result);
+		if (!result) // If shader linking failed
+		{
+			GLint logSize;
+			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
+			char* logMsg = new char[logSize];
+			glGetProgramInfoLog(program, logSize, NULL, logMsg);
+			std::cerr << logMsg << std::endl;
+			delete[] logMsg;
+			this->program = 0;
+			return;
+		}
+
+		this->compiled = true;
+		this->ExportCompiled();
+		GLint logSize;
+		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
+		if (logSize)
+		{
+			GLchar* logMsg = new char[logSize];
+			glGetProgramInfoLog(program, logSize, NULL, logMsg);
+			std::cout << "Program Log: " << logMsg << std::endl;
+			delete[] logMsg;
+		}
+	}
+}
+
+bool Shader::CompileSimple(const std::string& name)
+{
+	// TODO: this is all bad stop it
+	if (!this->TryLoadCompiled(name))
+	{
+		const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.glsl", "tc.glsl", "te.glsl" };
+		const std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER, 
+			GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
+		std::vector<GLuint> shaders;
+		std::chrono::system_clock::rep timer = 0;
+		for (std::size_t i = 0; i < 5; i++)
+		{
+			std::filesystem::path localPath(shaderBasePath + name + extensions[i]);
+			if (std::filesystem::exists(localPath))
+			{
+
+			}
+		}
+	}
+	return this->Compile(name, name);
+}
+
+bool Shader::Compile(const std::string& vert, const std::string& frag)
 {
 	this->CleanUp();
 	std::string combined = (vert == frag) ? vert : vert + frag;
 	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
 	std::filesystem::path vertexPath(shaderBasePath + vert + "v.glsl");
 	std::filesystem::path fragmentPath(shaderBasePath + frag + "f.glsl");
+	std::filesystem::path geometryPath(shaderBasePath + frag + "g.glsl");
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
@@ -142,12 +217,15 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	this->name = combined;
 
 	std::ifstream input;
-	if (!recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
+	if (!Recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
 	{
 		auto compiledTime = std::filesystem::last_write_time(compiledPath).time_since_epoch().count();
 		auto vertexTime   = std::filesystem::last_write_time(vertexPath).time_since_epoch().count();
 		auto fragmentTime = std::filesystem::last_write_time(fragmentPath).time_since_epoch().count();
-		if (compiledTime > vertexTime && compiledTime > fragmentTime)
+
+		// If geometry exists then check it out but if not no big deal
+		auto geometryFlag = !std::filesystem::exists(geometryPath) || std::filesystem::last_write_time(geometryPath).time_since_epoch().count();
+		if (compiledTime > vertexTime && compiledTime > fragmentTime && geometryFlag)
 		{
 			input.open(compiledPath.string(), std::ios::binary);
 			if (input.is_open())
@@ -186,7 +264,10 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 
 	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
-	if (vertexFile.is_open() && fragmentFile.is_open())
+	std::optional<std::ifstream> geometryFile = (std::filesystem::exists(geometryPath)) ? 
+		std::make_optional(std::ifstream(geometryPath.string(), std::ifstream::in)) : std::nullopt;
+	std::cout << combined << ":" << geometryFile.has_value() << std::endl;
+	if (vertexFile.is_open() && fragmentFile.is_open() && (!geometryFile.has_value() || geometryFile->is_open()))
 	{
 		std::cout << "Compiling Shader from " << vertexPath << " and " << fragmentPath << std::endl;
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
@@ -195,6 +276,16 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment.c_str());
 		if (vShader && fShader && (this->program = glCreateProgram()))
 		{
+			if (geometryFile.has_value())
+			{
+				std::cout << "Exists!" << std::endl;
+				std::string geometry(std::istreambuf_iterator<char>{*geometryFile}, {});
+				GLuint g = 0;
+				if ((g = CompileShader(GL_GEOMETRY_SHADER, geometry.c_str())))
+				{
+					glAttachShader(this->program, g);
+				}
+			}
 			glAttachShader(this->program, vShader);
 			glAttachShader(this->program, fShader);
 			glLinkProgram(this->program);
@@ -231,7 +322,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool reco
 	return this->compiled;
 }
 
-bool Shader::CompileExplicit(const char* vertex, const char* fragment)
+bool Shader::CompileEmbedded(const std::string& vertex, const std::string& fragment)
 {
 	this->precompiled = false;
 	GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
