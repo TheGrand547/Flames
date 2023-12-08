@@ -74,10 +74,12 @@ public:
 
 	bool Compile(const std::string& vertex, const std::string& frag);
 
+	// TODO: Maybe later
+	/*
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry);
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& tessControl, const std::string& tessEval);
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry, const std::string& tessControl, const std::string& tessEval);
-	
+	*/
 	// These all work on shader code as a string, not read in from a file
 	bool CompileEmbedded(const std::string& vertex, const std::string& fragment);
 	bool CompileEmbeddedGeometry(const std::string& vertex, const std::string& fragment, const std::string& geometry);
