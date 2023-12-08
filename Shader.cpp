@@ -1,5 +1,4 @@
 #include "Shader.h"
-#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <iterator>
@@ -11,6 +10,9 @@
 static std::map<std::string, std::string> shaderIncludeMapping;
 static std::string shaderBasePath = "";
 static bool Recompile = false;
+static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.glsl", "tc.glsl", "te.glsl" };
+static const std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
+	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 
 void Shader::SetBasePath(const std::string& basePath)
 {
@@ -127,76 +129,171 @@ Shader& Shader::operator=(Shader&& other) noexcept
 	return *this;
 }
 
-// TODO: Something about the error log stuff
-
-bool Shader::TryLoadCompiled(const std::string& filename)
+bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock::rep threshold)
 {
+
+	std::filesystem::path compiledPath(shaderBasePath + name + ".csp");
+	if (!Recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
+	{
+		std::chrono::system_clock::rep compiledTime = std::filesystem::last_write_time(compiledPath).time_since_epoch().count();
+		if (compiledTime > threshold)
+		{
+			std::ifstream input;
+			input.open(compiledPath, std::ios::binary);
+			if (input.is_open())
+			{
+				Log("Reading '" << this->name << "' from compiled shader file.");
+				GLint length = 0;
+				GLenum format = 0;
+				input.read((char*)&length, sizeof(GLint));
+				input.read((char*)&format, sizeof(GLenum));
+				char* data = new char[length];
+				input.read(data, length);
+				this->program = glCreateProgram();
+				glProgramBinary(this->program, format, reinterpret_cast<void*>(data), length);
+				delete[] data;
+				input.close();
+
+				int result;
+				glGetProgramiv(this->program, GL_LINK_STATUS, &result);
+				if (result)
+				{
+					this->compiled = true;
+					this->precompiled = true;
+					return true;
+				}
+				GLint logSize;
+				glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &logSize);
+				char* logMsg = new char[logSize];
+				glGetProgramInfoLog(this->program, logSize, NULL, logMsg);
+				Log("Error reading compiled shader from file '" << name << ".csp'" << std::endl << logMsg);
+				delete[] logMsg;
+				input.close();
+				this->program = 0;
+			}
+		}
+	}
 	return false;
 }
 
-// All will be non-zero
-void Shader::CobbleTogether(std::vector<GLuint> shaders)
+bool Shader::ProgramStatus()
 {
-	if ((this->program = glCreateProgram()))
+	int result;
+	glGetProgramiv(this->program, GL_LINK_STATUS, &result);
+	if (!result)
 	{
-		for (GLuint shader: shaders)
-		{
-			glAttachShader(this->program, shader);
-		}
-		glLinkProgram(this->program);
-		for (GLuint& shader : shaders)
-		{
-			glDeleteShader(shader);
-			shader = 0;
-		}
-		int result;
-		glGetProgramiv(this->program, GL_LINK_STATUS, &result);
-		if (!result) // If shader linking failed
-		{
-			GLint logSize;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-			char* logMsg = new char[logSize];
-			glGetProgramInfoLog(program, logSize, NULL, logMsg);
-			std::cerr << logMsg << std::endl;
-			delete[] logMsg;
-			this->program = 0;
-			return;
-		}
-
-		this->compiled = true;
-		this->ExportCompiled();
 		GLint logSize;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-		if (logSize)
-		{
-			GLchar* logMsg = new char[logSize];
-			glGetProgramInfoLog(program, logSize, NULL, logMsg);
-			std::cout << "Program Log: " << logMsg << std::endl;
-			delete[] logMsg;
-		}
+		char* logMsg = new char[logSize];
+		glGetProgramInfoLog(program, logSize, NULL, logMsg);
+		std::cerr << "Linking of shader failed: " << logMsg << std::endl;
+		delete[] logMsg;
+		this->program = 0;
 	}
+	GLint logSize;
+	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
+	if (logSize)
+	{
+		GLchar* logMsg = new char[logSize];
+		glGetProgramInfoLog(program, logSize, NULL, logMsg);
+		std::cout << "Program Log: " << logMsg << std::endl;
+		delete[] logMsg;
+	}
+	this->compiled = result;
+	return result;
 }
 
 bool Shader::CompileSimple(const std::string& name)
 {
+	this->CleanUp();
+	this->name = name;
+#ifdef RELEASE
+	Log("Compile Simple should not be used in release mode! Please embed the shaders.")
+#endif // RELEASE
 	// TODO: this is all bad stop it
-	if (!this->TryLoadCompiled(name))
 	{
-		const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.glsl", "tc.glsl", "te.glsl" };
-		const std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER, 
-			GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 		std::vector<GLuint> shaders;
 		std::chrono::system_clock::rep timer = 0;
+		int mask = 0;
 		for (std::size_t i = 0; i < 5; i++)
 		{
 			std::filesystem::path localPath(shaderBasePath + name + extensions[i]);
 			if (std::filesystem::exists(localPath))
 			{
-
+				timer = std::max(timer, std::filesystem::last_write_time(localPath).time_since_epoch().count());
+				mask |= (1 << i);
 			}
 		}
+		// Must have fragment and vertex shaders present
+		if (!this->TryLoadCompiled(name, timer) && (mask & 3) == 3)
+		{
+			// These *must* exist
+			std::filesystem::path vertexPath(shaderBasePath + name + "v.glsl");
+			std::filesystem::path fragmentPath(shaderBasePath + name + "f.glsl");
+			std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
+			std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
+			std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
+			std::string fragment(std::istreambuf_iterator<char>{fragmentFile}, {});
+			vertexFile.close();
+			fragmentFile.close();
+			switch ((mask >> 2))
+			{
+			// Only Geometry is present
+			case 1:
+			{
+				std::filesystem::path geometryPath(shaderBasePath + name + "g.glsl");
+				std::ifstream geometryFile(geometryPath.string(), std::ifstream::in);
+				std::string geometry(std::istreambuf_iterator<char>{geometryFile}, {});
+				this->CompileEmbeddedGeometry(vertex, fragment, geometry);
+				geometryFile.close();
+				break;
+			}
+			// Tess control and evaluation are present
+			case 6:
+			{
+				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
+				std::filesystem::path tcPath(shaderBasePath + name + "te.glsl");
+				std::ifstream teFile(tePath.string(), std::ifstream::in);
+				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
+				std::string te(std::istreambuf_iterator<char>{teFile}, {});
+				std::string tc(std::istreambuf_iterator<char>{tcFile}, {});
+				this->CompileEmbeddedTesselation(vertex, fragment, te, tc);
+				teFile.close();
+				tcFile.close();
+				break;
+			}
+			// All are present
+			case 7:
+			{
+				std::filesystem::path geometryPath(shaderBasePath + name + "g.glsl");
+				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
+				std::filesystem::path tcPath(shaderBasePath + name + "te.glsl");
+				std::ifstream geometryFile(geometryPath.string(), std::ifstream::in);
+				std::ifstream teFile(tePath.string(), std::ifstream::in);
+				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
+				std::string geometry(std::istreambuf_iterator<char>{geometryFile}, {});
+				std::string te(std::istreambuf_iterator<char>{teFile}, {});
+				std::string tc(std::istreambuf_iterator<char>{tcFile}, {});
+				this->CompileEmbeddedGeometryTesselation(vertex, fragment, geometry, te, tc);
+				geometryFile.close();
+				teFile.close();
+				tcFile.close();
+				break;
+			}
+			// No extra stages, or invalid combination thereof, in which case default to just vertex/fragment
+			default:
+				if ((mask >> 2) != 0)
+				{
+					Log("Missing one of the tesselation shader stages for '" << name << "'");
+				}
+				this->CompileEmbedded(vertex, fragment);
+				break;
+			}
+
+		}
+		//return false;
 	}
-	return this->Compile(name, name);
+	return this->compiled;
 }
 
 bool Shader::Compile(const std::string& vert, const std::string& frag)
@@ -206,7 +303,6 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
 	std::filesystem::path vertexPath(shaderBasePath + vert + "v.glsl");
 	std::filesystem::path fragmentPath(shaderBasePath + frag + "f.glsl");
-	std::filesystem::path geometryPath(shaderBasePath + frag + "g.glsl");
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
@@ -215,7 +311,10 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	}
 
 	this->name = combined;
-
+	if (TryLoadCompiled(combined, std::max(std::filesystem::last_write_time(vertexPath).time_since_epoch().count(), 
+		std::filesystem::last_write_time(fragmentPath).time_since_epoch().count())))
+		return true;
+	/*
 	std::ifstream input;
 	if (!Recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
 	{
@@ -260,14 +359,11 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 				this->program = 0;
 			}
 		}
-	}
+	}*/
 
 	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
-	std::optional<std::ifstream> geometryFile = (std::filesystem::exists(geometryPath)) ? 
-		std::make_optional(std::ifstream(geometryPath.string(), std::ifstream::in)) : std::nullopt;
-	std::cout << combined << ":" << geometryFile.has_value() << std::endl;
-	if (vertexFile.is_open() && fragmentFile.is_open() && (!geometryFile.has_value() || geometryFile->is_open()))
+	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
 		std::cout << "Compiling Shader from " << vertexPath << " and " << fragmentPath << std::endl;
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
@@ -276,45 +372,13 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment.c_str());
 		if (vShader && fShader && (this->program = glCreateProgram()))
 		{
-			if (geometryFile.has_value())
-			{
-				std::cout << "Exists!" << std::endl;
-				std::string geometry(std::istreambuf_iterator<char>{*geometryFile}, {});
-				GLuint g = 0;
-				if ((g = CompileShader(GL_GEOMETRY_SHADER, geometry.c_str())))
-				{
-					glAttachShader(this->program, g);
-				}
-			}
 			glAttachShader(this->program, vShader);
 			glAttachShader(this->program, fShader);
 			glLinkProgram(this->program);
-			int result;
-			glGetProgramiv(this->program, GL_LINK_STATUS, &result);
-			if (!result)
-			{
-				GLint logSize;
-				glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-				char* logMsg = new char[logSize];
-				glGetProgramInfoLog(program, logSize, NULL, logMsg);
-				std::cerr << logMsg << std::endl;
-				delete[] logMsg;
-				this->program = 0;
-				return false;
-			}
+			this->ProgramStatus();
 			glDeleteShader(vShader);
 			glDeleteShader(fShader);
-			this->compiled = true;
 			this->ExportCompiled();
-			GLint logSize;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-			if (logSize)
-			{
-				GLchar* logMsg = new char[logSize];
-				glGetProgramInfoLog(program, logSize, NULL, logMsg);
-				std::cout << "Program Log: " << logMsg << std::endl;
-				delete[] logMsg;
-			}
 		}
 		vertexFile.close();
 		fragmentFile.close();
@@ -324,30 +388,98 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 
 bool Shader::CompileEmbedded(const std::string& vertex, const std::string& fragment)
 {
-	this->precompiled = false;
-	GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
-	GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
-	if (vShader && fShader && (this->program = glCreateProgram()))
+	if ((this->program = glCreateProgram()))
 	{
-		glAttachShader(this->program, vShader);
-		glAttachShader(this->program, fShader);
-		glLinkProgram(this->program);
-		int result;
-		glGetProgramiv(this->program, GL_LINK_STATUS, &result);
-		if (!result)
+		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
+		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
+		if (vShader && fShader)
 		{
-			GLint logSize;
-			glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-			char* logMsg = new char[logSize];
-			glGetProgramInfoLog(program, logSize, NULL, logMsg);
-			std::cerr << logMsg << std::endl;
-			delete[] logMsg;
-			this->program = 0;
-			return false;
+			glAttachShader(this->program, vShader);
+			glAttachShader(this->program, fShader);
+			glLinkProgram(this->program);
+			this->ProgramStatus();
+			glDeleteShader(vShader);
+			glDeleteShader(fShader);
 		}
-		glDeleteShader(vShader);
-		glDeleteShader(fShader);
-		this->compiled = true;
+	}
+	return this->compiled;
+}
+
+bool Shader::CompileEmbeddedGeometry(const std::string& vertex, const std::string& fragment, const std::string& geometry)
+{
+	this->precompiled = false;
+	if ((this->program = glCreateProgram()))
+	{
+		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
+		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
+		GLuint gShader = CompileShader(GL_GEOMETRY_SHADER, fragment);
+		if (vShader && fShader && gShader)
+		{
+			glAttachShader(this->program, vShader);
+			glAttachShader(this->program, fShader);
+			glAttachShader(this->program, gShader);
+			glLinkProgram(this->program);
+			this->ProgramStatus();
+			glDeleteShader(vShader);
+			glDeleteShader(fShader);
+			glDeleteShader(gShader);
+		}
+	}
+	return this->compiled;
+}
+
+bool Shader::CompileEmbeddedGeometryTesselation(const std::string& vertex, const std::string& fragment, const std::string& geometry, 
+	const std::string& tessControl, const std::string& tessEval)
+{
+	this->precompiled = false;
+	if ((this->program = glCreateProgram()))
+	{
+		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
+		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
+		GLuint gShader = CompileShader(GL_FRAGMENT_SHADER, geometry);
+		GLuint tcShader = CompileShader(GL_TESS_CONTROL_SHADER, tessControl);
+		GLuint teShader = CompileShader(GL_TESS_EVALUATION_SHADER, tessEval);
+		if (vShader && fShader && gShader && tcShader && teShader)
+		{
+			glAttachShader(this->program, vShader);
+			glAttachShader(this->program, fShader);
+			glAttachShader(this->program, gShader);
+			glAttachShader(this->program, tcShader);
+			glAttachShader(this->program, teShader);
+			glLinkProgram(this->program);
+			this->ProgramStatus();
+			glDeleteShader(vShader);
+			glDeleteShader(fShader);
+			glDeleteShader(gShader);
+			glDeleteShader(teShader);
+			glDeleteShader(tcShader);
+		}
+	}
+	return this->compiled;
+}
+
+bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::string& fragment, const std::string& tessControl, const std::string& tessEval)
+{
+	this->precompiled = false;
+	if ((this->program = glCreateProgram()))
+	{
+		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
+		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
+		GLuint tcShader = CompileShader(GL_TESS_CONTROL_SHADER, tessControl);
+		GLuint teShader = CompileShader(GL_TESS_EVALUATION_SHADER, tessEval);
+		if (vShader && fShader && tcShader && teShader)
+		{
+			glAttachShader(this->program, vShader);
+			glAttachShader(this->program, fShader);
+			glAttachShader(this->program, tcShader);
+			glAttachShader(this->program, teShader);
+			glLinkProgram(this->program);
+			this->ProgramStatus();
+			glDeleteShader(vShader);
+			glDeleteShader(fShader);
+			glDeleteShader(teShader);
+			glDeleteShader(tcShader);
+		}
 	}
 	return this->compiled;
 }
@@ -408,6 +540,7 @@ void Shader::ExportCompiled()
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;
+	std::cout << this->name << std::endl;
 	std::ofstream output(shaderBasePath + this->name + ".csp", std::ios::binary);
 	if (output.is_open())
 	{

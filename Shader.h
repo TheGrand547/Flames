@@ -2,6 +2,7 @@
 #ifndef FLAMES_SHADER_H
 #define FLAMES_SHADER_H
 #include <bit>
+#include <filesystem>
 #include <glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -30,9 +31,9 @@ enum PrimitiveDrawingType : unsigned int
 
 enum ShaderStages : unsigned char
 {
-	None                   = 1,
-	Geometry               = 2,
-	Tesselation            = 4,
+	None                   = 0,
+	Geometry               = 1,
+	Tesselation            = 2,
 	GeometryAndTesselation = Geometry | Tesselation,
 };
 
@@ -46,9 +47,11 @@ protected:
 	std::string name;
 	std::map<std::string, GLuint> mapping; // This is dumb
 
-	bool TryLoadCompiled(const std::string& filename);
+	// True -> loaded successfully from file, False -> did not load shader from file
+	bool TryLoadCompiled(const std::string& name, std::chrono::system_clock::rep threshold);
 
-	void CobbleTogether(std::vector<GLuint> shaders);
+	// True -> Compiled Fine, False -> Some Error
+	bool ProgramStatus();
 public:
 	Shader(ShaderStages stages = None);
 	Shader(const std::string& name);
@@ -74,9 +77,11 @@ public:
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry);
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& tessControl, const std::string& tessEval);
 	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry, const std::string& tessControl, const std::string& tessEval);
+	
+	// These all work on shader code as a string, not read in from a file
 	bool CompileEmbedded(const std::string& vertex, const std::string& fragment);
 	bool CompileEmbeddedGeometry(const std::string& vertex, const std::string& fragment, const std::string& geometry);
-	bool CompileEmbeddedGeometryTesselation(const std::string& vertex, const std::string& fragment, 
+	bool CompileEmbeddedGeometryTesselation(const std::string& vertex, const std::string& fragment, const std::string& geometry, 
 		const std::string& tessControl, const std::string& tessEval);
 	bool CompileEmbeddedTesselation(const std::string& vertex, const std::string& fragment, const std::string& tessControl, const std::string& tessEval);
 
