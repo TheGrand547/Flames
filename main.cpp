@@ -303,6 +303,8 @@ void display()
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	glDisable(GL_CULL_FACE);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
@@ -365,17 +367,26 @@ void display()
 	//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
 
 	// Albert
-	/*
+	
+	glDisable(GL_CULL_FACE);
+	glPatchParameteri(GL_PATCH_VERTICES, 3);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	texturedVAO.BindArrayBuffer(albertBuffer);
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
 	dither.SetTextureUnit("textureIn", texture, 0);
 	dither.SetMat4("Model", smartBox.GetModelMatrix());
 	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
-	*/
+	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	dither.SetVec3("viewPos", cameraPosition);
+	dither.DrawElements<Patches>(albertBuffer);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
+
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
-	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	glDisable(GL_DEPTH_TEST);

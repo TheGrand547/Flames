@@ -1,8 +1,8 @@
 #version 440 core
 
-layout(location = 0) in vec3 fPos;
-layout(location = 1) in vec3 fNorm;
-layout(location = 2) in vec2 fTex;
+layout(location = 0) in vec3 fPosF;
+layout(location = 1) in vec3 fNormF;
+layout(location = 2) in vec2 fTexF;
 
 layout(location = 0) out vec4 colorOut;
 layout(location = 1) out vec4 normalOut;
@@ -15,6 +15,9 @@ uniform sampler2D ditherMap;
 
 void main()
 {
+	vec3 fNorm = fNormF;
+	vec3 fPos = fPosF;
+	vec2 fTex = fTexF;
 	float ambient = 0.2f; // TODO: material setting
 	
 	// TODO: light settings
@@ -50,5 +53,6 @@ void main()
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
 	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	colorOut = vec4(result, 1.0);
+	colorOut = vec4(1, 0, 0, 1);
 	//colorOut = vec4(abs(vec3(normalize(gl_FragCoord.xy), fTex.x * fTex.y) * viewDirection), 1.0);
 }

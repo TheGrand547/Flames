@@ -7,6 +7,7 @@ layout(location = 2) in mat4 Model;
 layout(location = 0) out vec3 fPos;
 layout(location = 1) out vec3 fNorm;
 layout(location = 2) out vec2 fTex;
+//layout(location = 3) out mat4 Model2;
 
 // TODO: Normal matrix
 

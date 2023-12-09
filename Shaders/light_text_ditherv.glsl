@@ -20,6 +20,7 @@ void main()
 {
 	fNorm = normalize(mat3(transpose(inverse(Model))) * vec3(0, 1, 0));
 	fPos = vec3(Model * vec4(vPos, 1.0));
-	gl_Position = Projection * View * Model * vec4(vPos, 1.0);
+	//gl_Position = Projection * View * Model * vec4(vPos, 1.0);
+	gl_Position = Model * vec4(vPos, 1.0);
 	fTex = vTex;
 }

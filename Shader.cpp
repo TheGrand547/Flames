@@ -194,7 +194,8 @@ bool Shader::ProgramStatus()
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
 	if (logSize)
 	{
-		GLchar* logMsg = new char[logSize];
+		std::cout << std::bit_cast<unsigned int>(logSize) << std::endl;
+		GLchar* logMsg = new char[std::bit_cast<unsigned int>(logSize)];
 		glGetProgramInfoLog(program, logSize, NULL, logMsg);
 		std::cout << "Program Log: " << logMsg << std::endl;
 		delete[] logMsg;
@@ -252,12 +253,12 @@ bool Shader::CompileSimple(const std::string& name)
 			case 6:
 			{
 				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
-				std::filesystem::path tcPath(shaderBasePath + name + "te.glsl");
+				std::filesystem::path tcPath(shaderBasePath + name + "tc.glsl");
 				std::ifstream teFile(tePath.string(), std::ifstream::in);
 				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
 				std::string te(std::istreambuf_iterator<char>{teFile}, {});
 				std::string tc(std::istreambuf_iterator<char>{tcFile}, {});
-				this->CompileEmbeddedTesselation(vertex, fragment, te, tc);
+				this->CompileEmbeddedTesselation(vertex, fragment, tc, te);
 				teFile.close();
 				tcFile.close();
 				break;
@@ -267,14 +268,14 @@ bool Shader::CompileSimple(const std::string& name)
 			{
 				std::filesystem::path geometryPath(shaderBasePath + name + "g.glsl");
 				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
-				std::filesystem::path tcPath(shaderBasePath + name + "te.glsl");
+				std::filesystem::path tcPath(shaderBasePath + name + "tc.glsl");
 				std::ifstream geometryFile(geometryPath.string(), std::ifstream::in);
 				std::ifstream teFile(tePath.string(), std::ifstream::in);
 				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
 				std::string geometry(std::istreambuf_iterator<char>{geometryFile}, {});
 				std::string te(std::istreambuf_iterator<char>{teFile}, {});
 				std::string tc(std::istreambuf_iterator<char>{tcFile}, {});
-				this->CompileEmbeddedGeometryTesselation(vertex, fragment, geometry, te, tc);
+				this->CompileEmbeddedGeometryTesselation(vertex, fragment, geometry, tc, te);
 				geometryFile.close();
 				teFile.close();
 				tcFile.close();
