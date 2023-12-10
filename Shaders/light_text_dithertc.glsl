@@ -18,11 +18,11 @@ void main()
 	fPos2[gl_InvocationID] = fPos[gl_InvocationID];
     if (gl_InvocationID == 0)
     {
-        gl_TessLevelOuter[0] = 16;
-        gl_TessLevelOuter[1] = 16;
-        gl_TessLevelOuter[2] = 16;
+        gl_TessLevelOuter[0] = 2;
+        gl_TessLevelOuter[1] = 1;
+        gl_TessLevelOuter[2] = 2;
 
-        gl_TessLevelInner[0] = 16;
-        gl_TessLevelInner[1] = 16;
+        gl_TessLevelInner[0] = 1;
+        gl_TessLevelInner[1] = 1;
     }
 }

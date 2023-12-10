@@ -10,6 +10,7 @@
 static std::map<std::string, std::string> shaderIncludeMapping;
 static std::string shaderBasePath = "";
 static bool Recompile = false;
+// TODO: Actually use these dummy
 static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.glsl", "tc.glsl", "te.glsl" };
 static const std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
 	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };

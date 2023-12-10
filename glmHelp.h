@@ -1,6 +1,7 @@
 #pragma once
 #ifndef GLM_HELP_H
 #define GLM_HELP_H
+#include <format>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -35,6 +36,14 @@ std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)
 	os << ")";
 	return os;
 }
+/*
+template <> template<glm::length_t T, typename W, glm::qualifier Q>
+struct std::formatter<const glm::vec<T, W, Q>&> : std::formatter<std::string> {
+	auto format(const glm::vec<T, W, Q>& vec, format_context& ctx) const {
+		return formatter<string>::format(
+			std::format("({}, {}, {})", vec), ctx);
+	}
+};*/
 
 //  SLOPPY
 inline std::ostream& operator<<(std::ostream& os, const glm::quat& vec)

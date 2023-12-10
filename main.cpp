@@ -168,8 +168,10 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 
 const int ditherSize = 16;
 
+ASCIIFont fonter;
+
 // Buffers
-Buffer<ArrayBuffer> albertBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -179,15 +181,14 @@ Framebuffer<2, Depth> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
-Shader dither, expand, finalResult, frameShader, flatLighting, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
+Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
 // Textures
 Texture2D ditherTexture, hatching, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
-VAO instanceVAO, meshVAO, normalVAO, plainVAO, texturedVAO;
-
+VAO fontVAO, instanceVAO, meshVAO, normalVAO, plainVAO, texturedVAO;
 
 // TODO: Make structures around these
 GLuint framebufferMod;
@@ -267,12 +268,6 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 // TODO: Move cube stuff into a shader or something I don't know
 
 OBB loom;
-
-
-Shader fontShader;
-VAO fontVAO;
-Buffer<ArrayBuffer> boring;
-ASCIIFont fonter;
 
 bool flopper = false;
 void display()
@@ -380,13 +375,14 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
-	dither.DrawElements<Patches>(albertBuffer);
+	//dither.DrawElements<Patches>(3);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
+	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
-	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	glDisable(GL_DEPTH_TEST);
@@ -473,10 +469,10 @@ void display()
 	uiRectTexture.DrawElements(TriangleStrip, 4);
 
 	fontShader.SetActiveShader();
-	fontVAO.BindArrayBuffer(boring);
+	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	// TODO: Set object amount in buffer function
-	fontShader.DrawElements<Triangle>(boring);
+	fontShader.DrawElements<Triangle>(textBuffer);
 	glDisable(GL_BLEND);
 
 	// Framebuffer stuff
@@ -525,14 +521,128 @@ struct
 	glm::vec3 acceleration{ 0.f };
 	glm::vec3 velocity{ 0.f };
 	glm::vec3 axisOfGaming{ 0.f };
+	OBB* ptr = nullptr;
 } smartBoxPhysics;
 
 static float maxRotatePerFrame = 0.f;
+
+void smartBoxAlignEdge(OBB& other, glm::length_t minDotI, glm::length_t maxDotI)
+{
+	// Only the scale of the other one is needed to determine if this midpoint is inside
+	glm::vec3 dumbScale = other.GetScale();
+	glm::vec3 delta = other.Center() - smartBox.Center();
+
+	// Maintain right handedness
+	// TODO: maybe 2, 0 for the second one?
+	int indexA[3] = { 0, 0, 1 };
+	int indexB[3] = { 1, 2, 2 };
+	for (int i = 0; i < 3; i++)
+	{
+		int indexedA = indexA[i];
+		int indexedB = indexB[i];
+
+		glm::vec3 axisA = other[indexedA];
+		glm::vec3 axisB = other[indexedB];
+
+		// Calculate the distance along each of these axes 
+		float projectionA = glm::dot(delta, axisA);
+		float projectionB = glm::dot(delta, axisB);
+
+		// See if the extent in that direction is more than covered by these axes
+		bool testA = glm::abs(projectionA) >= dumbScale[indexedA];
+		bool testB = glm::abs(projectionB) >= dumbScale[indexedB];
+
+		// smartBox collides entirely because of its own sides, therefore it might need to rotate
+		if (testA && testB)
+		{
+			glm::quat current = glm::quat_cast(smartBox.GetNormalMatrix());
+			bool axisTest = glm::abs(projectionA) > glm::abs(projectionB);
+
+			// This is the axis of smartBox that will be rotated towards?
+			glm::vec3 localAxis = (axisTest) ? axisA : axisB;
+			if (glm::sign(glm::dot(localAxis, delta)) > 0)
+			{
+				localAxis *= -1;
+			}
+			glm::vec3 rotationAxis = glm::normalize(glm::cross(smartBox[maxDotI], localAxis));
+
+			glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], localAxis)), rotationAxis);
+			glm::quat newer = glm::normalize(rotation * current);
+			glm::quat older = glm::normalize(current);
+
+			float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+			float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
+			if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+			{
+				// Slerp interpolates along the shortest axis on the great circle
+				smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
+			}
+			break;
+		}
+	}
+}
+
+void smartBoxAlignSide(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::length_t maxDotI)
+{
+	glm::mat3 goobers{ smartBox[0], smartBox[1], smartBox[2] };
+	// Leasted aligned keeps its index
+	// Middle is replaced with least cross intersection
+	// Most is replaced with the negative of new middle cross least
+	glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
+	glm::vec3 newMost = axis;                              // goes in smartbox[maxDotI]
+	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
+
+	glm::length_t leastD = minDotI;
+	glm::length_t mostD = maxDotI;
+	glm::length_t newD = 3 - leastD - mostD;
+	least *= glm::sign(glm::dot(least, goobers[minDotI]));
+	newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
+	newest *= glm::sign(glm::dot(newest, goobers[newD]));
+
+	glm::mat3 lame{};
+	lame[leastD] = least;
+	lame[mostD] = newMost;
+	lame[newD] = newest;
+	glm::quat older = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
+	glm::quat newer = glm::normalize(glm::quat_cast(lame));
+	float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+	float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
+
+	// ?
+	if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
+	{
+		// Slerp interpolates along the shortest axis on the great circle
+		smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
+	}
+}
+
+void smartBoxAligner(OBB& other, glm::vec3 axis)
+{
+	float minDot = INFINITY, maxDot = -INFINITY;
+	glm::length_t minDotI = 0, maxDotI = 0;
+	for (glm::length_t i = 0; i < 3; i++)
+	{
+		float local = glm::abs(glm::dot(smartBox[i], axis));
+		if (local < minDot)
+		{
+			minDot = local;
+			minDotI = i;
+		}
+		if (local > maxDot)
+		{
+			maxDot = local;
+			maxDotI = i;
+		}
+	}
+	smartBoxAlignSide(other, axis, minDotI, maxDotI);
+}
+
 
 bool smartBoxCollide()
 {
 	bool val = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
+	smartBoxPhysics.ptr = nullptr;
 	float dotValue = INFINITY;
 	auto boxers = boxes.Search(smartBox.GetAABB());
 	int collides = 0;
@@ -550,6 +660,7 @@ bool smartBoxCollide()
 			{
 				temp = dot;
 				smartBoxPhysics.axisOfGaming = c.axis;
+				smartBoxPhysics.ptr = &letsgo->box;
 			}
 
 			float minDot = INFINITY, maxDot = -INFINITY;
@@ -570,96 +681,15 @@ bool smartBoxCollide()
 				}
 			}
 
-			{
-				OBB& other = letsgo->box;
-				// Only the scale of the other one is needed to determine if this midpoint is inside
-				glm::vec3 dumbScale = other.GetScale();
-				glm::vec3 delta = other.Center() - smartBox.Center();
+			smartBoxAlignEdge(letsgo->box, minDotI, maxDotI);
 
-				// Maintain right handedness
-				// TODO: maybe 2, 0 for the second one?
-				int indexA[3] = { 0, 0, 1 };
-				int indexB[3] = { 1, 2, 2 };
-				for (int i = 0; i < 3; i++)
-				{		
-					int indexedA = indexA[i];
-					int indexedB = indexB[i];
-
-					glm::vec3 axisA = other[indexedA];
-					glm::vec3 axisB = other[indexedB];
-
-					// Calculate the distance along each of these axes 
-					float projectionA = glm::dot(delta, axisA);
-					float projectionB = glm::dot(delta, axisB);
-					
-					// See if the extent in that direction is more than covered by these axes
-					bool testA = glm::abs(projectionA) >= dumbScale[indexedA];
-					bool testB = glm::abs(projectionB) >= dumbScale[indexedB];
-
-					// smartBox collides entirely because of its own sides, therefore it might need to rotate
-					if (testA && testB)
-					{
-						glm::quat current = glm::quat_cast(smartBox.GetNormalMatrix());
-						bool axisTest = glm::abs(projectionA) > glm::abs(projectionB);
-
-						// This is the axis of smartBox that will be rotated towards?
-						glm::vec3 localAxis = (axisTest) ? axisA : axisB;
-						if (glm::sign(glm::dot(localAxis, delta)) > 0)
-						{
-							localAxis *= -1;
-						}
-						glm::vec3 rotationAxis = glm::normalize(glm::cross(smartBox[maxDotI], localAxis));
-
-						glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], localAxis)), rotationAxis);
-						glm::quat newer = glm::normalize(rotation * current);
-						glm::quat older = glm::normalize(current);
-
-						float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-						float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-						if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
-						{
-							// Slerp interpolates along the shortest axis on the great circle
-							smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
-						}
-						break;
-					}
-				}
-			}
 			// TODO: look into this
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
 			// TODO: Thing to make sure this isn't applied when the box itself is rotating under its own power
-			if (c.depth > 0.002) // Why this number
+			//if (true) //(c.depth > 0.002) // Why this number
+			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
-				glm::mat3 goobers{ smartBox[0], smartBox[1], smartBox[2] };
-				// Leasted aligned keeps its index
-				// Middle is replaced with least cross intersection
-				// Most is replaced with the negative of new middle cross least
-				glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
-				glm::vec3 newMost = upper;                              // goes in smartbox[maxDotI]
-				glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
-
-				glm::length_t leastD = minDotI;
-				glm::length_t mostD = maxDotI;
-				glm::length_t newD = 3 - leastD - mostD;
-				least *= glm::sign(glm::dot(least, goobers[minDotI]));
-				newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
-				newest *= glm::sign(glm::dot(newest, goobers[newD]));
-
-				glm::mat3 lame{};
-				lame[leastD] = least;
-				lame[mostD] = newMost;
-				lame[newD] = newest;
-				glm::quat older = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
-				glm::quat newer = glm::normalize(glm::quat_cast(lame));
-				float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-				float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-
-				// ?
-				if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
-				{
-					// Slerp interpolates along the shortest axis on the great circle
-					smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
-				}
+				smartBoxAlignSide(letsgo->box, upper, minDotI, maxDotI);
 				smartBox.OverlapAndSlide(letsgo->box);
 			}
 			else
@@ -718,8 +748,10 @@ void idle()
 	{
 		averageFps += frames[i] / frames.size();
 	}
-	fonter.RenderToScreen(boring, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}\n{}", 
-			averageFps, 1000.f / averageFps, (flopper) ? "New" : "Old", frameCounter));
+	std::stringstream ss;
+	ss << smartBox.Center();
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}\n{}",
+		averageFps, 1000.f / averageFps, ss.str(), frameCounter));// (flopper) ? "New" : "Old", frameCounter));
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -797,9 +829,9 @@ void idle()
 
 	glm::vec3 boxForces{ 0.f };
 
-	if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
+	//if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
 	//if (keyState[ArrowKeyUp])   smartBox.Translate(smartBox.Forward() * speed);
-	if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
+	//if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
 	//if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
 	if (keyState['v']) smartBox.Translate(GravityAxis * speed);
 	if (keyState['c']) smartBox.Translate(GravityUp * speed);
@@ -834,7 +866,7 @@ void idle()
 		//std::cout << frameCounter << ": " << rayd.axis << "," << rayd.distance <<  std::endl;
 		//std::cout << frameCounter << ": " << rayd.distance << std::endl;
 		// Make sure it's not too far away
-		if (rayd.depth < smartBox.ProjectionLength(GravityAxis) * (1 + 0.0000001))
+		if (rayd.depth < smartBox.ProjectionLength(GravityAxis) * (1 + 0.0000000000001))
 		{
 			//rayBuffer.BufferData(temper, StaticDraw);
 			glm::vec3 axis = rayd.axis;
@@ -872,23 +904,52 @@ void idle()
 			}
 		}
 	}
+	
+	float forwarder = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
+	
 	if (addGravity)
 	{
-		//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 		// There is something it's colliding with and we gotta do the slope thing
 		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON)
 		{
+
+			//smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
 			float tan = glm::tan(glm::acos(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)));
-			std::cout << smartBoxPhysics.axisOfGaming << std::endl;
+			//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 			// If it's a sliding slope
 			//if (staticFrictionCoeff < tan)
 			{
+				float project = glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
+				//std::cout << frameCounter << ":" << smartBoxPhysics.axisOfGaming << ":" << std::endl;
+				glm::vec3 newboy;
+				if (glm::abs(project - 1) > EPSILON)
+				{
+					newboy = -glm::normalize(smartBoxPhysics.axisOfGaming * project - GravityUp);
+					//newboy = glm::normalize(smartBoxPhysics.axisOfGaming - GravityUp * project);
+				}
+				else
+				{
+					newboy = smartBox.Forward();
+				}
+				//std::cout << newboy << std::endl;
+				float compProject = glm::sqrt(1 - glm::pow(project, 2));
+				boxForces += newboy * forwarder * BoxAcceleration * glm::dot(smartBox.Forward(), newboy);
+				boxForces -= project * smartBoxPhysics.axisOfGaming * BoxGravityMagnitude;
+
+
+
 				std::array<glm::vec3, 8> tooManyRays{};
 				tooManyRays.fill(smartBox.Center());
+				tooManyRays[1] += GravityUp;
+				tooManyRays[3] += smartBoxPhysics.axisOfGaming;
+				tooManyRays[4] = tooManyRays[1];
+				tooManyRays[5] = tooManyRays[1] + newboy;
+				/*
 				tooManyRays[1] += boxGravity;
 				tooManyRays[3] += smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
-				tooManyRays[5] += boxForces;
+				tooManyRays[5] += newboy; //boxForces * 10.f;
 				tooManyRays[7] += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
+				*/
 				rayBuffer.BufferData(tooManyRays, StaticDraw);
 
 				// Do the complex math thing
@@ -922,8 +983,14 @@ void idle()
 		else
 		{
 			//std::cout << "Graved: " << stored.size() << std::endl;
+			boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
 			boxForces += boxGravity;
 		}
+		//boxForces += boxGravity;
+	}
+	else
+	{
+		boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
 	}
 
 	// F = MA, -> A = F / M
