@@ -168,6 +168,16 @@ static const std::array<GLubyte, 16 * 16> dither16 = {
 
 const int ditherSize = 16;
 
+static const std::array<GLubyte, 25> tesselationCode = { 
+	{
+		0xFF, 0x80, 0xFF, 0x20, 0x40,
+		0x88, 0x00, 0x80, 0x43, 0xFC,
+		0xFF, 0x80, 0xFF, 0xF0, 0xC0,
+		0x80, 0x00, 0x8F, 0x90, 0xCF,
+		0xD0, 0x80, 0xDF, 0xF0, 0xA0,
+	}
+};
+
 ASCIIFont fonter;
 
 // Buffers
@@ -181,10 +191,10 @@ Framebuffer<2, Depth> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
-Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
+Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
 // Textures
-Texture2D ditherTexture, hatching, texture, wallTexture;
+Texture2D ditherTexture, hatching, tessMap, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -269,6 +279,8 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 OBB loom;
 
+int tessAmount = 5;
+
 bool flopper = false;
 void display()
 {
@@ -313,6 +325,23 @@ void display()
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
 	uniform.DrawIndexed<LineStrip>(stickIndicies);
+
+	glDisable(GL_CULL_FACE);
+	ground.SetActiveShader();
+	glPatchParameteri(GL_PATCH_VERTICES, 4);
+	texturedVAO.BindArrayBuffer(texturedPlane);
+	ground.SetTextureUnit("heightMap", tessMap, 0);
+	m22.translation = glm::vec3(1, 0, 0);
+	ground.SetMat4("Model", m22.GetModelMatrix());
+	ground.SetInt("redLine", 0);
+	ground.SetInt("amount", tessAmount);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	ground.DrawElements<Patches>(4);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	ground.SetInt("redLine", 1);
+	//ground.DrawElements<Patches>(4);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glEnable(GL_CULL_FACE);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -375,9 +404,10 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
-	//dither.DrawElements<Patches>(3);
+	//dither.DrawElements<Patches>(albertBuffer);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
+
 
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
@@ -1046,8 +1076,8 @@ void keyboard(unsigned char key, int x, int y)
 	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
 	if (key == 'm' || key == 'M') cameraPosition.y += 3;
-	if (key == '[') lineWidth -= 1;
-	if (key == ']') lineWidth += 1;
+	if (key == '[') tessAmount -= 1;
+	if (key == ']') tessAmount += 1;
 	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
 	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
 	if (key == 't' || key == 'T') kernel = 1 - kernel;
@@ -1391,10 +1421,12 @@ int main(int argc, char** argv)
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
 	widget.CompileSimple("widget");
+	ground.CompileSimple("ground_");
 
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
+	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 
@@ -1435,6 +1467,9 @@ int main(int argc, char** argv)
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	wallTexture.Load("Textures/flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+
+	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);
+	tessMap.SetFilters(LinearLinear, MagLinear);
 
 	/*
 	mapper.Generate({ "Textures/skybox/right.jpg", "Textures/skybox/left.jpg", "Textures/skybox/top.jpg",
