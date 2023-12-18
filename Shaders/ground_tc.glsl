@@ -11,6 +11,12 @@ layout(location = 2) out vec2 teTex[];
 
 uniform int amount;
 
+layout(std140) uniform Camera
+{
+	mat4 View;
+	mat4 Projection;
+};
+
 void main()
 {
     gl_out[gl_InvocationID].gl_Position = gl_in[gl_InvocationID].gl_Position;
@@ -19,12 +25,29 @@ void main()
 	tePos[gl_InvocationID] = tcPos[gl_InvocationID];
     if (gl_InvocationID == 0)
     {
-        gl_TessLevelOuter[0] = amount;
-        gl_TessLevelOuter[1] = amount;
-        gl_TessLevelOuter[2] = amount;
-        gl_TessLevelOuter[3] = amount;
+		const int minTesselation = 2;
+		const int maxTesselation = 50;
+		const float minDistance = 2;
+		const float maxDistance = 10;
+		const float distanceDelta = maxDistance - minDistance;
+	
+		float depth0 = (View * gl_in[0].gl_Position).z;
+		float depth1 = (View * gl_in[1].gl_Position).z;
+		float depth2 = (View * gl_in[2].gl_Position).z;
+		float depth3 = (View * gl_in[3].gl_Position).z;
 
-        gl_TessLevelInner[0] = amount;
-        gl_TessLevelInner[1] = amount;
+		float delta0 = clamp((abs(depth0) - minDistance) / distanceDelta, 0, 1);
+		float delta1 = clamp((abs(depth1) - minDistance) / distanceDelta, 0, 1);
+		float delta2 = clamp((abs(depth2) - minDistance) / distanceDelta, 0, 1);
+		float delta3 = clamp((abs(depth3) - minDistance) / distanceDelta, 0, 1);
+		
+		
+        gl_TessLevelOuter[0] = mix(maxTesselation, minTesselation, min(delta0, delta1));
+        gl_TessLevelOuter[1] = mix(maxTesselation, minTesselation, min(delta1, delta2));
+        gl_TessLevelOuter[2] = mix(maxTesselation, minTesselation, min(delta2, delta3));
+        gl_TessLevelOuter[3] = mix(maxTesselation, minTesselation, min(delta0, delta3));
+
+        gl_TessLevelInner[0] = max(gl_TessLevelOuter[0], gl_TessLevelOuter[1]);
+        gl_TessLevelInner[1] = max(gl_TessLevelOuter[2], gl_TessLevelOuter[3]);
     }
 }

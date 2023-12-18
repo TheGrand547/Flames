@@ -332,6 +332,7 @@ void display()
 	texturedVAO.BindArrayBuffer(texturedPlane);
 	ground.SetTextureUnit("heightMap", tessMap, 0);
 	m22.translation = glm::vec3(1, 0, 0);
+	m22.scale = glm::vec3(10);
 	ground.SetMat4("Model", m22.GetModelMatrix());
 	ground.SetInt("redLine", 0);
 	ground.SetInt("amount", tessAmount);
@@ -339,7 +340,7 @@ void display()
 	ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	ground.SetInt("redLine", 1);
-	//ground.DrawElements<Patches>(4);
+	ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
