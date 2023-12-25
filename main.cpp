@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/gtc/random.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/hash.hpp>
@@ -284,9 +285,6 @@ int tessAmount = 5;
 bool flopper = false;
 void display()
 {
-	auto fumod = fonter.Render("lets goo");
-	fumod.GetColor().SetFilters(LinearLinear, MagLinear);
-
 	depthed.Bind();
 	glViewport(0, 0, 1000, 1000);
 	glClearColor(0, 0, 0, 1);
@@ -337,16 +335,17 @@ void display()
 	ground.SetInt("redLine", 0);
 	ground.SetInt("amount", tessAmount);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	ground.DrawElements<Patches>(4);
+	//ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	ground.SetInt("redLine", 1);
-	ground.DrawElements<Patches>(4);
+	//ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	glEnable(GL_CULL_FACE);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
+		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
 		plainVAO.BindArrayBuffer(plainCube);
 
@@ -370,6 +369,7 @@ void display()
 			{
 				uniform.SetMat4("Model", box.box.GetModelMatrix());
 				uniform.SetVec3("color", (box.color) ? blue : colors);
+				//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
 				uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 				uniform.DrawElements<Points>(8);
 			}
@@ -378,7 +378,7 @@ void display()
 				uniform.SetVec3("color", (box.color) ? colors : blue);
 				uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
 				uniform.DrawIndexed<Lines>(cubeOutlineIndex);
-				uniform.DrawElements<Points>(8);
+				//uniform.DrawElements<Points>(8);
 			}
 		}
 	}
@@ -494,10 +494,6 @@ void display()
 	uiRect.DrawElements(TriangleStrip, 4);
 
 	uiRectTexture.SetActiveShader();
-	Texture2D& ref = fumod.GetColor();
-	uiRectTexture.SetVec4("rectangle", glm::vec4(200.f, 200.f, ref.GetWidth(), ref.GetHeight()));
-	uiRectTexture.SetTextureUnit("image", ref, 0);
-	uiRectTexture.DrawElements(TriangleStrip, 4);
 
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
@@ -687,6 +683,8 @@ bool smartBoxCollide()
 		if (smartBox.Overlap(letsgo->box, c))
 		{
 			float temp = glm::dot(c.axis, GravityUp);
+			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
+			smartBoxPhysics.velocity -= c.axis * glm::dot(c.axis, smartBoxPhysics.velocity);
 			if (temp > 0 && temp <= dot)
 			{
 				temp = dot;
@@ -780,7 +778,7 @@ void idle()
 		averageFps += frames[i] / frames.size();
 	}
 	std::stringstream ss;
-	ss << smartBox.Center();
+	ss << smartBoxPhysics.velocity;
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}\n{}",
 		averageFps, 1000.f / averageFps, ss.str(), frameCounter));// (flopper) ? "New" : "Old", frameCounter));
 	// End of Rolling buffer
@@ -905,7 +903,6 @@ void idle()
 			float angle = glm::acos(cosine);
 
 			glm::vec3 normal = axis * BoxGravityMagnitude * cosine;
-
 			// DON'T SLIDE
 			if (staticFrictionCoeff >= glm::tan(angle))
 			{
@@ -937,14 +934,18 @@ void idle()
 	}
 	
 	float forwarder = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	
+	std::array<glm::vec3, 8> tooManyRays{};
+	tooManyRays.fill(smartBox.Center());
+	tooManyRays[1] += GravityAxis * smartBox.ProjectionLength(GravityAxis);
+	rayBuffer.BufferData(tooManyRays, StaticDraw);
 	if (addGravity)
 	{
 		// There is something it's colliding with and we gotta do the slope thing
 		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON)
 		{
 
-			//smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
+			smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
+			boxForces += BoxGravityMagnitude * (-smartBox.Up()) * 0.025f;
 			float tan = glm::tan(glm::acos(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)));
 			//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
 			// If it's a sliding slope
@@ -953,10 +954,24 @@ void idle()
 				float project = glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
 				//std::cout << frameCounter << ":" << smartBoxPhysics.axisOfGaming << ":" << std::endl;
 				glm::vec3 newboy;
+				// If it isn't straight up
 				if (glm::abs(project - 1) > EPSILON)
 				{
-					newboy = -glm::normalize(smartBoxPhysics.axisOfGaming * project - GravityUp);
+					//newboy = -glm::normalize(smartBoxPhysics.axisOfGaming * project - GravityUp);
 					//newboy = glm::normalize(smartBoxPhysics.axisOfGaming - GravityUp * project);
+					float minDot = INFINITY;
+					glm::length_t minDotI = 0;
+					for (glm::length_t i = 0; i < 3; i++)
+					{
+						float local = glm::abs(glm::dot(smartBox[i], smartBoxPhysics.axisOfGaming));
+						if (local < minDot)
+						{
+							minDot = local;
+							minDotI = i;
+						}
+					}
+					newboy = glm::normalize(glm::cross(smartBoxPhysics.axisOfGaming, smartBox[minDotI]));
+					newboy *= glm::sign(glm::dot(newboy, smartBox.Forward()));
 				}
 				else
 				{
@@ -964,17 +979,18 @@ void idle()
 				}
 				//std::cout << newboy << std::endl;
 				float compProject = glm::sqrt(1 - glm::pow(project, 2));
-				boxForces += newboy * forwarder * BoxAcceleration * glm::dot(smartBox.Forward(), newboy);
+				//boxForces += newboy * forwarder * BoxAcceleration * glm::dot(smartBox.Forward(), newboy);
+				boxForces += newboy * forwarder * BoxAcceleration * (1 - project);
 				boxForces -= project * smartBoxPhysics.axisOfGaming * BoxGravityMagnitude;
-
 
 
 				std::array<glm::vec3, 8> tooManyRays{};
 				tooManyRays.fill(smartBox.Center());
 				tooManyRays[1] += GravityUp;
 				tooManyRays[3] += smartBoxPhysics.axisOfGaming;
-				tooManyRays[4] = tooManyRays[1];
-				tooManyRays[5] = tooManyRays[1] + newboy;
+				//tooManyRays[4] = tooManyRays[1];
+				tooManyRays[5] += newboy;
+				tooManyRays[7] += boxForces + boxGravity;
 				/*
 				tooManyRays[1] += boxGravity;
 				tooManyRays[3] += smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
@@ -986,42 +1002,42 @@ void idle()
 				// Do the complex math thing
 				//boxForces += boxGravity + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
 				//boxForces += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) * BoxGravityMagnitude;
-				// hacky test
-				float minDot = INFINITY, maxDot = -INFINITY;
-				glm::length_t minDotI = 0, maxDotI = 0;
-				glm::vec3 upper = smartBoxPhysics.axisOfGaming;
-				for (glm::length_t i = 0; i < 3; i++)
-				{
-					float sign = glm::sign(glm::dot(smartBox[i], upper));
-					float local = glm::abs(glm::dot(smartBox[i], upper));
-					if (local < minDot)
-					{
-						minDot = local;
-						minDotI = i;
-					}
-					if (local > maxDot)
-					{
-						maxDot = local;
-						maxDotI = i;
-					}
-				}
-				if (glm::acos(maxDot) > glm::pi<float>() / 8.f)
-				{
-					//boxForces += upper * BoxGravityMagnitude * 2.f;
-				}
 			}
 		}
-		else
+		//else
 		{
 			//std::cout << "Graved: " << stored.size() << std::endl;
-			boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
+			//boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
 			boxForces += boxGravity;
 		}
 		//boxForces += boxGravity;
 	}
 	else
 	{
-		boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
+		//std::cout << "no fall" << std::endl;
+		// Idk what the second one of those things is for
+		// It's to make sure it isn't vertical
+		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::abs(glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) - 1) > EPSILON)
+		{
+			float minDot = INFINITY;
+			glm::length_t minDotI = 0;
+			for (glm::length_t i = 0; i < 3; i++)
+			{
+				float local = glm::abs(glm::dot(smartBox[i], smartBoxPhysics.axisOfGaming));
+				if (local < minDot)
+				{
+					minDot = local;
+					minDotI = i;
+				}
+			}
+			glm::vec3 newboy = glm::normalize(glm::cross(smartBoxPhysics.axisOfGaming, smartBox[minDotI]));
+			newboy *= glm::sign(glm::dot(newboy, smartBox.Forward()));
+			boxForces += newboy * forwarder * BoxAcceleration * (1 - glm::abs(glm::dot(newboy, smartBoxPhysics.axisOfGaming)));
+		}
+		else
+		{
+			boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
+		}
 	}
 
 	// F = MA, -> A = F / M
@@ -1346,6 +1362,36 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 // TODO: investigate *massive* memory footprint increase when resizing window
 int main(int argc, char** argv)
 {
+	/*
+	glm::vec3 a{}, b{}, c{}, d{}, ax{};
+	float errored = 0.f;
+	float maxError = 0.f;
+	int iterations = 10000;
+	for (int i = 0; i < iterations; i++)
+	{
+		a = glm::sphericalRand(1.);
+		b = glm::normalize(glm::cross(glm::vec3(0, 1, 0), a));
+		c = glm::normalize(glm::cross(a, b));
+		d = a + b + c;
+		ax = glm::sphericalRand(1.);
+
+		float dot = glm::abs(glm::dot(ax, d));
+		//std::cout << dot << ":";
+		float dotter = 0.;
+		dotter += (glm::dot(ax, a));
+		dotter += (glm::dot(ax, b));
+		dotter += (glm::dot(ax, c));
+		//std::cout << glm::abs(dotter) << std::endl;
+		dot = dot - glm::abs(dotter);
+		std::cout << abs(dot) << std::endl;
+		maxError = glm::max(glm::abs(dot), maxError);
+		errored += glm::abs(dot);
+	}
+	std::cout << "Max: " << maxError << std::endl;
+	std::cout << "Average: " << errored / iterations << std::endl;
+	std::cout << "Epsilon:" << EPSILON << std::endl;
+	*/
+
 	int error = 0;
 	debugFlags.fill(false);
 	// Glut
@@ -1521,7 +1567,7 @@ int main(int argc, char** argv)
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 
-	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
+	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(3, 1, 1)));
 
 	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
 
