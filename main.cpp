@@ -670,12 +670,11 @@ bool smartBoxCollide()
 	bool val = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
 	smartBoxPhysics.ptr = nullptr;
-	float dotValue = INFINITY;
 	auto boxers = boxes.Search(smartBox.GetAABB());
 	int collides = 0;
 	//Before(smartBoxPhysics.axisOfGaming);
 
-	float dot = 1.f;
+	float dot = INFINITY;
 
 	for (auto& letsgo : boxers)
 	{
@@ -684,7 +683,7 @@ bool smartBoxCollide()
 		{
 			float temp = glm::dot(c.axis, GravityUp);
 			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
-			smartBoxPhysics.velocity -= c.axis * glm::dot(c.axis, smartBoxPhysics.velocity);
+			//smartBoxPhysics.velocity -= c.axis * glm::dot(c.axis, smartBoxPhysics.velocity);
 			if (temp > 0 && temp <= dot)
 			{
 				temp = dot;
@@ -744,6 +743,7 @@ void idle()
 	const auto now = std::chrono::high_resolution_clock::now();
 	const auto delta = now - lastTimers;
 	static std::deque<float> frames;
+	static glm::vec3 previously{};
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
@@ -778,7 +778,19 @@ void idle()
 		averageFps += frames[i] / frames.size();
 	}
 	std::stringstream ss;
-	ss << smartBoxPhysics.velocity;
+	//ss << smartBoxPhysics.velocity;
+
+	if (previously != smartBoxPhysics.axisOfGaming)
+	{
+		ss << "Difference: " << glm::dot(previously, smartBoxPhysics.axisOfGaming);
+		//std::cout << glm::dot(previously, smartBoxPhysics.axisOfGaming) << std::endl;
+	}
+	else
+	{
+		ss << "No Change";
+	}
+	previously = smartBoxPhysics.axisOfGaming;
+
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}\n{}",
 		averageFps, 1000.f / averageFps, ss.str(), frameCounter));// (flopper) ? "New" : "Old", frameCounter));
 	// End of Rolling buffer
@@ -934,10 +946,26 @@ void idle()
 	}
 	
 	float forwarder = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	std::array<glm::vec3, 8> tooManyRays{};
-	tooManyRays.fill(smartBox.Center());
-	tooManyRays[1] += GravityAxis * smartBox.ProjectionLength(GravityAxis);
-	rayBuffer.BufferData(tooManyRays, StaticDraw);
+	if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON)
+	{
+		std::array<glm::vec3, 16> tooManyRays{};
+		float front = glm::dot(smartBoxPhysics.axisOfGaming, smartBox.Forward());
+		glm::vec3 up = smartBoxPhysics.axisOfGaming;
+		glm::vec3 fo = smartBox.Forward();
+
+		tooManyRays.fill(smartBox.Center());
+		tooManyRays[1] += up;
+		tooManyRays[3] += glm::normalize(up - front * fo);
+		tooManyRays[5] += glm::normalize(-up + front * fo);
+		for (int i = 0; i < 4; i++)
+		{
+			tooManyRays[6 + i] += glm::vec3(0, 1, 0);
+		}
+		tooManyRays[7] += glm::normalize(-up * front + fo);
+		tooManyRays[9] += glm::normalize(up * front - fo);
+		rayBuffer.BufferData(tooManyRays, StaticDraw);
+	}
+	//rayBuffer.BufferData(tooManyRays, StaticDraw);
 	if (addGravity)
 	{
 		// There is something it's colliding with and we gotta do the slope thing
@@ -997,7 +1025,7 @@ void idle()
 				tooManyRays[5] += newboy; //boxForces * 10.f;
 				tooManyRays[7] += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
 				*/
-				rayBuffer.BufferData(tooManyRays, StaticDraw);
+				//rayBuffer.BufferData(tooManyRays, StaticDraw);
 
 				// Do the complex math thing
 				//boxForces += boxGravity + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
