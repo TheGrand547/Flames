@@ -188,7 +188,7 @@ Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndici
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
-Framebuffer<2, Depth> depthed;
+Framebuffer<2, DepthAndStencil> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
@@ -231,6 +231,7 @@ std::array<bool, '9' - '0' + 1> debugFlags{};
 
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 constexpr float ANGLE_DELTA = 4;
+
 
 
 // Camera
@@ -290,8 +291,12 @@ void display()
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	glEnable(GL_STENCIL_TEST);
+	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
+	glStencilMask(0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 
 	// TODO: fix this thing so it's more efficient
 	// Camera matrix
@@ -1430,7 +1435,7 @@ int main(int argc, char** argv)
 	// TODO: Maybe transition to OpenGL ES3.1
 	glutInitContextVersion(4, 6);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH);
+	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL);
 	glutInitWindowSize(1000, 1000);
 	glutInitContextFlags(GLUT_DEBUG);
 	glutCreateWindow("Wowie a window");
@@ -1653,8 +1658,12 @@ int main(int argc, char** argv)
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
 	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepthFloat32);
+	//depthed.GetDepthStencil().CreateEmpty(1000, 1000, InternalDepthStencil);
 	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
+	
+	depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
+	depthed.GetStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	
 	depthed.Assemble();
 
 	scratchSpace.GetColorBuffer().CreateEmpty(1000, 1000, InternalRGBA);

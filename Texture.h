@@ -63,6 +63,7 @@ enum TextureFormatInternal
 	InternalDepthFloat32         = GL_DEPTH_COMPONENT32F,
 	InternalDepth32              = GL_DEPTH_COMPONENT32,
 	InternalDepthStencil         = GL_DEPTH_STENCIL,
+	InternalDepthStencilFloat    = GL_DEPTH_STENCIL_ATTACHMENT,
 	InternalRed8                 = GL_R8,
 	InternalSignedRed8           = GL_R8_SNORM,
 	InternalRed16                = GL_R16,
@@ -89,6 +90,9 @@ enum TextureFormatInternal
 	InternalRGBA16               = GL_RGBA16,
 	InternalSRGB8                = GL_SRGB8,
 	InternalSRGBA8               = GL_SRGB8_ALPHA8,
+
+	// Whacky stuff
+	InternalStencil              = GL_STENCIL_INDEX,
 
 	// FLOAT IS *VERY* SLOW COMPARED TO THE OTHER ONES -- USER BEWARE
 	InternalFloatRed16           = GL_R16F,

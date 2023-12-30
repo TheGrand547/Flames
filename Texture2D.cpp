@@ -85,6 +85,18 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	GLenum internalFormat = type, format = type, typed = GL_UNSIGNED_BYTE;
 	switch (type)
 	{
+	case InternalStencil:
+		internalFormat = GL_STENCIL_INDEX8;
+		format = GL_STENCIL_INDEX;
+		break;
+	case InternalDepthStencil:
+		typed = GL_DEPTH24_STENCIL8;
+		break;
+	case InternalDepthStencilFloat:
+		typed = GL_DEPTH32F_STENCIL8; 
+		internalFormat = GL_DEPTH_STENCIL;
+		format = GL_DEPTH32F_STENCIL8;
+		break;
 	case InternalDepth16:
 	case InternalDepth24:
 	case InternalDepthFloat32:
