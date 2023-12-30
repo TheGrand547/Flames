@@ -778,16 +778,16 @@ void idle()
 		averageFps += frames[i] / frames.size();
 	}
 	std::stringstream ss;
-	//ss << smartBoxPhysics.velocity;
+	ss << smartBoxPhysics.velocity;
 
 	if (previously != smartBoxPhysics.axisOfGaming)
 	{
-		ss << "Difference: " << glm::dot(previously, smartBoxPhysics.axisOfGaming);
+		//ss << "Difference: " << glm::dot(previously, smartBoxPhysics.axisOfGaming);
 		//std::cout << glm::dot(previously, smartBoxPhysics.axisOfGaming) << std::endl;
 	}
 	else
 	{
-		ss << "No Change";
+		//ss << "No Change";
 	}
 	previously = smartBoxPhysics.axisOfGaming;
 
@@ -903,11 +903,8 @@ void idle()
 		// Center is over something
 		RayCollision rayd{};
 		hit->box.Intersect(liota.point, liota.dir, rayd);
-		//std::cout << rayd.depth << ":" << smartBox.ProjectionLength(GravityAxis) * (1 + EPSILON) << std::endl;
-		//std::cout << frameCounter << ": " << rayd.axis << "," << rayd.distance <<  std::endl;
-		//std::cout << frameCounter << ": " << rayd.distance << std::endl;
 		// Make sure it's not too far away
-		if (rayd.depth < smartBox.ProjectionLength(GravityAxis) * (1 + 0.0000000000001))
+		if (rayd.depth < smartBox.ProjectionLength(GravityAxis) * (1 + EPSILON))
 		{
 			//rayBuffer.BufferData(temper, StaticDraw);
 			glm::vec3 axis = rayd.axis;
@@ -965,7 +962,30 @@ void idle()
 		tooManyRays[9] += glm::normalize(up * front - fo);
 		rayBuffer.BufferData(tooManyRays, StaticDraw);
 	}
-	//rayBuffer.BufferData(tooManyRays, StaticDraw);
+
+	glm::vec3 direction = smartBox.Forward() * forwarder;
+	//std::cout << direction << std::endl;
+	// If there is a slope we need to deal with
+	if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::length2(direction) > EPSILON)
+	{
+		glm::vec3 slope = smartBoxPhysics.axisOfGaming;
+		float alignment = glm::dot(slope, direction);
+		direction = glm::normalize(direction - slope * alignment);
+		smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
+		//addGravity = false;
+		boxForces += slope * glm::dot(slope, GravityUp) * BoxGravityMagnitude;
+	}
+	else // Handles "air" control
+	{
+
+	}
+	//std::cout << direction << std::endl << std::endl;
+	if (addGravity)
+	{
+		boxForces += boxGravity;
+	}
+	boxForces += direction * BoxAcceleration;
+	/*
 	if (addGravity)
 	{
 		// There is something it's colliding with and we gotta do the slope thing
@@ -1011,22 +1031,6 @@ void idle()
 				boxForces += newboy * forwarder * BoxAcceleration * (1 - project);
 				boxForces -= project * smartBoxPhysics.axisOfGaming * BoxGravityMagnitude;
 
-
-				std::array<glm::vec3, 8> tooManyRays{};
-				tooManyRays.fill(smartBox.Center());
-				tooManyRays[1] += GravityUp;
-				tooManyRays[3] += smartBoxPhysics.axisOfGaming;
-				//tooManyRays[4] = tooManyRays[1];
-				tooManyRays[5] += newboy;
-				tooManyRays[7] += boxForces + boxGravity;
-				/*
-				tooManyRays[1] += boxGravity;
-				tooManyRays[3] += smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
-				tooManyRays[5] += newboy; //boxForces * 10.f;
-				tooManyRays[7] += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
-				*/
-				//rayBuffer.BufferData(tooManyRays, StaticDraw);
-
 				// Do the complex math thing
 				//boxForces += boxGravity + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
 				//boxForces += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) * BoxGravityMagnitude;
@@ -1042,7 +1046,6 @@ void idle()
 	}
 	else
 	{
-		//std::cout << "no fall" << std::endl;
 		// Idk what the second one of those things is for
 		// It's to make sure it isn't vertical
 		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::abs(glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) - 1) > EPSILON)
@@ -1066,7 +1069,7 @@ void idle()
 		{
 			boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
 		}
-	}
+	}*/
 
 	// F = MA, -> A = F / M
 	//std::cout << boxForces << std::endl;
