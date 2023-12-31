@@ -183,6 +183,7 @@ ASCIIFont fonter;
 
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+Buffer<ArrayBuffer> cubeMesh;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -194,7 +195,7 @@ ColorFrameBuffer scratchSpace;
 // Shaders
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
-Shader stencilTest, stencilResult;
+Shader stencilTest;
 
 // Textures
 Texture2D ditherTexture, hatching, tessMap, texture, wallTexture;
@@ -202,9 +203,6 @@ CubeMap mapper;
 
 // Vertex Array Objects
 VAO fontVAO, instanceVAO, meshVAO, normalVAO, plainVAO, texturedVAO;
-
-// TODO: Make structures around these
-GLuint framebufferMod;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -231,6 +229,7 @@ std::array<bool, '9' - '0' + 1> debugFlags{};
 #define ArrowKeyRight 2
 #define ArrowKeyLeft  3
 
+// TODO: Fix
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 constexpr float ANGLE_DELTA = 4;
 
@@ -240,7 +239,7 @@ constexpr float ANGLE_DELTA = 4;
 glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 
-float zNear = 0.1f, zFar = 100.f;
+float zNear = 0.01f, zFar = 100.f;
 
 // Random Misc temporary testing things
 int axisIndex;
@@ -424,14 +423,14 @@ void display()
 	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
-	glDisable(GL_DEPTH_TEST);
+	//glDisable(GL_DEPTH_TEST);
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(1.f);
-	glEnable(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -443,7 +442,7 @@ void display()
 	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(1.5f);
 	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
-	sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
+	//sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
 	/*
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -468,30 +467,70 @@ void display()
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
 	sphereModel.translation = glm::vec3(0, 0, 0);
-	sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.5f)) * 3.f;
-	stencilTest.SetActiveShader();
-	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
-	meshVAO.BindArrayBuffer(sphereBuffer);
+	Model lightModel;
+	lightModel.translation = glm::vec3(4, 0, 0);
+	lightModel.scale = glm::vec3(2.2, 2.2, 1.1);
 
+	//sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.5f)) * 3.f;
+	stencilTest.SetActiveShader();
+
+	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
+	// Shadow volume
 	glEnable(GL_STENCIL_TEST);
 	glEnable(GL_CULL_FACE);
+	glEnable(GL_DEPTH_TEST);
+	glDepthMask(GL_FALSE);
 	glCullFace(GL_FRONT);
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
+	meshVAO.BindArrayBuffer(sphereBuffer);
 	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
+
+	plainVAO.BindArrayBuffer(plainCube);
+	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
+	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
 
 	glCullFace(GL_BACK);
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
+	meshVAO.BindArrayBuffer(sphereBuffer);
 	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
 
-	glStencilFunc(GL_EQUAL, 1, 0xFF);
+	plainVAO.BindArrayBuffer(plainCube);
+	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
+	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
+
+	// Light(?) volume?
+
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+	//stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
+	
+	
+	glCullFace(GL_BACK);
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+	//stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
+	
+
+
+	glEnable(GL_BLEND);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glStencilFunc(GL_LEQUAL, 1, 0xFF); // If 1 is <= value in the stencil buffer
+
+
+	//glStencilFunc(GL_GREATER, 1, 0xFF); // If 1 is <= value in the stencil buffer
 	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
-	uiRect.SetVec4("color", glm::vec4(0, 0, 1, 1));
+	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
 	uiRect.DrawElements(TriangleStrip, 4);
 	glDisable(GL_STENCIL_TEST);
+	glDepthMask(GL_TRUE);
 
 	flatLighting.SetActiveShader();
 	meshVAO.BindArrayBuffer(capsuleBuffer);
