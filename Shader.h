@@ -32,8 +32,9 @@ enum PrimitiveDrawingType : unsigned int
 enum ShaderStages : unsigned char
 {
 	None                   = 0,
-	Geometry               = 1,
-	Tesselation            = 2,
+	VertexOnly             = 1,
+	Geometry               = 2,
+	Tesselation            = 4,
 	GeometryAndTesselation = Geometry | Tesselation,
 };
 

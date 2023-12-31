@@ -91,6 +91,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		break;
 	case InternalDepthStencil:
 		typed = GL_DEPTH24_STENCIL8;
+		typed = GL_UNSIGNED_INT_24_8_EXT;
 		break;
 	case InternalDepthStencilFloat:
 		typed = GL_DEPTH32F_STENCIL8; 

@@ -226,6 +226,7 @@ bool Shader::CompileSimple(const std::string& name)
 				mask |= (1 << i);
 			}
 		}
+		// TODO: Allow for identity vertex shader
 		// Must have fragment and vertex shaders present
 		if (!this->TryLoadCompiled(name, timer) && (mask & 3) == 3)
 		{

@@ -188,11 +188,13 @@ Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndici
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
-Framebuffer<2, DepthAndStencil> depthed;
+Framebuffer<2, DepthStencil> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
+
+Shader stencilTest, stencilResult;
 
 // Textures
 Texture2D ditherTexture, hatching, tessMap, texture, wallTexture;
@@ -291,13 +293,14 @@ void display()
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
-	glEnable(GL_STENCIL_TEST);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glStencilFunc(GL_ALWAYS, 0xFF, 0xFF);
+	/*
+	glEnable(GL_STENCIL_TEST);
+	glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
 	glStencilMask(0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-
+	*/
 	// TODO: fix this thing so it's more efficient
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(cameraRotation);
@@ -462,6 +465,34 @@ void display()
 	//sphereMesh.SetTextureUnit("textureIn", 0);
 	//sphereMesh.DrawIndexed<Triangle>(sphereIndicies);
 
+
+	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
+	sphereModel.translation = glm::vec3(0, 0, 0);
+	sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.5f)) * 3.f;
+	stencilTest.SetActiveShader();
+	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
+	meshVAO.BindArrayBuffer(sphereBuffer);
+
+	glEnable(GL_STENCIL_TEST);
+	glEnable(GL_CULL_FACE);
+	glCullFace(GL_FRONT);
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
+
+	glCullFace(GL_BACK);
+	glStencilFunc(GL_ALWAYS, 0, 0xFF);
+	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
+	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
+
+	glStencilFunc(GL_EQUAL, 1, 0xFF);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	uiRect.SetActiveShader();
+	uiRect.SetVec4("color", glm::vec4(0, 0, 1, 1));
+	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
+	uiRect.DrawElements(TriangleStrip, 4);
+	glDisable(GL_STENCIL_TEST);
+
 	flatLighting.SetActiveShader();
 	meshVAO.BindArrayBuffer(capsuleBuffer);
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
@@ -485,7 +516,6 @@ void display()
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 0.25));
-	uiRect.SetVec2("screenSize", glm::vec2(1000, 1000));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 	
@@ -532,7 +562,7 @@ void display()
 	expand.SetActiveShader();
 	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
 	expand.SetTextureUnit("edges", depthed.GetColorBuffer<1>(), 1);
-	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
+	expand.SetTextureUnit("depths", depthed.GetDepthStencil(), 2);
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
 
@@ -1506,12 +1536,16 @@ int main(int argc, char** argv)
 	widget.CompileSimple("widget");
 	ground.CompileSimple("ground_");
 
+	stencilTest.CompileSimple("stencil_");
+
 	uniform.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
+
+	stencilTest.UniformBlockBinding("Camera", 0);
 
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
@@ -1657,12 +1691,11 @@ int main(int argc, char** argv)
 	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGBA);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepthFloat32);
-	//depthed.GetDepthStencil().CreateEmpty(1000, 1000, InternalDepthStencil);
-	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetDepthStencil().CreateEmpty(1000, 1000, InternalDepthStencil);
+	depthed.GetDepthStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	
-	depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
-	depthed.GetStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	//depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
+	//depthed.GetStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	
 	depthed.Assemble();
 
