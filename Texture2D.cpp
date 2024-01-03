@@ -86,6 +86,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	switch (type)
 	{
 	case InternalStencil:
+		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
 		internalFormat = GL_STENCIL_INDEX8;
 		format = GL_STENCIL_INDEX;
 		break;

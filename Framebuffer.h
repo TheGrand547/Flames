@@ -217,6 +217,8 @@ typedef Framebuffer<1, OnlyColor> ColorFrameBuffer;
 
 inline void BindDefaultFrameBuffer()
 {
+	const GLenum toDraw = GL_COLOR_ATTACHMENT0;
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+	//glDrawBuffers(1, &toDraw);
 }
 #endif // FRAME_BUFFER_H

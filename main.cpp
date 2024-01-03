@@ -189,7 +189,7 @@ Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndici
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
-Framebuffer<2, DepthStencil> depthed;
+Framebuffer<2, DepthAndStencil> depthed;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
@@ -471,18 +471,27 @@ void display()
 	lightModel.translation = glm::vec3(4, 0, 0);
 	lightModel.scale = glm::vec3(2.2, 2.2, 1.1);
 
-	//sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.5f)) * 3.f;
+	sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
+
+	// All shadows/lighting will be in this post-processing step based on stencil value
+	// 
+
 
 	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
 	// Shadow volume
 	glEnable(GL_STENCIL_TEST);
 	glEnable(GL_CULL_FACE);
 	glEnable(GL_DEPTH_TEST);
-	glDepthMask(GL_FALSE);
-	glCullFace(GL_FRONT);
+	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+
+
+	//glCullFace(GL_FRONT);
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
+	glDisable(GL_CULL_FACE);
+	glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
@@ -490,18 +499,8 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
 	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
-
-	glCullFace(GL_BACK);
-	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
-	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
-	meshVAO.BindArrayBuffer(sphereBuffer);
-	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
-
-	plainVAO.BindArrayBuffer(plainCube);
-	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
-	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
-
+	glEnable(GL_CULL_FACE);
+	
 	// Light(?) volume?
 
 	glEnable(GL_CULL_FACE);
@@ -523,11 +522,13 @@ void display()
 	glStencilFunc(GL_LEQUAL, 1, 0xFF); // If 1 is <= value in the stencil buffer
 
 
-	//glStencilFunc(GL_GREATER, 1, 0xFF); // If 1 is <= value in the stencil buffer
-	glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+	//glStencilFunc(GL_GREATER, 1, 0xFF); // If 1 is > value in the stencil buffer
+	glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_DECR);
+	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
+	uiRect.DrawElements(TriangleStrip, 4);
 	uiRect.DrawElements(TriangleStrip, 4);
 	glDisable(GL_STENCIL_TEST);
 	glDepthMask(GL_TRUE);
@@ -579,9 +580,9 @@ void display()
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	scratchSpace.Bind();
-	glClearColor(0, 0, 0, 1);
-	glClear(GL_COLOR_BUFFER_BIT);
+	//scratchSpace.Bind();
+	//glClearColor(0, 0, 0, 1);
+	//glClear(GL_COLOR_BUFFER_BIT);
 
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 	
@@ -596,19 +597,32 @@ void display()
 	*/
 	BindDefaultFrameBuffer();
 	glClearColor(1, 0.5, 0.25, 1);
-	glClear(GL_DEPTH_BUFFER_BIT);
+	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+
+	glDisable(GL_DEPTH_TEST);
+	glDisable(GL_STENCIL_TEST);
+	glDisable(GL_CULL_FACE);
+
+	glStencilMask(0x00);
+	glStencilFunc(GL_ALWAYS, GL_KEEP, GL_KEEP);
 
 	expand.SetActiveShader();
 	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
 	expand.SetTextureUnit("edges", depthed.GetColorBuffer<1>(), 1);
-	expand.SetTextureUnit("depths", depthed.GetDepthStencil(), 2);
+	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
+	expand.SetTextureUnit("stencil", depthed.GetStencil(), 3);
 	expand.SetInt("depth", 5);
 	frameShader.DrawElements<TriangleStrip>(4);
+	glStencilMask(0xFF);
 
 	// TODO: This is reversed <- wtf are you saying
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawElements<Lines>(6);
+
+	glEnable(GL_DEPTH_TEST);
+	glEnable(GL_STENCIL_TEST);
+	glEnable(GL_CULL_FACE);
 
 	glFlush();
 	glutSwapBuffers();
@@ -1730,11 +1744,12 @@ int main(int argc, char** argv)
 	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGBA);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetDepthStencil().CreateEmpty(1000, 1000, InternalDepthStencil);
-	depthed.GetDepthStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepth);
+	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	
-	//depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
-	//depthed.GetStencil().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
+	// Doing NearestNearest is super messed up
+	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	
 	depthed.Assemble();
 

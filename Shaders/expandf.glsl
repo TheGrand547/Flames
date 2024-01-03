@@ -1,12 +1,13 @@
 #version 440 core
 
 in vec2 textureCoords;
-out vec4 fColor;
+layout(location = 0) out vec4 fColor;
 
 
 layout(location = 0) uniform sampler2D screen;
 layout(location = 1) uniform sampler2D edges;
 layout(location = 2) uniform sampler2D depths;
+layout(location = 3) uniform usampler2D stencil;
 
 uniform int depth;
 
@@ -91,5 +92,31 @@ void main()
 		//fColor = sampled + (float(dark) / required) * vec4(1, 1, 1, 1);
 	}*/
 	//fColor = sampled * fColor;
+	uint samp = texture(stencil, textureCoords).r;
+	float sten = float(texture(stencil, textureCoords).r);
+	if (samp == 0)
+	{
+		//discard;
+	}
+	if (samp >= 1)
+	{
+		//discard;
+	}
+	if (sten == 0)
+	{
+		sten = 1;
+	}
+	else if (sten == 1)
+	{
+		sten = 0.5;
+	}
+	else
+	{
+		//discard;
+		sten = 0;
+	}
+	//fColor.xyz = mix(vec3(0, 0, 0), fColor.xyz, sten);
+	//fColor.xyz = vec3(1, 0.25, 0.5);
+	
 	fColor.w = 1;
 }
