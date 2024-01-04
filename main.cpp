@@ -479,19 +479,25 @@ void display()
 
 
 	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
-	// Shadow volume
-	glEnable(GL_STENCIL_TEST);
-	glEnable(GL_CULL_FACE);
-	glEnable(GL_DEPTH_TEST);
+
+	//////  Shadow volume
+	glEnable(GL_STENCIL_TEST); // Stencil tests must be active for stencil shading to be used
+	glDisable(GL_CULL_FACE); // Front and back faces of volumes need to be drawn
 	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
-
-
-	//glCullFace(GL_FRONT);
+	glEnable(GL_DEPTH_TEST); // Depth testing is required
+	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
+	//glFrontFace((flopper) ? GL_CCW : GL_CW);
+	// Stencil Test Always Passes
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	//glStencilOp(GL_KEEP, GL_INCR, GL_KEEP);
-	glDisable(GL_CULL_FACE);
+	
+	// Back Faces increment the stencil value if they are behind the geometry, ie the geometry
+	// is inside the volume
 	glStencilOpSeparate(GL_BACK, GL_KEEP, GL_INCR_WRAP, GL_KEEP);
+	// Front faces decrement if they are behind geometry, so that surfaces closer to the camera
+	// than the volume are not incorrectly shaded by volumes that don't touch it
 	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
+
+	// Drawing of the appropriate volumes
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	stencilTest.DrawIndexed<Triangle>(sphereIndicies);
@@ -499,23 +505,15 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
 	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
-	glEnable(GL_CULL_FACE);
-	
-	// Light(?) volume?
 
+	// Clean up
 	glEnable(GL_CULL_FACE);
-	glCullFace(GL_FRONT);
-	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
-	//stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
-	
-	
-	glCullFace(GL_BACK);
-	glStencilFunc(GL_ALWAYS, 0, 0xFF);
-	glStencilOp(GL_KEEP, GL_DECR, GL_KEEP);
-	//stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
-	
+	glDisable(GL_STENCIL_TEST);
+	glFrontFace(GL_CCW);
+	glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
+	//////  Shadow volume End
 
+	//GL_ARB_shader_stencil_export
 
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -523,13 +521,14 @@ void display()
 
 
 	//glStencilFunc(GL_GREATER, 1, 0xFF); // If 1 is > value in the stencil buffer
-	glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_DECR);
+	glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
 	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
 	uiRect.DrawElements(TriangleStrip, 4);
 	uiRect.DrawElements(TriangleStrip, 4);
+
 	glDisable(GL_STENCIL_TEST);
 	glDepthMask(GL_TRUE);
 

@@ -94,27 +94,25 @@ void main()
 	//fColor = sampled * fColor;
 	uint samp = texture(stencil, textureCoords).r;
 	float sten = float(texture(stencil, textureCoords).r);
-	if (samp == 0)
+	vec3 fool;
+	
+	if (samp == 2)
 	{
-		//discard;
+		fool = vec3(1, 0, 0);
 	}
-	if (samp >= 1)
+	else if (samp == 1)
 	{
-		//discard;
+		fool = vec3(0, 1, 0);
 	}
-	if (sten == 0)
+	else if (samp == 0)
 	{
-		sten = 1;
-	}
-	else if (sten == 1)
-	{
-		sten = 0.5;
+		fool = vec3(0, 0, 0.5);
 	}
 	else
 	{
-		//discard;
-		sten = 0;
+		fool = vec3(1, 1, 1);
 	}
+	fColor.xyz += fool;
 	//fColor.xyz = mix(vec3(0, 0, 0), fColor.xyz, sten);
 	//fColor.xyz = vec3(1, 0.25, 0.5);
 	
