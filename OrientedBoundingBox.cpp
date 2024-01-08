@@ -198,7 +198,9 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 // World is in normalized coordinates so this is trivial
 glm::vec3 OrientedBoundingBox::WorldToLocal(const glm::vec3& in) const
 {
-	return glm::inverse(glm::mat3(this->matrix)) * in;
+	// Inverse of an ortho-normal matrix is it's transpose
+	//return glm::inverse(glm::mat3(this->matrix)) * in;
+	return glm::transpose(glm::mat3(this->matrix)) * in;
 }
 
 static const std::array<const glm::vec3, 8> multiples = {

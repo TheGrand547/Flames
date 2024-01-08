@@ -112,9 +112,9 @@ void main()
 	{
 		fool = vec3(1, 1, 1);
 	}
-	fColor.xyz += fool;
+	//fColor.xyz += fool * 0.5;
 	//fColor.xyz = mix(vec3(0, 0, 0), fColor.xyz, sten);
 	//fColor.xyz = vec3(1, 0.25, 0.5);
-	
+	fColor = sampled;
 	fColor.w = 1;
 }

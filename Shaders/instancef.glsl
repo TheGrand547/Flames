@@ -26,6 +26,7 @@ void main()
 	
 	vec3 norm = fNorm;
 	vec3 lightDir = normalize(lightPos - fPos);
+	lightDir = vec3(0, 1, 0);
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
 	vec3 diffuseColor = diffuse * lightColor;
@@ -37,7 +38,8 @@ void main()
 	vec3 specularOut = lightColor * specular; // TODO: I don't remember
 
 	float distance = length(lightPos - fPos);
-	float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));    
+	float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));
+	attenuation = 1.0;
 
 	vec3 color = vec3(texture(textureIn, fTex));
 	
@@ -48,8 +50,9 @@ void main()
 	// Dither stuff
 	
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
-	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
+	//result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	colorOut = vec4(result, 1.0);
+
 	//colorOut = vec4(abs(vec3(normalize(gl_FragCoord.xy), fTex.x * fTex.y) * viewDirection), 1.0);
 	//colorOut = vec4(1, 0, 0, 1);
 }

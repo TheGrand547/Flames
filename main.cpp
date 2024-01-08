@@ -292,6 +292,7 @@ void display()
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
+	glDepthMask(GL_TRUE);
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	/*
@@ -307,6 +308,7 @@ void display()
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 
+	glDisable(GL_BLEND);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
@@ -320,7 +322,7 @@ void display()
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
-
+	glEnable(GL_BLEND);
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
 	plainVAO.BindArrayBuffer(stickBuffer);
@@ -486,7 +488,7 @@ void display()
 	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
 	glEnable(GL_DEPTH_TEST); // Depth testing is required
 	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
-	//glFrontFace((flopper) ? GL_CCW : GL_CW);
+	glFrontFace((flopper) ? GL_CCW : GL_CW);
 	// Stencil Test Always Passes
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	
@@ -526,8 +528,8 @@ void display()
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
-	uiRect.DrawElements(TriangleStrip, 4);
-	uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
 
 	glDisable(GL_STENCIL_TEST);
 	glDepthMask(GL_TRUE);
