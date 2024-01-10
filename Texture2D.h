@@ -112,7 +112,7 @@ inline void Texture2D::SetAnisotropy(const float value)
 {
 	float max;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max);
-	glTextureParameterf(this->texture, GL_ARB_texture_filter_anisotropic, (value > max) ? max : value);
+	glTextureParameterf(this->texture, GL_TEXTURE_MAX_ANISOTROPY, (value > max) ? max : value);
 }
 
 template<class T> inline void Texture2D::Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat,

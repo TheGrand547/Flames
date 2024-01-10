@@ -13,17 +13,26 @@ uniform vec3 lightPos;
 uniform vec3 viewPos;
 uniform sampler2D textureIn;
 uniform sampler2D normalMapIn;
+uniform sampler2D depthMapIn;
 uniform sampler2D ditherMap;
 
 void main()
 {
+
 	float ambient = 0.2f; // TODO: material setting
 	
 	vec3 ambientColor = lightColor * ambient;
 	
+	vec3 viewDirection = normalize(viewPos - fPos);
+	float factor = 0.1f;
+	vec2 texLoc = viewDirection.xy / viewDirection.z * texture(depthMapIn, fTex).r * factor;
+	texLoc = fTex - texLoc;
+	
+	
 	vec3 norm = fNorm;
-	vec3 inNorm = texture(normalMapIn, fTex).xyz * 2.0 - 1.0;
+	vec3 inNorm = texture(normalMapIn, texLoc).xyz * 2.0 - 1.0;
 	norm = fBTN * inNorm;
+	
 	
 	
 	
@@ -33,8 +42,7 @@ void main()
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
 	vec3 diffuseColor = diffuse * lightColor;
-		
-	vec3 viewDirection = normalize(viewPos - fPos);
+	
 	vec3 reflected = reflect(-lightDir, norm);
 
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting

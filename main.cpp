@@ -198,7 +198,7 @@ Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, groun
 Shader stencilTest;
 
 // Textures
-Texture2D ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
+Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -317,6 +317,7 @@ void display()
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
+	instancing.SetTextureUnit("normalMapIn", depthMap, 3);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDisable(GL_CULL_FACE);
@@ -1639,14 +1640,24 @@ int main(int argc, char** argv)
 
 	// TEXTURE SETUP
 	// TODO: texture loading base path thingy
+
+	depthMap.Load("Textures/depth.png");
+	depthMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	depthMap.SetAnisotropy(16.f);
+
 	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+
 	hatching.Load("Textures/hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+
 	normalMap.Load("Textures/normal.png");
 	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	normalMap.SetAnisotropy(16.f);
+
 	texture.Load("Textures/text.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+
 	wallTexture.Load("Textures/flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
