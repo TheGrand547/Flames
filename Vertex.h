@@ -41,4 +41,9 @@ struct CompleteVertex
 	glm::vec2 texture;
 };
 
+struct TangentVertex
+{
+	glm::vec3 tangent, biTangent;
+};
+
 #endif // VERTEX_H

@@ -91,9 +91,11 @@ class VertexArray
 protected:
 	GLuint array;
 	GLsizei stride;
+	// Shit idea but whatever
+	std::map<GLuint, GLsizei> strides;
 	//template<typename T> void FillArrayInternal(Shader& shader, std::size_t stride, std::size_t current, const std::string& first);
 public:
-	constexpr VertexArray(GLuint array = 0, GLsizei stride = 0);
+	VertexArray(GLuint array = 0, GLsizei stride = 0);
 	~VertexArray();
 
 	inline GLuint GetArray() const noexcept;
@@ -125,11 +127,6 @@ public:
 
 typedef VertexArray VAO;
 
-constexpr VertexArray::VertexArray(GLuint array, GLsizei stride) : array(array), stride(stride)
-{
-
-}
-
 inline GLuint VertexArray::GetArray() const noexcept
 {
 	return this->array;
@@ -154,7 +151,7 @@ inline void VertexArray::BufferBindingPointDivisor(GLuint bindingPoint, GLuint b
 inline void VertexArray::BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLuint bindingPoint, GLintptr offset)
 {
 	glBindVertexArray(this->array);
-	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->stride);
+	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->strides[bindingPoint]);
 }
 
 // TODO: Maybe reinvestigate this later?
@@ -197,7 +194,7 @@ template<> inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bin
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
-	this->stride = sizeof(Vertex);
+	this->strides[bindingPoint] = sizeof(Vertex);
 }
 
 template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint bindingPoint)
@@ -209,7 +206,19 @@ template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint b
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
-	this->stride = sizeof(UIVertex);
+	this->strides[bindingPoint] = sizeof(UIVertex);
+}
+
+template<> inline void VertexArray::FillArray<TangentVertex>(Shader& shader, GLuint bindingPoint)
+{
+	glBindVertexArray(this->array);
+	glVertexAttribFormat(shader.Index("vTan"), 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(shader.Index("vBtn"), 3, GL_FLOAT, GL_FALSE, offsetof(TangentVertex, biTangent));
+	glVertexAttribBinding(shader.Index("vTan"), bindingPoint);
+	glVertexAttribBinding(shader.Index("vBtn"), bindingPoint);
+	glEnableVertexAttribArray(shader.Index("vTan"));
+	glEnableVertexAttribArray(shader.Index("vBtn"));
+	this->strides[bindingPoint] = sizeof(UIVertex);
 }
 
 template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
@@ -221,7 +230,7 @@ template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
-	this->stride = sizeof(TextureVertex);
+	this->strides[bindingPoint] = sizeof(TextureVertex);
 }
 
 template<> inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLuint bindingPoint)
@@ -233,7 +242,7 @@ template<> inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vColor"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vColor"));
-	this->stride = sizeof(ColoredVertex);
+	this->strides[bindingPoint] = sizeof(ColoredVertex);
 }
 
 template<> inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLuint bindingPoint)
@@ -246,7 +255,7 @@ template<> inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLui
 	glVertexAttribBinding(shader.Index("vNorm"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vNorm"));
-	this->stride = sizeof(NormalVertex);
+	this->strides[bindingPoint] = sizeof(NormalVertex);
 }
 
 template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint bindingPoint)
@@ -261,7 +270,7 @@ template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vNorm"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
-	this->stride = sizeof(MeshVertex);
+	this->strides[bindingPoint] = sizeof(MeshVertex);
 }
 
 // Sloppy but who gives a shit(me)
@@ -280,7 +289,7 @@ template<> inline void VertexArray::FillArray<glm::mat4>(Shader& shader, GLuint 
 	glEnableVertexAttribArray(shader.Index("Model") + 1);
 	glEnableVertexAttribArray(shader.Index("Model") + 2);
 	glEnableVertexAttribArray(shader.Index("Model") + 3);
-	this->stride = sizeof(glm::mat4);
+	this->strides[bindingPoint] = sizeof(glm::mat4);
 }
 
 template<class T> static void VertexArray::GenerateArrays(T& arrays)

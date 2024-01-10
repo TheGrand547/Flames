@@ -1,5 +1,10 @@
 #include "VertexArray.h"
 
+VertexArray::VertexArray(GLuint array, GLsizei stride) : array(array), stride(stride), strides()
+{
+
+}
+
 VertexArray::~VertexArray()
 {
 	this->CleanUp();

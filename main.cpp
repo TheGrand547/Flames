@@ -183,7 +183,7 @@ ASCIIFont fonter;
 
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
-Buffer<ArrayBuffer> cubeMesh;
+Buffer<ArrayBuffer> cubeMesh, normalMapBuffer;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -198,11 +198,11 @@ Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, groun
 Shader stencilTest;
 
 // Textures
-Texture2D ditherTexture, hatching, tessMap, texture, wallTexture;
+Texture2D ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
 CubeMap mapper;
 
 // Vertex Array Objects
-VAO fontVAO, instanceVAO, meshVAO, normalVAO, plainVAO, texturedVAO;
+VAO fontVAO, instanceVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -316,11 +316,15 @@ void display()
 	instancing.SetVec3("viewPos", cameraPosition);
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
+	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDisable(GL_CULL_FACE);
+	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
-	glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
+	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
+	//instanceVAO.BindArrayBuffer(instanceBuffer, 1);
+	//glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
 	glEnable(GL_BLEND);
 	/* STICK FIGURE GUY */
@@ -1613,14 +1617,19 @@ int main(int argc, char** argv)
 	instanceVAO.Generate();
 	instanceVAO.FillArray<TextureVertex>(instancing, 0);
 	instanceVAO.FillArray<glm::mat4>(instancing, 1);
+	instanceVAO.FillArray<TangentVertex>(instancing, 2);
 	instanceVAO.BufferBindingPointDivisor(0, 0);
 	instanceVAO.BufferBindingPointDivisor(1, 1);
+	instanceVAO.BufferBindingPointDivisor(2, 0);
 
 	meshVAO.Generate();
 	meshVAO.FillArray<MeshVertex>(sphereMesh);
 
 	normalVAO.Generate();
 	normalVAO.FillArray<NormalVertex>(flatLighting);
+
+	//normalMapVAO.Generate();
+	//normalMapVAO.FillArray<TangentVertex>(instancing, 2);
 
 	plainVAO.Generate();
 	plainVAO.FillArray<Vertex>(uniform);
@@ -1634,6 +1643,8 @@ int main(int argc, char** argv)
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	hatching.Load("Textures/hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	normalMap.Load("Textures/normal.png");
+	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	texture.Load("Textures/text.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 	wallTexture.Load("Textures/flowed.png");
@@ -1657,6 +1668,12 @@ int main(int argc, char** argv)
 	verts[1].coordinates = glm::vec2(1, 0);
 	verts[2].coordinates = glm::vec2(0, 1);
 	verts[3].coordinates = glm::vec2(0, 0);
+	
+	std::array<TangentVertex, 4> tangents{};
+	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
+	normalMapBuffer.Generate();
+	normalMapBuffer.BufferData(tangents, StaticDraw);
+
 	texturedPlane.Generate();
 	texturedPlane.BufferData(verts, StaticDraw);
 

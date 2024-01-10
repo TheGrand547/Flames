@@ -3,6 +3,7 @@
 layout(location = 0) in vec3 fPos;
 layout(location = 1) in vec3 fNorm;
 layout(location = 2) in vec2 fTex;
+layout(location = 3) in mat3 fBTN;
 
 layout(location = 0) out vec4 colorOut;
 layout(location = 1) out vec4 normalOut;
@@ -11,20 +12,22 @@ uniform vec3 lightColor;
 uniform vec3 lightPos;
 uniform vec3 viewPos;
 uniform sampler2D textureIn;
+uniform sampler2D normalMapIn;
 uniform sampler2D ditherMap;
 
 void main()
 {
 	float ambient = 0.2f; // TODO: material setting
 	
-	// TODO: light settings
-	float constant = 1.0f;
-	float linear = 0;
-	float quadratic = 0;
-	
 	vec3 ambientColor = lightColor * ambient;
 	
 	vec3 norm = fNorm;
+	vec3 inNorm = texture(normalMapIn, fTex).xyz * 2.0 - 1.0;
+	norm = fBTN * inNorm;
+	
+	
+	
+	
 	vec3 lightDir = normalize(lightPos - fPos);
 	lightDir = vec3(0, 1, 0);
 	
@@ -35,22 +38,18 @@ void main()
 	vec3 reflected = reflect(-lightDir, norm);
 
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
-	vec3 specularOut = lightColor * specular; // TODO: I don't remember
+	vec3 specularOut = lightColor * specular;
 
-	float distance = length(lightPos - fPos);
-	float attenuation = 1.0 / (constant + linear * distance + quadratic * (distance * distance));
-	attenuation = 1.0;
 
 	vec3 color = vec3(texture(textureIn, fTex));
 	
-	vec3 result = color * (ambientColor + diffuseColor + specularOut) * attenuation;
+	vec3 result = color * (ambientColor + diffuseColor + specularOut);
 	
 	normalOut = vec4(abs(norm), 1);
 	
 	// Dither stuff
-	
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;
-	//result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
+	result.rgb += vec3(1, 1, 1) * mix(-0.5 / 255, 0.5 / 255, dither);
 	colorOut = vec4(result, 1.0);
 
 	//colorOut = vec4(abs(vec3(normalize(gl_FragCoord.xy), fTex.x * fTex.y) * viewDirection), 1.0);
