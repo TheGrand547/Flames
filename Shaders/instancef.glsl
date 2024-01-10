@@ -16,21 +16,29 @@ uniform sampler2D normalMapIn;
 uniform sampler2D depthMapIn;
 uniform sampler2D ditherMap;
 
+uniform int flops;
+
 void main()
 {
-
+	// TODO: something is kinda wrong about this and idk what
 	float ambient = 0.2f; // TODO: material setting
 	
 	vec3 ambientColor = lightColor * ambient;
 	
-	vec3 viewDirection = normalize(viewPos - fPos);
-	float factor = 0.1f;
-	vec2 texLoc = viewDirection.xy / viewDirection.z * texture(depthMapIn, fTex).r * factor;
-	texLoc = fTex - texLoc;
+	mat3 invs = inverse(fBTN);
 	
+	vec3 viewDirection = normalize((invs * viewPos - invs * fPos));
+	float factor = 0.05f;
+	vec2 texLoc = (viewDirection.xy / viewDirection.z) * texture(depthMapIn, fTex).r * factor;
+	
+	if (flops > 0)
+		texLoc = fTex - texLoc;
+	else
+		texLoc = fTex;
+	viewDirection = normalize(viewPos - fPos);
 	
 	vec3 norm = fNorm;
-	vec3 inNorm = texture(normalMapIn, texLoc).xyz * 2.0 - 1.0;
+	vec3 inNorm = normalize(texture(normalMapIn, texLoc).xyz * 2.0 - 1.0);
 	norm = fBTN * inNorm;
 	
 	

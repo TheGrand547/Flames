@@ -19,11 +19,15 @@ layout(std140) uniform Camera
 
 void main()
 {
-	mat3 normalMat =mat3(transpose(inverse(Model)));
+	mat3 normalMat = mat3(Model); //mat3(transpose(inverse(Model)));
 	// TODO: Normal
-	fNorm = normalMat * vec3(0, 1, 0);
+	fNorm = normalize(normalMat * vec3(0, 1, 0));
 	fPos = vec3(Model * vec4(vPos, 1.0));
 	gl_Position = Projection * View * Model * vec4(vPos, 1.0);
 	fTex = vTex;
-	fTBN = mat3(normalMat * vTan, normalMat * vBtn, fNorm);
+	
+	vec3 tanget = normalize(normalMat * vTan);
+	vec3 biTangent = normalize(normalMat * vBtn);
+	
+	fTBN = mat3(tanget, biTangent, fNorm);
 }

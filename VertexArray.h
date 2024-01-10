@@ -218,14 +218,14 @@ template<> inline void VertexArray::FillArray<TangentVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vBtn"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vTan"));
 	glEnableVertexAttribArray(shader.Index("vBtn"));
-	this->strides[bindingPoint] = sizeof(UIVertex);
+	this->strides[bindingPoint] = sizeof(TangentVertex);
 }
 
 template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
 {
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vTex"), 3, GL_FLOAT, GL_FALSE, offsetof(TextureVertex, uvs));
+	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(TextureVertex, uvs));
 	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));

@@ -317,15 +317,14 @@ void display()
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
-	instancing.SetTextureUnit("normalMapIn", depthMap, 3);
+	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
+	instancing.SetInt("flops", flopper);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDisable(GL_CULL_FACE);
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
-	//instanceVAO.BindArrayBuffer(instanceBuffer, 1);
-	//glBindVertexBuffer(0, texturedPlane.GetBuffer(), 0, sizeof(TextureVertex));
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
 	glEnable(GL_BLEND);
 	/* STICK FIGURE GUY */
@@ -1640,7 +1639,7 @@ int main(int argc, char** argv)
 
 	// TEXTURE SETUP
 	// TODO: texture loading base path thingy
-
+	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	depthMap.Load("Textures/depth.png");
 	depthMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	depthMap.SetAnisotropy(16.f);
@@ -1673,6 +1672,10 @@ int main(int argc, char** argv)
 	stickBuffer.BufferData(stick, StaticDraw);
 
 	std::array<TextureVertex, 4> verts{};
+	//std::cout << sizeof(verts) << std::endl;
+	//std::cout << sizeof(TextureVertex) << std::endl;
+	//std::cout << sizeof(TextureVertex) * 4 << std::endl;
+
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
 	verts[0].coordinates = glm::vec2(1, 1);
@@ -1682,6 +1685,7 @@ int main(int argc, char** argv)
 	
 	std::array<TangentVertex, 4> tangents{};
 	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
+
 	normalMapBuffer.Generate();
 	normalMapBuffer.BufferData(tangents, StaticDraw);
 
@@ -1732,7 +1736,8 @@ int main(int argc, char** argv)
 		//project.Scale(glm::vec3(1, .625f, 1));
 		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
-		awfulTemp.push_back(ref.GetModelMatrix());
+		//awfulTemp.push_back(ref.GetModelMatrix());
+		awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 
 	instanceBuffer.Generate();
