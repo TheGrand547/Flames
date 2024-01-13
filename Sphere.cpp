@@ -5,6 +5,20 @@
 #include "log.h"
 #include "Vertex.h"
 
+glm::mat4 Sphere::GetModelMatrix() const noexcept
+{
+	glm::mat4 temp{ this->radius };
+	temp[3] = glm::vec4(this->center, 1);
+	return temp;
+}
+
+glm::mat4 Sphere::GetNormalMatrix() const noexcept
+{
+	glm::mat4 temp{ 1 };
+	temp[3] = glm::vec4(this->center, 1);
+	return temp;
+}
+
 void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
 									const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
