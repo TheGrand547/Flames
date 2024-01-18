@@ -285,8 +285,12 @@ OBB loom;
 int tessAmount = 5;
 
 bool flopper = false;
+//std::chrono::duration<long long, std::nano> idleTime, displayTime;
+std::chrono::nanoseconds idleTime, displayTime;
+
 void display()
 {
+	auto now = std::chrono::high_resolution_clock::now();
 	depthed.Bind();
 	glViewport(0, 0, 1000, 1000);
 	glClearColor(0, 0, 0, 1);
@@ -503,6 +507,8 @@ void display()
 	// than the volume are not incorrectly shaded by volumes that don't touch it
 	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
+	// Somehow write the normal to the nearest light source? This feels like it should be simple but idk how to do it
+
 	// Drawing of the appropriate volumes
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
@@ -631,6 +637,8 @@ void display()
 
 	glFlush();
 	glutSwapBuffers();
+	auto end = std::chrono::high_resolution_clock::now();
+	displayTime = end - now;
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -836,6 +844,7 @@ void idle()
 	const auto now = std::chrono::high_resolution_clock::now();
 	const auto delta = now - lastTimers;
 	static std::deque<float> frames;
+	static std::deque<long long> displayTimes, idleTimes;
 	static glm::vec3 previously{};
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
@@ -860,32 +869,31 @@ void idle()
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
 	// TODO: Rolling buffer size thingy setting
+	auto idleDelta = idleTime.count() / 1000;
+	auto displayDelta = displayTime.count() / 1000;
 	frames.push_back(1.f / timeDelta);
+	displayTimes.push_back(displayDelta);
+	idleTimes.push_back(idleDelta);
 	if (frames.size() > 300)
 	{
 		frames.pop_front();
+		displayTimes.pop_front();
+		idleTimes.pop_front();
 	}
 	float averageFps = 0.f, averageTime = 0.f;
+	long long averageIdle = 0, averageDisplay = 0;
 	for (std::size_t i = 0; i < frames.size(); i++)
 	{
 		averageFps += frames[i] / frames.size();
+		averageDisplay += displayTimes[i] / displayTimes.size();
+		averageIdle += idleTimes[i] / idleTimes.size();
 	}
-	std::stringstream ss;
-	ss << smartBoxPhysics.velocity;
 
-	if (previously != smartBoxPhysics.axisOfGaming)
-	{
-		//ss << "Difference: " << glm::dot(previously, smartBoxPhysics.axisOfGaming);
-		//std::cout << glm::dot(previously, smartBoxPhysics.axisOfGaming) << std::endl;
-	}
-	else
-	{
-		//ss << "No Change";
-	}
 	previously = smartBoxPhysics.axisOfGaming;
 
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\n{}\n{}",
-		averageFps, 1000.f / averageFps, ss.str(), frameCounter));// (flopper) ? "New" : "Old", frameCounter));
+
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{}",
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (flopper) ? "New" : "Old", frameCounter));
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1198,6 +1206,8 @@ void idle()
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
 
+	const auto endTime = std::chrono::high_resolution_clock::now();
+	idleTime = endTime - now;
 	lastTimers = now;
 	glutPostRedisplay();
 }

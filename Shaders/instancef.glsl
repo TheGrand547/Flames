@@ -28,10 +28,10 @@ void main()
 	mat3 invs = inverse(fBTN);
 	
 	vec3 viewDirection = normalize((invs * viewPos - invs * fPos));
-	float factor = 0.05f;
+	float factor = 0.1f;
 	vec2 texLoc = (viewDirection.xy / viewDirection.z) * texture(depthMapIn, fTex).r * factor;
 	
-	if (flops > 0)
+	if (flops != 0)
 		texLoc = fTex - texLoc;
 	else
 		texLoc = fTex;
