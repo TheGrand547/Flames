@@ -152,7 +152,6 @@ public:
 	{
 		this->CleanFramebuffer();
 		glGenFramebuffers(1, &this->frameBuffer);
-		LogF("Buffe: %i", this->frameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, this->frameBuffer);
 		if constexpr (HasColor)
 		{

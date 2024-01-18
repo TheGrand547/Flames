@@ -222,6 +222,7 @@ int lineWidth = 3;
 
 int windowWidth = 1000, windowHeight = 1000;
 float aspectRatio = 1.f;
+static const float Fov = 70.f;
 
 #define TIGHT_BOXES 1
 #define WIDE_BOXES 2
@@ -237,7 +238,6 @@ std::array<bool, '9' - '0' + 1> debugFlags{};
 // TODO: Fix
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 constexpr float ANGLE_DELTA = 4;
-
 
 
 // Camera
@@ -294,7 +294,6 @@ std::chrono::nanoseconds idleTime, displayTime;
 
 void display()
 {
-	bufferMutex.lock();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	auto now = std::chrono::high_resolution_clock::now();
 	depthed.Bind();
@@ -645,7 +644,6 @@ void display()
 	glutSwapBuffers();
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - now;
-	bufferMutex.unlock();
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -1062,7 +1060,7 @@ void idle()
 		tooManyRays[1] += up;
 		tooManyRays[3] += glm::normalize(up - front * fo);
 		tooManyRays[5] += glm::normalize(-up + front * fo);
-		for (int i = 0; i < 4; i++)
+		for (std::size_t i = 0; i < 4; i++)
 		{
 			tooManyRays[6 + i] += glm::vec3(0, 1, 0);
 		}
@@ -1323,7 +1321,6 @@ void keyboardOff(unsigned char key, int x, int y)
 	keyState[key] = false;
 }
 
-static const float Fov = 70.f;
 static bool rightMouseHeld = false;
 static int mousePreviousX = 0, mousePreviousY = 0;
 
@@ -1460,49 +1457,41 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	}
 }
 
-int flash = 0;
-
 void windowResize(int width, int height)
 {
-	std::cout << flash << std::endl;
-	if (flash != 1)
-	{
-		//flash++;
-		std::cout << "aww yeah" << std::endl;
-		bufferMutex.lock();
-		windowWidth = width;
-		windowHeight = height;
-		aspectRatio = float(width) / float(height);
-		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, zNear, zFar);
-		cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
+	windowWidth = width;
+	windowHeight = height;
+	aspectRatio = float(width) / float(height);
+	
+	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
+	cameraUniformBuffer.SetBindingPoint(0);
+	cameraUniformBuffer.BindUniform();
+	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
+	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
-		depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-		depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-		depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-		depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-		depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
-		depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
+	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-		depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
-		// Doing NearestNearest is super messed up
-		depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
+	depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
+	// Doing NearestNearest is super messed up
+	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 
-		depthed.Assemble();
+	depthed.Assemble();
 
-		scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-		scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-		scratchSpace.Assemble();
+	scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	scratchSpace.Assemble();
 
-		screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
-		screenSpaceBuffer.SetBindingPoint(1);
-		screenSpaceBuffer.BindUniform();
-		screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
-		bufferMutex.unlock();
-		std::cout << "End of mutex" << std::endl;
-	}
-	flash++;
+	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
+	screenSpaceBuffer.SetBindingPoint(1);
+	screenSpaceBuffer.BindUniform();
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
 }
 
 
@@ -1578,7 +1567,6 @@ int main(int argc, char** argv)
 	std::cout << "Average: " << errored / iterations << std::endl;
 	std::cout << "Epsilon:" << EPSILON << std::endl;
 	*/
-
 	int error = 0;
 	debugFlags.fill(false);
 	// Glut
@@ -1834,32 +1822,13 @@ int main(int argc, char** argv)
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
-	std::cout << "Pain begins" << std::endl;
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
-	/*
-	bufferMutex.lock();
-	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	
 
-	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	// This was moved to the window-resizing place, TODO: see if that's the bottleneck on startup
 
-	depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
-	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
-	// Doing NearestNearest is super messed up
-	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-
-	depthed.Assemble();
-
-	scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
-	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-	scratchSpace.Assemble();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	bufferMutex.unlock();
-	*/
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 
@@ -1885,24 +1854,8 @@ int main(int argc, char** argv)
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
-	/*
-	bufferMutex.lock();
-	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
-	screenSpaceBuffer.SetBindingPoint(1);
-	screenSpaceBuffer.BindUniform();
-	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, windowWidth, windowHeight, 0));
-	
-	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
-	cameraUniformBuffer.SetBindingPoint(0);
-	cameraUniformBuffer.BindUniform();
-
-	glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, zNear, zFar);
-	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
-	bufferMutex.unlock();
-	CheckError();
-	*/
-	Log("Doing it");
-	windowResize(1000, 1000);
+	//Log("Doing it");
+	//windowResize(1000, 1000);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
