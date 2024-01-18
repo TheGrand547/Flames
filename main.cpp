@@ -11,6 +11,7 @@
 #include <freeglut.h>
 #include <iostream>
 #include <map>
+#include <mutex>
 #include <queue>
 #include <sys/utime.h>
 #include <time.h>
@@ -206,6 +207,8 @@ VAO fontVAO, instanceVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVA
 
 
 // Not explicitly tied to OpenGL Globals
+std::mutex bufferMutex;
+
 OBB smartBox, dumbBox;
 std::vector<Model> planes;
 StaticOctTree<Dummy> boxes(glm::vec3(20));
@@ -217,11 +220,13 @@ glm::vec3 moveSphere(0, 3.5f, 6.5f);
 int kernel = 0;
 int lineWidth = 3;
 
+int windowWidth = 1000, windowHeight = 1000;
+float aspectRatio = 1.f;
+
 #define TIGHT_BOXES 1
 #define WIDE_BOXES 2
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
-
 
 // Input Shenanigans
 #define ArrowKeyUp    0
@@ -285,14 +290,15 @@ OBB loom;
 int tessAmount = 5;
 
 bool flopper = false;
-//std::chrono::duration<long long, std::nano> idleTime, displayTime;
 std::chrono::nanoseconds idleTime, displayTime;
 
 void display()
 {
+	bufferMutex.lock();
+	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	auto now = std::chrono::high_resolution_clock::now();
 	depthed.Bind();
-	glViewport(0, 0, 1000, 1000);
+	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0, 0, 0, 1);
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -537,7 +543,7 @@ void display()
 	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
-	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 1000, 1000));
+	uiRect.SetVec4("rectangle", glm::vec4(0, 0, windowWidth, windowHeight));
 	//uiRect.DrawElements(TriangleStrip, 4);
 	//uiRect.DrawElements(TriangleStrip, 4);
 
@@ -570,13 +576,13 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(800, 0, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, 0, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(0, 900, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(0, windowHeight - 100, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(800, 900, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
 	uiRectTexture.SetActiveShader();
@@ -639,6 +645,7 @@ void display()
 	glutSwapBuffers();
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - now;
+	bufferMutex.unlock();
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -1355,12 +1362,12 @@ void mouseButtonAction(int button, int state, int x, int y)
 		> Get the camera transform(?) then apply the function(below) to p
 		newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
 		*/
-		glm::vec2 viewPortSize{ glutGet(GLUT_WINDOW_WIDTH), glutGet(GLUT_WINDOW_HEIGHT) };
+		glm::vec2 viewPortSize{ windowWidth, windowHeight };
 		glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
 
 		// Lets have depth = 0.01;
 		float depth = 0.01f;
-		glm::mat4 projection = glm::perspective(glm::radians(Fov), 1.f, depth, zFar);
+		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
 		sizes *= GetProjectionHalfs(projection);
 		glm::vec3 project(sizes.x, sizes.y, -depth);
 
@@ -1416,8 +1423,8 @@ void mouseMovementFunction(int x, int y)
 		if (abs(yDif) > 20)
 			yDif = 0;
 		// Why 50??
-		float yDelta = 50 * (xDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_WIDTH);
-		float zDelta = 50 * (yDif * ANGLE_DELTA) / glutGet(GLUT_WINDOW_HEIGHT);
+		float yDelta = 50 * (xDif * ANGLE_DELTA) / windowWidth;
+		float zDelta = 50 * (yDif * ANGLE_DELTA) / windowHeight;
 
 		cameraRotation.x += zDelta;
 		cameraRotation.y += yDelta;
@@ -1452,6 +1459,52 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	default: break;
 	}
 }
+
+int flash = 0;
+
+void windowResize(int width, int height)
+{
+	std::cout << flash << std::endl;
+	if (flash != 1)
+	{
+		//flash++;
+		std::cout << "aww yeah" << std::endl;
+		bufferMutex.lock();
+		windowWidth = width;
+		windowHeight = height;
+		aspectRatio = float(width) / float(height);
+		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, zNear, zFar);
+		cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
+
+		depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+		depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+		depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+		depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+		depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
+		depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+
+		depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
+		// Doing NearestNearest is super messed up
+		depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
+
+		depthed.Assemble();
+
+		scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+		scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+		scratchSpace.Assemble();
+
+		screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
+		screenSpaceBuffer.SetBindingPoint(1);
+		screenSpaceBuffer.BindUniform();
+		screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
+		bufferMutex.unlock();
+		std::cout << "End of mutex" << std::endl;
+	}
+	flash++;
+}
+
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -1534,10 +1587,10 @@ int main(int argc, char** argv)
 	glutInitContextVersion(4, 6);
 	glutInitContextProfile(GLUT_CORE_PROFILE);
 	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL);
-	glutInitWindowSize(1000, 1000);
+	glutInitWindowSize(windowWidth, windowHeight);
 	glutInitContextFlags(GLUT_DEBUG);
 	glutCreateWindow("Wowie a window");
-	glViewport(0, 0, 1000, 1000);
+	glViewport(0, 0, windowWidth, windowHeight);
 
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
@@ -1553,6 +1606,7 @@ int main(int argc, char** argv)
 
 	glutDisplayFunc(display);
 	glutIdleFunc(idle);
+	glutReshapeFunc(windowResize);
 
 	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
 	glutKeyboardFunc(keyboard);
@@ -1563,7 +1617,7 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouseButtonAction);
 	glutMotionFunc(mouseMovementFunction);
 	glutPassiveMotionFunc(mouseMovementFunction);
-	glutWarpPointer(glutGet(GLUT_WINDOW_WIDTH) / 2, glutGet(GLUT_WINDOW_HEIGHT) / 2);
+	glutWarpPointer(windowWidth / 2, windowHeight / 2);
 	glutPositionWindow(0, 0);
 
 
@@ -1780,29 +1834,32 @@ int main(int argc, char** argv)
 	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
+	std::cout << "Pain begins" << std::endl;
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
-	depthed.GetColorBuffer<0>().CreateEmpty(1000, 1000, InternalRGBA);
+	/*
+	bufferMutex.lock();
+	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetColorBuffer<1>().CreateEmpty(1000, 1000, InternalRGBA);
+	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
-	depthed.GetDepth().CreateEmpty(1000, 1000, InternalDepth);
+	depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
 	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-	
-	depthed.GetStencil().CreateEmpty(1000, 1000, InternalStencil);
+
+	depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-	
+
 	depthed.Assemble();
 
-	scratchSpace.GetColorBuffer().CreateEmpty(1000, 1000, InternalRGBA);
+	scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	scratchSpace.Assemble();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-
-
+	bufferMutex.unlock();
+	*/
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 
@@ -1828,19 +1885,24 @@ int main(int argc, char** argv)
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
-
+	/*
+	bufferMutex.lock();
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
-	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, 1000, 1000, 0));
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, windowWidth, windowHeight, 0));
 	
 	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	cameraUniformBuffer.SetBindingPoint(0);
 	cameraUniformBuffer.BindUniform();
 
-	glm::mat4 projection = glm::perspective(glm::radians(Fov), 1.f, zNear, zFar);
+	glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
+	bufferMutex.unlock();
 	CheckError();
+	*/
+	Log("Doing it");
+	windowResize(1000, 1000);
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 

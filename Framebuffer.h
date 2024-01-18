@@ -79,13 +79,18 @@ public:
 		std::swap(this->frameBuffer, other.frameBuffer);
 	}
 
-	void CleanUp()
+	void CleanFramebuffer()
 	{
 		if (this->frameBuffer)
 		{
 			glDeleteFramebuffers(1, &this->frameBuffer);
 			this->frameBuffer = 0;
 		}
+	}
+
+	void CleanUp()
+	{
+		this->CleanFramebuffer();
 		if constexpr (HasColor)
 		{
 			for (auto& element : this->colorBuffers)
@@ -145,11 +150,9 @@ public:
 
 	bool Assemble()
 	{
-		if (this->frameBuffer)
-		{
-			this->CleanUp();
-		}
+		this->CleanFramebuffer();
 		glGenFramebuffers(1, &this->frameBuffer);
+		LogF("Buffe: %i", this->frameBuffer);
 		glBindFramebuffer(GL_FRAMEBUFFER, this->frameBuffer);
 		if constexpr (HasColor)
 		{
@@ -186,7 +189,7 @@ public:
 			default: Log("Some framebuffer error that isn't one of the given, dunno what to do with that."); break;
 			}
 		}
-		return glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE;
+		return status == GL_FRAMEBUFFER_COMPLETE;
 	}
 
 	// Binds the framebuffer to both the read and write positions
