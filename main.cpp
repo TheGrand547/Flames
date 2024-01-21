@@ -893,6 +893,7 @@ void idle()
 		averageDisplay += displayTimes[i] / displayTimes.size();
 		averageIdle += idleTimes[i] / idleTimes.size();
 	}
+	// TODO: Consider using an expoentially weighted average, average = x * current + (1 - x) * previous_average to save time on addition stuff
 
 	previously = smartBoxPhysics.axisOfGaming;
 
@@ -1210,9 +1211,18 @@ void idle()
 	// TODO: Key state is ten kinds of messed up
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
+	//keyState.fill(false);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - now;
+	// Delay to keep 100 ticks per second idle stuff
+	/*
+	if (idleTime < std::chrono::milliseconds(10))
+	{
+		while (std::chrono::high_resolution_clock::now() - now <= std::chrono::milliseconds(10));
+	}
+	*/
+
 	lastTimers = now;
 	glutPostRedisplay();
 }
@@ -1229,7 +1239,6 @@ void smartReset()
 
 void keyboard(unsigned char key, int x, int y)
 {
-	// TODO: Whole key thing needs to be re-written
 	keyState[key] = true;
 	if (key == 'm' || key == 'M') cameraPosition.y += 3;
 	if (key == '[') tessAmount -= 1;
@@ -1341,6 +1350,7 @@ glm::vec2 GetProjectionHalfs(glm::mat4& mat)
 
 void mouseButtonAction(int button, int state, int x, int y)
 {
+	std::cout << frameCounter << ":" << button << std::endl;
 	if (button == GLUT_RIGHT_BUTTON)
 	{
 		rightMouseHeld = (state == GLUT_DOWN);
@@ -1494,6 +1504,53 @@ void windowResize(int width, int height)
 	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
 }
 
+static bool withinWindow = true;
+
+void windowStatus(int state)
+{
+	switch (state)
+	{
+	case GLUT_HIDDEN: { std::cout << "Hidden" << std::endl; break; }
+	case GLUT_FULLY_COVERED: { std::cout << "Fully Covered" << std::endl; break; }
+	case GLUT_PARTIALLY_RETAINED: { std::cout << "Partially Covered" << std::endl; break; }
+	case GLUT_FULLY_RETAINED: { std::cout << "Fully Retained" << std::endl; break; }
+	default: {std::cout << "What uh" << std::endl; break; }
+	}
+
+	switch (state)
+	{
+	case GLUT_HIDDEN:             // These two stop rendering
+	case GLUT_FULLY_COVERED:
+	{
+		keyState.fill(false);
+		keyStateBackup.fill(false);
+		break;
+	}
+	case GLUT_PARTIALLY_RETAINED: // This one and the following should re-start rendering
+	{
+		// Some other window is on top of this, stop receiving inputs
+		if (withinWindow)
+		{
+			//keyStateBackup.fill(false);
+		}
+		break;
+	}
+	// TODO: Start rendering
+	case GLUT_FULLY_RETAINED:
+	{
+		break;
+	}
+	default:
+		break;
+	}
+}
+
+void windowCursorStatus(int state)
+{
+	withinWindow = (state == GLUT_ENTERED);
+	//std::cout << std::boolalpha << withinWindow << std::endl;
+}
+
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -1605,6 +1662,10 @@ int main(int argc, char** argv)
 	glutMouseFunc(mouseButtonAction);
 	glutMotionFunc(mouseMovementFunction);
 	glutPassiveMotionFunc(mouseMovementFunction);
+	glutEntryFunc(windowCursorStatus);
+
+	glutWindowStatusFunc(windowStatus);
+
 	glutWarpPointer(windowWidth / 2, windowHeight / 2);
 	glutPositionWindow(0, 0);
 
