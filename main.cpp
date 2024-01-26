@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <chrono>
 #include <glew.h>
+#include <freeglut.h>
+#include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/quaternion.hpp>
@@ -8,7 +10,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/hash.hpp>
-#include <freeglut.h>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -37,6 +38,8 @@
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
+
+#define GLFW false
 
 struct Dummy
 {
@@ -219,6 +222,8 @@ bool smartBoxColor = false;
 glm::vec3 moveSphere(0, 3.5f, 6.5f);
 int kernel = 0;
 int lineWidth = 3;
+
+bool windowShouldDie = false;
 
 int windowWidth = 1000, windowHeight = 1000;
 float aspectRatio = 1.f;
@@ -584,8 +589,6 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
-	uiRectTexture.SetActiveShader();
-
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
@@ -641,7 +644,8 @@ void display()
 	glEnable(GL_CULL_FACE);
 
 	glFlush();
-	glutSwapBuffers();
+	if (!GLFW)
+		glutSwapBuffers();
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - now;
 }
@@ -1224,7 +1228,8 @@ void idle()
 	*/
 
 	lastTimers = now;
-	glutPostRedisplay();
+	if (!GLFW)
+		glutPostRedisplay();
 }
 
 void smartReset()
@@ -1235,6 +1240,41 @@ void smartReset()
 	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
 	smartBox.ReOrient(glm::vec3(0, 135, 0));
 	*/
+}
+
+void window_focus_callback(GLFWwindow* window, int focused)
+{
+	if (!focused)
+	{
+		keyStateBackup.fill(false);
+	}
+}
+
+void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
+{
+	if (action != GLFW_REPEAT && key < 0xFF)
+	{
+		keyState[key] = action == GLFW_PRESS;
+	}
+	if (action == GLFW_PRESS)
+	{
+		if (key == GLFW_KEY_M) cameraPosition.y += 3;
+		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
+		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
+		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
+		if (key == 'q' || key == 'Q') windowShouldDie = true;
+		if (key == GLFW_KEY_F) kernel = 1 - kernel;
+		if (key == GLFW_KEY_B) flopper = !flopper;
+		if (key == 'h' || key == 'H')
+		{
+			smartReset();
+		}
+		if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
+		{
+			std::size_t value = (std::size_t) key - GLFW_KEY_0;
+			debugFlags[value] = !debugFlags[value];
+		}
+	}
 }
 
 void keyboard(unsigned char key, int x, int y)
@@ -1592,6 +1632,8 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 		id, _type, _severity, _source, message);
 }
 
+void init();
+
 // TODO: investigate *massive* memory footprint increase when resizing window
 int main(int argc, char** argv)
 {
@@ -1626,6 +1668,61 @@ int main(int argc, char** argv)
 	*/
 	int error = 0;
 	debugFlags.fill(false);
+
+	GLFWwindow* windowPointer = nullptr;
+	if (GLFW)
+	{
+		if (glfwInit())
+		{
+
+
+			glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+			glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
+			glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+			glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
+
+
+			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+
+			windowPointer = glfwCreateWindow(windowWidth, windowHeight, "Wowie a window", nullptr, nullptr);
+			if (!windowPointer)
+			{
+				glfwTerminate();
+				return -1;
+			}
+			glfwMakeContextCurrent(windowPointer);
+
+			glewExperimental = GL_TRUE;
+			// Glew
+			if ((error = glewInit()) != GLEW_OK)
+			{
+				printf("Error code %i from glewInit()", error);
+				return -1;
+			}
+			
+			glfwSetKeyCallback(windowPointer, key_callback);
+
+			glfwSetWindowFocusCallback(windowPointer, window_focus_callback);
+
+
+			init();
+			windowResize(windowWidth, windowHeight); // HACK
+
+			while (!(glfwWindowShouldClose(windowPointer) || windowShouldDie))
+			{
+				idle();
+				display();
+				glfwSwapBuffers(windowPointer);
+				glfwPollEvents();
+			}
+			return 0;
+		}
+	}
+
+
 	// Glut
 	glutInit(&argc, argv);
 	// TODO: Maybe transition to OpenGL ES3.1
@@ -1669,7 +1766,6 @@ int main(int argc, char** argv)
 	glutWarpPointer(windowWidth / 2, windowHeight / 2);
 	glutPositionWindow(0, 0);
 
-
 	glewExperimental = GL_TRUE;
 	// Glew
 	if ((error = glewInit()) != GLEW_OK)
@@ -1677,20 +1773,27 @@ int main(int argc, char** argv)
 		printf("Error code %i from glewInit()", error);
 		return -1;
 	}
+
 	glDisable(GL_MULTISAMPLE);
 	glEnable(GL_DEBUG_OUTPUT);
 
 	CheckError();
 	glDebugMessageCallback(DebugCallback, nullptr);
 	// Get rid of Line_width_deprecated messages
-	GLuint toDisable = 7; 
+	GLuint toDisable = 7;
 	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
 
+	init();
+	CheckError();
+	glutMainLoop();
+	return 0;
+}
 
+void init()
+{
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
-
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders/");
@@ -1921,8 +2024,4 @@ int main(int argc, char** argv)
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	glClearColor(0.f, 0.f, 0.f, 0.f);
-	CheckError();
-	glutMainLoop();
-
-	return 0;
 }
