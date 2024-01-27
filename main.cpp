@@ -39,7 +39,7 @@
 #include "VertexArray.h"
 #include "Wall.h"
 
-#define GLFW false
+#define GLFW true
 
 struct Dummy
 {
@@ -573,6 +573,7 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
+	glDisable(GL_DEPTH_TEST);
 	glEnable(GL_BLEND);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	uiRect.SetActiveShader();
@@ -594,7 +595,9 @@ void display()
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(textBuffer);
+
 	glDisable(GL_BLEND);
+	glEnable(GL_DEPTH_TEST);
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1734,18 +1737,6 @@ int main(int argc, char** argv)
 	glutCreateWindow("Wowie a window");
 	glViewport(0, 0, windowWidth, windowHeight);
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
-
-	//glDisable(GL_LINE_SMOOTH);
-	//glDisable(GL_POLYGON_SMOOTH);
-
-	//glDepthFunc(GL_LESS);
-	glDepthFunc(GL_LEQUAL);
-	glClearColor(0, 0, 0, 1);
-
-	glFrontFace(GL_CCW);
-
 	glutDisplayFunc(display);
 	glutIdleFunc(idle);
 	glutReshapeFunc(windowResize);
@@ -1774,15 +1765,6 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
-	glDisable(GL_MULTISAMPLE);
-	glEnable(GL_DEBUG_OUTPUT);
-
-	CheckError();
-	glDebugMessageCallback(DebugCallback, nullptr);
-	// Get rid of Line_width_deprecated messages
-	GLuint toDisable = 7;
-	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
-
 	init();
 	CheckError();
 	glutMainLoop();
@@ -1791,6 +1773,25 @@ int main(int argc, char** argv)
 
 void init()
 {
+	// OpenGL Feature Enabling
+	glEnable(GL_DEPTH_TEST);
+	glDepthFunc(GL_LEQUAL);
+
+	glEnable(GL_CULL_FACE);
+
+	glClearColor(0, 0, 0, 1);
+
+	glFrontFace(GL_CCW);
+	glDisable(GL_MULTISAMPLE);
+
+	// OpenGL debuggin
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(DebugCallback, nullptr);
+	// Get rid of Line_width_deprecated messages
+	GLuint toDisable = 7;
+	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
+
+
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
