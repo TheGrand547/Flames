@@ -223,8 +223,6 @@ glm::vec3 moveSphere(0, 3.5f, 6.5f);
 int kernel = 0;
 int lineWidth = 3;
 
-bool windowShouldDie = false;
-
 int windowWidth = 1000, windowHeight = 1000;
 float aspectRatio = 1.f;
 static const float Fov = 70.f;
@@ -1265,7 +1263,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
-		if (key == 'q' || key == 'Q') windowShouldDie = true;
+		if (key == 'q' || key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
 		if (key == GLFW_KEY_F) kernel = 1 - kernel;
 		if (key == GLFW_KEY_B) flopper = !flopper;
 		if (key == 'h' || key == 'H')
@@ -1373,6 +1371,7 @@ void keyboardOff(unsigned char key, int x, int y)
 	keyState[key] = false;
 }
 
+// TODO: struct or something idk
 static bool rightMouseHeld = false;
 static int mousePreviousX = 0, mousePreviousY = 0;
 
@@ -1389,6 +1388,98 @@ glm::vec2 GetProjectionHalfs(glm::mat4& mat)
 	result.x = local.x;
 	result.y = local.y;
 	return result;
+}
+
+void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
+{
+	if (button == GLFW_MOUSE_BUTTON_RIGHT)
+	{
+		rightMouseHeld = (action == GLFW_PRESS);
+	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	{
+		int x = mousePreviousX, y = mousePreviousY;
+		/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
+		> Get Viewport size
+		> Get camera projection, zNear being defined by the depth you want it to be
+		> Get the half lengths of the camera projection
+		> Given the input (x,y) coordinates compute
+		> newX = (x / size.x) * 2.0 - 1.0
+		> newY = (1.0 - (y / size.y)) * 2.0 - 1.0
+		> (newX, newY) *= half lengths
+		> Proejctioned vector, called p = (newX, newY, -depth)
+		> Get the camera transform(?) then apply the function(below) to p
+		newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
+		*/
+		glm::vec2 viewPortSize{ windowWidth, windowHeight };
+		glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
+
+		// Lets have depth = 0.01;
+		float depth = 0.01f;
+		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
+		sizes *= GetProjectionHalfs(projection);
+		glm::vec3 project(sizes.x, sizes.y, -depth);
+
+		glm::vec3 radians = glm::radians(cameraRotation);
+
+		// Center of screen orientation
+		glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.x, radians.y + glm::half_pi<float>(), radians.z);
+
+		glm::vec3 faced{ 0.f };
+		for (int i = 0; i < 3; i++)
+		{
+			faced[i] = glm::dot(glm::vec3(cameraOrientation[i]), project);
+			// To do a proper projection you would add the camera position but that isn't necessary for this use
+		}
+		faced = glm::normalize(faced);
+
+		float rayLength = 50.f;
+
+		glm::vec3 axial = glm::normalize(glm::cross(glm::vec3(1, 0, 0), faced));
+		float dist = glm::acos(glm::dot(glm::vec3(1, 0, 0), faced));
+
+		// Orientation of the ray being shot
+		cameraOrientation = glm::mat4_cast(glm::normalize(glm::angleAxis(dist, axial)));
+
+		Ray liota(cameraPosition, faced);
+		RayCollision rayd{};
+		Dummy* point = nullptr;
+		for (auto& item : boxes.RayCast(liota))
+		{
+			if (item->box.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
+			{
+				rayLength = rayd.depth;
+				point = &(*item);
+			}
+		}
+		// Point now has the pointer to the closest element
+		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
+		loom.ReOrient(cameraOrientation);
+		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
+		loom.ReCenter(cameraPosition);
+		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+	}
+}
+
+void mouseCursorFunc(GLFWwindow* window, double x, double y)
+{
+	if (rightMouseHeld)
+	{
+		float xDif = (float)(x - mousePreviousX);
+		float yDif = (float)(y - mousePreviousY);
+		if (abs(xDif) > 20)
+			xDif = 0;
+		if (abs(yDif) > 20)
+			yDif = 0;
+		// Why 50??
+		float yDelta = 50 * (xDif * ANGLE_DELTA) / windowWidth;
+		float zDelta = 50 * (yDif * ANGLE_DELTA) / windowHeight;
+
+		cameraRotation.x += zDelta;
+		cameraRotation.y += yDelta;
+	}
+	mousePreviousX = static_cast<int>(x);
+	mousePreviousY = static_cast<int>(y);
 }
 
 void mouseButtonAction(int button, int state, int x, int y)
@@ -1698,6 +1789,12 @@ int main(int argc, char** argv)
 			}
 			glfwMakeContextCurrent(windowPointer);
 
+			int left, top, right, bottom;
+			glfwGetWindowFrameSize(windowPointer, &left, &top, &right, &bottom);
+
+
+			glfwSetWindowPos(windowPointer, 0, top);
+
 			glewExperimental = GL_TRUE;
 			// Glew
 			if ((error = glewInit()) != GLEW_OK)
@@ -1710,11 +1807,13 @@ int main(int argc, char** argv)
 
 			glfwSetWindowFocusCallback(windowPointer, window_focus_callback);
 
+			glfwSetMouseButtonCallback(windowPointer, mouseButtonFunc);
+			glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
 
 			init();
 			windowResize(windowWidth, windowHeight); // HACK
 
-			while (!(glfwWindowShouldClose(windowPointer) || windowShouldDie))
+			while (!glfwWindowShouldClose(windowPointer))
 			{
 				idle();
 				display();
