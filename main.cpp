@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <chrono>
 #include <glew.h>
-#include <freeglut.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -38,8 +37,6 @@
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
-
-#define GLFW true
 
 struct Dummy
 {
@@ -645,8 +642,6 @@ void display()
 	glEnable(GL_CULL_FACE);
 
 	glFlush();
-	if (!GLFW)
-		glutSwapBuffers();
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - now;
 }
@@ -916,28 +911,28 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = cameraPosition;
-	if (keyState['z'])
+	if (keyState['Z'])
 	{
 		dumbBox.Translate(dumbBox.Forward() * speed);
 	}
-	if (keyState['x'])
+	if (keyState['X'])
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
-	if (keyState['p'] || keyState['P'])
+	if (keyState['P'])
 		std::cout << previous << std::endl;
-	if (keyState['w'] || keyState['W'])
+	if (keyState['W'])
 		cameraPosition += forward;
-	if (keyState['s'] || keyState['S'])
+	if (keyState['S'])
 		cameraPosition -= forward;
-	if (keyState['d'] || keyState['D'])
+	if (keyState['D'])
 		cameraPosition += right;
-	if (keyState['a'] || keyState['A'])
+	if (keyState['A'])
 		cameraPosition -= right;
-	if (keyState['z']) cameraPosition += GravityUp * speed;
-	if (keyState['x']) cameraPosition -= GravityUp * speed;
+	if (keyState['Z']) cameraPosition += GravityUp * speed;
+	if (keyState['X']) cameraPosition -= GravityUp * speed;
 	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
@@ -986,10 +981,10 @@ void idle()
 	//if (keyState[ArrowKeyUp])   smartBox.Translate(smartBox.Forward() * speed);
 	//if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
 	//if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
-	if (keyState['v']) smartBox.Translate(GravityAxis * speed);
-	if (keyState['c']) smartBox.Translate(GravityUp * speed);
-	if (keyState['f']) smartBox.Translate(glm::vec3(0, 1, 0));
-	if (keyState['g']) smartBox.Translate(-smartBoxPhysics.axisOfGaming * speed);
+	if (keyState['V']) smartBox.Translate(GravityAxis * speed);
+	if (keyState['C']) smartBox.Translate(GravityUp * speed);
+	if (keyState['F']) smartBox.Translate(glm::vec3(0, 1, 0));
+	if (keyState['G']) smartBox.Translate(-smartBoxPhysics.axisOfGaming * speed);
 
 	if (frameCounter % 2000 == 0)
 	{
@@ -1229,8 +1224,6 @@ void idle()
 	*/
 
 	lastTimers = now;
-	if (!GLFW)
-		glutPostRedisplay();
 }
 
 void smartReset()
@@ -1253,9 +1246,11 @@ void window_focus_callback(GLFWwindow* window, int focused)
 
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
+	// If key is an ascii, then GLFW_KEY_* will be equal to '*', ie GLFW_KEY_M = 'M', all uppercase by default
 	if (action != GLFW_REPEAT && key < 0xFF)
 	{
-		keyState[key] = action == GLFW_PRESS;
+		unsigned char letter = (unsigned char) (key & 0xFF);
+		keyState[letter] = action == GLFW_PRESS;
 	}
 	if (action == GLFW_PRESS)
 	{
@@ -1263,10 +1258,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
-		if (key == 'q' || key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
+		if (key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
 		if (key == GLFW_KEY_F) kernel = 1 - kernel;
 		if (key == GLFW_KEY_B) flopper = !flopper;
-		if (key == 'h' || key == 'H')
+		if (key == 'H')
 		{
 			smartReset();
 		}
@@ -1275,100 +1270,75 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			std::size_t value = (std::size_t) key - GLFW_KEY_0;
 			debugFlags[value] = !debugFlags[value];
 		}
-	}
-}
-
-void keyboard(unsigned char key, int x, int y)
-{
-	keyState[key] = true;
-	if (key == 'm' || key == 'M') cameraPosition.y += 3;
-	if (key == '[') tessAmount -= 1;
-	if (key == ']') tessAmount += 1;
-	if (key == 'n' || key == 'N') cameraPosition.y -= 3;
-	if (key == 'q' || key == 'Q') glutLeaveMainLoop();
-	if (key == 't' || key == 'T') kernel = 1 - kernel;
-	if (key == 'b') flopper = !flopper;
-	if (key == 'h' || key == 'H')
-	{
-		smartReset();
-	}
-	if (key >= '1' && key <= '9')
-	{
-		std::size_t value = (std::size_t) key - '0';
-		debugFlags[value] = !debugFlags[value];
-	}
-	if (key == 'r' || key == 'R')
-	{
-		axisIndex = (axisIndex + 1) % 12;
-		if (axes.size() > axisIndex)
+		if (key == 'R')
 		{
-			//std::array<glm::vec3, 2> verts = { axes[axisIndex].A, axes[axisIndex].B };
+			// TODO: Find out what the hell this was
+			axisIndex = (axisIndex + 1) % 12;
+			if (axes.size() > axisIndex)
+			{
+				//std::array<glm::vec3, 2> verts = { axes[axisIndex].A, axes[axisIndex].B };
+				//rayBuffer.BufferSubData(verts);
+			}
+
+			glm::vec3 angles2 = glm::radians(cameraRotation);
+
+			glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
+			std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
+
+			bool set = false;
+
+
+			RayCollision nears, fars;
+			//smartBox.Intersect(cameraPosition, gamer, nears, fars);
+			/*
+			auto foosball = smartBox.ClosestFacePoints(cameraPosition);
+			std::array<glm::vec3, 12> localpoints;
+			for (std::size_t i = 0; i < localpoints.size() && i < foosball.size(); i++)
+			{
+				localpoints[i] = foosball[i];
+			}
+			rayBuffer.BufferSubData(localpoints);
+			*/
+			//for (std::size_t i = 0; i < boxes.size(); i++)
+
+			for (auto& box : boxes)
+			{
+				//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
+				box.color = box.box.Intersect(cameraPosition, gamer * 100.f, nears, fars);
+				if (box.color && !set)
+				{
+					set = true;
+					glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
+					for (std::size_t j = 0; j < 3; j++)
+					{
+						verts[2 + 2 * j] = point;
+						glm::vec3 cur = glm::normalize(box.box[j]);
+						verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
+					}
+					break;
+				}
+			}
+			//std::cout << glm::vec3(-1, 1.2f, -2) << "->" << dumbBox.Center() << std::endl;
+			//bool flopped = dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), glm::normalize(glm::vec3(2, 0.f, 0)), nears, fars);
+			// dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), (glm::vec3(2, 0.f, 0)), nears, fars);
+			//if (flopped || !flopped)
+			//{
+			//	std::cout << std::boolalpha << flopped << std::endl;
+			//	//glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
+			//	glm::vec3 point = glm::vec3(-1, 1.2f, -2) + (glm::vec3(2, 0.1f, 0) * 100.f);
+			//	verts[0] = point;
+			//	verts[1] = glm::vec3(-1, 1.2f, -2);
+			//	/*
+			//	for (std::size_t j = 0; j < 3; j++)
+			//	{
+			//		verts[2 + 2 * j] = point;
+			//		glm::vec3 cur = glm::normalize(dumbBox[j]);
+			//		verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, glm::vec3(2, 0, 0)) * 100.f;
+			//	}*/
+			//}
 			//rayBuffer.BufferSubData(verts);
 		}
-
-		glm::vec3 angles2 = glm::radians(cameraRotation);
-
-		glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
-		std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
-
-		bool set = false;
-
-
-		RayCollision nears, fars;
-		//smartBox.Intersect(cameraPosition, gamer, nears, fars);
-		/*
-		auto foosball = smartBox.ClosestFacePoints(cameraPosition);
-		std::array<glm::vec3, 12> localpoints;
-		for (std::size_t i = 0; i < localpoints.size() && i < foosball.size(); i++)
-		{
-			localpoints[i] = foosball[i];
-		}
-		rayBuffer.BufferSubData(localpoints);
-		*/
-		//for (std::size_t i = 0; i < boxes.size(); i++)
-
-		for (auto& box: boxes)
-		{
-			//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
-			box.color = box.box.Intersect(cameraPosition, gamer * 100.f, nears, fars);
-			if (box.color && !set)
-			{
-				set = true;
-				glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
-				for (std::size_t j = 0; j < 3; j++)
-				{
-					verts[2 + 2 * j] = point;
-					glm::vec3 cur = glm::normalize(box.box[j]);
-					verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
-				}
-				break;
-			}
-		}
-		//std::cout << glm::vec3(-1, 1.2f, -2) << "->" << dumbBox.Center() << std::endl;
-		//bool flopped = dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), glm::normalize(glm::vec3(2, 0.f, 0)), nears, fars);
-		// dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), (glm::vec3(2, 0.f, 0)), nears, fars);
-		//if (flopped || !flopped)
-		//{
-		//	std::cout << std::boolalpha << flopped << std::endl;
-		//	//glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
-		//	glm::vec3 point = glm::vec3(-1, 1.2f, -2) + (glm::vec3(2, 0.1f, 0) * 100.f);
-		//	verts[0] = point;
-		//	verts[1] = glm::vec3(-1, 1.2f, -2);
-		//	/*
-		//	for (std::size_t j = 0; j < 3; j++)
-		//	{
-		//		verts[2 + 2 * j] = point;
-		//		glm::vec3 cur = glm::normalize(dumbBox[j]);
-		//		verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, glm::vec3(2, 0, 0)) * 100.f;
-		//	}*/
-		//}
-		//rayBuffer.BufferSubData(verts);
 	}
-}
-
-void keyboardOff(unsigned char key, int x, int y)
-{
-	keyState[key] = false;
 }
 
 // TODO: struct or something idk
@@ -1395,6 +1365,14 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		rightMouseHeld = (action == GLFW_PRESS);
+		if (rightMouseHeld)
+		{
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
+		}
+		else
+		{
+			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
+		}
 	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
@@ -1482,98 +1460,7 @@ void mouseCursorFunc(GLFWwindow* window, double x, double y)
 	mousePreviousY = static_cast<int>(y);
 }
 
-void mouseButtonAction(int button, int state, int x, int y)
-{
-	std::cout << frameCounter << ":" << button << std::endl;
-	if (button == GLUT_RIGHT_BUTTON)
-	{
-		rightMouseHeld = (state == GLUT_DOWN);
-	}
-	if (button == GLUT_LEFT_BUTTON && state == GLUT_DOWN)
-	{
-		/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
-		> Get Viewport size
-		> Get camera projection, zNear being defined by the depth you want it to be
-		> Get the half lengths of the camera projection
-		> Given the input (x,y) coordinates compute
-		> newX = (x / size.x) * 2.0 - 1.0
-		> newY = (1.0 - (y / size.y)) * 2.0 - 1.0
-		> (newX, newY) *= half lengths
-		> Proejctioned vector, called p = (newX, newY, -depth)
-		> Get the camera transform(?) then apply the function(below) to p
-		newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
-		*/
-		glm::vec2 viewPortSize{ windowWidth, windowHeight };
-		glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
-
-		// Lets have depth = 0.01;
-		float depth = 0.01f;
-		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
-		sizes *= GetProjectionHalfs(projection);
-		glm::vec3 project(sizes.x, sizes.y, -depth);
-
-		glm::vec3 radians = glm::radians(cameraRotation);
-		
-		// Center of screen orientation
-		glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.x, radians.y + glm::half_pi<float>(), radians.z);
-
-		glm::vec3 faced{0.f};
-		for (int i = 0; i < 3; i++)
-		{
-			faced[i] = glm::dot(glm::vec3(cameraOrientation[i]), project);
-			// To do a proper projection you would add the camera position but that isn't necessary for this use
-		}
-		faced = glm::normalize(faced);
-
-		float rayLength = 50.f;
-
-		glm::vec3 axial = glm::normalize(glm::cross(glm::vec3(1, 0, 0), faced));
-		float dist = glm::acos(glm::dot(glm::vec3(1, 0, 0), faced));
-		
-		// Orientation of the ray being shot
-		cameraOrientation = glm::mat4_cast(glm::normalize(glm::angleAxis(dist, axial)));
-
-		Ray liota(cameraPosition, faced);
-		RayCollision rayd{};
-		Dummy* point = nullptr;
-		for (auto& item : boxes.RayCast(liota))
-		{
-			if (item->box.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
-			{
-				rayLength = rayd.depth;
-				point = &(*item);
-			}
-		}
-		// Point now has the pointer to the closest element
-		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
-		loom.ReOrient(cameraOrientation);
-		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
-		loom.ReCenter(cameraPosition);
-		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
-	}
-}
-
-void mouseMovementFunction(int x, int y)
-{
-	if (rightMouseHeld)
-	{
-		float xDif = (float)(x - mousePreviousX);
-		float yDif = (float)(y - mousePreviousY);
-		if (abs(xDif) > 20)
-			xDif = 0;
-		if (abs(yDif) > 20)
-			yDif = 0;
-		// Why 50??
-		float yDelta = 50 * (xDif * ANGLE_DELTA) / windowWidth;
-		float zDelta = 50 * (yDif * ANGLE_DELTA) / windowHeight;
-
-		cameraRotation.x += zDelta;
-		cameraRotation.y += yDelta;
-	}
-	mousePreviousX = x;
-	mousePreviousY = y;
-}
-
+/* TODO: These keys
 void specialKeys(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 {
 	// TODO: Investigate stuff relating to number pad keys
@@ -1600,8 +1487,9 @@ void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
 	default: break;
 	}
 }
+*/
 
-void windowResize(int width, int height)
+void window_size_callback(GLFWwindow* window, int width, int height)
 {
 	windowWidth = width;
 	windowHeight = height;
@@ -1638,8 +1526,15 @@ void windowResize(int width, int height)
 	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
 }
 
+void windowResize(int width, int height) 
+{
+	window_size_callback(nullptr, width, height); 
+}
+
+
 static bool withinWindow = true;
 
+/*
 void windowStatus(int state)
 {
 	switch (state)
@@ -1678,12 +1573,7 @@ void windowStatus(int state)
 		break;
 	}
 }
-
-void windowCursorStatus(int state)
-{
-	withinWindow = (state == GLUT_ENTERED);
-	//std::cout << std::boolalpha << withinWindow << std::endl;
-}
+*/
 
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -1764,97 +1654,39 @@ int main(int argc, char** argv)
 	debugFlags.fill(false);
 
 	GLFWwindow* windowPointer = nullptr;
-	if (GLFW)
+	if (!glfwInit())
 	{
-		if (glfwInit())
-		{
-
-
-			glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
-			glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
-			glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
-			glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
-			glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-			glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
-
-
-			glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-
-			windowPointer = glfwCreateWindow(windowWidth, windowHeight, "Wowie a window", nullptr, nullptr);
-			if (!windowPointer)
-			{
-				glfwTerminate();
-				return -1;
-			}
-			glfwMakeContextCurrent(windowPointer);
-
-			int left, top, right, bottom;
-			glfwGetWindowFrameSize(windowPointer, &left, &top, &right, &bottom);
-
-
-			glfwSetWindowPos(windowPointer, 0, top);
-
-			glewExperimental = GL_TRUE;
-			// Glew
-			if ((error = glewInit()) != GLEW_OK)
-			{
-				printf("Error code %i from glewInit()", error);
-				return -1;
-			}
-			
-			glfwSetKeyCallback(windowPointer, key_callback);
-
-			glfwSetWindowFocusCallback(windowPointer, window_focus_callback);
-
-			glfwSetMouseButtonCallback(windowPointer, mouseButtonFunc);
-			glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
-
-			init();
-			windowResize(windowWidth, windowHeight); // HACK
-
-			while (!glfwWindowShouldClose(windowPointer))
-			{
-				idle();
-				display();
-				glfwSwapBuffers(windowPointer);
-				glfwPollEvents();
-			}
-			return 0;
-		}
+		LogF("Failed to initialized GLFW.n\n");
+		return -1;
 	}
+	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
+	glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
+	glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
+
+	//glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API); // Look into it with 3.1
+	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
+	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
+	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
 
-	// Glut
-	glutInit(&argc, argv);
-	// TODO: Maybe transition to OpenGL ES3.1
-	glutInitContextVersion(4, 6);
-	glutInitContextProfile(GLUT_CORE_PROFILE);
-	glutInitDisplayMode(GLUT_RGBA | GLUT_DOUBLE | GLUT_DEPTH | GLUT_STENCIL);
-	glutInitWindowSize(windowWidth, windowHeight);
-	glutInitContextFlags(GLUT_DEBUG);
-	glutCreateWindow("Wowie a window");
-	glViewport(0, 0, windowWidth, windowHeight);
+	glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
-	glutDisplayFunc(display);
-	glutIdleFunc(idle);
-	glutReshapeFunc(windowResize);
+	windowPointer = glfwCreateWindow(windowWidth, windowHeight, "Wowie a window", nullptr, nullptr);
+	if (!windowPointer)
+	{
+		Log("Failed to create window");
+		glfwTerminate();
+		return -1;
+	}
+	glfwMakeContextCurrent(windowPointer);
 
-	glutSetKeyRepeat(GLUT_KEY_REPEAT_OFF);
-	glutKeyboardFunc(keyboard);
-	glutKeyboardUpFunc(keyboardOff);
-	glutSpecialFunc(specialKeys);
-	glutSpecialUpFunc(specialKeysUp);
+	int left, top, right, bottom;
+	glfwGetWindowFrameSize(windowPointer, &left, &top, &right, &bottom);
 
-	glutMouseFunc(mouseButtonAction);
-	glutMotionFunc(mouseMovementFunction);
-	glutPassiveMotionFunc(mouseMovementFunction);
-	glutEntryFunc(windowCursorStatus);
 
-	glutWindowStatusFunc(windowStatus);
-
-	glutWarpPointer(windowWidth / 2, windowHeight / 2);
-	glutPositionWindow(0, 0);
+	glfwSetWindowPos(windowPointer, 0, top);
 
 	glewExperimental = GL_TRUE;
 	// Glew
@@ -1864,9 +1696,25 @@ int main(int argc, char** argv)
 		return -1;
 	}
 
+	glfwSetKeyCallback(windowPointer, key_callback);
+
+	glfwSetWindowFocusCallback(windowPointer, window_focus_callback);
+	glfwSetWindowSizeCallback(windowPointer, window_size_callback);
+
+	glfwSetMouseButtonCallback(windowPointer, mouseButtonFunc);
+	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
+
 	init();
-	CheckError();
-	glutMainLoop();
+	windowResize(windowWidth, windowHeight); // HACK
+
+	while (!glfwWindowShouldClose(windowPointer))
+	{
+		idle();
+		display();
+		glfwSwapBuffers(windowPointer);
+		glfwPollEvents();
+	}
+	// TODO: cleanup
 	return 0;
 }
 
