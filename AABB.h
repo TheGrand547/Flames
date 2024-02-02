@@ -16,8 +16,6 @@ class AABB
 //private:
 //	const static std::array <glm::vec3, 3> Axes = { { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) } };
 protected:
-	//TODO: Move to center + deviation kinda deal
-	//glm::vec3 negativeBound, positiveBound;
 	glm::vec3 center, halfs;
 public:
 	constexpr AABB();
@@ -137,7 +135,6 @@ inline constexpr void AABB::Center(const glm::vec3& point)
 	this->center = point;
 }
 
-// TODO: This might be wrong
 inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale)
 {
 	this->halfs *= glm::abs(scale);

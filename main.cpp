@@ -1252,6 +1252,18 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		unsigned char letter = (unsigned char) (key & 0xFF);
 		keyState[letter] = action == GLFW_PRESS;
 	}
+	if (action != GLFW_REPEAT && key > 0xFF)
+	{
+		switch (key)
+		{
+		case GLFW_KEY_UP: { keyState[ArrowKeyUp] = true; break; }
+		case GLFW_KEY_DOWN: { keyState[ArrowKeyDown] = true; break; }
+		case GLFW_KEY_RIGHT: { keyState[ArrowKeyRight] = true; break; }
+		case GLFW_KEY_LEFT: { keyState[ArrowKeyLeft] = true; break; }
+		default: break;
+		}
+	}
+
 	if (action == GLFW_PRESS)
 	{
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
@@ -1270,73 +1282,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			std::size_t value = (std::size_t) key - GLFW_KEY_0;
 			debugFlags[value] = !debugFlags[value];
 		}
-		if (key == 'R')
+		if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F1 + debugFlags.size())
 		{
-			// TODO: Find out what the hell this was
-			axisIndex = (axisIndex + 1) % 12;
-			if (axes.size() > axisIndex)
-			{
-				//std::array<glm::vec3, 2> verts = { axes[axisIndex].A, axes[axisIndex].B };
-				//rayBuffer.BufferSubData(verts);
-			}
-
-			glm::vec3 angles2 = glm::radians(cameraRotation);
-
-			glm::vec3 gamer = glm::normalize(glm::eulerAngleXYZ(-angles2.z, -angles2.y, -angles2.x) * glm::vec4(1, 0, 0, 0));
-			std::array<glm::vec3, 8> verts = { cameraPosition, cameraPosition + gamer * 100.f , cameraPosition, cameraPosition + gamer * 100.f };
-
-			bool set = false;
-
-
-			RayCollision nears, fars;
-			//smartBox.Intersect(cameraPosition, gamer, nears, fars);
-			/*
-			auto foosball = smartBox.ClosestFacePoints(cameraPosition);
-			std::array<glm::vec3, 12> localpoints;
-			for (std::size_t i = 0; i < localpoints.size() && i < foosball.size(); i++)
-			{
-				localpoints[i] = foosball[i];
-			}
-			rayBuffer.BufferSubData(localpoints);
-			*/
-			//for (std::size_t i = 0; i < boxes.size(); i++)
-
-			for (auto& box : boxes)
-			{
-				//boxColor[i] = boxes[i].Intersect(offset, gamer * 100.f, nears, fars);
-				box.color = box.box.Intersect(cameraPosition, gamer * 100.f, nears, fars);
-				if (box.color && !set)
-				{
-					set = true;
-					glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
-					for (std::size_t j = 0; j < 3; j++)
-					{
-						verts[2 + 2 * j] = point;
-						glm::vec3 cur = glm::normalize(box.box[j]);
-						verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, gamer) * 100.f;//point + glm::normalize(gamer - glm::dot(gamer, cur) * cur) * 100.f;
-					}
-					break;
-				}
-			}
-			//std::cout << glm::vec3(-1, 1.2f, -2) << "->" << dumbBox.Center() << std::endl;
-			//bool flopped = dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), glm::normalize(glm::vec3(2, 0.f, 0)), nears, fars);
-			// dumbBox.Intersect(glm::vec3(-1, 1.2f, -2), (glm::vec3(2, 0.f, 0)), nears, fars);
-			//if (flopped || !flopped)
-			//{
-			//	std::cout << std::boolalpha << flopped << std::endl;
-			//	//glm::vec3 point = cameraPosition + gamer * nears.distance * 100.f;
-			//	glm::vec3 point = glm::vec3(-1, 1.2f, -2) + (glm::vec3(2, 0.1f, 0) * 100.f);
-			//	verts[0] = point;
-			//	verts[1] = glm::vec3(-1, 1.2f, -2);
-			//	/*
-			//	for (std::size_t j = 0; j < 3; j++)
-			//	{
-			//		verts[2 + 2 * j] = point;
-			//		glm::vec3 cur = glm::normalize(dumbBox[j]);
-			//		verts[2 + 2 * j + 1] = point + SlideAlongPlane(cur, glm::vec3(2, 0, 0)) * 100.f;
-			//	}*/
-			//}
-			//rayBuffer.BufferSubData(verts);
+			std::size_t value = (std::size_t)key - GLFW_KEY_F1;
+			debugFlags[value] = !debugFlags[value];
 		}
 	}
 }
@@ -1460,35 +1409,6 @@ void mouseCursorFunc(GLFWwindow* window, double x, double y)
 	mousePreviousY = static_cast<int>(y);
 }
 
-/* TODO: These keys
-void specialKeys(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
-{
-	// TODO: Investigate stuff relating to number pad keys
-	switch (key)
-	{
-	case GLUT_KEY_UP: keyState[ArrowKeyUp] = true; break;
-	case GLUT_KEY_DOWN: keyState[ArrowKeyDown] = true; break;
-	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = true; break;
-	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = true; break;
-	case GLUT_KEY_F1: debugFlags[TIGHT_BOXES] = !debugFlags[TIGHT_BOXES]; break;
-	case GLUT_KEY_F2: debugFlags[WIDE_BOXES] = !debugFlags[WIDE_BOXES]; break;
-	default: break;
-	}
-}
-
-void specialKeysUp(int key, [[maybe_unused]] int x, [[maybe_unused]] int y)
-{
-	switch (key)
-	{
-	case GLUT_KEY_UP: keyState[ArrowKeyUp] = false; break;
-	case GLUT_KEY_DOWN: keyState[ArrowKeyDown] = false; break;
-	case GLUT_KEY_RIGHT: keyState[ArrowKeyRight] = false; break;
-	case GLUT_KEY_LEFT: keyState[ArrowKeyLeft] = false; break;
-	default: break;
-	}
-}
-*/
-
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
 	windowWidth = width;
@@ -1534,47 +1454,6 @@ void windowResize(int width, int height)
 
 static bool withinWindow = true;
 
-/*
-void windowStatus(int state)
-{
-	switch (state)
-	{
-	case GLUT_HIDDEN: { std::cout << "Hidden" << std::endl; break; }
-	case GLUT_FULLY_COVERED: { std::cout << "Fully Covered" << std::endl; break; }
-	case GLUT_PARTIALLY_RETAINED: { std::cout << "Partially Covered" << std::endl; break; }
-	case GLUT_FULLY_RETAINED: { std::cout << "Fully Retained" << std::endl; break; }
-	default: {std::cout << "What uh" << std::endl; break; }
-	}
-
-	switch (state)
-	{
-	case GLUT_HIDDEN:             // These two stop rendering
-	case GLUT_FULLY_COVERED:
-	{
-		keyState.fill(false);
-		keyStateBackup.fill(false);
-		break;
-	}
-	case GLUT_PARTIALLY_RETAINED: // This one and the following should re-start rendering
-	{
-		// Some other window is on top of this, stop receiving inputs
-		if (withinWindow)
-		{
-			//keyStateBackup.fill(false);
-		}
-		break;
-	}
-	// TODO: Start rendering
-	case GLUT_FULLY_RETAINED:
-	{
-		break;
-	}
-	default:
-		break;
-	}
-}
-*/
-
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
@@ -1618,10 +1497,9 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 void init();
 
-// TODO: investigate *massive* memory footprint increase when resizing window
 int main(int argc, char** argv)
 {
-	/*
+	/* This is proof that dot of sum is equal to sum of dots, can be used to speed up OBB tests
 	glm::vec3 a{}, b{}, c{}, d{}, ax{};
 	float errored = 0.f;
 	float maxError = 0.f;
@@ -1663,7 +1541,7 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
 	glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
 
-	//glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API); // Look into it with 3.1
+	//glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API); // Look into it with 3.1 at some point
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
