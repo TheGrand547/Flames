@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <glm/ext/matrix_clip_space.hpp>
+#include "glUtil.h"
 #include "log.h"
 #include "Shader.h"
 #include "Vertex.h"

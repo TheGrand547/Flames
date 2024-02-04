@@ -203,6 +203,9 @@
     <ClInclude Include="typedefs.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="glUtil.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Flames.rc">

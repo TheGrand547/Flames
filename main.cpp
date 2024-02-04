@@ -22,6 +22,7 @@
 #include "Font.h"
 #include "Framebuffer.h"
 #include "glmHelp.h"
+#include "glUtil.h"
 #include "Lines.h"
 #include "log.h"
 #include "Model.h"
@@ -289,7 +290,7 @@ OBB loom;
 
 int tessAmount = 5;
 
-bool flopper = false;
+bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime;
 
 void display()
@@ -302,7 +303,8 @@ void display()
 	glEnable(GL_DEPTH_TEST);
 	glEnable(GL_CULL_FACE);
 	glDepthMask(GL_TRUE);
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	/*
 	glEnable(GL_STENCIL_TEST);
@@ -327,7 +329,7 @@ void display()
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
 	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
-	instancing.SetInt("flops", flopper);
+	instancing.SetInt("flops", featureToggle);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	glDisable(GL_CULL_FACE);
@@ -501,7 +503,7 @@ void display()
 	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
 	glEnable(GL_DEPTH_TEST); // Depth testing is required
 	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
-	glFrontFace((flopper) ? GL_CCW : GL_CW);
+	glFrontFace((featureToggle) ? GL_CCW : GL_CW);
 	// Stencil Test Always Passes
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	
@@ -899,7 +901,7 @@ void idle()
 
 
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (flopper) ? "New" : "Old", frameCounter));
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", frameCounter));
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1272,7 +1274,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
 		if (key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
 		if (key == GLFW_KEY_F) kernel = 1 - kernel;
-		if (key == GLFW_KEY_B) flopper = !flopper;
+		if (key == GLFW_KEY_B) featureToggle = !featureToggle;
 		if (key == 'H')
 		{
 			smartReset();
@@ -1446,15 +1448,6 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
 }
 
-void windowResize(int width, int height) 
-{
-	window_size_callback(nullptr, width, height); 
-}
-
-
-static bool withinWindow = true;
-
-
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
 {
 	// FROM https://gist.github.com/liam-middlebrook/c52b069e4be2d87a6d2f
@@ -1583,7 +1576,7 @@ int main(int argc, char** argv)
 	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
 
 	init();
-	windowResize(windowWidth, windowHeight); // HACK
+	window_size_callback(nullptr, windowWidth, windowHeight);
 
 	while (!glfwWindowShouldClose(windowPointer))
 	{
