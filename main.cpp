@@ -305,8 +305,9 @@ void display()
 	glDepthMask(GL_TRUE);
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	/*
-	glEnable(GL_STENCIL_TEST);
+	EnableGLFeatures<StencilTesting>();
 	glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
 	glStencilMask(0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
@@ -318,7 +319,6 @@ void display()
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 
-	//glDisable(GL_BLEND);
 	DisableGLFeatures<Blending>();
 	cameraUniformBuffer.BufferSubData(view, 0);
 	instancing.SetActiveShader();
@@ -441,14 +441,14 @@ void display()
 	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
-	//glDisable(GL_DEPTH_TEST);
+	//DisableGLFeatures<DepthTesting>();
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawElements<Lines>(rayBuffer);
 	glLineWidth(1.f);
-	//glEnable(GL_DEPTH_TEST);
+	//EnableGLFeatures<DepthTesting>();
 
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -531,15 +531,15 @@ void display()
 	stencilTest.DrawIndexedMemory<Triangle>(cubeIndicies);
 
 	// Clean up
-	glEnable(GL_CULL_FACE);
-	glDisable(GL_STENCIL_TEST);
+	EnableGLFeatures<FaceCulling>();
+	DisableGLFeatures<StencilTesting>();
 	glFrontFace(GL_CCW);
 	glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
 	//////  Shadow volume End
 
 	//GL_ARB_shader_stencil_export
 
-	glEnable(GL_BLEND);
+	EnableGLFeatures<Blending>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glStencilFunc(GL_LEQUAL, 1, 0xFF); // If 1 is <= value in the stencil buffer
 
@@ -553,7 +553,7 @@ void display()
 	//uiRect.DrawElements(TriangleStrip, 4);
 	//uiRect.DrawElements(TriangleStrip, 4);
 
-	glDisable(GL_STENCIL_TEST);
+	DisableGLFeatures<StencilTesting>();
 	glDepthMask(GL_TRUE);
 
 	flatLighting.SetActiveShader();
@@ -575,8 +575,8 @@ void display()
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
 	*/
 
-	glDisable(GL_DEPTH_TEST);
-	glEnable(GL_BLEND);
+	DisableGLFeatures<DepthTesting>();
+	EnableGLFeatures<Blending>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 0.25));
@@ -598,8 +598,8 @@ void display()
 	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(textBuffer);
 
-	glDisable(GL_BLEND);
-	glEnable(GL_DEPTH_TEST);
+	DisableGLFeatures<Blending>();
+	EnableGLFeatures<DepthTesting>();
 
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -623,9 +623,7 @@ void display()
 	glClearColor(1, 0.5, 0.25, 1);
 	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 
-	glDisable(GL_DEPTH_TEST);
-	glDisable(GL_STENCIL_TEST);
-	glDisable(GL_CULL_FACE);
+	DisableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
 	glStencilMask(0x00);
 	glStencilFunc(GL_ALWAYS, GL_KEEP, GL_KEEP);
@@ -644,9 +642,7 @@ void display()
 	widget.SetActiveShader();
 	widget.DrawElements<Lines>(6);
 
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_STENCIL_TEST);
-	glEnable(GL_CULL_FACE);
+	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
 	glFlush();
 	auto end = std::chrono::high_resolution_clock::now();
@@ -666,7 +662,8 @@ struct
 
 static float maxRotatePerFrame = 0.f;
 
-void smartBoxAlignEdge(OBB& other, glm::length_t minDotI, glm::length_t maxDotI)
+// Aligns to the corner
+void smartBoxAlignCorner(OBB& other, glm::length_t minDotI, glm::length_t maxDotI)
 {
 	// Only the scale of the other one is needed to determine if this midpoint is inside
 	glm::vec3 dumbScale = other.GetScale();
@@ -722,7 +719,8 @@ void smartBoxAlignEdge(OBB& other, glm::length_t minDotI, glm::length_t maxDotI)
 	}
 }
 
-void smartBoxAlignSide(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::length_t maxDotI)
+// Aligns to the Face
+void smartBoxAlignFace(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::length_t maxDotI)
 {
 	glm::mat3 goobers{ smartBox[0], smartBox[1], smartBox[2] };
 	// Leasted aligned keeps its index
@@ -747,9 +745,10 @@ void smartBoxAlignSide(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::l
 	glm::quat newer = glm::normalize(glm::quat_cast(lame));
 	float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
 	float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-
+	
 	// ?
-	if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
+	//if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
+	if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
 	{
 		// Slerp interpolates along the shortest axis on the great circle
 		smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
@@ -774,7 +773,7 @@ void smartBoxAligner(OBB& other, glm::vec3 axis)
 			maxDotI = i;
 		}
 	}
-	smartBoxAlignSide(other, axis, minDotI, maxDotI);
+	smartBoxAlignFace(other, axis, minDotI, maxDotI);
 }
 
 
@@ -783,14 +782,9 @@ bool smartBoxCollide()
 	bool anyCollisions = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
 	smartBoxPhysics.ptr = nullptr;
-	glm::vec3 oldSize = smartBox.GetScale();
-
 	constexpr float CollisionScaling = 1.1f;
 
-	smartBox.Scale(CollisionScaling);
-
 	auto potentialCollisions = boxes.Search(smartBox.GetAABB());
-	smartBox.ReScale(oldSize);
 	int collides = 0;
 	//Before(smartBoxPhysics.axisOfGaming);
 	float dot = INFINITY;
@@ -829,7 +823,7 @@ bool smartBoxCollide()
 				}
 			}
 
-			smartBoxAlignEdge(currentBox->box, minDotI, maxDotI);
+			smartBoxAlignCorner(currentBox->box, minDotI, maxDotI);
 
 			// TODO: look into this
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
@@ -837,7 +831,7 @@ bool smartBoxCollide()
 			//if (true) //(c.depth > 0.002) // Why this number
 			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
-				smartBoxAlignSide(currentBox->box, upper, minDotI, maxDotI);
+				smartBoxAlignFace(currentBox->box, upper, minDotI, maxDotI);
 				smartBox.OverlapAndSlide(currentBox->box);
 			}
 			else
@@ -850,8 +844,31 @@ bool smartBoxCollide()
 	}
 	
 	// Scale smart box up a bit to determine axis and
-	if (!anyCollisions)
+	if (!anyCollisions && anyCollisions) 
 	{
+		float lar = 0;
+		int larDex = 0;
+		for (int i = 0; i < 3; i++)
+		{
+			if (glm::abs(smartBox[i].y) > lar)
+			{
+				lar = glm::abs(smartBox[i].y);
+				larDex = i;
+			}
+		}
+		glm::vec3 scalingFactor{ 1.f };
+		scalingFactor[larDex] = CollisionScaling;
+
+
+		// This is probably a bad idea
+		
+		glm::vec3 oldSize = smartBox.GetScale();
+		smartBox.Scale(scalingFactor);
+
+		potentialCollisions = boxes.Search(smartBox.GetAABB());
+		SlidingCollision newest{};
+		OBB* newPtr = nullptr;
+
 		for (auto& currentBox : potentialCollisions)
 		{
 			SlidingCollision c;
@@ -860,32 +877,38 @@ bool smartBoxCollide()
 				float temp = glm::dot(c.axis, GravityUp);
 				if (temp > 0 && temp <= dot)
 				{
+					std::cout << c.axis << std::endl;
 					temp = dot;
 					smartBoxPhysics.axisOfGaming = c.axis;
 					smartBoxPhysics.ptr = &currentBox->box;
+					newest = c;
+					newPtr = &currentBox->box;
 				}
-
-				float minDot = INFINITY, maxDot = -INFINITY;
-				glm::length_t minDotI = 0, maxDotI = 0;
-				glm::vec3 upper = c.axis;
-				for (glm::length_t i = 0; i < 3; i++)
-				{
-					float local = glm::abs(glm::dot(smartBox[i], upper));
-					if (local < minDot)
-					{
-						minDot = local;
-						minDotI = i;
-					}
-					if (local > maxDot)
-					{
-						maxDot = local;
-						maxDotI = i;
-					}
-				}
-
-				smartBoxAlignEdge(currentBox->box, minDotI, maxDotI);
-				smartBoxAlignSide(currentBox->box, upper, minDotI, maxDotI);
 			}
+		}
+		smartBox.ReScale(oldSize);
+		if (newPtr)
+		{
+			OBB& box = *newPtr;
+			float minDot = INFINITY, maxDot = -INFINITY;
+			glm::length_t minDotI = 0, maxDotI = 0;
+			glm::vec3 upper = newest.axis;
+			for (glm::length_t i = 0; i < 3; i++)
+			{
+				float local = glm::abs(glm::dot(smartBox[i], upper));
+				if (local < minDot)
+				{
+					minDot = local;
+					minDotI = i;
+				}
+				if (local > maxDot)
+				{
+					maxDot = local;
+					maxDotI = i;
+				}
+			}
+			//smartBoxAlignCorner(box, minDotI, maxDotI);
+			//smartBoxAlignFace(box, upper, minDotI, maxDotI);
 		}
 	}
 	
@@ -1136,7 +1159,7 @@ void idle()
 		glm::vec3 slope = smartBoxPhysics.axisOfGaming;
 		float alignment = glm::dot(slope, direction);
 		direction = glm::normalize(direction - slope * alignment);
-		smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
+		//smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
 		//addGravity = false;
 		boxForces += slope * glm::dot(slope, GravityUp) * BoxGravityMagnitude;
 	}
@@ -1649,18 +1672,14 @@ int main(int argc, char** argv)
 void init()
 {
 	// OpenGL Feature Enabling
-	glEnable(GL_DEPTH_TEST);
+	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
+	DisableGLFeatures<MultiSampling>();
 	glDepthFunc(GL_LEQUAL);
-
-	glEnable(GL_CULL_FACE);
 
 	glClearColor(0, 0, 0, 1);
 
 	glFrontFace(GL_CCW);
-	glDisable(GL_MULTISAMPLE);
-
 	// OpenGL debuggin
-	glEnable(GL_DEBUG_OUTPUT);
 	glDebugMessageCallback(DebugCallback, nullptr);
 	// Get rid of Line_width_deprecated messages
 	GLuint toDisable = 7;
@@ -1733,7 +1752,7 @@ void init()
 	// TODO: texture loading base path thingy
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	depthMap.Load("Textures/depth.png");
-	depthMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	depthMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	depthMap.SetAnisotropy(16.f);
 
 	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
@@ -1743,7 +1762,7 @@ void init()
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
 	normalMap.Load("Textures/normal.png");
-	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
 
 	texture.Load("Textures/text.png");
@@ -1886,7 +1905,9 @@ void init()
 	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
-	smartBox.Scale(glm::vec3(0.5f));
+	smartBox.ReScale(glm::vec3(0.5f));
+	smartBox.Scale(1.1f);
+
 	smartReset();
 	smartBox.ReCenter(glm::vec3(1.2f, 0.5f, 0));
 	//smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
