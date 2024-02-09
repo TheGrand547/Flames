@@ -86,8 +86,8 @@ inline void ApplyFeatureFlags()
     if constexpr (flags & Dither)              func(GL_DITHER);
     if constexpr (flags & FramebufferSRGB)     func(GL_FRAMEBUFFER_SRGB);
     if constexpr (flags & SmoothLines)         func(GL_LINE_SMOOTH);
-    if constexpr (flags & Multisampling)       func(GL_MULTISAMPLE);
-    if constexpr (flags & PolygonOffsetFill)   func(GL_POLYOGON_OFFSET_FILL);
+    if constexpr (flags & MultiSampling)       func(GL_MULTISAMPLE);
+    if constexpr (flags & PolygonOffsetFill)   func(GL_POLYGON_OFFSET_FILL);
     if constexpr (flags & PolygonOffsetLine)   func(GL_POLYGON_OFFSET_LINE);
     if constexpr (flags & PolygonOffsetPoint)  func(GL_POLYGON_OFFSET_POINT);
     if constexpr (flags & SmoothPolgyons)      func(GL_POLYGON_SMOOTH);

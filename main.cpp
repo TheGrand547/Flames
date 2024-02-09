@@ -300,10 +300,9 @@ void display()
 	depthed.Bind();
 	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0, 0, 0, 1);
-	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
+
+	EnableGLFeatures<DepthTesting | FaceCulling>();
 	glDepthMask(GL_TRUE);
-	//glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	/*
@@ -319,7 +318,8 @@ void display()
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 
-	glDisable(GL_BLEND);
+	//glDisable(GL_BLEND);
+	DisableGLFeatures<Blending>();
 	cameraUniformBuffer.BufferSubData(view, 0);
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
@@ -332,12 +332,13 @@ void display()
 	instancing.SetInt("flops", featureToggle);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	glDisable(GL_CULL_FACE);
+	//DisableGLFeatures<FaceCulling>();
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
-	glEnable(GL_BLEND);
+	//EnableGLFeatures<Blending>();
+
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
 	plainVAO.BindArrayBuffer(stickBuffer);
@@ -348,7 +349,7 @@ void display()
 	uniform.SetVec3("color", colors);
 	uniform.DrawIndexed<LineStrip>(stickIndicies);
 
-	glDisable(GL_CULL_FACE);
+	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
 	glPatchParameteri(GL_PATCH_VERTICES, 4);
 	texturedVAO.BindArrayBuffer(texturedPlane);
@@ -364,7 +365,7 @@ void display()
 	ground.SetInt("redLine", 1);
 	//ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_CULL_FACE);
+	EnableGLFeatures<FaceCulling>();
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -417,7 +418,7 @@ void display()
 
 	// Albert
 	
-	glDisable(GL_CULL_FACE);
+	DisableGLFeatures<FaceCulling>();
 	glPatchParameteri(GL_PATCH_VERTICES, 3);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	texturedVAO.BindArrayBuffer(albertBuffer);
@@ -431,7 +432,7 @@ void display()
 	dither.SetVec3("viewPos", cameraPosition);
 	//dither.DrawElements<Patches>(albertBuffer);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	glEnable(GL_CULL_FACE);
+	EnableGLFeatures<FaceCulling>();
 
 
 	plainVAO.BindArrayBuffer(plainCube);
@@ -498,10 +499,14 @@ void display()
 	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
 
 	//////  Shadow volume
-	glEnable(GL_STENCIL_TEST); // Stencil tests must be active for stencil shading to be used
-	glDisable(GL_CULL_FACE); // Front and back faces of volumes need to be drawn
 	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
-	glEnable(GL_DEPTH_TEST); // Depth testing is required
+
+	// Stencil tests must be active for stencil shading to be used
+	// Depth testing is required to determine what faces the volumes intersect
+	EnableGLFeatures<StencilTesting | DepthTesting>();
+	// We are using both the front and back faces of the model, cannot be culling either
+	DisableGLFeatures<FaceCulling>();
+
 	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
 	glFrontFace((featureToggle) ? GL_CCW : GL_CW);
 	// Stencil Test Always Passes
@@ -775,19 +780,26 @@ void smartBoxAligner(OBB& other, glm::vec3 axis)
 
 bool smartBoxCollide()
 {
-	bool val = false;
+	bool anyCollisions = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
 	smartBoxPhysics.ptr = nullptr;
-	auto boxers = boxes.Search(smartBox.GetAABB());
+	glm::vec3 oldSize = smartBox.GetScale();
+
+	constexpr float CollisionScaling = 1.1f;
+
+	smartBox.Scale(CollisionScaling);
+
+	auto potentialCollisions = boxes.Search(smartBox.GetAABB());
+	smartBox.ReScale(oldSize);
 	int collides = 0;
 	//Before(smartBoxPhysics.axisOfGaming);
-
 	float dot = INFINITY;
 
-	for (auto& letsgo : boxers)
+	// TODO: Another test with a slightly scaled up version if there is no intersection, to provide a surface normal or a rotation target
+	for (auto& currentBox : potentialCollisions)
 	{
 		SlidingCollision c;
-		if (smartBox.Overlap(letsgo->box, c))
+		if (smartBox.Overlap(currentBox->box, c))
 		{
 			float temp = glm::dot(c.axis, GravityUp);
 			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
@@ -796,7 +808,7 @@ bool smartBoxCollide()
 			{
 				temp = dot;
 				smartBoxPhysics.axisOfGaming = c.axis;
-				smartBoxPhysics.ptr = &letsgo->box;
+				smartBoxPhysics.ptr = &currentBox->box;
 			}
 
 			float minDot = INFINITY, maxDot = -INFINITY;
@@ -817,7 +829,7 @@ bool smartBoxCollide()
 				}
 			}
 
-			smartBoxAlignEdge(letsgo->box, minDotI, maxDotI);
+			smartBoxAlignEdge(currentBox->box, minDotI, maxDotI);
 
 			// TODO: look into this
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
@@ -825,18 +837,59 @@ bool smartBoxCollide()
 			//if (true) //(c.depth > 0.002) // Why this number
 			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
-				smartBoxAlignSide(letsgo->box, upper, minDotI, maxDotI);
-				smartBox.OverlapAndSlide(letsgo->box);
+				smartBoxAlignSide(currentBox->box, upper, minDotI, maxDotI);
+				smartBox.OverlapAndSlide(currentBox->box);
 			}
 			else
 			{ 
 				smartBox.ApplyCollision(c);
 			}
 			float oldLength = glm::length(smartBoxPhysics.velocity);
-			val = true;
+			anyCollisions = true;
 		}
 	}
-	return val;
+	
+	// Scale smart box up a bit to determine axis and
+	if (!anyCollisions)
+	{
+		for (auto& currentBox : potentialCollisions)
+		{
+			SlidingCollision c;
+			if (smartBox.Overlap(currentBox->box, c))
+			{
+				float temp = glm::dot(c.axis, GravityUp);
+				if (temp > 0 && temp <= dot)
+				{
+					temp = dot;
+					smartBoxPhysics.axisOfGaming = c.axis;
+					smartBoxPhysics.ptr = &currentBox->box;
+				}
+
+				float minDot = INFINITY, maxDot = -INFINITY;
+				glm::length_t minDotI = 0, maxDotI = 0;
+				glm::vec3 upper = c.axis;
+				for (glm::length_t i = 0; i < 3; i++)
+				{
+					float local = glm::abs(glm::dot(smartBox[i], upper));
+					if (local < minDot)
+					{
+						minDot = local;
+						minDotI = i;
+					}
+					if (local > maxDot)
+					{
+						maxDot = local;
+						maxDotI = i;
+					}
+				}
+
+				smartBoxAlignEdge(currentBox->box, minDotI, maxDotI);
+				smartBoxAlignSide(currentBox->box, upper, minDotI, maxDotI);
+			}
+		}
+	}
+	
+	return anyCollisions;
 }
 
 glm::quat oldMan{};
@@ -900,8 +953,12 @@ void idle()
 	previously = smartBoxPhysics.axisOfGaming;
 
 
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{}",
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", frameCounter));
+	/*
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("Right: {}\nLeft: {}\nUp: {}\nDown: {}", keyState[ArrowKeyRight], keyState[ArrowKeyLeft],
+		keyState[ArrowKeyUp], keyState[ArrowKeyDown]));
+	*/
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1073,7 +1130,6 @@ void idle()
 	}
 
 	glm::vec3 direction = smartBox.Forward() * forwarder;
-	//std::cout << direction << std::endl;
 	// If there is a slope we need to deal with
 	if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::length2(direction) > EPSILON)
 	{
@@ -1248,20 +1304,21 @@ void window_focus_callback(GLFWwindow* window, int focused)
 
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
+	bool state = action == GLFW_PRESS;
 	// If key is an ascii, then GLFW_KEY_* will be equal to '*', ie GLFW_KEY_M = 'M', all uppercase by default
 	if (action != GLFW_REPEAT && key < 0xFF)
 	{
 		unsigned char letter = (unsigned char) (key & 0xFF);
-		keyState[letter] = action == GLFW_PRESS;
+		keyState[letter] = state;
 	}
 	if (action != GLFW_REPEAT && key > 0xFF)
 	{
 		switch (key)
 		{
-		case GLFW_KEY_UP: { keyState[ArrowKeyUp] = true; break; }
-		case GLFW_KEY_DOWN: { keyState[ArrowKeyDown] = true; break; }
-		case GLFW_KEY_RIGHT: { keyState[ArrowKeyRight] = true; break; }
-		case GLFW_KEY_LEFT: { keyState[ArrowKeyLeft] = true; break; }
+		case GLFW_KEY_UP: { keyState[ArrowKeyUp] = state; break; }
+		case GLFW_KEY_DOWN: { keyState[ArrowKeyDown] = state; break; }
+		case GLFW_KEY_RIGHT: { keyState[ArrowKeyRight] = state; break; }
+		case GLFW_KEY_LEFT: { keyState[ArrowKeyLeft] = state; break; }
 		default: break;
 		}
 	}
@@ -1753,13 +1810,16 @@ void init()
 	{
 		CombineVector(planes, GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (((int)i / 3) - 1)), PlusY));
 	}
+	// Diagonal Walls
 	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
 
-	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(3, 1, 1)));
+	// The ramp
+	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
 
+	// The weird wall behind the player I think?
 	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
 
 	std::vector<glm::mat4> awfulTemp{};
@@ -1771,8 +1831,8 @@ void init()
 		//project.Scale(glm::vec3(1, .625f, 1));
 		project.Scale(glm::vec3(1, .0625f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
-		//awfulTemp.push_back(ref.GetModelMatrix());
-		awfulTemp.push_back(ref.GetNormalMatrix());
+		awfulTemp.push_back(ref.GetModelMatrix());
+		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 
 	instanceBuffer.Generate();

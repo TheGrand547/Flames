@@ -58,6 +58,7 @@ public:
 	inline void RotateAbout(const glm::vec3& euler, const glm::vec3& point);
 
 	inline constexpr void Scale(const glm::vec3& scale);
+	inline constexpr void Scale(const float& scale);
 	inline void Translate(const glm::vec3& distance) noexcept;
 
 	// TODO: Move these to the classes in lines.h
@@ -238,6 +239,11 @@ inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::
 }
 
 inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
+{
+	this->halfs *= scale;
+}
+
+inline constexpr void OrientedBoundingBox::Scale(const float& scale)
 {
 	this->halfs *= scale;
 }
