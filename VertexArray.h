@@ -12,88 +12,12 @@
 #include "Shader.h"
 #include "Vertex.h"
 
-/*
-template <typename T>
-struct always_false : std::false_type { };
-
-template <typename T>
-constexpr bool always_false_v = always_false<T>::value;
-
-template<typename T> concept IsString = std::same_as<T, std::string> || std::same_as<T, const char *>;
-template<typename T> concept NotString = !IsString<T>;
-template<typename T> concept IsNum = std::is_arithmetic_v<T>;
-
-template<typename T> constexpr std::size_t GetGLSize();
-template<std::size_t M, typename base, glm::qualifier alloc, template <std::size_t, typename, glm::qualifier> class T> constexpr std::size_t GetGLSize();
-template<typename T> constexpr GLenum GetGLEnum(T t = T());
-template<std::size_t M, typename type, glm::qualifier q> constexpr GLenum GetGLEnum(glm::vec<M, type, q> p = glm::vec<M, type, q>());
-template<std::size_t M, std::size_t N, typename type, glm::qualifier q> constexpr GLenum GetGLEnum(glm::mat<M, N, type, q> p = glm::mat<M, N, type, q>());
-template<typename T, typename W, typename ...types> constexpr std::size_t GetArgumentSize();
-template<typename T> constexpr std::size_t GetArgumentSize();
-
-
-template<IsNum T> constexpr std::size_t GetGLCount(T t = T());
-//template<template <std::size_t, class> class T, std::size_t M, class base> constexpr std::size_t GetGLCount();
-//template<template <std::size_t, std::size_t, typename> class T, std::size_t M, std::size_t N, typename base> constexpr std::size_t GetGLCount();
-
-
-template<IsNum T> constexpr std::size_t GetGLCount(T t) { return 1; }
-template<std::size_t M, class type, glm::qualifier q> constexpr std::size_t GetGLCount(glm::vec<M, type, q> p = glm::vec<M, type, q>())
-{ 
-	return M; 
-}
-//template<template <std::size_t, std::size_t, typename> class T, std::size_t M, std::size_t N> constexpr std::size_t GetGLCount() { return M * N; }
-
-
-template<class T> constexpr GLenum GetGLEnum(T t) { return GL_INVALID_VALUE; }
-template<> constexpr GLenum GetGLEnum<float>(float) { return GL_FLOAT; }
-template<> constexpr GLenum GetGLEnum<double>(double) { return GL_DOUBLE; }
-template<> constexpr GLenum GetGLEnum<char>(char) { return GL_BYTE; }
-template<> constexpr GLenum GetGLEnum<unsigned char>(unsigned char) { return GL_UNSIGNED_BYTE; }
-template<> constexpr GLenum GetGLEnum<short>(short) { return GL_SHORT; }
-template<> constexpr GLenum GetGLEnum<unsigned short>( unsigned short) { return GL_UNSIGNED_SHORT; }
-template<> constexpr GLenum GetGLEnum<int>(int) { return GL_INT; }
-template<> constexpr GLenum GetGLEnum<unsigned int>(unsigned int) { return GL_UNSIGNED_INT; }
-template<std::size_t M, typename type, glm::qualifier q> constexpr GLenum GetGLEnum(glm::vec<M, type, q> p) { return GetGLEnum(type()); }
-template<std::size_t M, std::size_t N, typename type, glm::qualifier q> constexpr GLenum GetGLEnum(glm::mat<M, N, type, q> p) { return GetGLEnum(type()); }
-*/
-
-template<GLenum primitive> constexpr std::size_t GetGLPrimativeSize()
-{
-	switch (primitive)
-	{
-	case GL_BYTE: case GL_UNSIGNED_BYTE: return sizeof(char);
-	case GL_SHORT: case GL_UNSIGNED_SHORT: return sizeof(short);
-	case GL_INT: case GL_UNSIGNED_INT: return sizeof(int);
-	case GL_FLOAT: return sizeof(float);
-	case GL_DOUBLE: return sizeof(double);
-	default: return 0;
-	}
-}
-
-
-template<typename T,  typename... types> constexpr std::size_t GetArgumentSize()
-{
-	return GetGLSize<T>() + GetArgumentSize<types...>();
-}
-
-template<typename T> constexpr std::size_t GetArgumentSize() { return GetGLSize<T>(); }
-
-
-template<typename T> constexpr std::size_t GetGLSize()
-{
-	return GetGLCount(T()) * GetGLPrimativeSize<GetGLEnum<T>()>();
-}
-
-
 class VertexArray
 {
 protected:
 	GLuint array;
 	GLsizei stride;
-	// Shit idea but whatever
 	std::map<GLuint, GLsizei> strides;
-	//template<typename T> void FillArrayInternal(Shader& shader, std::size_t stride, std::size_t current, const std::string& first);
 public:
 	VertexArray(GLuint array = 0, GLsizei stride = 0);
 	~VertexArray();
@@ -109,17 +33,7 @@ public:
 
 	inline void BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
-	template<class V> void FillArray(Shader& shader, GLuint bindingPoint = 0);
-	//template<class V> void FillArray2(Shader& shader);
-	// TODO: Do this with specified indicies std::size_t
-	/*
-	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, const std::string& first, Args&&... args);
-	template<typename T> void FillArray(Shader& shader, const std::string& first);
-	template<typename T, typename... types, IsString... Args> void FillArray(Shader& shader, std::size_t size, std::size_t current, const std::string& first, Args&&... args);
-	template<typename T> void FillArray(Shader& shader, std::size_t size, std::size_t current);
-	*/
-
-	// TODO: Better wrapping for multiple buffer binding points
+	template<class V> inline void ArrayFormat(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 
 	template<typename T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
@@ -154,51 +68,21 @@ inline void VertexArray::BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLuint bin
 	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->strides[bindingPoint]);
 }
 
-// TODO: Maybe reinvestigate this later?
-/*
-template<typename T, typename... types, IsString... Args>
-inline void VertexArray::FillArray(Shader& shader, const std::string& first, Args&&... args)
-{
-	glBindVertexArray(this->array);
-	this->FillArrayInternal<T>(shader, GetArgumentSize<T, types...>(), 0, first);
-	this->FillArray<types...>(shader, GetArgumentSize<T, types...>(), GetGLSize<T>(), std::forward<Args>(args)...);
-}
-template<typename T> inline void VertexArray::FillArray(Shader& shader, const std::string& first)
-{
-	glBindVertexArray(this->array);
-	this->FillArrayInternal<T>(shader, GetGLSize<T>(), 0, first);
-}
-#define STR(X) #X
-template<typename T> inline void VertexArray::FillArrayInternal(Shader& shader, std::size_t stride, std::size_t current, const std::string& first)
-{
-	std::cout << STR(T) << ": " << GetGLEnum<T>() << ": " << GL_FLOAT << ": " << GL_DOUBLE << ": " << GL_INT << ": " << GL_INVALID_VALUE << std::endl;
-	glVertexAttribPointer(shader.Index(first), (GLint) GetGLCount(T()), GetGLEnum(T()), GL_FALSE, (GLsizei) stride, (const void*)current);
-	CheckError();
-	glEnableVertexArrayAttrib(this->array, shader.Index(first));
-}
-
-
-template<typename T, typename... types, IsString... Args>
-inline void VertexArray::FillArray(Shader& shader, std::size_t stride, std::size_t current, const std::string& first, Args&&... args)
-{
-	this->FillArrayInternal<T>(shader, stride, current, first);
-	this->FillArray<types..., T>(shader, stride, current + GetGLSize<T>(), std::forward<Args>(args)...); // <- So unbelievably cursed
-}
-
-template<typename T> inline void VertexArray::FillArray(Shader& shader, std::size_t strid, std::size_t current) {}*/
-
 // NOTE TO FUTURE READERS, IF ONE OF THESE IS THROWING AN ERROR, SOME VERTEX ATTRIBUTE WAS OPTIMIZED OUT
-template<> inline void VertexArray::FillArray<Vertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<Vertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(Vertex);
 }
 
-template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<UIVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 2, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(UIVertex, uv));
@@ -206,11 +90,13 @@ template<> inline void VertexArray::FillArray<UIVertex>(Shader& shader, GLuint b
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(UIVertex);
 }
 
-template<> inline void VertexArray::FillArray<TangentVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<TangentVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vTan"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vBtn"), 3, GL_FLOAT, GL_FALSE, offsetof(TangentVertex, biTangent));
@@ -218,11 +104,13 @@ template<> inline void VertexArray::FillArray<TangentVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vBtn"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vTan"));
 	glEnableVertexAttribArray(shader.Index("vBtn"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(TangentVertex);
 }
 
-template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<TextureVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(TextureVertex, uvs));
@@ -230,11 +118,13 @@ template<> inline void VertexArray::FillArray<TextureVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(TextureVertex);
 }
 
-template<> inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<ColoredVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vColor"), 3, GL_FLOAT, GL_FALSE, offsetof(ColoredVertex, color));
@@ -242,12 +132,13 @@ template<> inline void VertexArray::FillArray<ColoredVertex>(Shader& shader, GLu
 	glVertexAttribBinding(shader.Index("vColor"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vColor"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(ColoredVertex);
 }
 
-template<> inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<NormalVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
-	glBindVertexArray(this->array);
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE, offsetof(NormalVertex, normal));
@@ -255,11 +146,13 @@ template<> inline void VertexArray::FillArray<NormalVertex>(Shader& shader, GLui
 	glVertexAttribBinding(shader.Index("vNorm"), bindingPoint);
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vNorm"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(NormalVertex);
 }
 
-template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint bindingPoint)
+template<> inline void VertexArray::ArrayFormat<MeshVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE,  offsetof(MeshVertex, normal));
@@ -270,12 +163,14 @@ template<> inline void VertexArray::FillArray<MeshVertex>(Shader& shader, GLuint
 	glEnableVertexAttribArray(shader.Index("vPos"));
 	glEnableVertexAttribArray(shader.Index("vNorm"));
 	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(MeshVertex);
 }
 
-// Sloppy but who gives a shit(me)
-template<> inline void VertexArray::FillArray<glm::mat4>(Shader& shader, GLuint bindingPoint)
+// TODO: Un-sloppy this
+template<> inline void VertexArray::ArrayFormat<glm::mat4>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
+	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	glVertexAttribFormat(shader.Index("Model"), 4, GL_FLOAT, GL_FALSE, 0);
 	glVertexAttribFormat(shader.Index("Model") + 1, 4, GL_FLOAT, GL_FALSE, 16);
@@ -289,6 +184,7 @@ template<> inline void VertexArray::FillArray<glm::mat4>(Shader& shader, GLuint 
 	glEnableVertexAttribArray(shader.Index("Model") + 1);
 	glEnableVertexAttribArray(shader.Index("Model") + 2);
 	glEnableVertexAttribArray(shader.Index("Model") + 3);
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(glm::mat4);
 }
 

@@ -23,7 +23,7 @@ namespace Font
 	{
 		shader.CompileEmbedded(fontVertex.c_str(), fontFragment.c_str());
 		vao.Generate();
-		vao.FillArray<UIVertex>(shader);
+		vao.ArrayFormat<UIVertex>(shader);
 	}
 
 	static std::string basePath = "/";

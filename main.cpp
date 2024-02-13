@@ -844,7 +844,7 @@ bool smartBoxCollide()
 	}
 	
 	// Scale smart box up a bit to determine axis and
-	if (!anyCollisions && anyCollisions) 
+	if (!anyCollisions && false) 
 	{
 		float lar = 0;
 		int larDex = 0;
@@ -877,7 +877,7 @@ bool smartBoxCollide()
 				float temp = glm::dot(c.axis, GravityUp);
 				if (temp > 0 && temp <= dot)
 				{
-					std::cout << c.axis << std::endl;
+					//std::cout << c.axis << std::endl;
 					temp = dot;
 					smartBoxPhysics.axisOfGaming = c.axis;
 					smartBoxPhysics.ptr = &currentBox->box;
@@ -1074,190 +1074,20 @@ void idle()
 	}
 	unsigned int modded = frameCounter % 2000;
 	//smartBox.ReOrient(glm::toMat4(glm::lerp(oldMan, newMan, modded / 2000.f)));
-
-	Ray liota(smartBox.Center(), GravityAxis);
-	std::array<glm::vec3, 2> temper{};
-	temper.fill(liota.point);
-	temper[1] += GravityAxis * smartBox.ProjectionLength(GravityAxis) * 1.05f;
-	//rayBuffer.BufferData(temper, StaticDraw);
-
-	auto stored = boxes.RayCast(liota);
-	//std::cout << frameCounter << ": " << stored.size() << std::endl;
-
-	bool addGravity = true;
-	glm::vec3 least = glm::vec3(0);
-	float minute = INFINITY;
-	for (auto& hit : stored)
-	{
-		// Center is over something
-		RayCollision rayd{};
-		hit->box.Intersect(liota.point, liota.dir, rayd);
-		// Make sure it's not too far away
-		if (rayd.depth < smartBox.ProjectionLength(GravityAxis) * (1 + EPSILON))
-		{
-			//rayBuffer.BufferData(temper, StaticDraw);
-			glm::vec3 axis = rayd.axis;
-			float cosine = glm::abs(glm::dot(axis, GravityAxis));
-			float angle = glm::acos(cosine);
-
-			glm::vec3 normal = axis * BoxGravityMagnitude * cosine;
-			// DON'T SLIDE
-			if (staticFrictionCoeff >= glm::tan(angle))
-			{
-				addGravity = false;
-			}
-
-			// TODO: Logic about sliding thing you know
-			addGravity = false;
-			break;
-		}
-		else
-		{
-			glm::vec3 down = -smartBox.Up();
-			RayCollision rayd2{};
-			if (hit->box.Intersect(liota.point, down, rayd2))
-			{
-				//std::cout << ">" << rayd.axis << ", " << rayd2.distance << std::endl;
-				//std::cout << rayd2.distance / rayd.distance << std::endl;
-			}
-
-			float dotted = glm::abs(glm::dot(rayd.axis, GravityAxis));
-			if (dotted < minute)
-			{
-				least = rayd.axis;
-				minute = dotted;
-				// What??
-			}
-		}
-	}
 	
-	float forwarder = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON)
-	{
-		std::array<glm::vec3, 16> tooManyRays{};
-		float front = glm::dot(smartBoxPhysics.axisOfGaming, smartBox.Forward());
-		glm::vec3 up = smartBoxPhysics.axisOfGaming;
-		glm::vec3 fo = smartBox.Forward();
-
-		tooManyRays.fill(smartBox.Center());
-		tooManyRays[1] += up;
-		tooManyRays[3] += glm::normalize(up - front * fo);
-		tooManyRays[5] += glm::normalize(-up + front * fo);
-		for (std::size_t i = 0; i < 4; i++)
-		{
-			tooManyRays[6 + i] += glm::vec3(0, 1, 0);
-		}
-		tooManyRays[7] += glm::normalize(-up * front + fo);
-		tooManyRays[9] += glm::normalize(up * front - fo);
-		rayBuffer.BufferData(tooManyRays, StaticDraw);
-	}
-
-	glm::vec3 direction = smartBox.Forward() * forwarder;
-	// If there is a slope we need to deal with
-	if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::length2(direction) > EPSILON)
-	{
-		glm::vec3 slope = smartBoxPhysics.axisOfGaming;
-		float alignment = glm::dot(slope, direction);
-		direction = glm::normalize(direction - slope * alignment);
-		//smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
-		//addGravity = false;
-		boxForces += slope * glm::dot(slope, GravityUp) * BoxGravityMagnitude;
-	}
-	else // Handles "air" control
-	{
-
-	}
-	//std::cout << direction << std::endl << std::endl;
-	if (addGravity)
+	float forwardDirection = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
+	bool groundFound = smartBoxPhysics.ptr != nullptr;
+	if (!groundFound)
 	{
 		boxForces += boxGravity;
-	}
-	boxForces += direction * BoxAcceleration;
-	/*
-	if (addGravity)
-	{
-		// There is something it's colliding with and we gotta do the slope thing
-		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON)
-		{
-
-			smartBoxAligner(*smartBoxPhysics.ptr, smartBoxPhysics.axisOfGaming);
-			boxForces += BoxGravityMagnitude * (-smartBox.Up()) * 0.025f;
-			float tan = glm::tan(glm::acos(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)));
-			//std::cout << smartBoxPhysics.axisOfGaming << std::endl;
-			// If it's a sliding slope
-			//if (staticFrictionCoeff < tan)
-			{
-				float project = glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming));
-				//std::cout << frameCounter << ":" << smartBoxPhysics.axisOfGaming << ":" << std::endl;
-				glm::vec3 newboy;
-				// If it isn't straight up
-				if (glm::abs(project - 1) > EPSILON)
-				{
-					//newboy = -glm::normalize(smartBoxPhysics.axisOfGaming * project - GravityUp);
-					//newboy = glm::normalize(smartBoxPhysics.axisOfGaming - GravityUp * project);
-					float minDot = INFINITY;
-					glm::length_t minDotI = 0;
-					for (glm::length_t i = 0; i < 3; i++)
-					{
-						float local = glm::abs(glm::dot(smartBox[i], smartBoxPhysics.axisOfGaming));
-						if (local < minDot)
-						{
-							minDot = local;
-							minDotI = i;
-						}
-					}
-					newboy = glm::normalize(glm::cross(smartBoxPhysics.axisOfGaming, smartBox[minDotI]));
-					newboy *= glm::sign(glm::dot(newboy, smartBox.Forward()));
-				}
-				else
-				{
-					newboy = smartBox.Forward();
-				}
-				//std::cout << newboy << std::endl;
-				float compProject = glm::sqrt(1 - glm::pow(project, 2));
-				//boxForces += newboy * forwarder * BoxAcceleration * glm::dot(smartBox.Forward(), newboy);
-				boxForces += newboy * forwarder * BoxAcceleration * (1 - project);
-				boxForces -= project * smartBoxPhysics.axisOfGaming * BoxGravityMagnitude;
-
-				// Do the complex math thing
-				//boxForces += boxGravity + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming) * BoxGravityMagnitude;
-				//boxForces += (GravityAxis + smartBoxPhysics.axisOfGaming * glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) * BoxGravityMagnitude;
-			}
-		}
-		//else
-		{
-			//std::cout << "Graved: " << stored.size() << std::endl;
-			//boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
-			boxForces += boxGravity;
-		}
-		//boxForces += boxGravity;
+		boxForces += forwardDirection * forward * BoxAcceleration;
+		std::cout << "no ground :(" << std::endl;
 	}
 	else
 	{
-		// Idk what the second one of those things is for
-		// It's to make sure it isn't vertical
-		if (glm::length2(smartBoxPhysics.axisOfGaming) > EPSILON && glm::abs(glm::abs(glm::dot(GravityUp, smartBoxPhysics.axisOfGaming)) - 1) > EPSILON)
-		{
-			float minDot = INFINITY;
-			glm::length_t minDotI = 0;
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				float local = glm::abs(glm::dot(smartBox[i], smartBoxPhysics.axisOfGaming));
-				if (local < minDot)
-				{
-					minDot = local;
-					minDotI = i;
-				}
-			}
-			glm::vec3 newboy = glm::normalize(glm::cross(smartBoxPhysics.axisOfGaming, smartBox[minDotI]));
-			newboy *= glm::sign(glm::dot(newboy, smartBox.Forward()));
-			boxForces += newboy * forwarder * BoxAcceleration * (1 - glm::abs(glm::dot(newboy, smartBoxPhysics.axisOfGaming)));
-		}
-		else
-		{
-			boxForces += smartBox.Forward() * forwarder * BoxAcceleration;
-		}
-	}*/
+		float speedCoefficient = glm::sqrt(1 - glm::pow(glm::dot(smartBox.Forward(), smartBoxPhysics.axisOfGaming), 2));
+		boxForces += smartBox.Forward() * forwardDirection * speedCoefficient * BoxAcceleration;
+	}
 
 	// F = MA, -> A = F / M
 	//std::cout << boxForces << std::endl;
@@ -1289,10 +1119,8 @@ void idle()
 	}
 	moveSphere = awwYeah.center;
 	
-	// TODO: Key state is ten kinds of messed up
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
-	//keyState.fill(false);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - now;
@@ -1721,32 +1549,21 @@ void init()
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
 
 	// VAO SETUP
-	// TODO: maybe do away with this annoying generate(); fill() pattern, it's annoying
-	fontVAO.Generate();
-	fontVAO.FillArray<UIVertex>(fontShader);
+	fontVAO.ArrayFormat<UIVertex>(fontShader);
 	
-	instanceVAO.Generate();
-	instanceVAO.FillArray<TextureVertex>(instancing, 0);
-	instanceVAO.FillArray<glm::mat4>(instancing, 1);
-	instanceVAO.FillArray<TangentVertex>(instancing, 2);
-	instanceVAO.BufferBindingPointDivisor(0, 0);
-	instanceVAO.BufferBindingPointDivisor(1, 1);
-	instanceVAO.BufferBindingPointDivisor(2, 0);
+	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
+	instanceVAO.ArrayFormat<glm::mat4>(instancing, 1, 1);
+	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
 
-	meshVAO.Generate();
-	meshVAO.FillArray<MeshVertex>(sphereMesh);
+	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
 
-	normalVAO.Generate();
-	normalVAO.FillArray<NormalVertex>(flatLighting);
+	normalVAO.ArrayFormat<NormalVertex>(flatLighting);
 
-	//normalMapVAO.Generate();
-	//normalMapVAO.FillArray<TangentVertex>(instancing, 2);
+	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 
-	plainVAO.Generate();
-	plainVAO.FillArray<Vertex>(uniform);
+	plainVAO.ArrayFormat<Vertex>(uniform);
 
-	texturedVAO.Generate();
-	texturedVAO.FillArray<TextureVertex>(dither);
+	texturedVAO.ArrayFormat<TextureVertex>(dither);
 
 	// TEXTURE SETUP
 	// TODO: texture loading base path thingy
