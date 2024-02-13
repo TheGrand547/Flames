@@ -236,7 +236,10 @@ std::array<bool, '9' - '0' + 1> debugFlags{};
 #define ArrowKeyRight 2
 #define ArrowKeyLeft  3
 
-// TODO: Fix
+ColorFrameBuffer playerTextEntry;
+std::stringstream letters("abc");
+bool reRender = true;
+
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 constexpr float ANGLE_DELTA = 4;
 
@@ -592,6 +595,13 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
 	uiRect.DrawElements(TriangleStrip, 4);
 
+	uiRectTexture.SetActiveShader();
+	auto& colored = playerTextEntry.GetColor();
+	uiRectTexture.SetTextureUnit("image", colored, 0);
+	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
+		colored.GetWidth(), colored.GetHeight()));
+	uiRect.DrawElements(TriangleStrip, 4);
+
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
@@ -637,7 +647,6 @@ void display()
 	frameShader.DrawElements<TriangleStrip>(4);
 	glStencilMask(0xFF);
 
-	// TODO: This is reversed <- wtf are you saying
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawElements<Lines>(6);
@@ -935,10 +944,6 @@ void idle()
 	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = goober2.GetNormalMatrix();
 
-	//std::cout << "\r" << goober2.Forward() << "\t" << goober2.Cross() << "\t" << goober2.Up();
-	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << tester * glm::vec4(1, 0, 0, 0) << std::endl;
-	//std::cout << "\r" << "AABB Axis: " << goober2.Forward() << "\t Euler Axis" << glm::transpose(tester)[0];
-
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
 	//foobar.ToggleTwoSided();
 	//if (!smartBox.IntersectionWithResponse(foobar))
@@ -1003,8 +1008,6 @@ void idle()
 	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
-	if (keyState['P'])
-		std::cout << previous << std::endl;
 	if (keyState['W'])
 		cameraPosition += forward;
 	if (keyState['S'])
@@ -1046,7 +1049,7 @@ void idle()
 
 	// Physics attempt
 	smartBoxPhysics.acceleration = glm::vec3(0.f);
-	const float BoxAcceleration = 0.06f;// 0.06f;
+	const float BoxAcceleration = 0.06f;
 	const float BoxMass = 1;
 	const float staticFrictionCoeff = 1.0f;
 	const float slidingFrictionCoeff = 0.57f;
@@ -1081,7 +1084,7 @@ void idle()
 	{
 		boxForces += boxGravity;
 		boxForces += forwardDirection * forward * BoxAcceleration;
-		std::cout << "no ground :(" << std::endl;
+		//std::cout << "no ground :(" << std::endl;
 	}
 	else
 	{
@@ -1119,6 +1122,14 @@ void idle()
 	}
 	moveSphere = awwYeah.center;
 	
+	if (reRender && letters.str().size() > 0)
+	{
+		reRender = false;
+		playerTextEntry = fonter.Render(letters.str());
+		std::stringstream().swap(letters);
+	}
+
+
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
 
@@ -1156,10 +1167,17 @@ void window_focus_callback(GLFWwindow* window, int focused)
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
 	bool state = action == GLFW_PRESS;
+
+	unsigned char letter = (unsigned char)(key & 0xFF);
+
+	if (action != GLFW_RELEASE && key < 0xFF)
+	{
+		letters << letter;
+	}
+
 	// If key is an ascii, then GLFW_KEY_* will be equal to '*', ie GLFW_KEY_M = 'M', all uppercase by default
 	if (action != GLFW_REPEAT && key < 0xFF)
 	{
-		unsigned char letter = (unsigned char) (key & 0xFF);
 		keyState[letter] = state;
 	}
 	if (action != GLFW_REPEAT && key > 0xFF)
@@ -1183,6 +1201,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
 		if (key == GLFW_KEY_F) kernel = 1 - kernel;
 		if (key == GLFW_KEY_B) featureToggle = !featureToggle;
+		if (key == GLFW_KEY_ENTER) reRender = true;
 		if (key == 'H')
 		{
 			smartReset();

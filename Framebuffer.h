@@ -77,6 +77,7 @@ public:
 		std::swap(this->depthStencil, other.depthStencil);
 		std::swap(this->colorBuffers, other.colorBuffers);
 		std::swap(this->frameBuffer, other.frameBuffer);
+		return *this;
 	}
 
 	void CleanFramebuffer()
