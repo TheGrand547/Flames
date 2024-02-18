@@ -1,4 +1,5 @@
 #include "Texture2D.h"
+#include "glmHelp.h"
 #include "stbWrangler.h"
 
 // TODO: General texture class thingy
@@ -77,32 +78,32 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 	stbi_image_free((void*) data);
 }
 
-void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type, GLint level)
+void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)
 {
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
-	GLenum internalFormat = type, format = type, typed = GL_UNSIGNED_BYTE;
+	GLenum internalFormat = type, pixelType = type, pixelDataFormat = GL_UNSIGNED_BYTE;
 	switch (type)
 	{
 	case InternalStencil:
 		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
 		internalFormat = GL_STENCIL_INDEX8;
-		format = GL_STENCIL_INDEX;
+		pixelType = GL_STENCIL_INDEX;
 		break;
 	case InternalDepthStencil:
-		typed = GL_DEPTH24_STENCIL8;
-		typed = GL_UNSIGNED_INT_24_8_EXT;
+		pixelDataFormat = GL_DEPTH24_STENCIL8;
+		pixelDataFormat = GL_UNSIGNED_INT_24_8_EXT;
 		break;
 	case InternalDepthStencilFloat:
-		typed = GL_DEPTH32F_STENCIL8; 
+		pixelDataFormat = GL_DEPTH32F_STENCIL8; 
 		internalFormat = GL_DEPTH_STENCIL;
-		format = GL_DEPTH32F_STENCIL8;
+		pixelType = GL_DEPTH32F_STENCIL8;
 		break;
 	case InternalDepth16:
 	case InternalDepth24:
 	case InternalDepthFloat32:
-		format = GL_DEPTH_COMPONENT;
+		pixelType = GL_DEPTH_COMPONENT;
 		break;
 	case InternalFloatRed16:
 	case InternalFloatRedGreen16: 
@@ -116,16 +117,23 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	case InternalFloatShared5RGB9:
 	case InternalFloatBPTCRGB:
 	case InternalUnsignedFloatBPTCRGB:
-		format = GL_RED; // Can't have floating point format
+		pixelType = GL_RED; // Can't have floating point pixelType
 		break;
 	}
-	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, (GLsizei) width, (GLsizei) height, 0, format, typed, nullptr);
-	this->width = width;
-	this->height = height;
+	// TODO: store these values or something so things like FillTexture won't throw an annoying error
+	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, pixelType, pixelDataFormat, nullptr);
+	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, &color);
+	this->width = static_cast<GLsizei>(width);
+	this->height = static_cast<GLsizei>(height);
 }
 
-void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, GLint level)
+void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)
 {
-	this->CreateEmpty(width, height, type, level);
+	this->CreateEmpty(width, height, type, color, level);
 	this->SetFilters();
+}
+
+void Texture2D::FillTexture(const glm::vec4& color, int level)
+{
+	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, &color);
 }

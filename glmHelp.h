@@ -21,7 +21,6 @@
 
 #define absdot(x, y) glm::abs(glm::dot(x, y))
 
-//std::ostream& operator<<(std::ostream& os, const glm::vec3& vec);
 
 template<glm::length_t T, typename W, glm::qualifier Q>
 std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)

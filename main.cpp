@@ -201,6 +201,7 @@ Shader stencilTest;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
+Texture2D buttonA, buttonB;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -285,6 +286,9 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 {
 	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
 }
+
+bool buttonToggle = false;
+glm::vec4 buttonRect{ 540, 200, 100, 100 };
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
@@ -600,6 +604,10 @@ void display()
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
 		colored.GetWidth(), colored.GetHeight()));
+	uiRect.DrawElements(TriangleStrip, 4);
+
+	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
+	uiRectTexture.SetVec4("rectangle", buttonRect);
 	uiRect.DrawElements(TriangleStrip, 4);
 
 	fontShader.SetActiveShader();
@@ -1252,6 +1260,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
+
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
 	{
 		int x = mousePreviousX, y = mousePreviousY;
@@ -1334,6 +1343,10 @@ void mouseCursorFunc(GLFWwindow* window, double x, double y)
 		cameraRotation.x += zDelta;
 		cameraRotation.y += yDelta;
 	}
+	else
+	{
+		buttonToggle = x > buttonRect.x && x < buttonRect.x + buttonRect.z && y > buttonRect.y && y < buttonRect.y + buttonRect.w;
+	}
 	mousePreviousX = static_cast<int>(x);
 	mousePreviousY = static_cast<int>(y);
 }
@@ -1349,7 +1362,6 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	cameraUniformBuffer.BindUniform();
 	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
-
 	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 
@@ -1607,6 +1619,9 @@ void init()
 	wallTexture.Load("Textures/flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
+	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(0, 1, 1, 1));
+	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(1, 0.5, 1, 1));
+
 	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);
 	tessMap.SetFilters(LinearLinear, MagLinear);
 
@@ -1722,7 +1737,6 @@ void init()
 
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
-	
 
 	// This was moved to the window-resizing place, TODO: see if that's the bottleneck on startup
 
