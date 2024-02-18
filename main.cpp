@@ -29,6 +29,7 @@
 #include "OrientedBoundingBox.h"
 #include "Plane.h"
 #include "Shader.h"
+#include "ScreenRect.h"
 #include "Sphere.h"
 #include "StaticOctTree.h"
 #include "stbWrangler.h"
@@ -192,6 +193,7 @@ UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
 Framebuffer<2, DepthAndStencil> depthed;
+Framebuffer<1, DepthStencil> toRemoveError;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
@@ -288,7 +290,7 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 }
 
 bool buttonToggle = false;
-glm::vec4 buttonRect{ 540, 200, 100, 100 };
+ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
@@ -464,7 +466,7 @@ void display()
 	normalVAO.BindArrayBuffer(sphereBuffer);
 
 	Model sphereModel(glm::vec3(6.5f, 5.5f, 0.f));
-	sphereModel.translation += glm::vec3(0, 1, 0) * (float) glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
+	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(1.5f);
 	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
 	//sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
@@ -496,7 +498,7 @@ void display()
 	lightModel.translation = glm::vec3(4, 0, 0);
 	lightModel.scale = glm::vec3(2.2, 2.2, 1.1);
 
-	sphereModel.translation += glm::vec3(0, 1, 0) * (float)glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
+	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
 
 	// All shadows/lighting will be in this post-processing step based on stencil value
@@ -597,6 +599,10 @@ void display()
 	uiRect.DrawElements(TriangleStrip, 4);
 	
 	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
+	uiRect.DrawElements(TriangleStrip, 4);
+
+	uiRect.SetVec4("rectangle", userPortion);
+	uiRect.SetVec4("color", glm::vec4(0.25, 0.25, 0.25, 0.85));
 	uiRect.DrawElements(TriangleStrip, 4);
 
 	uiRectTexture.SetActiveShader();
@@ -961,7 +967,6 @@ void idle()
 	//smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
 	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
 
-	//float speed = 3 * ((float) elapsed) / 1000.f;
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
 	// TODO: Rolling buffer size thingy setting
@@ -1096,7 +1101,7 @@ void idle()
 	}
 	else
 	{
-		float speedCoefficient = glm::sqrt(1 - glm::pow(glm::dot(smartBox.Forward(), smartBoxPhysics.axisOfGaming), 2));
+		float speedCoefficient = static_cast<float>(glm::sqrt(1 - glm::pow(glm::dot(smartBox.Forward(), smartBoxPhysics.axisOfGaming), 2)));
 		boxForces += smartBox.Forward() * forwardDirection * speedCoefficient * BoxAcceleration;
 	}
 
@@ -1229,7 +1234,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 
 // TODO: struct or something idk
 static bool rightMouseHeld = false;
-static int mousePreviousX = 0, mousePreviousY = 0;
+static float mousePreviousX = 0, mousePreviousY = 0;
 
 // TODO: this needs to be it's own function
 glm::vec2 GetProjectionHalfs(glm::mat4& mat)
@@ -1261,9 +1266,9 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		}
 	}
 
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS)
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
-		int x = mousePreviousX, y = mousePreviousY;
+		float x = mousePreviousX, y = mousePreviousY;
 		/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
 		> Get Viewport size
 		> Get camera projection, zNear being defined by the depth you want it to be
@@ -1324,14 +1329,19 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		loom.ReCenter(cameraPosition);
 		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
 	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
+	{
+		userPortion.z -= 25;
+	}
 }
 
-void mouseCursorFunc(GLFWwindow* window, double x, double y)
+void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
+	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	if (rightMouseHeld)
 	{
-		float xDif = (float)(x - mousePreviousX);
-		float yDif = (float)(y - mousePreviousY);
+		float xDif = x - mousePreviousX;
+		float yDif = y - mousePreviousY;
 		if (abs(xDif) > 20)
 			xDif = 0;
 		if (abs(yDif) > 20)
@@ -1345,17 +1355,17 @@ void mouseCursorFunc(GLFWwindow* window, double x, double y)
 	}
 	else
 	{
-		buttonToggle = x > buttonRect.x && x < buttonRect.x + buttonRect.z && y > buttonRect.y && y < buttonRect.y + buttonRect.w;
+		buttonToggle = buttonRect.Contains(x, y);
 	}
-	mousePreviousX = static_cast<int>(x);
-	mousePreviousY = static_cast<int>(y);
+	mousePreviousX = x;
+	mousePreviousY = y;
 }
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
 	windowWidth = width;
 	windowHeight = height;
-	aspectRatio = float(width) / float(height);
+	aspectRatio = static_cast<float>(width) / height;
 	
 	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	cameraUniformBuffer.SetBindingPoint(0);
@@ -1377,6 +1387,8 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 	depthed.Assemble();
 
+	toRemoveError.GetColor();
+
 	scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	scratchSpace.Assemble();
@@ -1384,7 +1396,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
-	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, (float)windowWidth, (float)windowHeight, 0));
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, static_cast<float>(windowWidth), static_cast<float>(windowHeight), 0));
 }
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -1678,13 +1690,13 @@ void init()
 	}
 	for (int i = 0; i < 9; i++)
 	{
-		CombineVector(planes, GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (((int)i / 3) - 1)), PlusY));
+		CombineVector(planes, GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY));
 	}
 	// Diagonal Walls
-	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
-	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, (float) sqrt(2))));
-	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
-	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, (float) sqrt(2))));
+	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
+	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
+	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
+	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
 
 	// The ramp
 	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));

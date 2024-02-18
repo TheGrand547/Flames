@@ -113,7 +113,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);glew32.lib;freeglut.lib;opengl32.lib;glu32.lib;glfw3.lib;glfw3dll.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>/NODEFAULTLIB:MSVCRT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
+      <AdditionalOptions>/NODEFAULTLIB:MSVCRT %(AdditionalOptions)</AdditionalOptions>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -137,7 +139,9 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);glew32.lib;freeglut.lib;opengl32.lib;glu32.lib;glfw3.lib;glfw3dll.lib</AdditionalDependencies>
       <AdditionalLibraryDirectories>C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <IgnoreSpecificDefaultLibraries>%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <IgnoreSpecificDefaultLibraries>/NODEFAULTLIB:MSVCRT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
+      <AdditionalOptions>/NODEFAULTLIB:MSVCRT %(AdditionalOptions)</AdditionalOptions>
+      <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -161,6 +165,7 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="Sphere.cpp" />
@@ -196,6 +201,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="Sphere.h" />

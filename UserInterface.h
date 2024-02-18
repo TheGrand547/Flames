@@ -1,6 +1,7 @@
 #pragma once
 #ifndef USER_INTERFACE_H
 #define USER_INFERFACE_H
+#include "ScreenRect.h"
 #include "Texture2D.h"
 
 /*

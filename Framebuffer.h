@@ -158,7 +158,7 @@ public:
 		{
 			for (std::size_t i = 0; i < ColorAttachments; i++)
 			{
-				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + (GLenum) i, GL_TEXTURE_2D, this->colorBuffers[i].GetGLTexture(), 0);
+				glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i), GL_TEXTURE_2D, this->colorBuffers[i].GetGLTexture(), 0);
 			}
 		}
 		if constexpr (HasDepth)
