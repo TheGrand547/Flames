@@ -318,12 +318,14 @@ void display()
 	depthed.Bind();
 	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0, 0, 0, 1);
+	// TODO: Maybe clear the stencil buffer explicitly? idk
+	auto& sten = depthed.GetStencil();
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
 	glDepthMask(GL_TRUE);
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
+	DisableGLFeatures<StencilTesting>();
 	/*
 	EnableGLFeatures<StencilTesting>();
 	glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
@@ -431,10 +433,11 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	
+	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	uniform.SetMat4("Model", moveable.GetModelMatrix());
 	uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
-
+	//glDepthMask(GL_FALSE)
 	// Albert
 	
 	DisableGLFeatures<FaceCulling>();
@@ -1405,9 +1408,39 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			// Why 50??
 			float yDelta = (xDif * ANGLE_DELTA) / windowWidth;
 			float zDelta = -(yDif * ANGLE_DELTA) / windowHeight;
-			glm::vec3 side1 = glm::vec3(cameraOrientation[1]), side2 = glm::vec3(cameraOrientation[2]);
-			glm::vec3 delta = side2 * yDelta + side1 * zDelta;
+			glm::vec3 side1 = glm::vec3(cameraOrientation[2]), side2 = glm::vec3(cameraOrientation[1]);
+			//std::cout << cameraOrientation[0] << ":" << cameraOrientation[1] << std::endl;
+			float minDot = -INFINITY, maxDot = -INFINITY;
+			glm::length_t minDotI = 0, maxDotI = 0;
+			for (glm::length_t i = 0; i < 3; i++)
+			{
+				float local = glm::abs(glm::dot(moveable[i], side1));
+				float local2 = glm::abs(glm::dot(moveable[i], side2));
+				if (local > minDot)
+				{
+					minDot = local;
+					minDotI = i;
+				}
+				if (local2 > maxDot)
+				{
+					maxDot = local2;
+					maxDotI = i;
+				}
+			}
+
+			glm::vec3 delta = moveable[minDotI] * glm::sign(glm::dot(moveable[minDotI], side1)) * yDelta + 
+				moveable[maxDotI] * glm::sign(glm::dot(moveable[maxDotI], side2)) * zDelta;
+			//std::cout << moveable[maxDotI] << ":" << glm::sign(glm::dot(moveable[maxDotI], side1)) << ":" << zDelta << std::endl;
 			moveable.Translate(delta);
+			auto fum = moveable.GetAABB();
+			SlidingCollision slider{};
+			for (auto& foobar : boxes.Search(fum))
+			{
+				if (foobar->box.Overlap(moveable, slider))
+				{
+					moveable.ApplyCollision(slider);
+				}
+			}
 		}
 	}
 

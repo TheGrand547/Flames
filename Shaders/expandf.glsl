@@ -107,7 +107,7 @@ void main()
 	}
 	else if (samp == 0)
 	{
-		fool = vec3(0, 0, 0.5);
+		fool = vec3(0.5, 0.5, 0.5);
 	}
 	else
 	{
