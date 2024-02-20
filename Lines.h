@@ -63,6 +63,7 @@ struct Ray : public Line
 {
 	Ray() = default;
 	Ray(const glm::vec3& a, const glm::vec3& b);
+	Ray(const Ray& other);
 
 	bool operator==(const Ray& other) const = default;
 	bool operator!=(const Ray& other) const = default;

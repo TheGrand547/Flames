@@ -45,6 +45,8 @@ Line::Line(const glm::vec3& point, const glm::vec3& dir) : point(point), dir(glm
 
 Ray::Ray(const glm::vec3& a, const glm::vec3& b) : Line(a, b) {}
 
+Ray::Ray(const Ray& other) : Line(other.point, other.dir) {}
+
 glm::vec3 Ray::PointClosestTo(const glm::vec3& point) const noexcept
 {
 	return this->point + glm::max(glm::dot(this->point - point, this->dir), 0.f) * this->dir;

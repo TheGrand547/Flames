@@ -191,12 +191,12 @@ inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingP
 
 inline void Shader::DrawElements(PrimitiveDrawingType type, const GLuint num, const GLuint offset)
 {
-	glDrawArrays((GLenum)type, offset, num);
+	glDrawArrays(static_cast<GLenum>(type), offset, num);
 }
 
 template<PrimitiveDrawingType type> inline void Shader::DrawElements(const GLuint num, const GLuint offset)
 {
-	glDrawArrays((GLenum) type, offset, num);
+	glDrawArrays(static_cast<GLenum>(type), offset, num);
 }
 
 
@@ -213,15 +213,15 @@ template<PrimitiveDrawingType type> inline void Shader::DrawElements(Buffer<Arra
 inline void Shader::DrawIndexed(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset)
 {
 	buffer.BindBuffer();
-	glDrawElements((GLenum) type, buffer.GetElementCount() - elementOffset, buffer.GetElementType(), 
-			(const void*) (buffer.GetElementSize() * elementOffset));
+	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(), 
+			reinterpret_cast<const void*>(buffer.GetElementSize() * elementOffset));
 }
 
 template<PrimitiveDrawingType type> inline void Shader::DrawIndexed(Buffer<ElementArray>& buffer, const GLuint elementOffset)
 {
 	buffer.BindBuffer();
-	glDrawElements((GLenum)type, buffer.GetElementCount() - elementOffset, buffer.GetElementType(), 
-		(const void*)(buffer.GetElementSize() * elementOffset));
+	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(),
+		reinterpret_cast<const void*>(buffer.GetElementSize() * elementOffset));
 }
 
 // TODO: Some kind of type inference thingy for index types bullshit <- What does this mean
@@ -229,13 +229,15 @@ template<PrimitiveDrawingType type, class Container> inline void Shader::DrawInd
 {
 	//constexpr GLuint offset = 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glDrawElements((GLenum) type, (GLsizei) contents.size(), GL_UNSIGNED_BYTE, contents.data());
+	CheckError();
+	glDrawElements(static_cast<GLenum>(type), static_cast<GLsizei>(contents.size()), GL_UNSIGNED_BYTE, reinterpret_cast<const void*>(contents.data()));
+	CheckError();
 }
 
 template<class Container> inline void Shader::DrawIndexedMemory(PrimitiveDrawingType type, const Container& contents)
 {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	glDrawElements((GLenum)type, (GLsizei)contents.size(), GL_UNSIGNED_BYTE, contents.data());
+	glDrawElements(static_cast<GLenum>(type), static_cast<GLsizei>(contents.size()), GL_UNSIGNED_BYTE, contents.data());
 }
 
 #endif // FLAMES_SHADER_H

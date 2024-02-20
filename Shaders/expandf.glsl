@@ -10,6 +10,7 @@ layout(location = 2) uniform sampler2D depths;
 layout(location = 3) uniform usampler2D stencil;
 
 uniform int depth;
+uniform int flag;
 
 int dark = 0;
 const int required = 4;
@@ -115,6 +116,7 @@ void main()
 	//fColor.xyz += fool * 0.5;
 	//fColor.xyz = mix(vec3(0, 0, 0), fColor.xyz, sten);
 	//fColor.xyz = vec3(1, 0.25, 0.5);
-	fColor = sampled;
+	
+	fColor = (flag > 0) ? vec4(fool * sampled.xyz, 1) : sampled;
 	fColor.w = 1;
 }

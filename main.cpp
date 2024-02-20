@@ -297,15 +297,24 @@ ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 
 OBB loom;
 
+OBB moveable;
+
 int tessAmount = 5;
 
 bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime;
 
+/*
+New shading outputs
+-A stencil lights factor(mix(current, light, factor))
+-
+
+*/
+
 void display()
 {
+	const auto now = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	auto now = std::chrono::high_resolution_clock::now();
 	depthed.Bind();
 	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0, 0, 0, 1);
@@ -418,12 +427,13 @@ void display()
 	}
 
 	// Cubert
+	uniform.SetActiveShader();
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
-	uniform.SetMat4("Model", loom.GetModelMatrix());
-	//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
+	uniform.SetMat4("Model", moveable.GetModelMatrix());
+	uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
 
 	// Albert
 	
@@ -501,6 +511,10 @@ void display()
 	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
 
+	// TODO: Make something to clarify the weirdness of the stencil function
+	// Stuff like the stencilOp being in order: Stencil Fail(depth ignored), Stencil Pass(Depth Fail), Stencil Pass(Depth Pass)
+	// And stencilFunc(op, ref, mask) does the operation on a stencil value K of: (ref & mask) op (K & mask)
+
 	// All shadows/lighting will be in this post-processing step based on stencil value
 	// 
 
@@ -517,7 +531,8 @@ void display()
 	DisableGLFeatures<FaceCulling>();
 
 	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
-	glFrontFace((featureToggle) ? GL_CCW : GL_CW);
+	//glFrontFace((featureToggle) ? GL_CCW : GL_CW);
+	glFrontFace(GL_CCW);
 	// Stencil Test Always Passes
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	
@@ -541,20 +556,21 @@ void display()
 
 	// Clean up
 	EnableGLFeatures<FaceCulling>();
-	DisableGLFeatures<StencilTesting>();
+	//DisableGLFeatures<StencilTesting>();
 	glFrontFace(GL_CCW);
-	glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
+	//glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
 	//////  Shadow volume End
 
 	//GL_ARB_shader_stencil_export
 
 	EnableGLFeatures<Blending>();
+	//DisableGLFeatures<DepthTesting>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glStencilFunc(GL_LEQUAL, 1, 0xFF); // If 1 is <= value in the stencil buffer
+	glStencilFunc(GL_LEQUAL, 1, 0xFF); // If 1 is <= value in the stencil buffer the test passes
 
-
-	//glStencilFunc(GL_GREATER, 1, 0xFF); // If 1 is > value in the stencil buffer
-	glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+	glStencilFunc(GL_GEQUAL, 1, 0xFF); // If 1 is >= value in the stencil buffer the test passes
+	//glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
+	glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
@@ -563,6 +579,7 @@ void display()
 	//uiRect.DrawElements(TriangleStrip, 4);
 
 	DisableGLFeatures<StencilTesting>();
+	//EnableGLFeatures<DepthTesting>();
 	glDepthMask(GL_TRUE);
 
 	flatLighting.SetActiveShader();
@@ -574,7 +591,7 @@ void display()
 	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	flatLighting.DrawIndexed<Triangle>(capsuleIndex);
+	//flatLighting.DrawIndexed<Triangle>(capsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
@@ -603,24 +620,25 @@ void display()
 
 	uiRect.SetVec4("rectangle", userPortion);
 	uiRect.SetVec4("color", glm::vec4(0.25, 0.25, 0.25, 0.85));
-	uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
 
 	uiRectTexture.SetActiveShader();
 	auto& colored = playerTextEntry.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
 		colored.GetWidth(), colored.GetHeight()));
-	uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
 
+	// Debug Info Display
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
-	// TODO: Set object amount in buffer function
 	fontShader.DrawElements<Triangle>(textBuffer);
+	// TODO: Set object amount in buffer function
 
 	DisableGLFeatures<Blending>();
 	EnableGLFeatures<DepthTesting>();
@@ -658,6 +676,7 @@ void display()
 	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
 	expand.SetTextureUnit("stencil", depthed.GetStencil(), 3);
 	expand.SetInt("depth", 5);
+	expand.SetInt("flag", featureToggle);
 	frameShader.DrawElements<TriangleStrip>(4);
 	glStencilMask(0xFF);
 
@@ -667,7 +686,9 @@ void display()
 
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
-	glFlush();
+	// TODO: Seperate cpu rendering and render latency timers
+	//glFlush();
+	glFinish();
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - now;
 }
@@ -946,12 +967,14 @@ glm::quat newMan{};
 void idle()
 {
 	static auto lastTimers = std::chrono::high_resolution_clock::now();
-	frameCounter++;
-	const auto now = std::chrono::high_resolution_clock::now();
-	const auto delta = now - lastTimers;
 	static std::deque<float> frames;
 	static std::deque<long long> displayTimes, idleTimes;
 	static glm::vec3 previously{};
+
+
+	frameCounter++;
+	const auto now = std::chrono::high_resolution_clock::now();
+	const auto delta = now - lastTimers;
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
@@ -981,7 +1004,7 @@ void idle()
 		displayTimes.pop_front();
 		idleTimes.pop_front();
 	}
-	float averageFps = 0.f, averageTime = 0.f;
+	float averageFps = 0.f;
 	long long averageIdle = 0, averageDisplay = 0;
 	for (std::size_t i = 0; i < frames.size(); i++)
 	{
@@ -1115,7 +1138,7 @@ void idle()
 	smartBox.Translate(smartBoxPhysics.velocity);
 	smartBoxPhysics.velocity *= 0.99f;
 
-	smartBoxColor = smartBoxCollide();
+	//smartBoxColor = smartBoxCollide();
 	if (staticFrictionCoeff >= glm::tan(glm::acos(cose)))
 	{
 		//smartBoxPhysics.axisOfGaming = oldNormal;
@@ -1138,7 +1161,7 @@ void idle()
 	if (reRender && letters.str().size() > 0)
 	{
 		reRender = false;
-		playerTextEntry = fonter.Render(letters.str());
+		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1, 0, 0, 1));
 		std::stringstream().swap(letters);
 	}
 
@@ -1148,6 +1171,7 @@ void idle()
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - now;
+	lastTimers = now;
 	// Delay to keep 100 ticks per second idle stuff
 	/*
 	if (idleTime < std::chrono::milliseconds(10))
@@ -1155,8 +1179,6 @@ void idle()
 		while (std::chrono::high_resolution_clock::now() - now <= std::chrono::milliseconds(10));
 	}
 	*/
-
-	lastTimers = now;
 }
 
 void smartReset()
@@ -1233,7 +1255,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 }
 
 // TODO: struct or something idk
-static bool rightMouseHeld = false;
+static bool rightMouseHeld = false, leftMouseHeld = false;
 static float mousePreviousX = 0, mousePreviousY = 0;
 
 // TODO: this needs to be it's own function
@@ -1251,6 +1273,52 @@ glm::vec2 GetProjectionHalfs(glm::mat4& mat)
 	return result;
 }
 
+Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
+{
+	/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
+	> Get Viewport size
+	> Get camera projection, zNear being defined by the depth you want it to be
+	> Get the half lengths of the camera projection
+	> Given the input (x,y) coordinates compute
+	> newX = (x / size.x) * 2.0 - 1.0
+	> newY = (1.0 - (y / size.y)) * 2.0 - 1.0
+	> (newX, newY) *= half lengths
+	> Proejctioned vector, called p = (newX, newY, -depth)
+	> Get the camera transform(?) then apply the function(below) to p
+	newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
+	*/
+	float x = mouse.x, y = mouse.y;
+	glm::vec2 viewPortSize{ windowWidth, windowHeight };
+	glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
+
+	// Lets have depth = 0.01;
+	float depth = 0.01f;
+	glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
+	sizes *= GetProjectionHalfs(projection);
+	glm::vec3 project(sizes.x, sizes.y, -depth);
+
+	glm::vec3 radians = glm::radians(cameraRotation);
+
+	// Center of screen orientation
+	cameraOrientation = glm::eulerAngleXYZ(radians.x, radians.y + glm::half_pi<float>(), radians.z);
+
+	glm::vec3 faced{ 0.f };
+	for (int i = 0; i < 3; i++)
+	{
+		faced[i] = glm::dot(glm::vec3(cameraOrientation[i]), project);
+		// To do a proper projection you would add the camera position but that isn't necessary for this use
+	}
+	faced = glm::normalize(faced);
+
+	glm::vec3 axial = glm::normalize(glm::cross(glm::vec3(1, 0, 0), faced));
+	float dist = glm::acos(glm::dot(glm::vec3(1, 0, 0), faced));
+
+	// Orientation of the ray being shot
+	cameraOrientation = glm::mat4_cast(glm::normalize(glm::angleAxis(dist, axial)));
+
+	return Ray(cameraPosition, faced);
+}
+
 void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 {
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
@@ -1265,53 +1333,17 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT)
+	{
+		leftMouseHeld = (action == GLFW_PRESS);
+	}
 
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
-		float x = mousePreviousX, y = mousePreviousY;
-		/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
-		> Get Viewport size
-		> Get camera projection, zNear being defined by the depth you want it to be
-		> Get the half lengths of the camera projection
-		> Given the input (x,y) coordinates compute
-		> newX = (x / size.x) * 2.0 - 1.0
-		> newY = (1.0 - (y / size.y)) * 2.0 - 1.0
-		> (newX, newY) *= half lengths
-		> Proejctioned vector, called p = (newX, newY, -depth)
-		> Get the camera transform(?) then apply the function(below) to p
-		newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
-		*/
-		glm::vec2 viewPortSize{ windowWidth, windowHeight };
-		glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
-
-		// Lets have depth = 0.01;
-		float depth = 0.01f;
-		glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
-		sizes *= GetProjectionHalfs(projection);
-		glm::vec3 project(sizes.x, sizes.y, -depth);
-
-		glm::vec3 radians = glm::radians(cameraRotation);
-
-		// Center of screen orientation
-		glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.x, radians.y + glm::half_pi<float>(), radians.z);
-
-		glm::vec3 faced{ 0.f };
-		for (int i = 0; i < 3; i++)
-		{
-			faced[i] = glm::dot(glm::vec3(cameraOrientation[i]), project);
-			// To do a proper projection you would add the camera position but that isn't necessary for this use
-		}
-		faced = glm::normalize(faced);
-
+		glm::mat4 cameraOrientation{};
+		Ray liota = GetMouseProjection(glm::vec2(mousePreviousX, mousePreviousY), cameraOrientation);
 		float rayLength = 50.f;
 
-		glm::vec3 axial = glm::normalize(glm::cross(glm::vec3(1, 0, 0), faced));
-		float dist = glm::acos(glm::dot(glm::vec3(1, 0, 0), faced));
-
-		// Orientation of the ray being shot
-		cameraOrientation = glm::mat4_cast(glm::normalize(glm::angleAxis(dist, axial)));
-
-		Ray liota(cameraPosition, faced);
 		RayCollision rayd{};
 		Dummy* point = nullptr;
 		for (auto& item : boxes.RayCast(liota))
@@ -1357,6 +1389,30 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	{
 		buttonToggle = buttonRect.Contains(x, y);
 	}
+	if (leftMouseHeld)
+	{
+		glm::mat4 __unused{};
+		Ray liota(GetMouseProjection(glm::vec2(x, y), __unused));
+		RayCollision rayd{};
+		if (moveable.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0)
+		{
+			// We Hit it!
+			//moveable.Translate(glm::vec3(cameraRotation[0]) * 0.05f);
+			glm::vec3 radians = -glm::radians(cameraRotation);
+			glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
+			float xDif = x - mousePreviousX;
+			float yDif = y - mousePreviousY;
+			// Why 50??
+			float yDelta = (xDif * ANGLE_DELTA) / windowWidth;
+			float zDelta = -(yDif * ANGLE_DELTA) / windowHeight;
+			glm::vec3 side1 = glm::vec3(cameraOrientation[1]), side2 = glm::vec3(cameraOrientation[2]);
+			glm::vec3 delta = side2 * yDelta + side1 * zDelta;
+			moveable.Translate(delta);
+		}
+	}
+
+
+
 	mousePreviousX = x;
 	mousePreviousY = y;
 }
@@ -1777,6 +1833,9 @@ void init()
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
+
+	moveable.ReCenter(glm::vec3(0, 1, 0));
+	moveable.Scale(0.5f);
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());

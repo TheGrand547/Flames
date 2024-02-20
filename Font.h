@@ -32,7 +32,7 @@ public:
 
 	// TODO: Maybe a renderbuffer?
 	// Standard framebuffer is set to active after this is called
-	ColorFrameBuffer Render(const std::string& message);
+	ColorFrameBuffer Render(const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0));
 
 	// TODO: This is bad
 	// Renders directly to the texture

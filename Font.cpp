@@ -12,7 +12,7 @@ static std::string fontVertex = "#version 440 core\nlayout(location = 0)\nin vec
 ;layout(location = 0) out vec2 fTex;uniform mat4 Projection;void main()\
 {	gl_Position = Projection * vec4(vPos, 0, 1);	fTex = vTex;}";
 static std::string fontFragment = "#version 440 core\nlayout(location = 0) in vec2 fTex;\nout vec4 color;uniform sampler2D fontTexture; \
-void main() { float value = texture(fontTexture, fTex).r; if (value == 0) { discard; } color = vec4(1, 1, 1, 1) * value;}";
+uniform vec4 colorIn; void main() { float value = texture(fontTexture, fTex).r; if (value == 0) { discard; } color = colorIn * value;}";
 
 namespace Font
 {
@@ -105,7 +105,7 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coo
 }
 
 // TODO: this is a mess man
-ColorFrameBuffer ASCIIFont::Render(const std::string& message)
+ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
 {
 	ColorFrameBuffer framebuffer;
 
@@ -120,7 +120,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	float originX = 0, originY = y;
 	stbtt_aligned_quad quad{};
 
-	int width = 0, height = int(std::ceil(this->lineSkip));
+	int width = 0, height = static_cast<int>(std::ceil(this->lineSkip));
 
 	for (char letter : message)
 	{
@@ -162,7 +162,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	buffer.Generate();
 	buffer.BufferData(results, StaticDraw);
 
-	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA);
+	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA, backgroundColor);
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
 	framebuffer.Assemble();
@@ -174,6 +174,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message)
 	Font::shader.SetActiveShader();
 	Font::shader.SetTextureUnit("fontTexture", this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
+	Font::shader.SetVec4("colorIn", textColor);
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawElements<Triangle>(buffer);
 	BindDefaultFrameBuffer();
