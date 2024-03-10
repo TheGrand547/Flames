@@ -200,8 +200,8 @@ inline void OrientedBoundingBox::ReOrient(const glm::vec3& euler)
 	// TODO: Standardize using degrees or radians
 	glm::vec4 center = this->matrix[3];
 	this->matrix = glm::mat4(1.f);
-	this->matrix[3] = center;
 	this->Rotate(euler);
+	this->matrix[3] = center;
 }
 
 inline void OrientedBoundingBox::ReScale(const glm::vec3& scale) noexcept

@@ -186,8 +186,8 @@ ASCIIFont fonter;
 
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
-Buffer<ArrayBuffer> cubeMesh, normalMapBuffer;
-Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, sphereIndicies, stickIndicies;
+Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
+Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
@@ -291,6 +291,9 @@ std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
+
+Capsule catapult;
+Model catapultModel;
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
@@ -595,6 +598,12 @@ void display()
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
 	flatLighting.DrawIndexed<Triangle>(capsuleIndex);
+
+
+	meshVAO.BindArrayBuffer(movingCapsule);
+	flatLighting.SetMat4("modelMat", catapultModel.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", catapultModel.GetNormalMatrix());
+	flatLighting.DrawIndexed<Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
@@ -1341,10 +1350,12 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		}
 		// Point now has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
+		//loom.ReOrient(glm::vec3(0, 0, 90.f));
 		loom.ReOrient(cameraOrientation);
-		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 		loom.ReCenter(cameraPosition);
 		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+		loom.Rotate(glm::vec3(0, 0, 90.f));
+		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
@@ -1850,6 +1861,11 @@ void init()
 
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
+	Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 1.f, 30, 30);
+
+	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
+	catapult.SetRadius(0.25f);
+	catapultModel.translation = glm::vec3(0, 0.5f, 0);
 
 	Font::SetFontDirectory("Fonts");
 
@@ -1877,6 +1893,7 @@ void init()
 	moveable.Scale(0.25f);
 
 	loom.ReCenter(glm::vec3(0, 5, 0));
+	loom.ReOrient(glm::vec3(0.f, 0, 90.f));
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 	//Log("Doing it");
 	//windowResize(1000, 1000);

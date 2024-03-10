@@ -14,7 +14,7 @@ protected:
 	LineSegment line;
 	float radius;
 public:
-	Capsule() = default;
+	constexpr Capsule(const LineSegment& line = LineSegment(glm::vec3(0, 0.5f, 0), glm::vec3(0, -0.5f, 0)), const float& radius = 0.5f) noexcept;
 	constexpr Capsule(const Capsule& other) noexcept;
 	constexpr Capsule(const Capsule&& other) noexcept;
 
@@ -49,6 +49,8 @@ public:
 	static void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
 		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
 };
+
+constexpr Capsule::Capsule(const LineSegment& line, const float& radius) noexcept : line(line), radius(radius) {}
 
 constexpr Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(other.radius) {}
 

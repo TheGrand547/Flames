@@ -75,8 +75,8 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 		{
 			float miniAngle = j * latitudeStep;
 			glm::vec3 vertex{};
-			vertex.x = width * cos(miniAngle) + ((j >= latitudeSlices / 4u && j <= latitudeSlices * 3.f / 4) ? (-distance / 2.f) : (distance / 2.f));
-			vertex.y = height;
+			vertex.x = width * cos(miniAngle);// +((j >= latitudeSlices / 4u && j <= latitudeSlices * 3.f / 4) ? (-distance / 2.f) : (distance / 2.f));
+			vertex.y = height + ((i <= (longitudeSlices / 2)) ? (distance / 2.f) : (- distance / 2.f));
 			vertex.z = width * sin(miniAngle);
 			glm::vec2 uvs = { 0.f, 0.f };// { (float)j / latitudeSlices, (float)i / longitudeSlices };
 			points.push_back({ vertex, {cos(angle) * cos(miniAngle), sin(angle), cos(angle) * sin(miniAngle)}, uvs });
