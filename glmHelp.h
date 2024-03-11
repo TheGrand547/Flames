@@ -21,6 +21,16 @@
 
 #define absdot(x, y) glm::abs(glm::dot(x, y))
 
+template<glm::length_t T, typename W, glm::qualifier Q>
+constexpr W ConstExprDot(const glm::vec<T, W, Q>& vec)
+{
+	W total{};
+	for (std::length_t i = 0; i < T; i++)
+	{
+		total += vec[i] * vec[i];
+	}
+	return total;
+}
 
 template<glm::length_t T, typename W, glm::qualifier Q>
 std::ostream& operator<<(std::ostream& os, const glm::vec<T, W, Q>& vec)

@@ -45,7 +45,7 @@ bool OrientedBoundingBox::Overlap(const Capsule& other, Collision& collide) cons
 // TODO: Standarize what the collision.point thingies mean
 bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) const
 {
-	AABB local(this->halfs * 2.f);
+	AABB local(this->halfs * 2.f); // Why is this multiplied by 2?
 	glm::vec3 transformed = this->WorldToLocal(other.center - this->Center());
 	Sphere temp{ other.radius, transformed };
 	bool result = local.Overlap(temp, collision);

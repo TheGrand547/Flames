@@ -7,6 +7,14 @@ bool Capsule::Intersect(const Capsule& other) const noexcept
 	return this->Intersect(other, temp);
 }
 
+AABB Capsule::GetAABB() const
+{
+	AABB result{};
+	Sphere top{ this->radius, this->line.A };
+	Sphere bottom{ this->radius, this->line.B };
+	return AABB::CombineAABB(top.GetAABB(), bottom.GetAABB());
+}
+
 // See: https://wickedengine.net/2020/04/26/capsule-collision-detection/
 
 bool Capsule::Intersect(const Capsule& other, Collision& hit) const noexcept
@@ -76,7 +84,7 @@ void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& ind
 			float miniAngle = j * latitudeStep;
 			glm::vec3 vertex{};
 			vertex.x = width * cos(miniAngle);// +((j >= latitudeSlices / 4u && j <= latitudeSlices * 3.f / 4) ? (-distance / 2.f) : (distance / 2.f));
-			vertex.y = height + ((i <= (longitudeSlices / 2)) ? (distance / 2.f) : (- distance / 2.f));
+			vertex.y = height + ((i <= static_cast<unsigned int>(longitudeSlices / 2)) ? (distance / 2.f) : (- distance / 2.f));
 			vertex.z = width * sin(miniAngle);
 			glm::vec2 uvs = { 0.f, 0.f };// { (float)j / latitudeSlices, (float)i / longitudeSlices };
 			points.push_back({ vertex, {cos(angle) * cos(miniAngle), sin(angle), cos(angle) * sin(miniAngle)}, uvs });

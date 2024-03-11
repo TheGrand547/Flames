@@ -4,6 +4,7 @@
 #include <glew.h>
 #include <glm/glm.hpp>
 #include <tuple>
+#include "AABB.h"
 #include "Buffer.h"
 #include "Vertex.h"
 
@@ -19,6 +20,8 @@ struct Sphere
 
 	glm::mat4 GetModelMatrix() const noexcept;
 	glm::mat4 GetNormalMatrix() const noexcept;
+
+	constexpr AABB GetAABB() const noexcept;
 
 	static void GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
 		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
@@ -42,6 +45,11 @@ constexpr void Sphere::Translate(const glm::vec3& amount) noexcept
 constexpr void Sphere::Scale(const float& amount) noexcept
 {
 	this->radius *= amount;
+}
+
+constexpr AABB Sphere::GetAABB() const noexcept
+{
+	return AABB(this->center - glm::vec3(this->radius), this->center + glm::vec3(this->radius));
 }
 
 #endif // SPHERE_H

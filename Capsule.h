@@ -4,6 +4,7 @@
 #include <array>
 #include <glm/glm.hpp>
 #include <glm/gtx/norm.hpp>
+#include "AABB.h"
 #include "CollisionTypes.h"
 #include "Lines.h"
 #include "Sphere.h"
@@ -21,6 +22,11 @@ public:
 	constexpr void SetCenter(const glm::vec3& center) noexcept;
 	constexpr void Translate(const glm::vec3& delta) noexcept;
 	constexpr void SetRadius(const float& value) noexcept;
+	
+	// Want this to be constexpr, investigate std::is_constant_evaluated()
+	inline void SetLength(const float& length) noexcept;
+
+	AABB GetAABB() const;
 
 	bool Intersect(const Capsule& other) const noexcept;
 	/* 
@@ -40,6 +46,7 @@ public:
 	bool Intersect(const Sphere& other, Collision& hit) const noexcept;
 
 	inline constexpr float GetRadius() const noexcept;
+	inline constexpr glm::vec3 GetCenter() const noexcept;
 
 	glm::vec3 ClosestPoint(const glm::vec3& other) const;
 
@@ -74,9 +81,23 @@ constexpr void Capsule::SetRadius(const float& value) noexcept
 	this->radius = value;
 }
 
+// GRRR
+inline void Capsule::SetLength(const float& length) noexcept
+{
+	glm::vec3 center = this->GetCenter();
+	glm::vec3 dir = glm::normalize(this->line.Direction()) * length / 2.f;
+	this->line.A = center + dir;
+	this->line.B = center - dir;
+}
+
 inline constexpr float Capsule::GetRadius() const noexcept
 {
 	return this->radius;
+}
+
+inline constexpr glm::vec3 Capsule::GetCenter() const noexcept
+{
+	return this->line.MidPoint();
 }
 
 #endif // CAPSULE_H

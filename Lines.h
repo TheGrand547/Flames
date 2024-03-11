@@ -94,7 +94,7 @@ struct LineSegment : public LineBase
 	float Magnitude() const noexcept;
 	float SquaredLength() const noexcept;
 
-	glm::vec3 MidPoint() const noexcept;
+	constexpr glm::vec3 MidPoint() const noexcept;
 	
 	inline constexpr glm::vec3 Lerp(float t) const noexcept;
 
@@ -145,6 +145,11 @@ constexpr glm::vec3 LineSegment::PointA() const noexcept
 constexpr glm::vec3 LineSegment::PointB() const noexcept
 {
 	return this->B;
+}
+
+constexpr glm::vec3 LineSegment::MidPoint() const noexcept
+{
+	return (this->A + this->B) / 2.f;
 }
 
 #endif // LINES_H

@@ -12,6 +12,8 @@ struct Model
 
 	Model(const Model& mode) noexcept = default;
 
+	constexpr void Translate(const glm::vec3& distance);
+
 	glm::mat4 GetModelMatrix() const;
 	glm::mat4 GetNormalMatrix() const;
 };
@@ -19,6 +21,11 @@ struct Model
 constexpr Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) : translation(translation), rotation(rotation), scale(scale)
 {
 
+}
+
+constexpr void Model::Translate(const glm::vec3& distance)
+{
+	this->translation += distance;
 }
 
 #endif // MODEL_H

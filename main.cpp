@@ -294,6 +294,7 @@ ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 
 Capsule catapult;
 Model catapultModel;
+OBB catapultBox;
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
@@ -463,6 +464,7 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
+	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
 	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
@@ -601,8 +603,8 @@ void display()
 
 
 	meshVAO.BindArrayBuffer(movingCapsule);
-	flatLighting.SetMat4("modelMat", catapultModel.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", catapultModel.GetNormalMatrix());
+	flatLighting.SetMat4("modelMat", catapultBox.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", catapultBox.GetNormalMatrix());
 	flatLighting.DrawIndexed<Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
@@ -1037,6 +1039,9 @@ void idle()
 	}
 	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
+
+	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
+	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState['W'])
 		cameraPosition += forward;
 	if (keyState['S'])
@@ -1138,6 +1143,23 @@ void idle()
 	}
 
 	//smartBox.OverlapCompleteResponse(dumbBox);
+
+	// CAPSULE STUFF
+	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
+	catapult.Translate(catapultBox.Forward() * mult * speed);
+	std::cout << catapultBox.Forward() << std::endl;
+	for (auto& temps : boxes.Search(catapult.GetAABB()))
+	{
+		Collision c;
+		if (temps->box.Overlap(catapult, c))
+		{
+			//std::cout << c.normal << ":" << c.depth << std::endl;
+			catapult.Translate(-c.normal * c.depth);
+		}
+	}
+	
+	catapultBox.ReCenter(catapult.GetCenter());
+
 
 	Sphere awwYeah(0.5f, moveSphere);
 	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
@@ -1861,11 +1883,16 @@ void init()
 
 	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
 	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
-	Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 1.f, 30, 30);
+	Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 
 	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
 	catapult.SetRadius(0.25f);
+	catapult.SetLength(0.5f);
+
 	catapultModel.translation = glm::vec3(0, 0.5f, 0);
+	catapultBox.ReCenter(glm::vec3(0, 0.5, 0));
+	catapultBox.ReScale(glm::vec3(0.25f, 0.5f, 0.25f));
+
 
 	Font::SetFontDirectory("Fonts");
 

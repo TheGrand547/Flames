@@ -22,8 +22,11 @@ bool AABB::Overlap(const Sphere& other, Collision& collision) const
 {
 	glm::vec3 closest = glm::max(this->center - this->halfs, glm::min(other.center, this->center + this->halfs));
 	float distance = glm::length(closest - other.center);
-
 	collision.normal = glm::normalize(closest - other.center);
+	if (glm::any(glm::isnan(collision.normal)))
+	{
+		collision.normal = closest;
+	}
 	collision.distance = other.radius - distance;
 	collision.point = other.center + collision.normal * collision.distance;
 

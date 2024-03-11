@@ -60,7 +60,9 @@ public:
 
 	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
 	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
+	static constexpr AABB CombineAABB(const AABB& A, const AABB& B);
 	template<IsVec3... Args> inline static constexpr AABB MakeAABB(const Args... args);
+
 
 	constexpr bool operator==(const AABB& other) const
 	{
@@ -308,6 +310,13 @@ constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 		max = glm::fmax(max, points[i]);
 	}
 	return AABB(min, max);
+}
+
+constexpr AABB AABB::CombineAABB(const AABB& A, const AABB& B)
+{
+	glm::vec3 lowA = A.center - A.halfs, highA = A.center + A.halfs;
+	glm::vec3 lowB = B.center - B.halfs, highB = B.center + B.halfs;
+	return AABB(glm::fmin(lowA, lowB), glm::fmax(highA, highB));
 }
 
 template<IsVec3 ...Args>
