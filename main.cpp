@@ -13,6 +13,7 @@
 #include <map>
 #include <mutex>
 #include <queue>
+#include <random>
 #include <sys/utime.h>
 #include <time.h>
 #include <unordered_map>
@@ -1147,13 +1148,11 @@ void idle()
 	// CAPSULE STUFF
 	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
 	catapult.Translate(catapultBox.Forward() * mult * speed);
-	std::cout << catapultBox.Forward() << std::endl;
 	for (auto& temps : boxes.Search(catapult.GetAABB()))
 	{
 		Collision c;
 		if (temps->box.Overlap(catapult, c))
 		{
-			//std::cout << c.normal << ":" << c.depth << std::endl;
 			catapult.Translate(-c.normal * c.depth);
 		}
 	}
@@ -1569,8 +1568,39 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 void init();
 
+
 int main(int argc, char** argv)
 {
+	std::random_device r;
+	std::default_random_engine randEngine(r());
+	std::uniform_real_distribution distrib(1., 1000000.);
+	double accumulator = 0, totalA = 0, totalB = 0;
+	int fails = 0;
+	int timesT = 2000000;
+	double maxError = 0;
+	glm::vec3 gone = Constexpr::normalize(glm::vec3(0, 1, 2));
+	auto gone3 = Constexpr::length(glm::vec3(0, 1, 2));
+	auto gone4 = Constexpr::dot(glm::vec3(0, 1, 2), glm::vec3(0, -4, 2));
+	for (int i = 0; i < timesT; i++)
+	{
+
+		auto temp = distrib(randEngine);
+		auto A = sqrt(temp);
+		auto B = Constexpr::sqrt(temp);
+		accumulator += abs(A - B);
+		if (maxError < abs(A - B))
+		{
+			maxError = abs(A - B);
+		}
+		if (abs(A - B) != 0.f)
+		{
+			fails += 1;
+		}
+		//std::cout << sqrt(temp) << ":" << ConstexprSQRT(temp) << ":" << abs(sqrt(temp) - ConstexprSQRT(temp)) << std::endl;
+	}
+	std::cout << accumulator << " : " << accumulator / timesT << " : " << fails << " : " <<  float(fails) / timesT << std::endl;
+	std::cout << "Max Error: " << maxError << std::endl;
+
 	/* This is proof that dot of sum is equal to sum of dots, can be used to speed up OBB tests
 	glm::vec3 a{}, b{}, c{}, d{}, ax{};
 	float errored = 0.f;
