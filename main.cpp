@@ -466,7 +466,7 @@ void display()
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
-	uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	//DisableGLFeatures<DepthTesting>();
@@ -961,6 +961,10 @@ bool smartBoxCollide()
 glm::quat oldMan{};
 glm::quat newMan{};
 
+OBB* capsuleHit;
+glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
+
+
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 void idle()
@@ -1147,16 +1151,30 @@ void idle()
 
 	// CAPSULE STUFF
 	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	catapult.Translate(catapultBox.Forward() * mult * speed);
+	glm::vec3 capsuleForces{};
+	// Transformations need to be addressed
+	if (!capsuleHit)
+	{
+		capsuleForces += boxGravity;
+	}
+	capsuleForces += catapultBox.Forward() * mult * BoxAcceleration;
+	capsuleHit = nullptr;
+	capsuleAcceleration = capsuleForces / BoxMass * timeDelta;
+	capsuleVelocity += capsuleAcceleration;
+	//std::cout << catapult.GetCenter() << std::endl;
+	if (glm::length(capsuleVelocity) > 2.f)
+		capsuleVelocity = glm::normalize(capsuleVelocity) * 2.f;
+	catapult.Translate(capsuleVelocity);
+	capsuleVelocity *= 0.99f;
 	for (auto& temps : boxes.Search(catapult.GetAABB()))
 	{
 		Collision c;
 		if (temps->box.Overlap(catapult, c))
 		{
 			catapult.Translate(-c.normal * c.depth);
+			capsuleHit = &temps->box;
 		}
 	}
-	
 	catapultBox.ReCenter(catapult.GetCenter());
 
 
@@ -1178,7 +1196,7 @@ void idle()
 		std::stringstream().swap(letters);
 	}
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", smartBoxPhysics.ptr == nullptr));
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", capsuleHit == nullptr));
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -1571,6 +1589,7 @@ void init();
 
 int main(int argc, char** argv)
 {
+	/* Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
 	std::random_device r;
 	std::default_random_engine randEngine(r());
 	std::uniform_real_distribution distrib(1., 1000000.);
@@ -1600,6 +1619,7 @@ int main(int argc, char** argv)
 	}
 	std::cout << accumulator << " : " << accumulator / timesT << " : " << fails << " : " <<  float(fails) / timesT << std::endl;
 	std::cout << "Max Error: " << maxError << std::endl;
+	*/
 
 	/* This is proof that dot of sum is equal to sum of dots, can be used to speed up OBB tests
 	glm::vec3 a{}, b{}, c{}, d{}, ax{};
@@ -1869,7 +1889,7 @@ void init()
 	{
 		OBB project(ref);
 		//project.Scale(glm::vec3(1, .625f, 1));
-		project.Scale(glm::vec3(1, .0625f, 1));
+		project.Scale(glm::vec3(1, 2e-6f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix());
 		//awfulTemp.push_back(ref.GetNormalMatrix());
