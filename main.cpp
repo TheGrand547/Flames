@@ -646,7 +646,7 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	//uiRect.DrawElements(TriangleStrip, 4);
+	uiRect.DrawElements(TriangleStrip, 4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -1151,6 +1151,7 @@ void idle()
 
 	// CAPSULE STUFF
 	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
+	float capsuleDot = -INFINITY;
 	glm::vec3 capsuleForces{};
 	// Transformations need to be addressed
 	if (!capsuleHit)
@@ -1159,20 +1160,26 @@ void idle()
 	}
 	capsuleForces += catapultBox.Forward() * mult * BoxAcceleration;
 	capsuleHit = nullptr;
+	capsuleNormal = glm::vec3(0);
 	capsuleAcceleration = capsuleForces / BoxMass * timeDelta;
 	capsuleVelocity += capsuleAcceleration;
 	//std::cout << catapult.GetCenter() << std::endl;
 	if (glm::length(capsuleVelocity) > 2.f)
 		capsuleVelocity = glm::normalize(capsuleVelocity) * 2.f;
 	catapult.Translate(capsuleVelocity);
-	capsuleVelocity *= 0.99f;
+	capsuleVelocity *= 0.99f; // Maybe "real" friction?
 	for (auto& temps : boxes.Search(catapult.GetAABB()))
 	{
 		Collision c;
 		if (temps->box.Overlap(catapult, c))
 		{
-			catapult.Translate(-c.normal * c.depth);
-			capsuleHit = &temps->box;
+			catapult.Translate(c.normal * c.depth);
+			float dot = glm::dot(GravityUp, c.normal);
+			if (dot > 0 && dot > capsuleDot)
+			{
+				capsuleHit = &temps->box;
+				capsuleDot = dot;
+			}
 		}
 	}
 	catapultBox.ReCenter(catapult.GetCenter());
@@ -1184,7 +1191,7 @@ void idle()
 		Collision c;
 		if (letsgo->box.Overlap(awwYeah, c))
 		{
-			awwYeah.center -= c.normal * c.depth;
+			awwYeah.center += c.normal * c.depth;
 		}
 	}
 	moveSphere = awwYeah.center;
@@ -1974,6 +1981,9 @@ void init()
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 	//Log("Doing it");
 	//windowResize(1000, 1000);
+
+	fonter.Render(buttonA, glm::vec2(), "Soft");
+	fonter.Render(buttonB, glm::vec2(), "Not");
 
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 

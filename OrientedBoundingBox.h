@@ -407,6 +407,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 			separatingAxes[(std::size_t) i * 5 + 2 + j] = glm::normalize(glm::cross(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j])));
 		}
 	}
+	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
 	glm::vec3 delta = this->Center() - other.Center();
 	result.distance = INFINITY;
 	glm::length_t index = 0;

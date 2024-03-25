@@ -1,6 +1,7 @@
 #include "Texture2D.h"
 #include "glmHelp.h"
 #include "stbWrangler.h"
+#include "util.h"
 
 // TODO: General texture class thingy
 
@@ -45,6 +46,28 @@ void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
 	this->channels = channels;
 }
 
+void Texture2D::CopyFrom(Texture2D& other)
+{
+	Log("TODO");
+}
+
+void Texture2D::CopyFrom(Texture2D&& other)
+{
+	this->CleanUp();
+	std::swap(*this, other);
+}
+
+void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat, const glm::ivec2& start)
+{
+	//this->CreateEmpty(size.x, size.y, internalFormat, glm::vec4(0.5));
+	glBindTexture(GL_TEXTURE_2D, this->texture);
+	glCopyTexImage2D(GL_TEXTURE_2D, 0, internalFormat, start.x, start.y, size.x, size.y, BORDER_PARAMETER);
+	CheckError();
+	this->width = size.x;
+	this->height = size.y;
+	this->channels = 4; // TODO: What are you doing
+}
+
 void Texture2D::Load(const std::string& filename, TextureFormatInternal internal)
 {
 	this->CleanUp();
@@ -68,7 +91,7 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 		{	
 			internal = (TextureFormatInternal) size;
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, this->width, this->height, 0, size, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, this->width, this->height, BORDER_PARAMETER, size, GL_UNSIGNED_BYTE, data);
 		this->SetFilters();
 	}
 	else
@@ -121,7 +144,8 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		break;
 	}
 	// TODO: store these values or something so things like FillTexture won't throw an annoying error
-	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 0, pixelType, pixelDataFormat, nullptr);
+	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
+		BORDER_PARAMETER, pixelType, pixelDataFormat, nullptr);
 	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, &color);
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);

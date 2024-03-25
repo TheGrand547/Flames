@@ -22,13 +22,17 @@ bool AABB::Overlap(const Sphere& other, Collision& collision) const
 {
 	glm::vec3 closest = glm::max(this->center - this->halfs, glm::min(other.center, this->center + this->halfs));
 	float distance = glm::length(closest - other.center);
-	collision.normal = glm::normalize(closest - other.center);
+	collision.normal = glm::normalize(other.center - closest); // Get vector in the direction of the center from "here"
 	if (glm::any(glm::isnan(collision.normal)))
 	{
 		collision.normal = closest;
 	}
 	collision.distance = other.radius - distance;
 	collision.point = other.center + collision.normal * collision.distance;
-
+	// TODO: RETURN TO THIS
+	//std::cout << (distance - other.radius) << ":" << EPSILON << std::endl;
+	// If the distance from the closest point on this AABB to the center of the sphere
+	// Is less than EPSILON(be overly permissive)
+	//return distance - other.radius < EPSILON;
 	return distance < other.radius;
 }

@@ -32,6 +32,10 @@ public:
 
 	void ApplyInfo(GLuint texture, int width, int height, int channels);
 
+	void CopyFrom(Texture2D& other);
+	void CopyFrom(Texture2D&& other);
+	void CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat = InternalRGBA, const glm::ivec2& start = glm::ivec2(0, 0));
+
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
 	inline void SetWrapBehaviorS(TextureWrapping value) const;

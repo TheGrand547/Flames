@@ -14,6 +14,8 @@ static std::string fontVertex = "#version 440 core\nlayout(location = 0)\nin vec
 static std::string fontFragment = "#version 440 core\nlayout(location = 0) in vec2 fTex;\nout vec4 color;uniform sampler2D fontTexture; \
 uniform vec4 colorIn; void main() { float value = texture(fontTexture, fTex).r; if (value == 0) { discard; } color = colorIn * value;}";
 
+static ColorFrameBuffer defaultRenderBuffer;
+
 namespace Font
 {
 	Shader shader;
@@ -183,12 +185,15 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 
 void ASCIIFont::Render(Texture2D& texture, float x, float y, const std::string& message)
 {
-	Log("TODO DUMBASS");
+	this->Render(texture, glm::vec2(x, y), message);
 }
 
 void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::string& message)
 {
-	this->Render(texture, coords.x, coords.y, message);
+	// TODO: Make this not a hack that ignores the coords and colors
+	ColorFrameBuffer buffer = this->Render(message);
+	buffer.ReadColor(texture);
+	Log("TODO DUMBASS");
 }
 
 

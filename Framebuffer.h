@@ -212,6 +212,24 @@ public:
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, this->frameBuffer);
 	}
 
+	template<typename = std::enable_if_t<HasColor>>
+	inline void ReadColor(const std::size_t i = 0)
+	{
+		assert(i < ColorAttachments);
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, this->frameBuffer);
+		glReadBuffer(GL_COLOR_ATTACHMENT0 + static_cast<GLenum>(i));
+	}
+
+	// TODO: incorporate the other variables
+	template<typename = std::enable_if_t<HasColor>>
+	inline void ReadColor(Texture2D& texture, const std::size_t i = 0)
+	{
+		this->ReadColor(i);
+		Texture2D& source = this->GetColorBuffer(i);
+		texture.CopyFromFramebuffer(glm::ivec2(source.GetWidth(), source.GetHeight()));
+
+	}
+
 	// TODO: Framebuffer blits and reads but I don't wanna do those so who cares
 };
 
