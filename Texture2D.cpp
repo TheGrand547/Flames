@@ -10,12 +10,12 @@ inline constexpr GLenum Texture2D::TextureType()
 	return GL_TEXTURE_2D;
 }
 
-Texture2D::Texture2D() : width(0), height(0), channels(0), texture(0)
+Texture2D::Texture2D() : width(0), height(0), channels(0), texture(0), internalFormat(0)
 {
 
 }
 
-Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channels(0), texture(0)
+Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channels(0), texture(0), internalFormat(0)
 {
 	this->Load(filename);
 }
@@ -35,6 +35,7 @@ void Texture2D::CleanUp()
 	this->width = 0;
 	this->height = 0;
 	this->channels = 0;
+	this->internalFormat = 0;
 }
 
 void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
@@ -44,6 +45,27 @@ void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
 	this->width = width;
 	this->height = height;
 	this->channels = channels;
+	this->internalFormat = 0;
+}
+
+// TODO: Make this work, texture must be created via glTexStorage2D to work
+void Texture2D::MakeAliasOf(Texture2D& other)
+{
+	Log("This is a bad function you aren't ready for it");
+	this->CleanUp();
+	glGenTextures(1, &this->texture);
+	glBindTexture(GL_TEXTURE_2D, other.texture);
+	// NumLayers(last parameter) must be 1
+	//std::cout << "Format: " << other.internalFormat << std::endl;
+	//std::cout << this->texture << ":" << other.texture << std::endl;
+	GLint ib;
+	glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &ib);
+	//std::cout << ib << std::endl;
+	glTextureView(this->texture, GL_TEXTURE_2D, other.texture, other.internalFormat, 0, 0, 0, 1);
+	this->width = other.width;
+	this->height = other.height;
+	this->channels = other.channels;
+	this->internalFormat = other.internalFormat;
 }
 
 void Texture2D::CopyFrom(Texture2D& other)
@@ -61,10 +83,11 @@ void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInterna
 {
 	this->CreateEmptyWithFilters(size.x, size.y, internalFormat, glm::vec4(0.5));
 	glBindTexture(GL_TEXTURE_2D, this->texture);
-	glCopyTexImage2D(GL_TEXTURE_2D, 0, internalFormat, start.x, start.y, size.x, size.y, BORDER_PARAMETER);
+	glCopyTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internalFormat), start.x, start.y, size.x, size.y, BORDER_PARAMETER);
 	CheckError();
 	this->width = size.x;
 	this->height = size.y;
+	this->internalFormat = static_cast<GLenum>(internalFormat);
 	this->channels = 4; // TODO: What are you doing
 }
 
@@ -92,13 +115,14 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 			internal = static_cast<TextureFormatInternal>(size);
 		}
 		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), this->width, this->height, BORDER_PARAMETER, size, GL_UNSIGNED_BYTE, data);
+		this->internalFormat = static_cast<GLenum>(internal);
 		this->SetFilters();
 	}
 	else
 	{
 		printf("Error Loading Image '%s': %s\n", filename.c_str(), stbi_failure_reason());
 	}
-	stbi_image_free((void*) data);
+	stbi_image_free(std::bit_cast<void*>(data));
 }
 
 void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)
@@ -147,6 +171,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
 		BORDER_PARAMETER, pixelType, pixelDataFormat, nullptr);
 	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, &color);
+	this->internalFormat = internalFormat;
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);
 }

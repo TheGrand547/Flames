@@ -16,7 +16,9 @@ class Texture2D
 {
 private:
 	GLuint texture;
-	int width, height, channels;
+	// Why is channels stored??
+	GLsizei width, height, channels;
+	GLenum internalFormat;
 
 	inline constexpr GLenum TextureType();
 public:
@@ -32,6 +34,8 @@ public:
 	void CleanUp();
 
 	void ApplyInfo(GLuint texture, int width, int height, int channels);
+
+	void MakeAliasOf(Texture2D& other);
 
 	void CopyFrom(Texture2D& other);
 	void CopyFrom(Texture2D&& other);
@@ -134,6 +138,10 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data, Textur
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
 			BORDER_PARAMETER, static_cast<GLenum>(textureFormat), static_cast<GLenum>(dataFormat), data.data());
+		this->internalFormat = static_cast<GLenum>(internal);
+		this->width = static_cast<GLsizei>(width);
+		this->height = static_cast<GLsizei>(height);
+		this->channels = 3; // TODO: Get a proper calculation on this
 		this->SetFilters();
 	}
 }
@@ -158,6 +166,10 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
 		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), static_cast<GLsizei>(width), static_cast<GLsizei>(height),
 			BORDER_PARAMETER, static_cast<GLenum>(textureFormat), static_cast<GLenum>(dataFormat), data.data());
+		this->internalFormat = static_cast<GLenum>(internal);
+		this->width = static_cast<GLsizei>(width);
+		this->height = static_cast<GLsizei>(height);
+		this->channels = 3;
 		this->SetFilters();
 	}
 }

@@ -107,10 +107,8 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coo
 }
 
 // TODO: this is a mess man
-ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
+void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
 {
-	ColorFrameBuffer framebuffer;
-
 	Buffer<ArrayBuffer> buffer;
 
 	std::vector<UIVertex> results{};
@@ -180,6 +178,12 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawElements<Triangle>(buffer);
 	BindDefaultFrameBuffer();
+}
+
+ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
+{
+	ColorFrameBuffer framebuffer;
+	this->Render(framebuffer, message, textColor, backgroundColor);
 	return framebuffer;
 }
 
