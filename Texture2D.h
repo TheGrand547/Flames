@@ -9,6 +9,7 @@
 #include <math.h>
 #include "log.h"
 #include "Texture.h"
+#include "util.h"
 
 // TODO: some kind of "base" texture class to reduce clutter
 class Texture2D
@@ -86,24 +87,24 @@ inline void Texture2D::GenerateMipmap() const
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const
 {
-	glTextureParameteri(this->texture, GL_TEXTURE_MAG_FILTER, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_MAG_FILTER, static_cast<GLint>(value));
 }
 
 inline void Texture2D::SetMinFilter(TextureMinFilter value) const
 {
 	if (!(value == MinLinear || value == MinNearest))
 		this->GenerateMipmap();
-	glTextureParameteri(this->texture, GL_TEXTURE_MIN_FILTER, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_MIN_FILTER, static_cast<GLint>(value));
 }
 
 inline void Texture2D::SetWrapBehaviorS(TextureWrapping value) const
 {
-	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_S, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_S, static_cast<GLint>(value));
 }
 
 inline void Texture2D::SetWrapBehaviorT(TextureWrapping value) const
 {
-	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_T, (GLint) value);
+	glTextureParameteri(this->texture, GL_TEXTURE_WRAP_T, static_cast<GLint>(value));
 }
 
 inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter magFilter, 
@@ -131,7 +132,8 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data, Textur
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei) width, (GLsizei) height, 0, (GLenum) textureFormat, (GLenum) dataFormat, data.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
+			BORDER_PARAMETER, static_cast<GLenum>(textureFormat), static_cast<GLenum>(dataFormat), data.data());
 		this->SetFilters();
 	}
 }
@@ -154,7 +156,8 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
-		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, (GLsizei)width, (GLsizei)height, 0, (GLenum)textureFormat, (GLenum)dataFormat, data.data());
+		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), static_cast<GLsizei>(width), static_cast<GLsizei>(height),
+			BORDER_PARAMETER, static_cast<GLenum>(textureFormat), static_cast<GLenum>(dataFormat), data.data());
 		this->SetFilters();
 	}
 }

@@ -151,6 +151,7 @@
     </ClCompile>
     <ClCompile Include="ArrayObject.cpp" />
     <ClCompile Include="Buffer.cpp" />
+    <ClCompile Include="Button.cpp" />
     <ClCompile Include="Capsule.cpp" />
     <ClCompile Include="CollisionTypes.cpp" />
     <ClCompile Include="Cube.cpp" />
@@ -187,6 +188,7 @@
     </ClInclude>
     <ClInclude Include="ArrayObject.h" />
     <ClInclude Include="Buffer.h" />
+    <ClInclude Include="Button.h" />
     <ClInclude Include="Capsule.h" />
     <ClInclude Include="CollisionTypes.h" />
     <ClInclude Include="Cube.h" />

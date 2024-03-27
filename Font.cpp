@@ -66,8 +66,8 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, co
 			// Align to integer because it looks slightly better probably, I don't know
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
 
-			width  = std::max(width, int(std::ceil(quad.x1)));
-			height = std::max(height, int(std::ceil(quad.y1)));
+			width  = std::max(width, static_cast<int>(std::ceil(quad.x1)));
+			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
 
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
@@ -131,8 +131,8 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 			// Align to integer because it looks slightly better probably, I don't know
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
 
-			width = std::max(width, int(std::ceil(quad.x1)));
-			height = std::max(height, int(std::ceil(quad.y1)));
+			width = std::max(width, static_cast<int>(std::ceil(quad.x1)));
+			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
 
 			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
@@ -158,7 +158,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 		}
 		else
 		{
-			LogF("Couldn't find character with hex code '%x' in dictionary\n", (int)letter);
+			LogF("Couldn't find character with hex code '%x' in dictionary\n", static_cast<int>(letter));
 		}
 	}
 	buffer.Generate();
@@ -168,7 +168,7 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
 	framebuffer.Assemble();
-	glm::mat4 projection = glm::ortho<float>(0.f, float(width), float(height), 0.f);
+	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(width), static_cast<float>(height), 0.f);
 	framebuffer.Bind();
 	glViewport(0, 0, width, height);
 	glClearColor(0, 0, 0, 0);

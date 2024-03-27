@@ -1403,6 +1403,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		loom.Rotate(glm::vec3(0, 0, 90.f));
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 	}
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && buttonRect.Contains(mousePreviousX, mousePreviousY))
+	{
+		buttonToggle = !buttonToggle;
+	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
 		userPortion.z -= 25;
@@ -1429,7 +1433,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	}
 	else
 	{
-		buttonToggle = buttonRect.Contains(x, y);
+		//buttonToggle = buttonRect.Contains(x, y);
 	}
 	if (leftMouseHeld)
 	{

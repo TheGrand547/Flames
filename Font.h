@@ -12,10 +12,12 @@ namespace Font
 	void SetFontDirectory(const std::string& directory);
 }
 
+// TODO: Settings struct with back/foreground color, position, etc
+
 class ASCIIFont
 {
 protected:
-	std::array<stbtt_packedchar, '~' - ' '> characters;
+	std::array<stbtt_packedchar, static_cast<std::size_t>('~' - ' ')> characters;
 	float pixelHeight, scalingFactor;
 	int ascender, descender, lineGap;
 	float lineSkip;

@@ -59,7 +59,7 @@ void Texture2D::CopyFrom(Texture2D&& other)
 
 void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat, const glm::ivec2& start)
 {
-	//this->CreateEmpty(size.x, size.y, internalFormat, glm::vec4(0.5));
+	this->CreateEmptyWithFilters(size.x, size.y, internalFormat, glm::vec4(0.5));
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	glCopyTexImage2D(GL_TEXTURE_2D, 0, internalFormat, start.x, start.y, size.x, size.y, BORDER_PARAMETER);
 	CheckError();
@@ -89,9 +89,9 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 		}
 		if (internal == InternalUnspecified)
 		{	
-			internal = (TextureFormatInternal) size;
+			internal = static_cast<TextureFormatInternal>(size);
 		}
-		glTexImage2D(GL_TEXTURE_2D, 0, (GLenum) internal, this->width, this->height, BORDER_PARAMETER, size, GL_UNSIGNED_BYTE, data);
+		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), this->width, this->height, BORDER_PARAMETER, size, GL_UNSIGNED_BYTE, data);
 		this->SetFilters();
 	}
 	else
