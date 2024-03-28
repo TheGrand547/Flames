@@ -29,6 +29,29 @@ Hierarchical contexts that can have:
 As a proof of concept I will make a main menu with this
 */
 
+class Context 
+{
+protected:
+	std::vector<ButtonBase*> elements{};
+public:
+	Context() = default;
+	~Context();
+	void AddButton(ButtonBase* button);
+	void Update(MouseStatus& status);
+
+	template<class T, typename... Args> void AddButton(Args&&... args)
+	requires requires {
+		std::is_base_of<ButtonBase, T>();
+	}
+	{
+		ButtonBase* temp = new T(std::forward<Args>(args)...);
+		if (temp)
+		{
+			this->elements.push_back(temp);
+		}
+	}
+};
+
 
 class UserInterface
 {
@@ -41,6 +64,8 @@ public:
 	};
 
 	void ApplyEvent(EventType event); // TODO: Maybe a struct with extra data? idk
+
+
 };
 
 #endif // USER_INTERFACE_H

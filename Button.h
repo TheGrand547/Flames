@@ -39,31 +39,34 @@ struct ButtonBase
 	virtual ~ButtonBase() {}
 };
 
-
+template<typename Callback>
 class Button : public ButtonBase
 {
 protected:
 	ScreenRect rect;
-	TrivialCallback callback;
+	Callback callback;
 	MouseButton trigger;
 public:
 	const std::size_t id;
 
-	Button(ScreenRect rect, TrivialCallback callback, MouseButton trigger = MouseButtonLeft, std::size_t id = 0) 
+	Button(ScreenRect rect, Callback callback, MouseButton trigger = MouseButtonLeft, std::size_t id = 0)
 		: rect(rect), callback(callback), trigger(trigger), id((id) ? id : std::bit_cast<std::size_t>(this)) {}
 	virtual ~Button() {}
 	inline virtual void MouseUpdate(const MouseStatus& status) override
 	{
-		if ((status.buttons & this->trigger) && this->rect.Contains(status.position))
+		if (status.CheckButton(this->trigger) && this->rect.Contains(status.position))
 		{
 			this->callback(this->id);
 		}
 	}
 };
 
+typedef Button<TrivialCallback> BasicButton;
+
+/*
 template<typename T> class ButtonCallback : public ButtonBase
 {
 
-};
+};*/
 
 #endif // BUTTON_H

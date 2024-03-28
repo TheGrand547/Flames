@@ -41,6 +41,7 @@
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "Wall.h"
+#include "UserInterface.h"
 
 struct Dummy
 {
@@ -1368,10 +1369,11 @@ void ButtonExample(std::size_t id)
 }
 
 Button testButton{ buttonRect, ButtonExample };
-
+Context contextul;
 
 void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 {
+	contextul.AddButton<BasicButton>(buttonRect, ButtonExample);
 	// Set bit (button) in mouseStatus.buttons
 	mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button) | (action == GLFW_PRESS) << button);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
@@ -1417,10 +1419,6 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 	}
 	testButton.MouseUpdate(mouseStatus);
-	//if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && buttonRect.Contains(mousePreviousX, mousePreviousY))
-	{
-		//buttonToggle = !buttonToggle;
-	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
 		userPortion.z -= 25;
