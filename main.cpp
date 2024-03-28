@@ -19,6 +19,7 @@
 #include <unordered_map>
 #include "AABB.h"
 #include "Buffer.h"
+#include "Button.h"
 #include "CubeMap.h"
 #include "Font.h"
 #include "Framebuffer.h"
@@ -1359,8 +1360,20 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	return Ray(cameraPosition, faced);
 }
 
+MouseStatus mouseStatus{};
+
+void ButtonExample(std::size_t id)
+{
+	buttonToggle = !buttonToggle;
+}
+
+Button testButton{ buttonRect, ButtonExample };
+
+
 void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 {
+	// Set bit (button) in mouseStatus.buttons
+	mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button) | (action == GLFW_PRESS) << button);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		rightMouseHeld = (action == GLFW_PRESS);
@@ -1403,9 +1416,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		loom.Rotate(glm::vec3(0, 0, 90.f));
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 	}
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && buttonRect.Contains(mousePreviousX, mousePreviousY))
+	testButton.MouseUpdate(mouseStatus);
+	//if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && buttonRect.Contains(mousePreviousX, mousePreviousY))
 	{
-		buttonToggle = !buttonToggle;
+		//buttonToggle = !buttonToggle;
 	}
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
 	{
@@ -1416,6 +1430,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
+	mouseStatus.position = glm::vec2(x, y);
 	if (rightMouseHeld)
 	{
 		float xDif = x - mousePreviousX;
@@ -1729,6 +1744,8 @@ int main(int argc, char** argv)
 	return 0;
 }
 
+void Dumber(std::size_t id) {}
+
 void init()
 {
 	// OpenGL Feature Enabling
@@ -1985,10 +2002,10 @@ void init()
 	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 	//Log("Doing it");
 	//windowResize(1000, 1000);
-
+	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	fonter.Render(buttonA, glm::vec2(), "Soft");
 	fonter.Render(buttonB, glm::vec2(), "Not");
-
+	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	glClearColor(0.f, 0.f, 0.f, 0.f);

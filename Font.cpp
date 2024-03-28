@@ -197,7 +197,6 @@ void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::s
 	// TODO: Make this not a hack that ignores the coords and colors
 	ColorFrameBuffer buffer = this->Render(message);
 	buffer.ReadColor(texture);
-	Log("TODO DUMBASS");
 }
 
 
