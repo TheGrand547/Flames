@@ -35,7 +35,8 @@ struct MouseStatus
 // Abstract interface
 struct ButtonBase
 {
-	virtual void MouseUpdate(const MouseStatus& status) {}
+	// True -> visual state updated, false -> no visual state update
+	virtual bool MouseUpdate(const MouseStatus& status) {}
 	virtual ~ButtonBase() {}
 };
 
@@ -52,12 +53,13 @@ public:
 	Button(ScreenRect rect, Callback callback, MouseButton trigger = MouseButtonLeft, std::size_t id = 0)
 		: rect(rect), callback(callback), trigger(trigger), id((id) ? id : std::bit_cast<std::size_t>(this)) {}
 	virtual ~Button() {}
-	inline virtual void MouseUpdate(const MouseStatus& status) override
+	inline virtual bool MouseUpdate(const MouseStatus& status) override
 	{
 		if (status.CheckButton(this->trigger) && this->rect.Contains(status.position))
 		{
 			this->callback(this->id);
 		}
+		return false;
 	}
 };
 

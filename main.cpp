@@ -311,6 +311,15 @@ int tessAmount = 5;
 bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime;
 
+constexpr float BulletRadius = 0.05f;
+
+struct Bullet
+{
+	glm::vec3 position, direction;
+};
+
+std::vector<Bullet> bullets;
+
 /*
 New shading outputs
 -A stencil lights factor(mix(current, light, factor))
@@ -511,6 +520,18 @@ void display()
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
 	//sphereMesh.DrawIndexed<Triangle>(sphereIndicies);
+	for (auto& bullet : bullets)
+	{
+		Model localModel;
+		localModel.translation = bullet.position;
+		localModel.scale = glm::vec3(0.05f);
+		sphereMesh.SetMat4("modelMat", localModel.GetModelMatrix());
+		sphereMesh.SetMat4("normalMat", localModel.GetNormalMatrix());
+		sphereMesh.SetTextureUnit("textureIn", texture, 0);
+		//mapper.BindTexture(0);
+		//sphereMesh.SetTextureUnit("textureIn", 0);
+		sphereMesh.DrawIndexed<Triangle>(sphereIndicies);
+	}
 
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
@@ -648,7 +669,7 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawElements(TriangleStrip, 4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -1207,6 +1228,29 @@ void idle()
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", capsuleHit == nullptr));
 
+	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
+	Sphere gamin{};
+	Collision c;
+	gamin.radius = BulletRadius;
+	for (std::size_t i = 0; i < bullets.size(); i++)
+	{
+		if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))
+		{
+			bullets.erase(bullets.begin() + i);
+			i--;
+			continue;
+		}
+		gamin.center = bullets[i].position + bullets[i].direction * BulletSpeed;
+		for (auto& boxers : boxes.Search(gamin.GetAABB()))
+		{
+			if (boxers->box.Overlap(gamin, c))
+			{
+				gamin.center = c.point;
+				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
+			}
+		}
+		bullets[i].position = gamin.center;
+	}
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
@@ -1413,10 +1457,14 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//loom.ReOrient(glm::vec3(0, 0, 90.f));
 		loom.ReOrient(cameraOrientation);
-		loom.ReCenter(cameraPosition);
-		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+		//loom.ReCenter(cameraPosition);
+		//loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
 		loom.Rotate(glm::vec3(0, 0, 90.f));
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
+		Bullet locals{};
+		locals.position = cameraPosition;
+		locals.direction = liota.delta;
+		bullets.push_back(locals);
 	}
 	testButton.MouseUpdate(mouseStatus);
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
