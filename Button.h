@@ -36,7 +36,7 @@ struct MouseStatus
 struct ButtonBase
 {
 	// True -> visual state updated, false -> no visual state update
-	virtual bool MouseUpdate(const MouseStatus& status) {}
+	virtual bool MouseUpdate(const MouseStatus& status) { return false; }
 	virtual ~ButtonBase() {}
 };
 

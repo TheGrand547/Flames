@@ -17,8 +17,13 @@ void Context::AddButton(ButtonBase* button)
 
 void Context::Update(MouseStatus& status)
 {
+	bool visualUpdate = false;
 	for (auto& button : this->elements)
 	{
-		button->MouseUpdate(status);
+		visualUpdate |= button->MouseUpdate(status);
+	}
+	if (visualUpdate)
+	{
+		// TODO: Visual Update
 	}
 }

@@ -192,6 +192,30 @@ public:
 		return status == GL_FRAMEBUFFER_COMPLETE;
 	}
 
+	bool Create(std::size_t width, std::size_t height, TextureFormatInternal internal = InternalRGBA)
+	{
+		if constexpr (HasColor)
+		{
+			for (std::size_t i = 0; i < ColorAttachments; i++)
+			{
+				this->colorBuffers[i].CreateEmptyWithFilters(width, height, internal);
+			}
+		}
+		if constexpr (HasDepth)
+		{
+			this->depth.CreateEmptyWithFilters(width, height, InternalDepth32);
+		}
+		if constexpr (HasStencil)
+		{
+			this->stencil.CreateEmptyWithFilters(width, height, InternalStencil);
+		}
+		if constexpr (HasCombined)
+		{
+			this->depthStencil.CeateEmptyWithFiltes(width, height, InternalDepthStencil);
+		}
+		return this->Assemble();
+	}
+
 	// Binds the framebuffer to both the read and write positions
 	inline void Bind()
 	{

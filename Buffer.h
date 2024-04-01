@@ -185,14 +185,14 @@ template<BufferType Type> void Buffer<Type>::Generate(BufferAccess access, GLsiz
 
 template<BufferType Type> inline void Buffer<Type>::BindBuffer() const
 {
-	glBindBuffer((GLenum) Type, this->buffer);
+	glBindBuffer(static_cast<GLenum>(Type), this->buffer);
 }
 
 template<BufferType Type> inline void Buffer<Type>::Reserve(BufferAccess access, GLsizeiptr size)
 {
 	if (this->buffer)
 	{
-		glNamedBufferData(this->buffer, size, nullptr, (GLenum) access);
+		glNamedBufferData(this->buffer, size, nullptr, static_cast<GLenum>(access));
 		this->length = size;
 	}
 }
@@ -201,7 +201,7 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(std::size_t size, Bu
 {
 	this->Generate();
 	glBindBuffer(Type, this->buffer);
-	glBufferData(Type, (GLsizei) size, nullptr, (GLenum) usage);
+	glBufferData(Type, static_cast<GLsizeiptr>(size), nullptr, static_cast<GLenum>(usage));
 	this->length = size;
 	this->elementCount = 0;
 	this->elementSize = 0;
@@ -215,14 +215,16 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<const T> data, BufferAccess usage)
 {
+	if (!this->buffer)
+	{
+		this->Generate();
+	}
 	if (this->buffer)
 	{
 		glBindBuffer(Type, this->buffer);
-		CheckError();
-		glBufferData(Type, data.size() * sizeof(T), data.data(), (GLenum) usage);
-		CheckError();
+		glBufferData(Type, static_cast<GLsizeiptr>(data.size() * sizeof(T)), data.data(), static_cast<GLenum>(usage));
 		this->length = data.size() * sizeof(T);
-		this->elementCount = (GLsizei) data.size();
+		this->elementCount = static_cast<GLsizei>(data.size());
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
 		this->elementSize = sizeof(T);
 	}
@@ -231,12 +233,16 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 
 template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Type>::BufferData(const std::array<T, i>& data, BufferAccess usage)
 {
+	if (!this->buffer)
+	{
+		this->Generate();
+	}
 	if (this->buffer)
 	{
 		glBindBuffer(Type, this->buffer);
-		glBufferData(Type, (GLsizeiptr) i * sizeof(T), data.data(), (GLenum) usage);
+		glBufferData(Type, static_cast<GLsizeiptr>(i) * sizeof(T), data.data(), static_cast<GLenum>(usage));
 		this->length = i * sizeof(T);
-		this->elementCount = (GLsizei) data.size();
+		this->elementCount = static_cast<GLsizei>(data.size());
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
 		this->elementSize = sizeof(T);
 	}
@@ -249,6 +255,10 @@ template<BufferType Type> template<class T> void Buffer<Type>::BufferData(const 
 
 template<BufferType Type> template<template<class, class...> class C, class T, class... Args> inline void Buffer<Type>::BufferData(const C<T, Args...>& data, BufferAccess usage)
 {
+	if (!this->buffer)
+	{
+		this->Generate();
+	}
 	if (this->buffer)
 	{
 		std::vector<T> reserved{};
@@ -266,7 +276,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 	if (this->buffer)
 	{
 		glBindBuffer(Type, this->buffer);
-		glBufferSubData(Type, offset, (GLsizeiptr) sizeof(T), &data);
+		glBufferSubData(Type, offset, static_cast<GLsizeiptr>(sizeof(T)), &data);
 	}
 }
 
@@ -289,14 +299,18 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 {
 	if (this->buffer)
 	{
-		std::size_t total = (std::size_t) offset + sizeof(T) * data.size();
+		std::size_t total = static_cast<std::size_t>(offset) + sizeof(T) * data.size();
 		if (total > this->length)
 		{
 			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
 			return;
 		}
 		glBindBuffer(Type, this->buffer);
-		glBufferSubData(Type, offset, (GLsizeiptr) sizeof(T) * data.size(), data.data());
+		glBufferSubData(Type, offset, static_cast<GLsizeiptr>(sizeof(T)) * data.size(), data.data());
+	}
+	else
+	{
+		Log("Write attempt to Buffer SubData, but no buffer exists for the given input.");
 	}
 }
 
@@ -312,13 +326,17 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 		}
 		this->BufferSubData(std::span<const T>(reserved), offset);
 	}
+	else
+	{
+		Log("Write attempt to Buffer SubData, but no buffer exists for the given input.");
+	}
 }
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBuffers(T& buffers)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(buffers))>::type, Buffer<Type>>::value);
 	GLuint* intermediate = new GLuint[std::size(buffers)];
-	glGenBuffers((GLsizei) std::size(buffers), intermediate);
+	glGenBuffers(static_cast<GLsizei>(std::size(buffers)), intermediate);
 	for (std::size_t i = 0; i < std::size(buffers); i++)
 	{
 		buffers[i].buffer = intermediate[i];
@@ -329,7 +347,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBu
 template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBuffers(std::map<T, Buffer<Type>>& buffers)
 {
 	GLuint* intermediate = new GLuint[buffers.size()];
-	glGenBuffers((GLsizei) buffers.size(), intermediate);
+	glGenBuffers(static_cast<GLsizei>(buffers.size()), intermediate);
 	auto begin = std::begin(buffers);
 	for (std::size_t i = 0; i < buffers.size(); i++)
 	{

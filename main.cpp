@@ -1894,7 +1894,6 @@ void init()
 		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
 	*/
 
-	stickBuffer.Generate();
 	stickBuffer.BufferData(stick, StaticDraw);
 
 	std::array<TextureVertex, 4> verts{};
@@ -1912,23 +1911,18 @@ void init()
 	std::array<TangentVertex, 4> tangents{};
 	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
 
-	normalMapBuffer.Generate();
 	normalMapBuffer.BufferData(tangents, StaticDraw);
 
-	texturedPlane.Generate();
 	texturedPlane.BufferData(verts, StaticDraw);
 
-	planeBO.Generate();
 	planeBO.BufferData(plane, StaticDraw);
 
-	plainCube.Generate();
 	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0));
-	rayBuffer.Generate();
 	rayBuffer.BufferData(rays, StaticDraw);
 
 	// CREATING OF THE PLANES
@@ -1969,7 +1963,6 @@ void init()
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 
-	instanceBuffer.Generate();
 	instanceBuffer.BufferData(awfulTemp, StaticDraw);
 
 	// This sucks
@@ -1996,7 +1989,6 @@ void init()
 			textVert[i].uvs = textVert[i].uvs + glm::vec2(0.5f);
 		}
 	}
-	albertBuffer.Generate();
 	albertBuffer.BufferData(textVert, StaticDraw);
 
 	// FRAMEBUFFER SETUP
@@ -2023,10 +2015,8 @@ void init()
 	// Awkward syntax :(
 	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
 
-	stickIndicies.Generate();
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
-	cubeOutlineIndex.Generate();
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
 	smartBox.ReScale(glm::vec3(0.5f));
