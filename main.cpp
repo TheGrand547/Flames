@@ -29,6 +29,7 @@
 #include "log.h"
 #include "Model.h"
 #include "OrientedBoundingBox.h"
+#include "Pathfinding.h"
 #include "Plane.h"
 #include "Shader.h"
 #include "ScreenRect.h"
@@ -1722,6 +1723,21 @@ int main(int argc, char** argv)
 	std::cout << "Average: " << errored / iterations << std::endl;
 	std::cout << "Epsilon:" << EPSILON << std::endl;
 	*/
+	
+	std::vector<MinHeapValue<int>> fumos;
+	srand(NULL);
+	for (int i = 0; i < 10; i++)
+	{
+		fumos.push_back({ rand() , float(rand())});
+	}
+	float last = fumos.back().value;
+	for (auto& a : fumos) { std::cout << a.element << ":" << a.value << " "; }
+	std::cout << std::endl;
+	std::make_heap(fumos.begin(), fumos.end());
+	for (auto& a : fumos) { std::cout << a.element << ":" << a.value << " "; }
+	std::cout << std::endl;
+	UpdateHeap(std::span(fumos), last, -50);
+
 	int error = 0;
 	debugFlags.fill(false);
 

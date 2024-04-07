@@ -202,6 +202,7 @@
     <ClInclude Include="log.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
+    <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
