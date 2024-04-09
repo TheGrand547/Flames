@@ -1660,6 +1660,41 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 void init();
 
 
+static const std::array<const unsigned char, 36> mapData =
+{
+
+	{
+		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
+		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00,
+		0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF,
+		0x00, 0xFF, 0xFF, 0x00, 0xFF, 0xFF,
+		0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+	}
+};
+
+struct PathDummy
+{
+	unsigned char x, y;
+	std::vector<std::weak_ptr<PathDummy>> dummies;
+	std::vector<std::weak_ptr<PathDummy>> neighbors() const { return this->dummies; }
+	bool operator==(const PathDummy& other) const { return this->x == other.x && this->y == other.y; }
+	float distance(const PathDummy& other) const { return static_cast<float>(glm::sqrt(glm::pow(this->x - other.x, 2) + glm::pow(this->y - other.y, 2))); }
+};
+
+namespace std
+{
+	template<> struct hash<PathDummy>
+	{
+		size_t operator()(const PathDummy& op) const
+		{
+			return static_cast<size_t>(op.x) << 16 | static_cast<size_t>(op.y) | static_cast<size_t>((op.y << 4) ^ op.y) << 8;
+		}
+	};
+}
+float heur(const PathDummy& dum1, const PathDummy& dum2) { return dum1.distance(dum2); }
+
+
 int main(int argc, char** argv)
 {
 	/* Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
@@ -1736,7 +1771,12 @@ int main(int argc, char** argv)
 	std::make_heap(fumos.begin(), fumos.end());
 	for (auto& a : fumos) { std::cout << a.element << ":" << a.value << " "; }
 	std::cout << std::endl;
-	UpdateHeap(std::span(fumos), last, -50);
+	//UpdateHeap(std::span(fumos), last, -50);
+	auto te2 = std::make_shared<PathDummy>();
+	auto te3 = std::make_shared<PathDummy>();
+	//std::span<std::weak_ptr<PathDummy>> a(te2->neighbors());
+	AStarSearch<PathDummy>(te2, te3, heur);
+
 
 	int error = 0;
 	debugFlags.fill(false);

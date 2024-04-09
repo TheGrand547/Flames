@@ -12,15 +12,14 @@
 template<typename T> concept SearchNode = requires(const T& node, const T& node2)
 {
 	{ std::hash<T>{}(node) } -> std::convertible_to<std::size_t>;
-	{ std::distance(node, node2) } -> std::convertible_to<float>;
-	{ std::equal_to(node, node2) } -> std::convertible_to<bool>;
-	node == node2;
-	std::equal_to(node, node2);
-	std::hash<T>{}(node);
-	std::distance(node, node2);
+	{ std::equal_to<T>{}(node, node2) } -> std::convertible_to<bool>;
+	{ node.distance(node2) } -> std::convertible_to<float>;
+	{ node.neighbors() } -> std::convertible_to<std::vector<std::weak_ptr<T>>>;
 
-	{ node.neighbors() } -> std::convertible_to<std::span<std::weak_ptr<T>>>;
-	// Neighbors
+	node == node2;
+	std::equal_to<T>{}(node, node2);
+	std::hash<T>{}(node);
+	node.distance(node2);
 };
 
 template<typename T> using Heuristic = float (*)(const T&, const T&);
@@ -50,18 +49,25 @@ template<typename T, typename S = float> struct MinHeapValue : public MaxHeapVal
 };
 
 
+/*
+template<SearchNode Node> using SmartSearchNode = std::shared_ptr<Node>;
+template<SearchNode Node> using WeakSearchNode = std::weak_ptr<Node>;
+*/
+// TODO: [[nodiscard]]
 template<SearchNode Node>
-std::vector<Node> AStarSearch(const Node& start, const Node& target, Heuristic<Node> heuristic)
+std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr<Node>>> AStarSearch(const std::shared_ptr<Node>& start,
+						const std::shared_ptr<Node>& target, Heuristic<Node> heuristic)
 {
-	struct Scoring { float score = std::numeric_limits<float>::infinity; };
-	using NodeMap = std::unordered_map<Node*, Node*>;
-	using ScoreMap = std::unordered_map<Node*, Scoring>;
+	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
+	using SmartSearchNode = std::shared_ptr<Node>;
+	using NodeMap = std::unordered_map<SmartSearchNode, SmartSearchNode>;
+	using ScoreMap = std::unordered_map<SmartSearchNode, Scoring>;
 
 	// TODO: Proper thingy
 	//std::priority_queue<MaxHeapValue> open{ {start, 0.f} };
-	std::vector<MinHeapValue> openSet;
+	std::vector<MinHeapValue<SmartSearchNode>> openSet{ {start, 0.f} };
 
-	std::unordered_set<Node> closedSet;
+	std::unordered_set<SmartSearchNode> closedSet;
 
 	// std::make_heap
 	// std::push_heap
@@ -69,13 +75,18 @@ std::vector<Node> AStarSearch(const Node& start, const Node& target, Heuristic<N
 	NodeMap pathHistory{};
 
 	// gScire
-	ScoreMap cheapestPath{ {&start, 0} };
-	
+	ScoreMap cheapestPath{};
+	cheapestPath[start].score = 0;
+
+	std::vector<SmartSearchNode> nodes;
 	// fScore
-	ScoreMap bestGuess{ {&start, heuristic(start)} };
+	ScoreMap bestGuess;
+	bestGuess[start].score = heuristic(*start, *target);
 	while (openSet.size() > 0)
 	{
-		Node& current = std::pop_heap(openSet.begin(), openSet.end());
+		std::pop_heap(openSet.begin(), openSet.end());
+		SmartSearchNode current = openSet.back().element;
+		openSet.pop_back();
 		if (closedSet.find(current) != closedSet.end())
 		{
 			std::cout << "Repeat detected" << std::endl;
@@ -84,23 +95,30 @@ std::vector<Node> AStarSearch(const Node& start, const Node& target, Heuristic<N
 		if (current == target)
 		{
 			// TODO: Reconstruct
-			std::vector<Node> nodes;
-
+			while (current)
+			{
+				nodes.push_back(current);
+				current = pathHistory[current];
+			}
+			break;
 		}
 		// Front is removed from open
-		for (auto& neighbor : current.neighbors())
+		for (auto& neighbor : current->neighbors())
 		{
-			float tentative = cheapestPath[current].score + std::distance(current, neighbor);
-			if (tentative < cheapestPath[neighbor].score)
+			SmartSearchNode local = neighbor.lock();
+			if (!local)
+				continue;
+			float tentative = cheapestPath[current].score + current->distance(*local);
+			if (tentative < cheapestPath[local].score)
 			{
-				float oldGuess = bestGuess[neighbor];
-				pathHistory[neighbor] = current;
+				float oldGuess = bestGuess[local].score;
+				pathHistory[local] = current;
 				
-				float newGuess = tentative + heuristic(neighbor, target);
-				cheapestPath[neighbor].score = tentative;
-				bestGuess[neighbor].score = newGuess;
+				float newGuess = tentative + heuristic(*local, *target);
+				cheapestPath[local].score = tentative;
+				bestGuess[local].score = newGuess;
 
-				openSet.push_back({ neighbor, newGuess });
+				openSet.push_back({ local, newGuess });
 				std::push_heap(openSet.begin(), openSet.end());
 				// Duplicates *are* inserted, but we hope that they will have a high enough key value to not be sorted towards
 				// The front, simple hash key sort is performed to ensure they aren't re-explored
@@ -108,6 +126,7 @@ std::vector<Node> AStarSearch(const Node& start, const Node& target, Heuristic<N
 		}
 		closedSet.insert(current);
 	}
+	return std::make_pair(nodes, closedSet);
 }
 
 #endif // PATHFINDING_H
