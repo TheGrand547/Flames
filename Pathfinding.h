@@ -26,8 +26,6 @@ template<typename T> using Heuristic = float (*)(const T&, const T&);
 
 template<typename T, typename S = float> struct MaxHeapValue
 {
-	T element;
-	S value;
 	constexpr MaxHeapValue(T element, S value) : element(element), value(value) {}
 	constexpr ~MaxHeapValue() {}
 
@@ -37,14 +35,16 @@ template<typename T, typename S = float> struct MaxHeapValue
 	}
 };
 
-template<typename T, typename S = float> struct MinHeapValue : public MaxHeapValue<T, S>
+template<typename T, typename S = float> struct MinHeapValue
 {
-	constexpr MinHeapValue(T element, S value) : MaxHeapValue<T, S>(element, value) {}
+	T element;
+	S value;
+	constexpr MinHeapValue(T element, S value) : element(element), value(value) {} {}
 	constexpr ~MinHeapValue() {}
 
 	constexpr bool operator<(const MinHeapValue<T, S>& other) const noexcept
 	{
-		return static_cast<MaxHeapValue<T, S>>(other) < static_cast<MaxHeapValue<T, S>>(*this);
+		return other.value < this->value;
 	}
 };
 
@@ -63,22 +63,16 @@ std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr
 	using NodeMap = std::unordered_map<SmartSearchNode, SmartSearchNode>;
 	using ScoreMap = std::unordered_map<SmartSearchNode, Scoring>;
 
-	// TODO: Proper thingy
-	//std::priority_queue<MaxHeapValue> open{ {start, 0.f} };
 	std::vector<MinHeapValue<SmartSearchNode>> openSet{ {start, 0.f} };
-
 	std::unordered_set<SmartSearchNode> closedSet;
-
-	// std::make_heap
-	// std::push_heap
 
 	NodeMap pathHistory{};
 
-	// gScire
+	// gScore
 	ScoreMap cheapestPath{};
 	cheapestPath[start].score = 0;
 
-	std::vector<SmartSearchNode> nodes;
+	std::vector<SmartSearchNode> finalPath;
 	// fScore
 	ScoreMap bestGuess;
 	bestGuess[start].score = heuristic(*start, *target);
@@ -94,12 +88,13 @@ std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr
 		}
 		if (current == target)
 		{
-			// TODO: Reconstruct
 			while (current)
 			{
-				nodes.push_back(current);
+				finalPath.push_back(current);
 				current = pathHistory[current];
 			}
+			// Has to be a better way!
+			std::reverse(finalPath.begin(), finalPath.end());
 			break;
 		}
 		// Front is removed from open
@@ -126,7 +121,7 @@ std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr
 		}
 		closedSet.insert(current);
 	}
-	return std::make_pair(nodes, closedSet);
+	return std::make_pair(finalPath, closedSet);
 }
 
 #endif // PATHFINDING_H

@@ -670,7 +670,7 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	//uiRect.DrawElements(TriangleStrip, 4);
+	uiRect.DrawElements(TriangleStrip, 4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -1659,17 +1659,20 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 void init();
 
-
-static const std::array<const unsigned char, 36> mapData =
+constexpr std::size_t MapSize = 10;
+static const std::array<const unsigned char, MapSize * MapSize> mapData =
 {
-
 	{
-		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF,
-		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00,
-		0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF,
-		0x00, 0xFF, 0xFF, 0x00, 0xFF, 0xFF,
-		0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00,
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
+		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 
+		0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 
+		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
+		0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF,
+		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
+		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0x00,
+		0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00,
+		0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF,
+		0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00,
+		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
 	}
 };
 
@@ -1678,8 +1681,10 @@ struct PathDummy
 	unsigned char x, y;
 	std::vector<std::weak_ptr<PathDummy>> dummies;
 	std::vector<std::weak_ptr<PathDummy>> neighbors() const { return this->dummies; }
+	PathDummy(unsigned char x, unsigned char y) : x(x), y(y) {}
 	bool operator==(const PathDummy& other) const { return this->x == other.x && this->y == other.y; }
 	float distance(const PathDummy& other) const { return static_cast<float>(glm::sqrt(glm::pow(this->x - other.x, 2) + glm::pow(this->y - other.y, 2))); }
+	void AddNeighbor(const std::weak_ptr<PathDummy>& other) { this->dummies.push_back(other); }
 };
 
 namespace std
@@ -1758,24 +1763,6 @@ int main(int argc, char** argv)
 	std::cout << "Average: " << errored / iterations << std::endl;
 	std::cout << "Epsilon:" << EPSILON << std::endl;
 	*/
-	
-	std::vector<MinHeapValue<int>> fumos;
-	srand(NULL);
-	for (int i = 0; i < 10; i++)
-	{
-		fumos.push_back({ rand() , float(rand())});
-	}
-	float last = fumos.back().value;
-	for (auto& a : fumos) { std::cout << a.element << ":" << a.value << " "; }
-	std::cout << std::endl;
-	std::make_heap(fumos.begin(), fumos.end());
-	for (auto& a : fumos) { std::cout << a.element << ":" << a.value << " "; }
-	std::cout << std::endl;
-	//UpdateHeap(std::span(fumos), last, -50);
-	auto te2 = std::make_shared<PathDummy>();
-	auto te3 = std::make_shared<PathDummy>();
-	//std::span<std::weak_ptr<PathDummy>> a(te2->neighbors());
-	AStarSearch<PathDummy>(te2, te3, heur);
 
 
 	int error = 0;
@@ -2046,6 +2033,67 @@ void init()
 		}
 	}
 	albertBuffer.BufferData(textVert, StaticDraw);
+	std::array<unsigned char, MapSize* MapSize> copied{};
+	copied.fill(0x00);
+	std::vector<std::shared_ptr<PathDummy>> sleepers;
+	// Make Nodes
+	for (std::size_t y = 0; y < MapSize; y++)
+	{
+		for (std::size_t x = 0; x < MapSize; x++)
+		{
+			copied[x + y * MapSize] = (mapData[x + y * MapSize] == 0xFF) ? 0x80 : 0x00;
+			auto FAM = std::make_shared<PathDummy>();
+			FAM->x = x;
+			FAM->y = y;
+			sleepers.push_back(FAM);
+		}
+	}
+	// Fill Neighbors
+	for (std::size_t y = 0; y < MapSize; y++)
+	{
+		for (std::size_t x = 0; x < MapSize; x++)
+		{
+			if (mapData[x + y * MapSize] == 0xFF)
+			{
+				auto& current = sleepers[x + y * MapSize];
+				if (x > 0 && mapData[(x - 1) + y * MapSize] == 0xFF)
+				{
+					current->AddNeighbor(sleepers[(x - 1) + y * MapSize]);
+					//sleepers[(x - 1) + y * MapSize]->AddNeighbor(current);
+				}
+				if (x < (MapSize - 1) && mapData[(x + 1) + y * MapSize] == 0xFF)
+				{
+					current->AddNeighbor(sleepers[(x + 1) + y * MapSize]);
+					//sleepers[(x + 1) + y * MapSize]->AddNeighbor(current);
+				}
+				if (y > 0 && mapData[x + (y - 1) * MapSize] == 0xFF)
+				{
+					current->AddNeighbor(sleepers[x + (y - 1) * MapSize]);
+					//sleepers[x + (y - 1) * MapSize]->AddNeighbor(current);
+				}
+				if (y < (MapSize - 1) && mapData[x + (y + 1) * MapSize] == 0xFF)
+				{
+					current->AddNeighbor(sleepers[x + (y + 1) * MapSize]);
+					//sleepers[x + (y + 1) * MapSize]->AddNeighbor(current);
+				}
+			}
+		}
+	}
+	auto& te2 = sleepers[0];
+	auto& te3 = sleepers.back();
+	//std::span<std::weak_ptr<PathDummy>> a(te2->neighbors());
+	auto losers = AStarSearch<PathDummy>(te2, te3, heur);
+	for (auto& flam : losers.second)
+	{
+		copied[flam->x + MapSize * flam->y] = 0xC0;
+	}
+	for (auto& flam : losers.first)
+	{
+		copied[flam->x + MapSize * flam->y] = 0xFF;
+		//std::cout << static_cast<unsigned int>(flam->x) << ":" << static_cast<unsigned int>(flam->y) << std::endl;
+	}
+	buttonB.Load(copied, InternalRed, FormatRed, DataUnsignedByte);
+
 
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
@@ -2096,7 +2144,7 @@ void init()
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	fonter.Render(buttonA, glm::vec2(), "Soft");
-	fonter.Render(buttonB, glm::vec2(), "Not");
+	//fonter.Render(buttonB, glm::vec2(), "Not");
 	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
