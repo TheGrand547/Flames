@@ -22,10 +22,17 @@ template<typename T> concept SearchNode = requires(const T& node, const T& node2
 	node.distance(node2);
 };
 
-template<typename T> using Heuristic = float (*)(const T&, const T&);
+template<typename T, typename W> concept HeuristicFunction = requires(T func, const W& a, const W& b)// std::convertible_to<std::function<float(const W&, const W&)>, T>;
+{
+	{ func(a, b) } -> std::convertible_to<float>;
+};
+
+template<typename T> using Heuristic_ = float (*)(const T&, const T&);
 
 template<typename T, typename S = float> struct MaxHeapValue
 {
+	T element;
+	S value;
 	constexpr MaxHeapValue(T element, S value) : element(element), value(value) {}
 	constexpr ~MaxHeapValue() {}
 
@@ -39,7 +46,7 @@ template<typename T, typename S = float> struct MinHeapValue
 {
 	T element;
 	S value;
-	constexpr MinHeapValue(T element, S value) : element(element), value(value) {} {}
+	constexpr MinHeapValue(T element, S value) : element(element), value(value) {}
 	constexpr ~MinHeapValue() {}
 
 	constexpr bool operator<(const MinHeapValue<T, S>& other) const noexcept
@@ -54,9 +61,10 @@ template<SearchNode Node> using SmartSearchNode = std::shared_ptr<Node>;
 template<SearchNode Node> using WeakSearchNode = std::weak_ptr<Node>;
 */
 // TODO: [[nodiscard]]
-template<SearchNode Node>
+template<SearchNode Node, typename T>
+	requires HeuristicFunction<T, Node>
 std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr<Node>>> AStarSearch(const std::shared_ptr<Node>& start,
-						const std::shared_ptr<Node>& target, Heuristic<Node> heuristic)
+						const std::shared_ptr<Node>& target, T heuristic)
 {
 	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
 	using SmartSearchNode = std::shared_ptr<Node>;

@@ -1681,7 +1681,7 @@ struct PathDummy
 	unsigned char x, y;
 	std::vector<std::weak_ptr<PathDummy>> dummies;
 	std::vector<std::weak_ptr<PathDummy>> neighbors() const { return this->dummies; }
-	PathDummy(unsigned char x, unsigned char y) : x(x), y(y) {}
+	constexpr PathDummy(unsigned char x = 0, unsigned char y = 0) : x(x), y(y) {}
 	bool operator==(const PathDummy& other) const { return this->x == other.x && this->y == other.y; }
 	float distance(const PathDummy& other) const { return static_cast<float>(glm::sqrt(glm::pow(this->x - other.x, 2) + glm::pow(this->y - other.y, 2))); }
 	void AddNeighbor(const std::weak_ptr<PathDummy>& other) { this->dummies.push_back(other); }
@@ -2043,8 +2043,8 @@ void init()
 		{
 			copied[x + y * MapSize] = (mapData[x + y * MapSize] == 0xFF) ? 0x80 : 0x00;
 			auto FAM = std::make_shared<PathDummy>();
-			FAM->x = x;
-			FAM->y = y;
+			FAM->x = static_cast<unsigned char>(x);
+			FAM->y = static_cast<unsigned char>(y);
 			sleepers.push_back(FAM);
 		}
 	}
@@ -2082,7 +2082,8 @@ void init()
 	auto& te2 = sleepers[0];
 	auto& te3 = sleepers.back();
 	//std::span<std::weak_ptr<PathDummy>> a(te2->neighbors());
-	auto losers = AStarSearch<PathDummy>(te2, te3, heur);
+	//auto losers = AStarSearch<PathDummy>(te2, te3, heur);
+	auto losers = AStarSearch<PathDummy>(te2, te3, [](const PathDummy& a, const PathDummy& b) {return 0.f; });
 	for (auto& flam : losers.second)
 	{
 		copied[flam->x + MapSize * flam->y] = 0xC0;
