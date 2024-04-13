@@ -398,13 +398,25 @@ inline constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& ot
 constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const
 {
 	std::array<glm::vec3, 15> separatingAxes{};
+	glm::mat3 dotProducts{-9};
 	for (glm::length_t i = 0; i < 3; i++)
 	{
-		separatingAxes[(std::size_t) i * 5] = this->matrix[i];
-		separatingAxes[(std::size_t) i * 5 + 1] = other.matrix[i];
+		separatingAxes[static_cast<std::size_t>(i) * 5] = this->matrix[i];
+		separatingAxes[static_cast<std::size_t>(i) * 5 + 1] = other.matrix[i];
 		for (glm::length_t j = 0; j < 3; j++)
 		{
-			separatingAxes[(std::size_t) i * 5 + 2 + j] = glm::normalize(glm::cross(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j])));
+			glm::vec3 length = glm::cross(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j]));
+			separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = glm::normalize(length);
+			if (glm::all(glm::lessThan(glm::abs(length), glm::vec3(EPSILON))))
+			{
+				//std::cout << "Got a Gremlin: " << length << std::endl;
+				separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = glm::vec3(0); // trash the axis if too aligned
+			}
+			dotProducts[i][j] = glm::abs(glm::dot(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j])));
+		}
+		if (!std::is_constant_evaluated())
+		{
+			std::cout << this->matrix[i] << std::endl;
 		}
 	}
 	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
@@ -416,11 +428,113 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 		glm::vec3 axis = separatingAxes[i];
 		float left = glm::abs(glm::dot(axis, delta));
 		float right = 0;
+		glm::length_t truncatedIndex = i % 5;
+		glm::length_t axialIndex = i / 5;
+
+		float testing = 0.f;
+		if (truncatedIndex == 0) // Axis from this OBB
+		{
+			testing = this->halfs[axialIndex] + other.halfs[0] * dotProducts[axialIndex][0] + other.halfs[1] * dotProducts[axialIndex][1]
+				+ other.halfs[2] * dotProducts[axialIndex][2];
+		}
+		else if (truncatedIndex == 1) // Axis from other OBB
+		{
+			testing = other.halfs[axialIndex] + this->halfs[0] * dotProducts[0][axialIndex] + this->halfs[1] * dotProducts[1][axialIndex]
+				+ this->halfs[2] * dotProducts[2][axialIndex];
+		}
+		else
+		{
+			//glm::length_t indexLookUp[3][2] = { {2, 1}, {2, 0}, { 1, 0} };
+			glm::mat<3,2, glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
+			 
+			// Truncated index is [2,4], map to [0, 2]
+			// Axis is this[axialIndex] cross other[truncatedIndex - 2]
+			truncatedIndex -= 2;
+
+			glm::length_t myIndex[2] = { indexLookUp[axialIndex][0], indexLookUp[axialIndex][1]};
+			glm::length_t otIndex[2] = { indexLookUp[truncatedIndex][0], indexLookUp[truncatedIndex][1]};
+			if (!std::is_constant_evaluated())
+			{
+				if (truncatedIndex >= 0)
+				{
+					/*
+					std::cout << "Index i: " << i << std::endl;
+					std::cout << axialIndex << ":" << myIndex[0] << ":" << myIndex[1] << std::endl;
+					std::cout << truncatedIndex << ":" << otIndex[0] << ":" << otIndex[1] << std::endl;
+					
+					std::cout << dotProducts[myIndex[1]][truncatedIndex] << ":" << dotProducts[myIndex[0]][truncatedIndex] << std::endl;
+					std::cout << dotProducts[axialIndex][otIndex[1]] << ":" << dotProducts[axialIndex][otIndex[0]] << std::endl;
+					std::cout << this->halfs << ":" << other.halfs << std::endl;
+					*/
+				}
+			}
+			testing += this->halfs[myIndex[0]] * (dotProducts[myIndex[1]])[truncatedIndex] +
+				this->halfs[myIndex[1]] * (dotProducts[myIndex[0]])[truncatedIndex];
+
+			testing += other.halfs[otIndex[0]] * (dotProducts[axialIndex])[otIndex[1]] +
+				other.halfs[otIndex[1]] * (dotProducts[axialIndex])[otIndex[0]];
+			truncatedIndex += 2;
+		}
 
 		for (glm::length_t i = 0; i < 3; i++)
 		{
 			right += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
 			right += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
+		}
+
+		if (!std::is_constant_evaluated())
+		{
+			if (glm::abs(right - testing) > EPSILON)
+			{
+				std::cout <<"Error: " <<  i << ":" << axialIndex << ":" << truncatedIndex << ":" << axis << ":" << right << "\t" << testing << std::endl;
+				/*
+				glm::mat<3, 2, glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
+				glm::mat<3, 3, glm::length_t> indexLookUp2{ {0, 2, 1}, {2, 1, 0}, { 1, 0, 2} };
+
+				// Truncated index is [2,4], map to [0, 2]
+				// Axis is this[axialIndex] cross other[truncatedIndex - 2]
+				truncatedIndex -= 2;
+
+				glm::length_t myIndex[2] = { indexLookUp[axialIndex][0], indexLookUp[axialIndex][1] };
+				glm::length_t otIndex[2] = { indexLookUp[truncatedIndex][0], indexLookUp[truncatedIndex][1] };
+				if (!std::is_constant_evaluated())
+				{
+					if (truncatedIndex >= 0)
+					{
+
+						//std::cout << axialIndex << ":" << myIndex[0] << ":" << myIndex[1] << std::endl;
+						//std::cout << truncatedIndex << ":" << otIndex[0] << ":" << otIndex[1] << std::endl << ">" << std::endl;
+
+						std::cout << dotProducts[axialIndex][truncatedIndex] << std::endl;
+
+						float fops = 0;
+						for (glm::length_t i = 0; i < 3; i++)
+						{
+							float im = glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
+							fops += im;
+							//std::cout << im << ":";
+							if (i == axialIndex)
+							{
+								//std::cout << "0" << std::endl;
+							}
+							if (im > EPSILON)
+							{
+								std::cout << axis << "->" << glm::normalize(this->matrix[axialIndex]) << ":" << glm::normalize(other.matrix[truncatedIndex]) << std::endl;
+								std::cout << glm::cross(glm::vec3(this->matrix[axialIndex]), glm::normalize(glm::vec3(other.matrix[truncatedIndex]))) << std::endl;
+								std::cout << glm::normalize(glm::cross(glm::vec3(this->matrix[axialIndex]), glm::vec3(other.matrix[truncatedIndex]))) << std::endl;
+								std::cout <<  dotProducts[indexLookUp2[axialIndex][i]][truncatedIndex] << std::endl;
+								std::cout << this->matrix[indexLookUp2[axialIndex][i]] << ":" << other.matrix[truncatedIndex] << std::endl << std::endl;
+							}
+							//std::cout << i << ":" <<  indexLookUp2[axialIndex][i] << std::endl;
+						}
+						std::cout << dotProducts[2] << std::endl;
+						std::cout << "Correct(mine): " << fops << std::endl;
+						std::cout << this->halfs << ":" << other.halfs << std::endl;
+						
+					}
+				}
+				*/
+			}
 		}
 		// This axis is a separating one 
 		if (left > right)

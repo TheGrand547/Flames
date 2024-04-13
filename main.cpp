@@ -320,6 +320,8 @@ struct Bullet
 };
 
 std::vector<Bullet> bullets;
+// TODO: Look into GLM_FORCE_INTRINSICS
+
 
 /*
 New shading outputs
@@ -813,28 +815,37 @@ void smartBoxAlignFace(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::l
 	glm::vec3 newMost = axis;                              // goes in smartbox[maxDotI]
 	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
 
+	std::cout << minDotI << ":" << maxDotI << std::endl;
+
 	glm::length_t leastD = minDotI;
 	glm::length_t mostD = maxDotI;
 	glm::length_t newD = 3 - leastD - mostD;
-	least *= glm::sign(glm::dot(least, goobers[minDotI]));
-	newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
-	newest *= glm::sign(glm::dot(newest, goobers[newD]));
-
-	glm::mat3 lame{};
-	lame[leastD] = least;
-	lame[mostD] = newMost;
-	lame[newD] = newest;
-	glm::quat older = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
-	glm::quat newer = glm::normalize(glm::quat_cast(lame));
-	float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-	float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-	
-	// ?
-	//if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
-	if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+	if (newD != 3)
 	{
-		// Slerp interpolates along the shortest axis on the great circle
-		smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
+		least *= glm::sign(glm::dot(least, goobers[minDotI]));
+		newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
+		newest *= glm::sign(glm::dot(newest, goobers[newD]));
+
+		glm::mat3 lame{};
+		lame[leastD] = least;
+		lame[mostD] = newMost;
+		lame[newD] = newest;
+		glm::quat older = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
+		glm::quat newer = glm::normalize(glm::quat_cast(lame));
+		float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
+		float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
+
+		// ?
+		//if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
+		if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
+		{
+			// Slerp interpolates along the shortest axis on the great circle
+			smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
+		}
+	}
+	else
+	{
+		std::cout << "Something went horribly wrong" << std::endl;
 	}
 }
 
@@ -1735,6 +1746,7 @@ int main(int argc, char** argv)
 	*/
 
 	/* This is proof that dot of sum is equal to sum of dots, can be used to speed up OBB tests
+	// This is wrong dumbass
 	glm::vec3 a{}, b{}, c{}, d{}, ax{};
 	float errored = 0.f;
 	float maxError = 0.f;
@@ -1744,18 +1756,25 @@ int main(int argc, char** argv)
 		a = glm::sphericalRand(1.);
 		b = glm::normalize(glm::cross(glm::vec3(0, 1, 0), a));
 		c = glm::normalize(glm::cross(a, b));
+
+		a *= glm::linearRand(0.05f, 100.f);
+		b *= glm::linearRand(0.05f, 100.f);
+		c *= glm::linearRand(0.05f, 100.f);
+
 		d = a + b + c;
 		ax = glm::sphericalRand(1.);
 
 		float dot = glm::abs(glm::dot(ax, d));
 		//std::cout << dot << ":";
 		float dotter = 0.;
-		dotter += (glm::dot(ax, a));
-		dotter += (glm::dot(ax, b));
-		dotter += (glm::dot(ax, c));
+		dotter += glm::abs(glm::dot(ax, a));
+		dotter += glm::abs(glm::dot(ax, b));
+		dotter += glm::abs(glm::dot(ax, c));
 		//std::cout << glm::abs(dotter) << std::endl;
+		if (glm::abs(dot - glm::abs(dotter)) > 1)
+			std::cout << ax << ":" << dotter << ":" << dot << std::endl;
 		dot = dot - glm::abs(dotter);
-		std::cout << abs(dot) << std::endl;
+		//std::cout << abs(dot) << std::endl;
 		maxError = glm::max(glm::abs(dot), maxError);
 		errored += glm::abs(dot);
 	}
@@ -1967,13 +1986,28 @@ void init()
 	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0));
 	rayBuffer.BufferData(rays, StaticDraw);
-
 	// CREATING OF THE PLANES
 
 	for (int i = -5; i <= 5; i++)
 	{
 		if (abs(i) <= 1)
 			continue;
+		if (abs(i) == 3)
+		{
+			CombineVector(planes, GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY));
+			CombineVector(planes, GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY));
+
+			CombineVector(planes, GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY));
+			CombineVector(planes, GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY));
+			for (int x = -2; x <= 2; x++)
+			{
+				if (x == 0)
+					continue;
+				CombineVector(planes, GetHallway(glm::vec3(2 * x, 0, 2 * i), false));
+				CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 2 * x), true));
+			}
+			continue;
+		}
 		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
 		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
 	}
@@ -2081,9 +2115,8 @@ void init()
 	}
 	auto& te2 = sleepers[0];
 	auto& te3 = sleepers.back();
-	//std::span<std::weak_ptr<PathDummy>> a(te2->neighbors());
-	//auto losers = AStarSearch<PathDummy>(te2, te3, heur);
-	auto losers = AStarSearch<PathDummy>(te2, te3, [](const PathDummy& a, const PathDummy& b) {return 0.f; });
+	auto losers = AStarSearch<PathDummy>(te2, te3, heur);
+	//auto losers = AStarSearch<PathDummy>(te2, te3, [](const PathDummy& a, const PathDummy& b) {return 0.f; });
 	for (auto& flam : losers.second)
 	{
 		copied[flam->x + MapSize * flam->y] = 0xC0;

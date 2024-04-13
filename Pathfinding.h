@@ -22,12 +22,10 @@ template<typename T> concept SearchNode = requires(const T& node, const T& node2
 	node.distance(node2);
 };
 
-template<typename T, typename W> concept HeuristicFunction = requires(T func, const W& a, const W& b)// std::convertible_to<std::function<float(const W&, const W&)>, T>;
+template<typename T, typename W> concept HeuristicFunction = requires(T func, const W& a, const W& b)
 {
 	{ func(a, b) } -> std::convertible_to<float>;
 };
-
-template<typename T> using Heuristic_ = float (*)(const T&, const T&);
 
 template<typename T, typename S = float> struct MaxHeapValue
 {
@@ -55,11 +53,6 @@ template<typename T, typename S = float> struct MinHeapValue
 	}
 };
 
-
-/*
-template<SearchNode Node> using SmartSearchNode = std::shared_ptr<Node>;
-template<SearchNode Node> using WeakSearchNode = std::weak_ptr<Node>;
-*/
 // TODO: [[nodiscard]]
 template<SearchNode Node, typename T>
 	requires HeuristicFunction<T, Node>
