@@ -815,7 +815,7 @@ void smartBoxAlignFace(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::l
 	glm::vec3 newMost = axis;                              // goes in smartbox[maxDotI]
 	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
 
-	std::cout << minDotI << ":" << maxDotI << std::endl;
+	//std::cout << minDotI << ":" << maxDotI << std::endl;
 
 	glm::length_t leastD = minDotI;
 	glm::length_t mostD = maxDotI;

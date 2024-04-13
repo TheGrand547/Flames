@@ -410,13 +410,18 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 			if (glm::all(glm::lessThan(glm::abs(length), glm::vec3(EPSILON))))
 			{
 				//std::cout << "Got a Gremlin: " << length << std::endl;
-				separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = glm::vec3(0); // trash the axis if too aligned
+				//separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = glm::vec3(0); // trash the axis if too aligned
 			}
 			dotProducts[i][j] = glm::abs(glm::dot(glm::vec3(this->matrix[i]), glm::vec3(other.matrix[j])));
+			if (glm::abs(1 - dotProducts[i][j]) < EPSILON)
+			{
+				//std::cout << "Gremlin detected:" << this->matrix[i] << ":" << other.matrix[j] << std::endl;
+				separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = glm::vec3(0);
+			}
 		}
 		if (!std::is_constant_evaluated())
 		{
-			std::cout << this->matrix[i] << std::endl;
+			//std::cout << this->matrix[i] << std::endl;
 		}
 	}
 	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
@@ -487,7 +492,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 			if (glm::abs(right - testing) > EPSILON)
 			{
 				std::cout <<"Error: " <<  i << ":" << axialIndex << ":" << truncatedIndex << ":" << axis << ":" << right << "\t" << testing << std::endl;
-				/*
+				
 				glm::mat<3, 2, glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
 				glm::mat<3, 3, glm::length_t> indexLookUp2{ {0, 2, 1}, {2, 1, 0}, { 1, 0, 2} };
 
@@ -511,19 +516,26 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 						for (glm::length_t i = 0; i < 3; i++)
 						{
 							float im = glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
-							fops += im;
+							float im2 = glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
+							fops += im + im2;
 							//std::cout << im << ":";
 							if (i == axialIndex)
 							{
 								//std::cout << "0" << std::endl;
 							}
-							if (im > EPSILON)
+							if (im > EPSILON || im2 > EPSILON)
 							{
-								std::cout << axis << "->" << glm::normalize(this->matrix[axialIndex]) << ":" << glm::normalize(other.matrix[truncatedIndex]) << std::endl;
+								std::cout << axis << "->" << glm::normalize(this->matrix[axialIndex]) << ":" << other.matrix[truncatedIndex] << std::endl;
+								std::cout << "True:False\t" << im << ":" << dotProducts[indexLookUp2[axialIndex][i]][truncatedIndex] * this->halfs[i]<< std::endl;
+								std::cout << "True:False\t" << im2 << ":" << dotProducts[axialIndex][indexLookUp2[truncatedIndex][i]] * other.halfs[i]<< std::endl;
+								std::cout << "Proper Projection: " << this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis) << std::endl;
+								std::cout << "Proper Projection: " << other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis) << std::endl;
+									/*
 								std::cout << glm::cross(glm::vec3(this->matrix[axialIndex]), glm::normalize(glm::vec3(other.matrix[truncatedIndex]))) << std::endl;
 								std::cout << glm::normalize(glm::cross(glm::vec3(this->matrix[axialIndex]), glm::vec3(other.matrix[truncatedIndex]))) << std::endl;
 								std::cout <<  dotProducts[indexLookUp2[axialIndex][i]][truncatedIndex] << std::endl;
 								std::cout << this->matrix[indexLookUp2[axialIndex][i]] << ":" << other.matrix[truncatedIndex] << std::endl << std::endl;
+								*/
 							}
 							//std::cout << i << ":" <<  indexLookUp2[axialIndex][i] << std::endl;
 						}
@@ -533,7 +545,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 						
 					}
 				}
-				*/
+				
 			}
 		}
 		// This axis is a separating one 
