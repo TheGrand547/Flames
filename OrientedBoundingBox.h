@@ -397,8 +397,9 @@ inline constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& ot
 
 constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const
 {
+	const glm::mat<3, 2, const glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
 	std::array<glm::vec3, 15> separatingAxes{};
-	glm::mat3 dotProducts{-9};
+	glm::mat3 dotProducts{};
 	glm::mat3 crossLengths{};
 	for (glm::length_t i = 0; i < 3; i++)
 	{
@@ -408,86 +409,91 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 		for (glm::length_t j = 0; j < 3; j++)
 		{
 			glm::vec3 otherAxis = other.matrix[j];
-
 			glm::vec3 crossResult = glm::cross(myAxis, glm::vec3(otherAxis));
+
 			float crossLength = 1.f / glm::length(crossResult);
 			separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = crossResult * crossLength;
+
 			dotProducts[i][j] = glm::abs(glm::dot(myAxis, otherAxis));
 			crossLengths[i][j] = crossLength;
 		}
 	}
 	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
-	glm::vec3 delta = this->Center() - other.Center();
+	const glm::vec3 delta = this->Center() - other.Center();
 	result.distance = INFINITY;
 	glm::length_t index = 0;
 	for (glm::length_t i = 0; i < separatingAxes.size(); i++)
 	{
 		glm::vec3 axis = separatingAxes[i];
-		float left = glm::abs(glm::dot(axis, delta));
-		float right = 0;
+		const float deltaProjection = glm::abs(glm::dot(axis, delta));
+		float obbProjections = 0;
 		glm::length_t truncatedIndex = i % 5;
 		glm::length_t axialIndex = i / 5;
 
-		float testing = 0.f;
 		if (truncatedIndex == 0) // Axis from this OBB
 		{
-			testing = this->halfs[axialIndex] + other.halfs[0] * dotProducts[axialIndex][0] + other.halfs[1] * dotProducts[axialIndex][1]
+			obbProjections = this->halfs[axialIndex] + other.halfs[0] * dotProducts[axialIndex][0] + other.halfs[1] * dotProducts[axialIndex][1]
 				+ other.halfs[2] * dotProducts[axialIndex][2];
 		}
-		else if (truncatedIndex == 1) // Axis from other OBB
+		else if (truncatedIndex == 1) // Axis from the other OBB
 		{
-			testing = other.halfs[axialIndex] + this->halfs[0] * dotProducts[0][axialIndex] + this->halfs[1] * dotProducts[1][axialIndex]
+			obbProjections = other.halfs[axialIndex] + this->halfs[0] * dotProducts[0][axialIndex] + this->halfs[1] * dotProducts[1][axialIndex]
 				+ this->halfs[2] * dotProducts[2][axialIndex];
 		}
 		else
-		{
-			//glm::length_t indexLookUp[3][2] = { {2, 1}, {2, 0}, { 1, 0} };
-			glm::mat<3,2, glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
-			 
+		{	 
 			// Truncated index is [2,4], map to [0, 2]
 			// Axis is this[axialIndex] cross other[truncatedIndex - 2]
 			truncatedIndex -= 2;
 
 			glm::length_t myIndex[2] = { indexLookUp[axialIndex][0], indexLookUp[axialIndex][1]};
-			glm::length_t otIndex[2] = { indexLookUp[truncatedIndex][0], indexLookUp[truncatedIndex][1]};
-			float length = crossLengths[axialIndex][truncatedIndex];//1.f / glm::length(glm::cross((*this)[axialIndex], other[truncatedIndex]));
-			testing += this->halfs[myIndex[0]] * (dotProducts[myIndex[1]])[truncatedIndex] +
+			glm::length_t otherIndex[2] = { indexLookUp[truncatedIndex][0], indexLookUp[truncatedIndex][1]};
+
+			obbProjections += this->halfs[myIndex[0]] * (dotProducts[myIndex[1]])[truncatedIndex] +
 				this->halfs[myIndex[1]] * (dotProducts[myIndex[0]])[truncatedIndex];
 
-			testing += other.halfs[otIndex[0]] * (dotProducts[axialIndex])[otIndex[1]] +
-				other.halfs[otIndex[1]] * (dotProducts[axialIndex])[otIndex[0]];
-			testing *= length;
+			obbProjections += other.halfs[otherIndex[0]] * (dotProducts[axialIndex])[otherIndex[1]] +
+				other.halfs[otherIndex[1]] * (dotProducts[axialIndex])[otherIndex[0]];
+			obbProjections *= crossLengths[axialIndex][truncatedIndex];
 			truncatedIndex += 2;
 		}
 
+		// In Case of Collision Whackiness break glass
+		/*
 		for (glm::length_t i = 0; i < 3; i++)
 		{
-			right += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
-			right += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
+			obbProjections += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
+			obbProjections += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
 		}
 
 		if (!std::is_constant_evaluated())
 		{
-			if (glm::abs(right - testing) > EPSILON)
+			if (glm::abs(obbProjections - testing) > EPSILON)
 			{
 				std::cout <<"Error in OBB Optimization: " <<  i << ":" << axialIndex << 
-					":" << truncatedIndex << ":" << axis << ":" << right << "\t" << testing << std::endl;
+					":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << testing << std::endl;
 			}
 		}
+		*/
+		const float overlap = obbProjections - deltaProjection;
 		// This axis is a separating one 
-		if (left > right)
+		if (deltaProjection > obbProjections)
 		{
 			return false;
 		}
-		if (result.distance > right - left)
+		// Find the minimum axis projection
+		if (result.distance > overlap)
 		{
 			index = i;
-			result.distance = right - left;
+			result.distance = overlap;
 		}
 	}
-	glm::vec3 normdir = glm::normalize(delta); // direction here -> there
-	// This is where *my* center needs to go to be not intersecting
-	result.normal = separatingAxes[index] * glm::sign(glm::dot(normdir, separatingAxes[index]));
+	// Annoying warning from implying index might not satisfy 0 <= index <= 15 - 1, when it can only be one of them
+	// Result.normal is the direction this OBB needs to head to escape collision
+
+#pragma warning( disable : 28020 )
+	result.normal = separatingAxes[index] * glm::sign(glm::dot(delta, separatingAxes[index]));
+#pragma warning( enable : 28020 )
 	result.point = this->Center() + result.distance * result.normal;
 	return true;
 }
