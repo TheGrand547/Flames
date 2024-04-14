@@ -1783,6 +1783,36 @@ int main(int argc, char** argv)
 	std::cout << "Epsilon:" << EPSILON << std::endl;
 	*/
 
+	glm::vec3 a{}, b{}, c{}, d{}, ax{};
+	float errored = 0.f;
+	float maxError = 0.f;
+	int iterations = 1;
+	for (int i = 0; i < iterations; i++)
+	{
+		a = glm::normalize(glm::sphericalRand(1.f));
+		b = glm::normalize(glm::sphericalRand(1.f));
+		c = glm::normalize(glm::sphericalRand(1.f));
+
+		/*
+		a *= glm::linearRand(0.05f, 100.f);
+		b *= glm::linearRand(0.05f, 100.f);
+		c *= glm::linearRand(0.05f, 100.f);
+		*/
+		ax = glm::sphericalRand(1.);
+
+		float original = glm::abs(glm::dot((glm::cross(a, b)), c));
+		//std::cout << dot << ":";
+		float dotter = glm::abs(glm::dot(a, (glm::cross(b, c))));
+		
+		original = original - glm::abs(dotter);
+		//std::cout << abs(dot) << std::endl;
+		maxError = glm::max(glm::abs(original), maxError);
+		errored += glm::abs(original);
+	}
+	std::cout << "Max: " << maxError << std::endl;
+	std::cout << "Average: " << errored / iterations << std::endl;
+	std::cout << "Epsilon:" << EPSILON << std::endl;
+	//return 0;
 
 	int error = 0;
 	debugFlags.fill(false);
