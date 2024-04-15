@@ -9,7 +9,9 @@ layout(std140) uniform Camera
 	mat4 Projection;
 };
 
+uniform float Scale;
+
 void main()
 {
-	gl_Position = Projection * View * vec4(vPos + Position, 1.0);
+	gl_Position = Projection * View * vec4(Scale * vPos + Position, 1.0);
 }

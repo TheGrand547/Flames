@@ -192,6 +192,7 @@ ASCIIFont fonter;
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
+Buffer<ArrayBuffer> pathNodePositions;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -204,7 +205,7 @@ ColorFrameBuffer scratchSpace;
 // Shaders
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 
-Shader stencilTest;
+Shader pathNodeView, stencilTest;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -212,7 +213,7 @@ Texture2D buttonA, buttonB;
 CubeMap mapper;
 
 // Vertex Array Objects
-VAO fontVAO, instanceVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
+VAO fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -360,6 +361,7 @@ void display()
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
 
+	
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
@@ -376,8 +378,19 @@ void display()
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei) planes.size());
-	//EnableGLFeatures<Blending>();
+	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(planes.size()));
+
+	EnableGLFeatures<Blending>();
+	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+	pathNodeView.SetActiveShader();
+	pathNodeVAO.BindArrayObject();
+	pathNodeVAO.BindArrayBuffer(plainCube, 0);
+	pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
+	pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
+	pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
+	//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
+	glDrawElementsInstanced(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data(), pathNodePositions.GetElementCount());
+	glDepthMask(GL_TRUE); // Disable writing to the depth buffer
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -406,6 +419,7 @@ void display()
 	//ground.DrawElements<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
+
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -1844,6 +1858,7 @@ void init()
 	flatLighting.CompileSimple("lightflat");
 	frameShader.CompileSimple("framebuffer");
 	instancing.CompileSimple("instance");
+	pathNodeView.CompileSimple("path_node");
 	sphereMesh.CompileSimple("mesh");
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
@@ -1858,8 +1873,8 @@ void init()
 	flatLighting.UniformBlockBinding("Camera", 0);
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
+	pathNodeView.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
-
 	stencilTest.UniformBlockBinding("Camera", 0);
 
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
@@ -1872,6 +1887,9 @@ void init()
 	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
 	instanceVAO.ArrayFormat<glm::mat4>(instancing, 1, 1);
 	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
+
+	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
+	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 
 	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
 
@@ -1942,6 +1960,8 @@ void init()
 
 	plainCube.BufferData(plainCubeVerts, StaticDraw);
 
+	std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
+	pathNodePositions.BufferData(funnys, StaticDraw);
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};

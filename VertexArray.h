@@ -36,6 +36,9 @@ public:
 	// TODO: Standardize the indices so the shader is unnecessary
 	template<class V> inline void ArrayFormat(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 
+	template<class V> inline void ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint = 0, 
+		GLuint bindingDivisor = 0, GLuint relativeOffset = 0);
+
 	template<typename T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
 };
@@ -187,6 +190,36 @@ template<> inline void VertexArray::ArrayFormat<glm::mat4>(Shader& shader, GLuin
 	glEnableVertexAttribArray(shader.Index("Model") + 3);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(glm::mat4);
+}
+
+template<class V> inline void VertexArray::ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint, GLuint bindingDivisor, GLuint relativeOffset)
+{
+	if (!this->array) this->Generate();
+	glBindVertexArray(this->array);
+	// TODO: more of these
+	if constexpr (std::is_same_v<V, glm::vec1>)
+	{
+		glVertexAttribFormat(shader.Index(name), 1, GL_FLOAT, GL_FALSE, relativeOffset);
+	}
+	if constexpr (std::is_same_v<V, glm::vec2>)
+	{
+		glVertexAttribFormat(shader.Index(name), 2, GL_FLOAT, GL_FALSE, relativeOffset);
+	}
+	if constexpr (std::is_same_v<V, glm::vec3>)
+	{
+		glVertexAttribFormat(shader.Index(name), 3, GL_FLOAT, GL_FALSE, relativeOffset);
+	}
+	if constexpr (std::is_same_v<V, glm::vec4>)
+	{
+		glVertexAttribFormat(shader.Index(name), 4, GL_FLOAT, GL_FALSE, relativeOffset);
+	}
+	glVertexAttribBinding(shader.Index(name), bindingPoint);
+	glEnableVertexAttribArray(shader.Index(name));
+	glVertexBindingDivisor(bindingPoint, bindingDivisor);
+	if (!relativeOffset)
+	{
+		this->strides[bindingPoint] = sizeof(V);
+	}
 }
 
 template<class T> static void VertexArray::GenerateArrays(T& arrays)
