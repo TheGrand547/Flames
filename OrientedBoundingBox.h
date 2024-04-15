@@ -432,8 +432,12 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 
 		if (truncatedIndex == 0) // Axis from this OBB
 		{
+			/*
 			obbProjections = this->halfs[axialIndex] + other.halfs[0] * dotProducts[axialIndex][0] + other.halfs[1] * dotProducts[axialIndex][1]
 				+ other.halfs[2] * dotProducts[axialIndex][2];
+				*/
+			// I think this is correct?
+			obbProjections = this->halfs[axialIndex] + glm::dot(other.halfs, dotProducts[axialIndex]);
 		}
 		else if (truncatedIndex == 1) // Axis from the other OBB
 		{
@@ -446,14 +450,15 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 			// Axis is this[axialIndex] cross other[truncatedIndex - 2]
 			truncatedIndex -= 2;
 
-			glm::length_t myIndex[2] = { indexLookUp[axialIndex][0], indexLookUp[axialIndex][1]};
-			glm::length_t otherIndex[2] = { indexLookUp[truncatedIndex][0], indexLookUp[truncatedIndex][1]};
+			glm::length_t firstPairA = indexLookUp[axialIndex][0], firstPairB = indexLookUp[axialIndex][1];
+			glm::length_t secondPairA = indexLookUp[truncatedIndex][0], secondPairB = indexLookUp[truncatedIndex][1];
 
-			obbProjections += this->halfs[myIndex[0]] * (dotProducts[myIndex[1]])[truncatedIndex] +
-				this->halfs[myIndex[1]] * (dotProducts[myIndex[0]])[truncatedIndex];
 
-			obbProjections += other.halfs[otherIndex[0]] * (dotProducts[axialIndex])[otherIndex[1]] +
-				other.halfs[otherIndex[1]] * (dotProducts[axialIndex])[otherIndex[0]];
+			obbProjections += this->halfs[firstPairA] * dotProducts[firstPairB][truncatedIndex] +
+				this->halfs[firstPairB] * dotProducts[firstPairA][truncatedIndex];
+
+			obbProjections += other.halfs[secondPairA] * dotProducts[axialIndex][secondPairB] +
+				other.halfs[secondPairB] * dotProducts[axialIndex][secondPairA];
 			obbProjections *= crossLengths[axialIndex][truncatedIndex];
 			truncatedIndex += 2;
 		}
@@ -491,9 +496,8 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 	// Annoying warning from implying index might not satisfy 0 <= index <= 15 - 1, when it can only be one of them
 	// Result.normal is the direction this OBB needs to head to escape collision
 
-#pragma warning( disable : 28020 )
+#pragma warning( suppress : 28020 )
 	result.normal = separatingAxes[index] * glm::sign(glm::dot(delta, separatingAxes[index]));
-#pragma warning( enable : 28020 )
 	result.point = this->Center() + result.distance * result.normal;
 	return true;
 }

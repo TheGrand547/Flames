@@ -30,6 +30,7 @@
 #include "Model.h"
 #include "OrientedBoundingBox.h"
 #include "Pathfinding.h"
+#include "PathNode.h"
 #include "Plane.h"
 #include "Shader.h"
 #include "ScreenRect.h"
@@ -1716,17 +1717,14 @@ int main(int argc, char** argv)
 	/* Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
 	std::random_device r;
 	std::default_random_engine randEngine(r());
-	std::uniform_real_distribution distrib(1., 1000000.);
+	std::uniform_real_distribution distrib(1., 2000.);
 	double accumulator = 0, totalA = 0, totalB = 0;
 	int fails = 0;
-	int timesT = 2000000;
+	int timesT = 200000;
 	double maxError = 0;
-	glm::vec3 gone = Constexpr::normalize(glm::vec3(0, 1, 2));
-	auto gone3 = Constexpr::length(glm::vec3(0, 1, 2));
-	auto gone4 = Constexpr::dot(glm::vec3(0, 1, 2), glm::vec3(0, -4, 2));
+	double value2 = 0;
 	for (int i = 0; i < timesT; i++)
 	{
-
 		auto temp = distrib(randEngine);
 		auto A = sqrt(temp);
 		auto B = Constexpr::sqrt(temp);
@@ -1734,6 +1732,7 @@ int main(int argc, char** argv)
 		if (maxError < abs(A - B))
 		{
 			maxError = abs(A - B);
+			value2 = temp;
 		}
 		if (abs(A - B) != 0.f)
 		{
@@ -1741,47 +1740,10 @@ int main(int argc, char** argv)
 		}
 		//std::cout << sqrt(temp) << ":" << ConstexprSQRT(temp) << ":" << abs(sqrt(temp) - ConstexprSQRT(temp)) << std::endl;
 	}
-	std::cout << accumulator << " : " << accumulator / timesT << " : " << fails << " : " <<  float(fails) / timesT << std::endl;
+	std::cout << accumulator << " : " << accumulator / timesT << " : " << fails << " : " <<  double(fails) / timesT << std::endl;
 	std::cout << "Max Error: " << maxError << std::endl;
-	*/
-
-	/* This is proof that dot of sum is equal to sum of dots, can be used to speed up OBB tests
-	// This is wrong dumbass
-	glm::vec3 a{}, b{}, c{}, d{}, ax{};
-	float errored = 0.f;
-	float maxError = 0.f;
-	int iterations = 10000;
-	for (int i = 0; i < iterations; i++)
-	{
-		a = glm::sphericalRand(1.);
-		b = glm::normalize(glm::cross(glm::vec3(0, 1, 0), a));
-		c = glm::normalize(glm::cross(a, b));
-
-		a *= glm::linearRand(0.05f, 100.f);
-		b *= glm::linearRand(0.05f, 100.f);
-		c *= glm::linearRand(0.05f, 100.f);
-
-		d = a + b + c;
-		ax = glm::sphericalRand(1.);
-
-		float dot = glm::abs(glm::dot(ax, d));
-		//std::cout << dot << ":";
-		float dotter = 0.;
-		dotter += glm::abs(glm::dot(ax, a));
-		dotter += glm::abs(glm::dot(ax, b));
-		dotter += glm::abs(glm::dot(ax, c));
-		//std::cout << glm::abs(dotter) << std::endl;
-		if (glm::abs(dot - glm::abs(dotter)) > 1)
-			std::cout << ax << ":" << dotter << ":" << dot << std::endl;
-		dot = dot - glm::abs(dotter);
-		//std::cout << abs(dot) << std::endl;
-		maxError = glm::max(glm::abs(dot), maxError);
-		errored += glm::abs(dot);
-	}
-	std::cout << "Max: " << maxError << std::endl;
-	std::cout << "Average: " << errored / iterations << std::endl;
-	std::cout << "Epsilon:" << EPSILON << std::endl;
-	*/
+	std::cout << value2 << std::endl;
+	/*/
 
 	int error = 0;
 	debugFlags.fill(false);

@@ -165,6 +165,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
+    <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
@@ -203,6 +204,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Pathfinding.h" />
+    <ClInclude Include="PathNode.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
