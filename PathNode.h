@@ -28,6 +28,8 @@ public:
 		return std::hash<glm::vec3>{}(this->position);
 	}
 	
+	constexpr glm::vec3 GetPosition() const noexcept;
+
 	constexpr bool operator==(const PathNode& other) const noexcept;
 
 	float distance(const std::shared_ptr<PathNode>& other) noexcept;
@@ -35,7 +37,7 @@ public:
 
 
 	static bool addNeighborUnconditional(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B) noexcept;
-	template <ConditionFunction<PathNode> Conditional> static bool addNeighbor(std::shared_ptr<PathNode&> A, std::shared_ptr<PathNode>& B, Conditional condition);
+	template <ConditionFunction<PathNode> Conditional> static bool addNeighbor(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B, Conditional condition);
 	static std::shared_ptr<PathNode> MakeNode(const glm::vec3& position);
 };
 
@@ -50,13 +52,18 @@ namespace std
 	};
 }
 
-template <ConditionFunction<PathNode> Conditional> bool PathNode::addNeighbor(std::shared_ptr<PathNode&> A, std::shared_ptr<PathNode>& B, Conditional condition)
+template <ConditionFunction<PathNode> Conditional> bool PathNode::addNeighbor(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B, Conditional condition)
 {
 	if (condition(A, B))
 	{
 		return PathNode::addNeighborUnconditional(A, B);
 	}
 	return false;
+}
+
+inline constexpr glm::vec3 PathNode::GetPosition() const noexcept
+{
+	return this->position;
 }
 
 constexpr bool PathNode::operator==(const PathNode& other) const noexcept

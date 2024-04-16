@@ -192,7 +192,7 @@ ASCIIFont fonter;
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
-Buffer<ArrayBuffer> pathNodePositions;
+Buffer<ArrayBuffer> pathNodePositions, pathNodeLines;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -389,7 +389,15 @@ void display()
 	pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
 	pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 	//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
-	glDrawElementsInstanced(GL_TRIANGLES, cubeIndicies.size(), GL_UNSIGNED_BYTE, cubeIndicies.data(), pathNodePositions.GetElementCount());
+	glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE, 
+		cubeIndicies.data(), pathNodePositions.GetElementCount());
+	
+	uniform.SetActiveShader();
+	uniform.SetMat4("Model", glm::mat4(1.f));
+	plainVAO.BindArrayBuffer(pathNodeLines);
+	glLineWidth(10.f);
+	uniform.DrawElements(Lines, pathNodeLines);
+	
 	glDepthMask(GL_TRUE); // Disable writing to the depth buffer
 
 	/* STICK FIGURE GUY */
@@ -641,7 +649,7 @@ void display()
 	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	flatLighting.DrawIndexed<Triangle>(capsuleIndex);
+	//flatLighting.DrawIndexed<Triangle>(capsuleIndex);
 
 
 	meshVAO.BindArrayBuffer(movingCapsule);
@@ -2048,68 +2056,74 @@ void init()
 		}
 	}
 	albertBuffer.BufferData(textVert, StaticDraw);
-	std::array<unsigned char, MapSize* MapSize> copied{};
-	copied.fill(0x00);
-	std::vector<std::shared_ptr<PathDummy>> sleepers;
-	// Make Nodes
-	for (std::size_t y = 0; y < MapSize; y++)
+	
+
+	// =============================================================
+	// Pathfinding stuff
+	std::vector<std::shared_ptr<PathNode>> pathNodes;
+	for (int x = 0; x < 7; x++)
 	{
-		for (std::size_t x = 0; x < MapSize; x++)
+		for (int y = 0; y < 7; y++)
 		{
-			copied[x + y * MapSize] = (mapData[x + y * MapSize] == 0xFF) ? 0x80 : 0x00;
-			auto FAM = std::make_shared<PathDummy>();
-			FAM->x = static_cast<unsigned char>(x);
-			FAM->y = static_cast<unsigned char>(y);
-			sleepers.push_back(FAM);
+			pathNodes.push_back(PathNode::MakeNode(2.f * glm::vec3(x - 4, 0.5, y - 4)));
 		}
 	}
-	// Fill Neighbors
-	for (std::size_t y = 0; y < MapSize; y++)
+	std::vector<glm::vec3> boxingDay;
+	std::vector<glm::vec3> littleTrolling;
+	for (std::size_t i = 0; i < pathNodes.size(); i++)
 	{
-		for (std::size_t x = 0; x < MapSize; x++)
+		for (std::size_t j = i + 1; j < pathNodes.size(); j++)
 		{
-			if (mapData[x + y * MapSize] == 0xFF)
+			PathNode::addNeighbor(pathNodes[i], pathNodes[j],
+				[&](std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B)
+				{
+					glm::vec3 a = A->GetPosition(), b = B->GetPosition();
+					float delta = glm::length(a - b);
+					if (delta > 3.f)
+						return false;
+					Ray liota(a, b - a);
+					auto temps = boxes.RayCast(liota);
+					if (temps.size() == 0)
+						return true;
+					RayCollision fumop{};
+					for (auto& temp : temps)
+					{
+						if (temp->box.Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+						{
+							return false;
+						}
+					}
+					return true;
+				}
+			);
+		}
+		if (false && pathNodes[i]->neighbors().size() == 0)
+		{
+			pathNodes.erase(pathNodes.begin() + i);
+			i--;
+		}
+	}
+
+
+	
+	for (auto& autod : pathNodes)
+	{
+		boxingDay.push_back(autod->GetPosition());
+		for (auto& weak : autod->neighbors())
+		{
+			auto weaker = weak.lock();
+			if (weaker)
 			{
-				auto& current = sleepers[x + y * MapSize];
-				if (x > 0 && mapData[(x - 1) + y * MapSize] == 0xFF)
-				{
-					current->AddNeighbor(sleepers[(x - 1) + y * MapSize]);
-					//sleepers[(x - 1) + y * MapSize]->AddNeighbor(current);
-				}
-				if (x < (MapSize - 1) && mapData[(x + 1) + y * MapSize] == 0xFF)
-				{
-					current->AddNeighbor(sleepers[(x + 1) + y * MapSize]);
-					//sleepers[(x + 1) + y * MapSize]->AddNeighbor(current);
-				}
-				if (y > 0 && mapData[x + (y - 1) * MapSize] == 0xFF)
-				{
-					current->AddNeighbor(sleepers[x + (y - 1) * MapSize]);
-					//sleepers[x + (y - 1) * MapSize]->AddNeighbor(current);
-				}
-				if (y < (MapSize - 1) && mapData[x + (y + 1) * MapSize] == 0xFF)
-				{
-					current->AddNeighbor(sleepers[x + (y + 1) * MapSize]);
-					//sleepers[x + (y + 1) * MapSize]->AddNeighbor(current);
-				}
+				littleTrolling.push_back(autod->GetPosition());
+				littleTrolling.push_back(weaker->GetPosition());
 			}
 		}
 	}
-	auto& te2 = sleepers[0];
-	auto& te3 = sleepers.back();
-	auto losers = AStarSearch<PathDummy>(te2, te3, heur);
-	//auto losers = AStarSearch<PathDummy>(te2, te3, [](const PathDummy& a, const PathDummy& b) {return 0.f; });
-	for (auto& flam : losers.second)
-	{
-		copied[flam->x + MapSize * flam->y] = 0xC0;
-	}
-	for (auto& flam : losers.first)
-	{
-		copied[flam->x + MapSize * flam->y] = 0xFF;
-		//std::cout << static_cast<unsigned int>(flam->x) << ":" << static_cast<unsigned int>(flam->y) << std::endl;
-	}
-	buttonB.Load(copied, InternalRed, FormatRed, DataUnsignedByte);
-
-
+	
+	pathNodePositions.BufferData(boxingDay, StaticDraw);
+	pathNodeLines.BufferData(littleTrolling, StaticDraw);
+	// =============================================================
+	
 	// FRAMEBUFFER SETUP
 	// TODO: Renderbuffer for buffers that don't need to be directly read
 
@@ -2159,7 +2173,7 @@ void init()
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	fonter.Render(buttonA, glm::vec2(), "Soft");
-	//fonter.Render(buttonB, glm::vec2(), "Not");
+	fonter.Render(buttonB, glm::vec2(), "Not");
 	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 

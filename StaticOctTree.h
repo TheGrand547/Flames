@@ -154,12 +154,13 @@ T* StaticOctTree<T>::RayCastFirst(const Ray& line) const
 	if (hits.size())
 	{
 		float furthest = INFINITY;
+		T* closestPtr = hits[0];
 		RayCollision collision{};
 		for (Item& item : hits)
 		{
-			
+
 		}
-		return hits[0];
+		return closestPtr;
 	}
 	return nullptr;
 }
