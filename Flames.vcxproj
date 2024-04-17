@@ -167,6 +167,7 @@
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="QuickTimer.cpp" />
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
     <ClCompile Include="Shader.cpp" />
@@ -206,6 +207,7 @@
     <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="PathNode.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="QuickTimer.h" />
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
     <ClInclude Include="Shader.h" />

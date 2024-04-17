@@ -32,6 +32,7 @@
 #include "Pathfinding.h"
 #include "PathNode.h"
 #include "Plane.h"
+#include "QuickTimer.h"
 #include "Shader.h"
 #include "ScreenRect.h"
 #include "Sphere.h"
@@ -2016,19 +2017,48 @@ void init()
 	// The weird wall behind the player I think?
 	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
 
+	std::vector<std::shared_ptr<PathNode>> pathNodes{};
+
 	std::vector<glm::mat4> awfulTemp{};
 	awfulTemp.reserve(planes.size());
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
 	for (const auto& ref : planes)
 	{
 		OBB project(ref);
+		glm::vec3 forawrd = project.Up();
+		if (glm::dot(forawrd, GravityUp) > 0.5f)
+		{
+			pathNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
+		}
 		//project.Scale(glm::vec3(1, .625f, 1));
 		project.Scale(glm::vec3(1, 2e-6f, 1));
 		boxes.Insert({project, false}, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix());
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
-
+	{
+		QuickTimer _tim;
+		std::erase_if(pathNodes,
+			[&](const std::shared_ptr<PathNode>& A)
+			{
+				AABB boxer{};
+				boxer.SetScale(0.75f);
+				boxer.Center(A->GetPosition());
+				auto temps = boxes.Search(boxer);
+				if (temps.size() == 0)
+					return false;
+				RayCollision fumop{};
+				for (auto& temp : temps)
+				{
+					if (temp->box.Overlap(boxer))
+					{
+						return true;
+					}
+				}
+				return false;
+			}
+		);
+	}
 	instanceBuffer.BufferData(awfulTemp, StaticDraw);
 
 	// This sucks
@@ -2060,16 +2090,16 @@ void init()
 
 	// =============================================================
 	// Pathfinding stuff
-	std::vector<std::shared_ptr<PathNode>> pathNodes;
 	for (int x = 0; x < 7; x++)
 	{
 		for (int y = 0; y < 7; y++)
 		{
-			pathNodes.push_back(PathNode::MakeNode(2.f * glm::vec3(x - 4, 0.5, y - 4)));
+			//pathNodes.push_back(PathNode::MakeNode(2.f * glm::vec3(x - 4, 0.5, y - 4)));
 		}
 	}
-	std::vector<glm::vec3> boxingDay;
-	std::vector<glm::vec3> littleTrolling;
+	std::vector<glm::vec3> boxingDay{};
+	std::vector<glm::vec3> littleTrolling{};
+	auto before2 = std::chrono::high_resolution_clock::now();
 	for (std::size_t i = 0; i < pathNodes.size(); i++)
 	{
 		for (std::size_t j = i + 1; j < pathNodes.size(); j++)
@@ -2097,13 +2127,11 @@ void init()
 				}
 			);
 		}
-		if (false && pathNodes[i]->neighbors().size() == 0)
-		{
-			pathNodes.erase(pathNodes.begin() + i);
-			i--;
-		}
 	}
+	std::erase_if(pathNodes, [](const std::shared_ptr<PathNode>& A) {return A->neighbors().size() == 0; });
+	auto after2 = std::chrono::high_resolution_clock::now();
 
+	std::cout << "Second Predicate: " << std::chrono::duration<float, std::chrono::milliseconds::period>(after2 - before2).count() << std::endl;
 
 	
 	for (auto& autod : pathNodes)

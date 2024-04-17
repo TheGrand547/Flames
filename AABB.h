@@ -41,8 +41,10 @@ public:
 	inline constexpr glm::vec3 Deviation() const;
 
 	// Recenter the AABB
-	inline constexpr void Center(const glm::vec3& point);
-	inline constexpr void ScaleInPlace(const glm::vec3& factor);
+	inline constexpr void Center(const glm::vec3& point) noexcept;
+	inline constexpr void SetScale(const glm::vec3& factor) noexcept;
+	inline constexpr void SetScale(const float& value) noexcept;
+	inline constexpr void ScaleInPlace(const glm::vec3& factor) noexcept;
 	inline constexpr void ScaleInPlace(float x, float y = 1.0f, float z = 1.0f);
 	// Move the AABB by factor in space
 	inline constexpr void Translate(const glm::vec3& factor);
@@ -132,12 +134,22 @@ inline constexpr AABB& AABB::operator-=(const glm::vec3& point)
 	return *this;
 }
 
-inline constexpr void AABB::Center(const glm::vec3& point)
+inline constexpr void AABB::Center(const glm::vec3& point) noexcept
 {
 	this->center = point;
 }
 
-inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale)
+inline constexpr void AABB::SetScale(const glm::vec3& factor) noexcept
+{
+	this->halfs = factor;
+}
+
+inline constexpr void AABB::SetScale(const float& scale) noexcept
+{
+	this->halfs = glm::vec3(scale);
+}
+
+inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale) noexcept
 {
 	this->halfs *= glm::abs(scale);
 }

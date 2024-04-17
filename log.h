@@ -17,6 +17,7 @@
 
 #ifndef NDEBUG
 
+// TODO: this with std::source_location
 #define __FILENAME__ ([] (const char *file) constexpr {return (strrchr(file, FILEPATH_SLASH) ? strrchr(file, FILEPATH_SLASH) + 1 : file);}(__FILE__))
 #define CheckError() CheckErrors(__LINE__, __FILENAME__, __FUNCTION__)
 #define LogF(...) {printf("[%s][%s][%i] ", __FILENAME__, __FUNCTION__, __LINE__); printf(__VA_ARGS__);}
