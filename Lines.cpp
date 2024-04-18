@@ -1,5 +1,6 @@
 #include "Lines.h"
 #include <array>
+#include "Plane.h"
 
 // ** LINEBASE ** \\
 
@@ -80,4 +81,22 @@ glm::vec3 LineSegment::PointClosestTo(const glm::vec3& point) const noexcept
 	glm::vec3 delta = this->B - this->A;
 	float along = glm::dot(point - this->A, delta) / glm::length2(delta);
 	return this->A + glm::min(glm::max(along, 0.f), 1.f) * delta;
+}
+
+std::vector<LineSegment> LineSegment::Split(const Plane& plane) const
+{
+	std::vector<LineSegment> spliced;
+	float aPlace = plane.Facing(this->A), bPlace = plane.Facing(this->B);
+	if (glm::sign(aPlace) == glm::sign(bPlace) || (glm::sign(aPlace) == 0.f || glm::sign(bPlace) == 0.f))
+	{
+		spliced.push_back(*this);
+	}
+	else
+	{
+		glm::vec3 point = plane.PointOfIntersection(this->A, this->B - this->A);
+		spliced.emplace_back(this->A, point);
+		spliced.emplace_back(this->B, point);
+	}
+
+	return spliced;
 }

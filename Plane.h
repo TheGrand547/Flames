@@ -6,7 +6,7 @@
 #include "glmHelp.h"
 // glm::gtc::ext::intersection
 
-
+// TODO: Get it together with with normalizd normal god dammit
 class Plane
 {
 private:
@@ -39,7 +39,7 @@ public:
 	inline float FacingNormal(const glm::vec3& vector) const noexcept;
 	inline bool Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept;
 	inline bool IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept;
-	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
+	inline glm::vec3 PointOfIntersection(const glm::vec3& point, const glm::vec3& direction) const;
 
 	bool TripleIntersect(const Plane& planeA, const Plane& planeB) const noexcept;
 	bool TripleIntersect(const Plane& planeA, const Plane& planeB, glm::vec3& result) const noexcept;
@@ -133,15 +133,15 @@ inline bool Plane::IntersectsNormal(const glm::vec3& start, const glm::vec3& end
 	return (left > 0) && (right <= 0); // Allow movement from out to inbounds
 }
 
-inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const
+inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& point, const glm::vec3& direction) const
 {
-	float dot = glm::dot(direction, glm::normalize(this->normal));
+	float dot = glm::dot(glm::normalize(direction), glm::normalize(this->normal));
 	if (glm::abs(dot) < glm::epsilon<float>())
 	{
 		return glm::vec3(NAN, NAN, NAN);
 	}
-	float t = glm::dot(this->point - point, direction) / dot;
-	return point + t * direction;
+	float t = glm::dot(this->point - point, glm::normalize(this->normal)) / dot;
+	return point + t * glm::normalize(direction);
 }
 
 inline bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC)

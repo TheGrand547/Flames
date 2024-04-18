@@ -150,6 +150,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ArrayObject.cpp" />
+    <ClCompile Include="BinarySpacePartition.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="Capsule.cpp" />
@@ -175,6 +176,7 @@
     <ClCompile Include="StaticOctTree.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="UniformBuffer.cpp" />
     <ClCompile Include="UserInterface.cpp" />
     <ClCompile Include="util.cpp" />
@@ -189,6 +191,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="ArrayObject.h" />
+    <ClInclude Include="BinarySpacePartition.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="Capsule.h" />
@@ -219,6 +222,7 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
+    <ClInclude Include="Triangle.h" />
     <ClInclude Include="typedefs.h" />
     <ClInclude Include="UniformBuffer.h" />
     <ClInclude Include="UserInterface.h" />

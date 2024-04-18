@@ -1771,6 +1771,17 @@ int main(int argc, char** argv)
 	std::cout << "Max Error: " << maxError << std::endl;
 	std::cout << value2 << std::endl;
 	/*/
+	LineSegment lineDummy(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0));
+	Plane planeDummy(glm::vec3(1.f, 0, 0), glm::vec3(.5f, 0, 0));
+	std::cout << lineDummy.PointA() << "," << lineDummy.PointB() << "," << lineDummy.Direction() << std::endl;
+	std::cout << planeDummy.PointOfIntersection(lineDummy.B, lineDummy.Direction()) << std::endl;
+	std::cout << ">" << planeDummy.Facing(planeDummy.PointOfIntersection(lineDummy.pointB, lineDummy.Direction())) << std::endl;
+	for (auto& sleepy : lineDummy.Split(planeDummy))
+	{
+		std::cout << sleepy.A << ":" << sleepy.B << std::endl;
+	}
+
+
 
 	int error = 0;
 	debugFlags.fill(false);

@@ -1,10 +1,12 @@
 #pragma once
 #ifndef LINES_H
 #define LINES_H
+#include <vector>
 #include "glmHelp.h"
 #include "glm/gtx/norm.hpp"
 #include "util.h"
 
+class Plane;
 struct Ray;
 struct LineSegment;
 
@@ -100,6 +102,8 @@ struct LineSegment : public LineBase
 
 	inline constexpr glm::vec3 Direction() const noexcept;
 	inline glm::vec3 UnitDirection() const noexcept;
+
+	std::vector<LineSegment> Split(const Plane& plane) const;
 
 	virtual constexpr glm::vec3 PointA() const noexcept;
 	virtual constexpr glm::vec3 PointB() const noexcept;
