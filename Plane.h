@@ -36,6 +36,7 @@ public:
 	inline Plane& operator=(const Plane& other) noexcept;
 
 	inline float Facing(const glm::vec3& vector) const noexcept;
+	inline float FacingNormal(const glm::vec3& vector) const noexcept;
 	inline bool Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept;
 	inline bool IntersectsNormal(const glm::vec3& start, const glm::vec3& end) const noexcept;
 	inline glm::vec3 PointOfIntersection(const glm::vec3& direction, const glm::vec3& point) const;
@@ -111,6 +112,11 @@ inline float Plane::Facing(const glm::vec3& vector) const noexcept
 {
 	glm::vec3 loc(vector);
 	return glm::dot(this->normal, loc) - this->constant;
+}
+
+inline float Plane::FacingNormal(const glm::vec3& vector) const noexcept
+{
+	return glm::dot(this->normal, vector);
 }
 
 inline bool Plane::Intersects(const glm::vec3& pointA, const glm::vec3& pointB) const noexcept

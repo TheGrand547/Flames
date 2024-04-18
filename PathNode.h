@@ -41,6 +41,8 @@ public:
 	static std::shared_ptr<PathNode> MakeNode(const glm::vec3& position);
 };
 
+using PathNodePtr = std::shared_ptr<PathNode>;
+
 namespace std
 {
 	template<> struct hash<PathNode>

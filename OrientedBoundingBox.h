@@ -464,22 +464,23 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 		}
 
 		// In Case of Collision Whackiness break glass
-		/*
+#ifndef NDEBUG
+		float cardinal = 0.f;
 		for (glm::length_t i = 0; i < 3; i++)
 		{
-			obbProjections += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
-			obbProjections += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
+			cardinal += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
+			cardinal += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
 		}
 
 		if (!std::is_constant_evaluated())
 		{
-			if (glm::abs(obbProjections - testing) > EPSILON)
+			if (glm::abs(obbProjections - cardinal) > EPSILON)
 			{
 				std::cout <<"Error in OBB Optimization: " <<  i << ":" << axialIndex << 
-					":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << testing << std::endl;
+					":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << cardinal << std::endl;
 			}
 		}
-		*/
+#endif // NDEBUG
 		const float overlap = obbProjections - deltaProjection;
 		// This axis is a separating one 
 		if (deltaProjection > obbProjections)

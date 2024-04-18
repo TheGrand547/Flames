@@ -9,8 +9,9 @@ class QuickTimer
 protected:
 	const std::chrono::steady_clock::time_point start;
 	const std::source_location source;
+	const std::string name;
 public:
-	QuickTimer(const std::source_location source = std::source_location::current());
+	QuickTimer(const std::string& named = "", const std::source_location source = std::source_location::current());
 	~QuickTimer();
 };
 

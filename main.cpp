@@ -237,6 +237,7 @@ static const float Fov = 70.f;
 
 #define TIGHT_BOXES 1
 #define WIDE_BOXES 2
+#define DEBUG_PATH 3
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
@@ -381,25 +382,28 @@ void display()
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
 	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(planes.size()));
 
-	EnableGLFeatures<Blending>();
-	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
-	pathNodeView.SetActiveShader();
-	pathNodeVAO.BindArrayObject();
-	pathNodeVAO.BindArrayBuffer(plainCube, 0);
-	pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
-	pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
-	pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
-	//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
-	glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE, 
-		cubeIndicies.data(), pathNodePositions.GetElementCount());
-	
-	uniform.SetActiveShader();
-	uniform.SetMat4("Model", glm::mat4(1.f));
-	plainVAO.BindArrayBuffer(pathNodeLines);
-	glLineWidth(10.f);
-	uniform.DrawElements(Lines, pathNodeLines);
-	
-	glDepthMask(GL_TRUE); // Disable writing to the depth buffer
+	if (debugFlags[DEBUG_PATH])
+	{
+		EnableGLFeatures<Blending>();
+		glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+		pathNodeView.SetActiveShader();
+		pathNodeVAO.BindArrayObject();
+		pathNodeVAO.BindArrayBuffer(plainCube, 0);
+		pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
+		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
+		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
+		//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
+		glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE,
+			cubeIndicies.data(), pathNodePositions.GetElementCount());
+
+		uniform.SetActiveShader();
+		uniform.SetMat4("Model", glm::mat4(1.f));
+		plainVAO.BindArrayBuffer(pathNodeLines);
+		glLineWidth(10.f);
+		uniform.DrawElements(Lines, pathNodeLines);
+
+		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
+	}
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -1325,7 +1329,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 {
 	bool state = action == GLFW_PRESS;
 
-	unsigned char letter = (unsigned char)(key & 0xFF);
+	unsigned char letter = static_cast<unsigned char>(key & 0xFF);
 
 	if (action != GLFW_RELEASE && key < 0xFF)
 	{
@@ -1365,12 +1369,12 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		}
 		if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
 		{
-			std::size_t value = (std::size_t) key - GLFW_KEY_0;
+			std::size_t value = static_cast<std::size_t>(key - GLFW_KEY_0);
 			debugFlags[value] = !debugFlags[value];
 		}
 		if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F1 + debugFlags.size())
 		{
-			std::size_t value = (std::size_t)key - GLFW_KEY_F1;
+			std::size_t value = static_cast<std::size_t>(key - GLFW_KEY_F1 + 1);
 			debugFlags[value] = !debugFlags[value];
 		}
 	}
@@ -2017,7 +2021,7 @@ void init()
 	// The weird wall behind the player I think?
 	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
 
-	std::vector<std::shared_ptr<PathNode>> pathNodes{};
+	std::vector<PathNodePtr> pathNodes{};
 
 	std::vector<glm::mat4> awfulTemp{};
 	awfulTemp.reserve(planes.size());
@@ -2039,7 +2043,7 @@ void init()
 	{
 		QuickTimer _tim;
 		std::erase_if(pathNodes,
-			[&](const std::shared_ptr<PathNode>& A)
+			[&](const PathNodePtr& A)
 			{
 				AABB boxer{};
 				boxer.SetScale(0.75f);
@@ -2099,39 +2103,40 @@ void init()
 	}
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
-	auto before2 = std::chrono::high_resolution_clock::now();
-	for (std::size_t i = 0; i < pathNodes.size(); i++)
+	
 	{
-		for (std::size_t j = i + 1; j < pathNodes.size(); j++)
+		QuickTimer _timer("Node Connections");
+		for (std::size_t i = 0; i < pathNodes.size(); i++)
 		{
-			PathNode::addNeighbor(pathNodes[i], pathNodes[j],
-				[&](std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B)
-				{
-					glm::vec3 a = A->GetPosition(), b = B->GetPosition();
-					float delta = glm::length(a - b);
-					if (delta > 3.f)
-						return false;
-					Ray liota(a, b - a);
-					auto temps = boxes.RayCast(liota);
-					if (temps.size() == 0)
-						return true;
-					RayCollision fumop{};
-					for (auto& temp : temps)
+			for (std::size_t j = i + 1; j < pathNodes.size(); j++)
+			{
+				PathNode::addNeighbor(pathNodes[i], pathNodes[j],
+					[&](const PathNodePtr& A, PathNodePtr& B)
 					{
-						if (temp->box.Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
-						{
+						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
+						float delta = glm::length(a - b);
+						if (delta > 3.f)
 							return false;
+						Ray liota(a, b - a);
+						auto temps = boxes.RayCast(liota);
+						if (temps.size() == 0)
+							return true;
+						RayCollision fumop{};
+						for (auto& temp : temps)
+						{
+							if (temp->box.Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+							{
+								return false;
+							}
 						}
+						return true;
 					}
-					return true;
-				}
-			);
+				);
+			}
 		}
+		std::erase_if(pathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 	}
-	std::erase_if(pathNodes, [](const std::shared_ptr<PathNode>& A) {return A->neighbors().size() == 0; });
-	auto after2 = std::chrono::high_resolution_clock::now();
 
-	std::cout << "Second Predicate: " << std::chrono::duration<float, std::chrono::milliseconds::period>(after2 - before2).count() << std::endl;
 
 	
 	for (auto& autod : pathNodes)
