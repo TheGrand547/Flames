@@ -414,6 +414,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 			float crossLength = 1.f / glm::length(crossResult);
 			separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = crossResult * crossLength;
 
+			// Look into possibly doing this via abs(transpose(this) * other), might have to be the other way around though
 			dotProducts[i][j] = glm::abs(glm::dot(myAxis, otherAxis));
 			crossLengths[i][j] = crossLength;
 		}

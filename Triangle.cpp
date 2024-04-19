@@ -8,7 +8,7 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
 	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
 
-	if (signA == signB && signB == signC)
+	if ((signA == signB && signB == signC) || (signA == 0.f || signB == 0.f || signC == 0.f))
 	{
 		// Plane doesn't pass through this triangle, or all are collinear
 		triangles.push_back(*this);
@@ -19,6 +19,41 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		bool splitAB = signA != signB, 
 			splitBC = signB != signC, 
 			splitAC = signA != signC;
+		std::vector<LineSegment> firstLines;
+		std::vector<LineSegment> secondLines;
+		if (splitAB && splitBC)
+		{
+			firstLines = LineSegment(this->vertices[0], this->vertices[1]).Split(plane);
+			secondLines = LineSegment(this->vertices[1], this->vertices[2]).Split(plane);
+			// Small one
+			/*
+			triangles.emplace_back(firstLines[0].B, firstLines[1].A, secondLines[1].B);
+			triangles.emplace_back(firstLines[0].A, firstLines[0].B, secondLines[1].B);
+			triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
+			*/
+		}
+		else if (splitAB && splitAC)
+		{
+			firstLines = LineSegment(this->vertices[2], this->vertices[0]).Split(plane);
+			secondLines = LineSegment(this->vertices[0], this->vertices[1]).Split(plane);
+		}
+		else // splitAC && splitBC
+		{
+			firstLines = LineSegment(this->vertices[1], this->vertices[2]).Split(plane);
+			secondLines = LineSegment(this->vertices[2], this->vertices[0]).Split(plane);
+		}
+
+		if (firstLines.size() != 2 || secondLines.size() != 2)
+		{
+			std::cout << dotA << ":" << dotB << ":" << dotC << std::endl;
+			triangles.push_back(*this);
+			return triangles;
+		}
+		triangles.emplace_back(firstLines[0].B, firstLines[1].A, secondLines[1].B);
+		triangles.emplace_back(firstLines[0].A, firstLines[0].B, secondLines[1].B);
+		triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
+
+		/*
 		if (splitAB && splitBC)
 		{
 			auto lienes = LineSegment(this->vertices[0], this->vertices[1]).Split(plane);
@@ -42,6 +77,12 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		{
 
 		}
+		*/
+		/*
+		triangles.emplace_back(firstLines[0].B, this->vertices[1], secondLines[1].B);
+		triangles.emplace_back(this->vertices[0], firstLines[0].B, secondLines[1].B);
+		triangles.emplace_back(this->vertices[2], this->vertices[0], secondLines[1].B);
+		*/
 	}
 	return triangles;
 }

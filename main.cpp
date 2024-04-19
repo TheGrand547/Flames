@@ -436,13 +436,16 @@ void display()
 	EnableGLFeatures<FaceCulling>();
 
 	// Triangle splitting test
-	DisableGLFeatures<FaceCulling>();
 	triColor.SetActiveShader();
 	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;
 	plainVAO.BindArrayBuffer(stickBuffer);
 	plainVAO.BindArrayBuffer(triBuf);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
 
+	DisableGLFeatures<FaceCulling>();
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	triColor.DrawElements(DrawType::Triangle, triBuf);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
 	// Debugging boxes
@@ -1304,6 +1307,31 @@ void idle()
 		bullets[i].position = gamin.center;
 	}
 
+	glm::mat3 toTrans{ glm::vec3(1, 0.5, 0), glm::vec3(0, 1.5, 0), glm::vec3(0, 0.5, 1) };
+	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 30.f));
+	for (glm::length_t i = 0; i < 3; i++)
+	{
+		toTrans[i] = modify * toTrans[i];
+	}
+	// BSP Testing visualizations
+	Triangle splitBoy(toTrans[0], toTrans[1], toTrans[2]);
+	std::array<glm::vec3, 3> screm{};
+	auto lame = splitBoy.GetPoints();
+	for (glm::length_t i = 0; i < 3; i++) screm[i] = lame[i];
+	singleTri.BufferData(screm, StaticDraw);
+	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
+	std::vector<glm::vec3> scremer{};
+	for (auto& trig : splitBoy.Split(splitter))
+	{
+		lame = trig.GetPoints();
+		for (glm::length_t i = 0; i < 3; i++)
+		{
+			scremer.push_back(lame[i]);
+		}
+	}
+	splitTri.BufferData(scremer, StaticDraw);
+
+
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	std::swap(keyState, keyStateBackup);
 
@@ -2037,6 +2065,11 @@ void init()
 	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
 	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
 
+
+	planes.push_back(Model(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f)));
+	planes.push_back(Model(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f)));
+
+
 	// The ramp
 	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
 
@@ -2193,13 +2226,10 @@ void init()
 		lame = trig.GetPoints();
 		for (glm::length_t i = 0; i < 3; i++) 
 		{
-			std::cout << lame[i] << std::endl;
 			scremer.push_back(lame[i]);
 		}
 	}
-	std::cout << scremer.size() << std::endl;
 	splitTri.BufferData(scremer, StaticDraw);
-	std::cout << splitTri.GetElementCount() << std::endl;
 	//
 
 
