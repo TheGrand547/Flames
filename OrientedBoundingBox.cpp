@@ -216,6 +216,7 @@ static const std::array<const glm::vec3, 8> multiples = {
 	}
 };
 
+// What in gods name is this comment thing
 static const std::array<std::pair<int, int>, 12> linePairs = {
 	{
 		{0, 1}, //  0, 0, 1
@@ -251,4 +252,50 @@ std::array<LineSegment, 12> OrientedBoundingBox::GetLineSegments() const
 		segments[i] = LineSegment(points[linePairs[i].first], points[linePairs[i].second]);
 	}
 	return segments;
+}
+
+std::vector<Triangle> OrientedBoundingBox::GetTriangles() const
+{
+	std::vector<Triangle> triangles;
+	if (!glm::all(glm::equal(this->halfs, glm::vec3(0))))
+	{
+		std::array<glm::vec3, 8> points{};
+		glm::vec3 center = this->Center();
+		points.fill(center);
+		for (glm::length_t i = 0; i < 8; i++)
+		{
+			for (glm::length_t j = 0; j < 3; j++)
+			{
+				points[i] += (*this)[j] * this->halfs[j] * multiples[i][j];
+			}
+		}
+		if (this->halfs[1] != 0.f && this->halfs[2] != 0.f) // Forward/Backward planes needed
+		{
+			// 4,5,6,7 (+x)
+			triangles.emplace_back(points[4], points[6], points[5]);
+			triangles.emplace_back(points[5], points[6], points[7]);
+			// 0,1,2,3 (-x)
+			triangles.emplace_back(points[2], points[0], points[1]);
+			triangles.emplace_back(points[2], points[1], points[3]);
+		}
+		if (this->halfs[0] != 0.f && this->halfs[2] != 0.f) // Up/Down planes needed
+		{
+			// 2,3,6,7 (+y)
+			triangles.emplace_back(points[2], points[3], points[6]);
+			triangles.emplace_back(points[6], points[3], points[7]);
+			// 0,1,4,5 (-y)
+			triangles.emplace_back(points[1], points[0], points[4]);
+			triangles.emplace_back(points[1], points[4], points[5]);
+		}
+		if (this->halfs[0] != 0.f && this->halfs[1] != 0.f) // Left/Right planes needed
+		{
+			// 1,3,5,7 (+z)
+			triangles.emplace_back(points[3], points[1], points[5]);
+			triangles.emplace_back(points[3], points[5], points[7]);
+			// 0,2,4,6 (-z)
+			triangles.emplace_back(points[0], points[2], points[4]);
+			triangles.emplace_back(points[4], points[2], points[6]);
+		}
+	}
+	return triangles;
 }

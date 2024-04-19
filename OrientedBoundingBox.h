@@ -13,6 +13,7 @@
 #include "glmHelp.h"
 #include "Plane.h"
 #include "Sphere.h"
+#include "Triangle.h"
 #include "util.h"
 
 class OrientedBoundingBox
@@ -106,6 +107,7 @@ public:
 	glm::vec3 WorldToLocal(const glm::vec3& in) const;
 
 	std::array<LineSegment, 12> GetLineSegments() const;
+	std::vector<Triangle> GetTriangles() const;
 
 	inline Model GetModel() const;
 

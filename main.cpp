@@ -438,6 +438,7 @@ void display()
 	// Triangle splitting test
 	triColor.SetActiveShader();
 	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;
+	plainVAO.BindArrayObject();
 	plainVAO.BindArrayBuffer(stickBuffer);
 	plainVAO.BindArrayBuffer(triBuf);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
@@ -496,8 +497,9 @@ void display()
 	
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
+	moveable.ReScale(glm::vec3(0, 1, 1));
 	uniform.SetMat4("Model", moveable.GetModelMatrix());
-	//uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
+	uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
 	//glDepthMask(GL_FALSE)
 	// Albert
 	
@@ -1308,17 +1310,28 @@ void idle()
 	}
 
 	glm::mat3 toTrans{ glm::vec3(1, 0.5, 0), glm::vec3(0, 1.5, 0), glm::vec3(0, 0.5, 1) };
-	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 30.f));
+	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 10.f));
 	for (glm::length_t i = 0; i < 3; i++)
 	{
 		toTrans[i] = modify * toTrans[i];
 	}
 	// BSP Testing visualizations
 	Triangle splitBoy(toTrans[0], toTrans[1], toTrans[2]);
-	std::array<glm::vec3, 3> screm{};
-	auto lame = splitBoy.GetPoints();
-	for (glm::length_t i = 0; i < 3; i++) screm[i] = lame[i];
+	OBB obbs;
+	obbs.ReCenter(glm::vec3(0, 1, 0));
+	obbs.Scale(0.75);
+
+	std::vector<glm::vec3> screm{};
+	auto lame = obbs.GetTriangles();//splitBoy.GetPoints();
+	for (auto& lamer : lame)
+	{
+		for (glm::length_t i = 0; i < 3; i++) 
+			screm.push_back(lamer.GetPoints()[i]);
+	}
+
+
 	singleTri.BufferData(screm, StaticDraw);
+	/*
 	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
 	std::vector<glm::vec3> scremer{};
 	for (auto& trig : splitBoy.Split(splitter))
@@ -1328,8 +1341,8 @@ void idle()
 		{
 			scremer.push_back(lame[i]);
 		}
-	}
-	splitTri.BufferData(scremer, StaticDraw);
+	}*/
+	splitTri.BufferData(screm, StaticDraw);
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -1811,14 +1824,6 @@ int main(int argc, char** argv)
 	std::cout << "Max Error: " << maxError << std::endl;
 	std::cout << value2 << std::endl;
 	/*/
-	LineSegment lineDummy(glm::vec3(0, 1, 0), glm::vec3(1, 0, 0));
-	Plane planeDummy(glm::vec3(1.f, 0, 0), glm::vec3(.5f, 0, 0));
-	for (auto& sleepy : lineDummy.Split(planeDummy))
-	{
-		std::cout << sleepy.A << ":" << sleepy.B << std::endl;
-	}
-
-
 
 	int error = 0;
 	debugFlags.fill(false);
@@ -1905,7 +1910,8 @@ void init()
 	// Get rid of Line_width_deprecated messages
 	GLuint toDisable = 7;
 	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
-
+	toDisable = 1; // Disable Shader Recompiled due to state change(when you apply a line draw function to something that is expected for tris)
+	//glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, )
 
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
@@ -2211,28 +2217,6 @@ void init()
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
 	// =============================================================
-
-	// =============================================================
-	// BSP Testing visualizations
-	Triangle splitBoy(glm::vec3(0, 1.5, 0), glm::vec3(1, 0.5, 0), glm::vec3(0, 0.5, 1));
-	std::array<glm::vec3, 3> screm{};
-	auto lame = splitBoy.GetPoints();
-	for (std::size_t i = 0; i < 3; i++) screm[i] = lame[i];
-	singleTri.BufferData(screm, StaticDraw);
-	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
-	std::vector<glm::vec3> scremer{};
-	for (auto& trig : splitBoy.Split(splitter))
-	{
-		lame = trig.GetPoints();
-		for (glm::length_t i = 0; i < 3; i++) 
-		{
-			scremer.push_back(lame[i]);
-		}
-	}
-	splitTri.BufferData(scremer, StaticDraw);
-	//
-
-
 
 	
 	// FRAMEBUFFER SETUP
