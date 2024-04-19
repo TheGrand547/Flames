@@ -29,10 +29,10 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 			// lienes2[0].B == lienes2[1].B
 			
 			// Single small triangle first
-			triangles.emplace_back(this->vertices[1], lienes[0].B, lienes2[1].B);
+			triangles.emplace_back(lienes[0].B, this->vertices[1], lienes2[1].B);
 
 			triangles.emplace_back(this->vertices[0], lienes[0].B, lienes2[1].B);
-			triangles.emplace_back(this->vertices[2], this->vertices[1], lienes2[1].B);
+			triangles.emplace_back(this->vertices[2], this->vertices[0], lienes2[1].B);
 		}
 		if (splitAB && splitAC)
 		{

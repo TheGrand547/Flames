@@ -11,7 +11,7 @@
 #include "Buffer.h"
 #include "Texture2D.h"
 
-enum PrimitiveDrawingType : unsigned int
+enum struct PrimitiveDrawingType : unsigned int
 {
 	Lines                  = GL_LINES,
 	LinesAdjacency         = GL_LINES_ADJACENCY,          // Only with Geometry Shaders
@@ -26,6 +26,8 @@ enum PrimitiveDrawingType : unsigned int
 	TriangleStrip          = GL_TRIANGLE_STRIP,
 	TriangleStripAdjacency = GL_TRIANGLE_STRIP_ADJACENCY, // Only with Geometry Shaders
 };
+
+using DrawType = PrimitiveDrawingType;
 
 // Compute shaders will be their own thing
 

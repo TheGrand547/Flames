@@ -176,7 +176,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	Font::shader.SetMat4("Projection", projection);
 	Font::shader.SetVec4("colorIn", textColor);
 	Font::vao.BindArrayBuffer(buffer);
-	Font::shader.DrawElements<Triangle>(buffer);
+	Font::shader.DrawElements<DrawType::Triangle>(buffer);
 	BindDefaultFrameBuffer();
 }
 

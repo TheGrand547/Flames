@@ -20,6 +20,8 @@ public:
 	constexpr Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
 	constexpr Triangle(const glm::mat3& points);
 
+	constexpr glm::mat3 GetPoints() const noexcept;
+
 	// Figure out if these should be inlined or not
 	inline bool ContainsPoint(const glm::vec3& point) const noexcept;
 	inline bool RayCast(const Ray& ray) const noexcept;
@@ -39,6 +41,11 @@ constexpr Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::
 
 constexpr Triangle::Triangle(const glm::mat3& points) : vertices(points), normal()
 {
+}
+
+constexpr glm::mat3 Triangle::GetPoints() const noexcept
+{
+	return this->vertices;
 }
 
 // Implemented based on https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates/23745#23745

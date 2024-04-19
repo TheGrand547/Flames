@@ -93,7 +93,7 @@ std::vector<LineSegment> LineSegment::Split(const Plane& plane) const
 	}
 	else
 	{
-		glm::vec3 point = plane.PointOfIntersection(this->A, this->B - this->A);
+		glm::vec3 point = plane.PointOfIntersection(this->A, this->UnitDirection());
 		spliced.emplace_back(this->A, point);
 		spliced.emplace_back(this->B, point);
 	}
