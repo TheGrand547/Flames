@@ -1319,6 +1319,8 @@ void idle()
 	Triangle splitBoy(toTrans[0], toTrans[1], toTrans[2]);
 	OBB obbs;
 	obbs.ReCenter(glm::vec3(0, 1, 0));
+	//obbs.Rotate(glm::eulerAngleY(glm::radians(frameCounter / 10.f)));
+	obbs.Rotate(glm::vec3(2, 0.5, 4.f) * (frameCounter / 10.f));
 	obbs.Scale(0.75);
 
 	std::vector<glm::vec3> screm{};
@@ -1331,18 +1333,22 @@ void idle()
 
 
 	singleTri.BufferData(screm, StaticDraw);
-	/*
+	
 	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
 	std::vector<glm::vec3> scremer{};
-	for (auto& trig : splitBoy.Split(splitter))
+	int __s = 0;
+	for (auto& trig : lame)
 	{
-		lame = trig.GetPoints();
-		for (glm::length_t i = 0; i < 3; i++)
+		for (auto& tier : trig.Split(splitter))
 		{
-			scremer.push_back(lame[i]);
+			for (glm::length_t i = 0; i < 3; i++)
+			{
+				scremer.push_back(tier.GetPoints()[i]);
+			}
+			//break;
 		}
-	}*/
-	splitTri.BufferData(screm, StaticDraw);
+	}
+	splitTri.BufferData(scremer, StaticDraw);
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));

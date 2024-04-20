@@ -21,9 +21,13 @@ public:
 	constexpr Triangle(const glm::mat3& points);
 
 	constexpr glm::mat3 GetPoints() const noexcept;
+	constexpr std::vector<glm::vec3> GetPointVector() const noexcept;
+
+	bool SplitByPlane(const Plane& plane) const;
 
 	// Figure out if these should be inlined or not
 	inline bool ContainsPoint(const glm::vec3& point) const noexcept;
+
 	inline bool RayCast(const Ray& ray) const noexcept;
 	inline bool RayCast(const Ray& ray, RayCollision& collision) const noexcept;
 
@@ -46,6 +50,11 @@ constexpr Triangle::Triangle(const glm::mat3& points) : vertices(points), normal
 constexpr glm::mat3 Triangle::GetPoints() const noexcept
 {
 	return this->vertices;
+}
+
+constexpr std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
+{
+	return std::vector<glm::vec3>({ this->vertices[0], this->vertices[1], this->vertices[2] });
 }
 
 // Implemented based on https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates/23745#23745

@@ -7,10 +7,41 @@ BinarySpacePartition::BinarySpacePartition() : canonical(glm::vec3(1, 0, 0), glm
 
 BinarySpacePartition::~BinarySpacePartition()
 {
+	this->ClearBSP();
+}
+
+void BinarySpacePartition::AddPolygonInternal(const Polygon& polygon, std::vector<Polygon>& front, std::vector<Polygon>& behind)
+{
+	int result = 1; // plane.collinear(polygon) returns -1 if behind, 0 if collinear, 1 if in front
+	if (result < 0)
+	{
+		behind.push_back(polygon);
+	}
+	else if (result > 0)
+	{
+		front.push_back(polygon);
+	}
+	else
+	{
+		this->collinear.push_back(polygon);
+	}
+}
+
+void BinarySpacePartition::ClearBSP()
+{
+	this->collinear.clear();
+	if (this->behind)
+		delete this->behind;
+	if (this->front)
+		delete this->front;
+	this->front = nullptr;
+	this->behind = nullptr;
+	this->canonical = Plane(glm::vec3(1, 0, 0), glm::vec3(0));
 }
 
 void BinarySpacePartition::GenerateBSP(std::vector<Polygon>& polygons)
 {
+	this->ClearBSP();
 	this->collinear.push_back(polygons[0]);
 	// this->canonical = polygons[0].GetPlane();
 	std::vector<Polygon> front, behind;
@@ -20,50 +51,27 @@ void BinarySpacePartition::GenerateBSP(std::vector<Polygon>& polygons)
 		bool splitByPlane = false; // plane.splitting(polygon) returns true if the plane splits it
 		if (!splitByPlane)
 		{
-			int result = 1; // plane.collinear(polygon) returns -1 if behind, 0 if collinear, 1 if in front
-			if (result < 0)
-			{
-				behind.push_back(current);
-			}
-			else if (result > 0)
-			{
-				front.push_back(current);
-			}
-			else
-			{
-				this->collinear.push_back(current);
-			}
+			this->AddPolygonInternal(current, front, behind);
 		}
 		else
 		{
 			std::vector<Polygon> split; // = polygon.split(plane);
 			for (Polygon& polygon : split)
 			{
-				int result = 1; // plane.collinear(polygon) returns -1 if behind, 0 if collinear, 1 if in front
-				if (result < 0)
-				{
-					behind.push_back(polygon);
-				}
-				else if (result > 0)
-				{
-					front.push_back(polygon);
-				}
-				else
-				{
-					this->collinear.push_back(polygon);
-				}
+				// All of them are guaranteed to not be split by the plane
+				this->AddPolygonInternal(polygon, front, behind);
 			}
 		}
 	}
 	if (front.size() > 0)
 	{
-		this->front = new BSP();
-		if (this->front) this->front->GenerateBSP(front);
+		if ((this->front = new BSP())) 
+			this->front->GenerateBSP(front);
 	}
 	if (behind.size() > 0)
 	{
-		this->behind = new BSP();
-		if (this->behind) this->behind->GenerateBSP(front);
+		if ((this->behind = new BSP())) 
+			this->behind->GenerateBSP(behind);
 	}
 }
 
@@ -91,6 +99,48 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 	return false;
 }
 
+void BinarySpacePartition::AddPolygon(const Polygon& polygon)
+{
+	// TODO: this but for things that can be split, should just be a little line of code or two
+	int result = 1; // plane.collinear(polygon) returns -1 if behind, 0 if collinear, 1 if in front
+	if (result < 0)
+	{
+		if (!this->behind) 
+		{
+			this->behind = new BSP();
+			if (this->behind)
+			{
+				std::vector temp{ polygon };
+				this->behind->GenerateBSP(temp);
+			}
+		}
+		else
+		{
+			this->behind->AddPolygon(polygon);
+		}
+	}
+	else if (result > 0)
+	{
+		if (!this->front)
+		{
+			this->front = new BSP();
+			if (this->front)
+			{
+				std::vector temp{ polygon };
+				this->front->GenerateBSP(temp);
+			}
+		}
+		else
+		{
+			this->front->AddPolygon(polygon);
+		}
+	}
+	else
+	{
+		this->collinear.push_back(polygon);
+	}
+}
+
 bool BinarySpacePartition::RayCast(const Ray& ray) const
 {
 	RayCollision near{}, far{};
@@ -115,10 +165,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		// In front and pointing away/normal to my plane
 		if (direction >= 0)
 		{
-			if (this->front) 
-				return this->front->RayCast(ray, near, far);
-			else 
-				return false;
+			return (this->front) ? this->front->RayCast(ray, near, far) : false;
 		}
 	}
 	else if (distance < 0)
@@ -126,10 +173,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		// Behind and pointing away/normal to my plane
 		if (direction <= 0)
 		{
-			if (this->front)
-				return this->front->RayCast(ray, near, far);
-			else
-				return false;
+			return (this->behind) ? this->behind->RayCast(ray, near, far) : false;
 		}
 	}
 	else
@@ -163,6 +207,5 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		far = behindFar;
 		return true;
 	}
-
 	return false;
 }
