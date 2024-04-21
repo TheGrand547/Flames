@@ -1308,15 +1308,15 @@ void idle()
 		}
 		bullets[i].position = gamin.center;
 	}
-
-	glm::mat3 toTrans{ glm::vec3(1, 0.5, 0), glm::vec3(0, 1.5, 0), glm::vec3(0, 0.5, 1) };
+	// BSP Testing visualizations
+	glm::mat3 toTrans{ glm::vec3(0), glm::vec3(-.5f, 1, 0), glm::vec3(0.5, 1, 0) };
 	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 10.f));
 	for (glm::length_t i = 0; i < 3; i++)
 	{
-		toTrans[i] = modify * toTrans[i];
+		toTrans[i] = modify * toTrans[i] + glm::vec3(0.5f, 0.5f, 0);
 	}
-	// BSP Testing visualizations
-	Triangle splitBoy(toTrans[0], toTrans[1], toTrans[2]);
+	int shift = 2;
+	Triangle splitBoy(toTrans[shift % 3], toTrans[(shift + 1) % 3], toTrans[(shift + 2) % 3]);
 	OBB obbs;
 	obbs.ReCenter(glm::vec3(0, 1, 0));
 	//obbs.Rotate(glm::eulerAngleY(glm::radians(frameCounter / 10.f)));
@@ -1330,16 +1330,17 @@ void idle()
 		for (glm::length_t i = 0; i < 3; i++) 
 			screm.push_back(lamer.GetPoints()[i]);
 	}
-
-
+	// Single triangle
+	screm.clear();
+	screm = splitBoy.GetPointVector();
 	singleTri.BufferData(screm, StaticDraw);
 	
 	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
 	std::vector<glm::vec3> scremer{};
 	int __s = 0;
-	for (auto& trig : lame)
+	//for (auto& trig : lame)
 	{
-		for (auto& tier : trig.Split(splitter))
+		for (auto& tier : splitBoy.Split(splitter))
 		{
 			for (glm::length_t i = 0; i < 3; i++)
 			{
