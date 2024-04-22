@@ -24,6 +24,12 @@ public:
 	constexpr std::vector<glm::vec3> GetPointVector() const noexcept;
 
 	bool SplitByPlane(const Plane& plane) const;
+	bool Collinear(const Plane& plane) const;
+
+	Plane GetPlane() const;
+	// TODO: better name
+	// Assuming that the triangle is not split by the plane, at which point this result is worthless, which side is it on, +/0/-
+	int GetRelation(const Plane& plane) const;
 
 	// Figure out if these should be inlined or not
 	inline bool ContainsPoint(const glm::vec3& point) const noexcept;

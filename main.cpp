@@ -1043,7 +1043,7 @@ glm::quat newMan{};
 
 OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
-
+int shift = 2;
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
@@ -1282,8 +1282,6 @@ void idle()
 		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1, 0, 0, 1));
 		std::stringstream().swap(letters);
 	}
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", capsuleHit == nullptr));
 
 	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
 	Sphere gamin{};
@@ -1308,6 +1306,8 @@ void idle()
 		}
 		bullets[i].position = gamin.center;
 	}
+
+
 	// BSP Testing visualizations
 	glm::mat3 toTrans{ glm::vec3(0), glm::vec3(-.5f, 1, 0), glm::vec3(0.5, 1, 0) };
 	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 10.f));
@@ -1315,7 +1315,7 @@ void idle()
 	{
 		toTrans[i] = modify * toTrans[i] + glm::vec3(0.5f, 0.5f, 0);
 	}
-	int shift = 2;
+	
 	Triangle splitBoy(toTrans[shift % 3], toTrans[(shift + 1) % 3], toTrans[(shift + 2) % 3]);
 	OBB obbs;
 	obbs.ReCenter(glm::vec3(0, 1, 0));
@@ -1350,6 +1350,9 @@ void idle()
 		}
 	}
 	splitTri.BufferData(scremer, StaticDraw);
+
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", splitBoy.Collinear(splitter)));
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -1415,6 +1418,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 
 	if (action == GLFW_PRESS)
 	{
+		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;

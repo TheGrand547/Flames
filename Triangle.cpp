@@ -7,9 +7,36 @@ bool Triangle::SplitByPlane(const Plane& plane) const
 	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
 	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
 
-	return !((signA == signB && signB == signC) || (signA == 0.f || signB == 0.f || signC == 0.f));
-
+	return !(signA == signB && signB == signC);
 }
+
+bool Triangle::Collinear(const Plane& plane) const
+{
+	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
+	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
+	return glm::all(glm::equal(glm::vec3(dotA, dotB, dotC), glm::vec3(0), EPSILON));
+}
+
+Plane Triangle::GetPlane() const
+{
+	LineSegment lineAB(this->vertices[0], this->vertices[1]);
+	LineSegment lineBC(this->vertices[1], this->vertices[2]);
+	glm::vec3 normal = glm::normalize(glm::cross(lineAB.UnitDirection(), lineBC.UnitDirection()));
+	return Plane(normal, this->vertices[2]);
+}
+
+int Triangle::GetRelation(const Plane& plane) const
+{
+	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
+	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
+	glm::bvec3 zeroes = glm::notEqual(glm::sign(glm::vec3(dotA, dotB, dotC)), glm::vec3(0));
+	glm::vec3 signs(signA, signB, signC);
+	int sign = 0;
+
+	return static_cast<int>(glm::sign(plane.Facing(this->vertices[0])));
+}
+
+
 
 std::vector<Triangle> Triangle::Split(const Plane& plane) const
 {
@@ -63,20 +90,21 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		}
 		else
 		{
+			// TODO: maybe clean this up idk man
 			// Only one of splitAB, splitBC, and splitCA is true
-			if (splitAB && signC == 0.f)
+			if (splitAB && glm::abs(signC) < EPSILON)
 			{
 				firstLines = lineAB.Split(plane);
 				triangles.emplace_back(this->vertices[2], this->vertices[0], firstLines[0].B);
-				triangles.emplace_back(firstLines[1].B,   firstLines[1].A,   this->vertices[2]);
+				triangles.emplace_back(this->vertices[2], firstLines[1].B,   firstLines[1].A);
 			}
-			else if (splitCA && signB == 0.f)
+			else if (splitCA && glm::abs(signB) < EPSILON)
 			{
 				firstLines = lineCA.Split(plane);
-				triangles.emplace_back(this->vertices[0], this->vertices[1], firstLines[0].B);
-				triangles.emplace_back(this->vertices[2], firstLines[1].B,   this->vertices[1]);
+				triangles.emplace_back(this->vertices[1], this->vertices[2], firstLines[1].B);
+				triangles.emplace_back(this->vertices[1], firstLines[0].B, this->vertices[0]);
 			}
-			else // splitBC && signA == 0.f
+			else // splitBC &&  glm::abs(signA) < EPSILON
 			{
 				firstLines = lineBC.Split(plane);
 				triangles.emplace_back(this->vertices[0], this->vertices[1], firstLines[0].B);

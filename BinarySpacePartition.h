@@ -4,8 +4,9 @@
 #include <vector>
 #include "CollisionTypes.h"
 #include "glmHelp.h"
-#include "Plane.h"
 #include "Lines.h"
+#include "Plane.h"
+#include "Triangle.h"
 
 
 struct Polygon {}; // placeholder
@@ -16,22 +17,22 @@ using BSP = BinarySpacePartition;
 
 protected:
 	Plane canonical;
-	std::vector<Polygon> collinear; // Likely to be small
+	std::vector<Triangle> collinear; // Likely to be small
 	BSP* front = nullptr, *behind = nullptr;
 
-	void AddPolygonInternal(const Polygon& polygon, std::vector<Polygon>& front, std::vector<Polygon>& back);
+	void AddPolygonInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& back);
 public:
 	BinarySpacePartition();
 	~BinarySpacePartition();
 
 	void ClearBSP();
-	void GenerateBSP(std::vector<Polygon>& polygons);
+	void GenerateBSP(std::vector<Triangle>& polygons);
 
 	// True -> point is contained within the geometry enclosed by this BSP, false -> it is not
 	bool TestPoint(const glm::vec3& point) const;
 
 	// Should be used as little as possible, much less efficicent than doing it via bulk in BuildBSP
-	void AddPolygon(const Polygon& polygon);
+	void AddPolygon(const Triangle& polygon);
 
 	bool RayCast(const Ray& ray) const;
 	bool RayCast(const Ray& ray, RayCollision& collide) const;
