@@ -4,17 +4,12 @@
 // TODO: account for being perfectly split down the middle
 bool Triangle::SplitByPlane(const Plane& plane) const
 {
-	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
-	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
-
-	return !(signA == signB && signB == signC);
+	return glm::isnan(this->GetRelation(plane));
 }
 
 bool Triangle::Collinear(const Plane& plane) const
 {
-	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
-	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
-	return glm::all(glm::equal(glm::vec3(dotA, dotB, dotC), glm::vec3(0), EPSILON));
+	return this->GetRelation(plane) == 0.f;
 }
 
 Plane Triangle::GetPlane() const
@@ -27,13 +22,35 @@ Plane Triangle::GetPlane() const
 
 int Triangle::GetRelation(const Plane& plane) const
 {
-	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
-	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
-	glm::bvec3 zeroes = glm::notEqual(glm::sign(glm::vec3(dotA, dotB, dotC)), glm::vec3(0));
-	glm::vec3 signs(signA, signB, signC);
+	glm::vec3 dots = plane.Facing(this->vertices);
+	glm::vec3 signs = glm::sign(dots);
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0));
+	int sum = zeroes[0] + zeroes[1] + zeroes[2];
+	signs *= zeroes;
 	int sign = 0;
 
-	return static_cast<int>(glm::sign(plane.Facing(this->vertices[0])));
+	bool flag = true;
+	float critera = NAN; // Get something better
+	for (int i = 0; i < 3; i++)
+	{
+		if (zeroes[i])
+			continue;
+		if (glm::isnan(critera))
+		{
+			critera = signs[i];
+		}
+		else
+		{
+			flag &= (critera == signs[i]);
+		}
+	}
+	// Unrolled
+	/*
+	flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
+	flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
+	flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
+	*/
+	return (flag) ? critera : NAN;
 }
 
 
@@ -41,22 +58,15 @@ int Triangle::GetRelation(const Plane& plane) const
 std::vector<Triangle> Triangle::Split(const Plane& plane) const
 {
 	std::vector<Triangle> triangles;
-	// TODO: Maybe look into doing this with some funky matrix stuff <- What are you talking about
-	// dot plane.normal() * this->vertices() a 1x3 * 3x3 matrix to get the dots, then subtract vec3(plane.constant)
-	float dotA = plane.Facing(this->vertices[0]), dotB = plane.Facing(this->vertices[1]), dotC = plane.Facing(this->vertices[2]);
-	float signA = glm::sign(dotA), signB = glm::sign(dotB), signC = glm::sign(dotC);
-	
-	/* Half split sketch
-	halfSplitAB = signA == -signB && signC == 0.f;
-	halfSplitBC = signB == -signC && signA == 0.f;
-	halfSplitAC = signA == -signC && signB == 0.f;
-	
-	*/
-	glm::bvec3 zeroes = glm::equal(glm::sign(glm::vec3(dotA, dotB, dotC)), glm::vec3(0));
+
+	glm::vec3 dots = plane.Facing(this->vertices);
+	glm::vec3 signs = glm::sign(dots);
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0));
+	signs *= zeroes;
 	int sum = zeroes[0] + zeroes[1] + zeroes[2];
 
 	// If all the points are on one side of the plane or if more than two points are on the plane
-	if ((signA == signB && signB == signC) || (sum > 1))
+	if ((signs[0] == signs[1] && signs[1] == signs[2]) || (sum > 1))
 	{
 		// Plane doesn't pass through this triangle, or all are collinear
 		triangles.push_back(*this);
@@ -64,9 +74,9 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 	else
 	{
 		// If the result is -1 then one is positive and the other is negative, thus being split
-		bool splitAB = (signA * signB) == -1.f, 
-			splitBC  = (signB * signC) == -1.f, 
-			splitCA  = (signC * signA) == -1.f;
+		bool splitAB = (signs[0] * signs[1]) == -1.f,
+			splitBC  = (signs[1] * signs[2]) == -1.f,
+			splitCA  = (signs[2] * signs[0]) == -1.f;
 		std::vector<LineSegment> firstLines;
 		std::vector<LineSegment> secondLines;
 		LineSegment lineAB(this->vertices[0], this->vertices[1]);
@@ -92,19 +102,19 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		{
 			// TODO: maybe clean this up idk man
 			// Only one of splitAB, splitBC, and splitCA is true
-			if (splitAB && glm::abs(signC) < EPSILON)
+			if (splitAB && zeroes[2])
 			{
 				firstLines = lineAB.Split(plane);
 				triangles.emplace_back(this->vertices[2], this->vertices[0], firstLines[0].B);
 				triangles.emplace_back(this->vertices[2], firstLines[1].B,   firstLines[1].A);
 			}
-			else if (splitCA && glm::abs(signB) < EPSILON)
+			else if (splitCA && zeroes[1])
 			{
 				firstLines = lineCA.Split(plane);
 				triangles.emplace_back(this->vertices[1], this->vertices[2], firstLines[1].B);
 				triangles.emplace_back(this->vertices[1], firstLines[0].B, this->vertices[0]);
 			}
-			else // splitBC &&  glm::abs(signA) < EPSILON
+			else // splitBC && zeroes[0]
 			{
 				firstLines = lineBC.Split(plane);
 				triangles.emplace_back(this->vertices[0], this->vertices[1], firstLines[0].B);
@@ -114,7 +124,7 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		}
 		if (firstLines.size() != 2 || secondLines.size() != 2)
 		{
-			std::cout << dotA << ":" << dotB << ":" << dotC << std::endl;
+			std::cout << dots << std::endl;
 			triangles.push_back(*this);
 			return triangles;
 		}

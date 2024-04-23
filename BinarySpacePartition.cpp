@@ -103,7 +103,7 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 void BinarySpacePartition::AddPolygon(const Triangle& polygon)
 {
 	// TODO: this but for things that can be split, should just be a little line of code or two
-	int result = 1; // plane.collinear(polygon) returns -1 if behind, 0 if collinear, 1 if in front
+	float result = polygon.Collinear(this->canonical);
 	if (result < 0)
 	{
 		if (!this->behind) 

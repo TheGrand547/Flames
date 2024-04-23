@@ -1835,6 +1835,43 @@ int main(int argc, char** argv)
 	std::cout << "Max Error: " << maxError << std::endl;
 	std::cout << value2 << std::endl;
 	/*/
+	std::array<float, 3> states = { {-1.f, 0, 1.f} };
+	for (int x = 0; x < 3; x++)
+	{
+		for (int y = 0; y < 3; y++)
+		{
+			for (int z = 0; z < 3; z++)
+			{
+				float a = states[x], b = states[y], c = states[z];
+				std::cout << std::format("[{}][{}][{}]: ", a, b, c);
+				bool flag = true;
+				float critera = NAN;
+				glm::bvec3 zeroes = glm::equal(glm::sign(glm::vec3(a, b, c)), glm::vec3(0));
+				glm::vec3 signs(a, b, c);
+
+				flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
+				flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
+				flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
+				
+				critera = NAN;
+				bool flag2 = true;
+				for (int i = 0; i < 3; i++)
+				{
+					if (zeroes[i])
+						continue;
+					if (glm::isnan(critera))
+					{
+						critera = signs[i];
+					}
+					else
+					{
+						flag2 &= (critera == signs[i]);
+					}
+				}
+				std::cout << std::boolalpha << flag << ":" << flag2<<  ":" << (flag == flag2) << std::endl;
+			}
+		}
+	}
 
 	int error = 0;
 	debugFlags.fill(false);
