@@ -21,6 +21,7 @@
 #include "Buffer.h"
 #include "Button.h"
 #include "CubeMap.h"
+#include "Decal.h"
 #include "Font.h"
 #include "Framebuffer.h"
 #include "glmHelp.h"
@@ -46,12 +47,6 @@
 #include "VertexArray.h"
 #include "Wall.h"
 #include "UserInterface.h"
-
-struct Dummy
-{
-	OBB box;
-	bool color;
-};
 
 template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
 {
@@ -196,6 +191,7 @@ Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, pla
 Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
 Buffer<ArrayBuffer> pathNodePositions, pathNodeLines;
 Buffer<ArrayBuffer> singleTri, splitTri;
+Buffer<ArrayBuffer> decals;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
@@ -224,7 +220,7 @@ std::mutex bufferMutex;
 
 OBB smartBox, dumbBox;
 std::vector<Model> planes;
-StaticOctTree<Dummy> boxes(glm::vec3(20));
+StaticOctTree<OBB> boxes(glm::vec3(20));
 
 static unsigned int frameCounter = 0;
 bool smartBoxColor = false;
@@ -439,13 +435,16 @@ void display()
 	triColor.SetActiveShader();
 	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;
 	plainVAO.BindArrayObject();
-	plainVAO.BindArrayBuffer(stickBuffer);
 	plainVAO.BindArrayBuffer(triBuf);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
+	plainVAO.BindArrayBuffer(decals);
+	triColor.DrawElements(DrawType::Triangle, decals);
 
 	DisableGLFeatures<FaceCulling>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
+	plainVAO.BindArrayBuffer(decals);
+	triColor.DrawElements(DrawType::Triangle, decals);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
@@ -474,16 +473,14 @@ void display()
 			//glPointSize((box.color) ? wid * 1.5f : wid);
 			if (debugFlags[TIGHT_BOXES])
 			{
-				uniform.SetMat4("Model", box.box.GetModelMatrix());
-				uniform.SetVec3("color", (box.color) ? blue : colors);
+				uniform.SetMat4("Model", box.GetModelMatrix());
 				//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
 				uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
 				uniform.DrawElements<DrawType::Points>(8);
 			}
 			if (debugFlags[WIDE_BOXES])
 			{
-				uniform.SetVec3("color", (box.color) ? colors : blue);
-				uniform.SetMat4("Model", box.box.GetAABB().GetModel().GetModelMatrix());
+				uniform.SetMat4("Model", box.GetAABB().GetModel().GetModelMatrix());
 				uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
 				//uniform.DrawElements<Points>(8);
 			}
@@ -498,7 +495,12 @@ void display()
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	moveable.ReScale(glm::vec3(0, 1, 1));
-	uniform.SetMat4("Model", moveable.GetModelMatrix());
+	OBB orbing;
+	orbing.ReScale(glm::vec3(0.5f));
+	orbing.ReCenter(glm::vec3(1, 1, 3));
+
+	
+	uniform.SetMat4("Model", orbing.GetModelMatrix());
 	uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
 	//glDepthMask(GL_FALSE)
 	// Albert
@@ -931,7 +933,7 @@ bool smartBoxCollide()
 	for (auto& currentBox : potentialCollisions)
 	{
 		SlidingCollision c;
-		if (smartBox.Overlap(currentBox->box, c))
+		if (smartBox.Overlap(*currentBox, c))
 		{
 			float temp = glm::dot(c.axis, GravityUp);
 			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
@@ -940,7 +942,7 @@ bool smartBoxCollide()
 			{
 				temp = dot;
 				smartBoxPhysics.axisOfGaming = c.axis;
-				smartBoxPhysics.ptr = &currentBox->box;
+				smartBoxPhysics.ptr = &*currentBox;
 			}
 
 			float minDot = INFINITY, maxDot = -INFINITY;
@@ -961,7 +963,7 @@ bool smartBoxCollide()
 				}
 			}
 
-			smartBoxAlignCorner(currentBox->box, minDotI, maxDotI);
+			smartBoxAlignCorner(*currentBox, minDotI, maxDotI);
 
 			// TODO: look into this
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
@@ -969,8 +971,8 @@ bool smartBoxCollide()
 			//if (true) //(c.depth > 0.002) // Why this number
 			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
-				smartBoxAlignFace(currentBox->box, upper, minDotI, maxDotI);
-				smartBox.OverlapAndSlide(currentBox->box);
+				smartBoxAlignFace(*currentBox, upper, minDotI, maxDotI);
+				smartBox.OverlapAndSlide(*currentBox);
 			}
 			else
 			{ 
@@ -996,16 +998,16 @@ bool smartBoxCollide()
 		for (auto& currentBox : potentialCollisions)
 		{
 			SlidingCollision c;
-			if (smartBox.Overlap(currentBox->box, c))
+			if (smartBox.Overlap(*currentBox, c))
 			{
 				float temp = glm::dot(c.axis, GravityUp);
 				if (temp > 0 && temp <= dot)
 				{
 					temp = dot;
 					smartBoxPhysics.axisOfGaming = c.axis;
-					smartBoxPhysics.ptr = &currentBox->box;
+					smartBoxPhysics.ptr = &*currentBox;
 					newest = c;
-					newPtr = &currentBox->box;
+					newPtr = &*currentBox;
 				}
 			}
 		}
@@ -1151,9 +1153,9 @@ void idle()
 		goober.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 		for (auto& wall : boxes)
 		{
-			if (wall.box.Overlap(playerOb))
+			if (wall.Overlap(playerOb))
 			{
-				playerOb.OverlapAndSlide(wall.box);
+				playerOb.OverlapAndSlide(wall);
 				//offset = previous;
 				//break;
 			}
@@ -1251,13 +1253,13 @@ void idle()
 	for (auto& temps : boxes.Search(catapult.GetAABB()))
 	{
 		Collision c;
-		if (temps->box.Overlap(catapult, c))
+		if (temps->Overlap(catapult, c))
 		{
 			catapult.Translate(c.normal * c.depth);
 			float dot = glm::dot(GravityUp, c.normal);
 			if (dot > 0 && dot > capsuleDot)
 			{
-				capsuleHit = &temps->box;
+				capsuleHit = &*temps;
 				capsuleDot = dot;
 			}
 		}
@@ -1269,7 +1271,7 @@ void idle()
 	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
 	{
 		Collision c;
-		if (letsgo->box.Overlap(awwYeah, c))
+		if (letsgo->Overlap(awwYeah, c))
 		{
 			awwYeah.center += c.normal * c.depth;
 		}
@@ -1298,7 +1300,7 @@ void idle()
 		gamin.center = bullets[i].position + bullets[i].direction * BulletSpeed;
 		for (auto& boxers : boxes.Search(gamin.GetAABB()))
 		{
-			if (boxers->box.Overlap(gamin, c))
+			if (boxers->Overlap(gamin, c))
 			{
 				gamin.center = c.point;
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
@@ -1548,10 +1550,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		float rayLength = 50.f;
 
 		RayCollision rayd{};
-		Dummy* point = nullptr;
+		OBB* point = nullptr;
 		for (auto& item : boxes.RayCast(liota))
 		{
-			if (item->box.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
+			if (item->Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
 			{
 				rayLength = rayd.depth;
 				point = &(*item);
@@ -1835,43 +1837,6 @@ int main(int argc, char** argv)
 	std::cout << "Max Error: " << maxError << std::endl;
 	std::cout << value2 << std::endl;
 	/*/
-	std::array<float, 3> states = { {-1.f, 0, 1.f} };
-	for (int x = 0; x < 3; x++)
-	{
-		for (int y = 0; y < 3; y++)
-		{
-			for (int z = 0; z < 3; z++)
-			{
-				float a = states[x], b = states[y], c = states[z];
-				std::cout << std::format("[{}][{}][{}]: ", a, b, c);
-				bool flag = true;
-				float critera = NAN;
-				glm::bvec3 zeroes = glm::equal(glm::sign(glm::vec3(a, b, c)), glm::vec3(0));
-				glm::vec3 signs(a, b, c);
-
-				flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
-				flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
-				flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
-				
-				critera = NAN;
-				bool flag2 = true;
-				for (int i = 0; i < 3; i++)
-				{
-					if (zeroes[i])
-						continue;
-					if (glm::isnan(critera))
-					{
-						critera = signs[i];
-					}
-					else
-					{
-						flag2 &= (critera == signs[i]);
-					}
-				}
-				std::cout << std::boolalpha << flag << ":" << flag2<<  ":" << (flag == flag2) << std::endl;
-			}
-		}
-	}
 
 	int error = 0;
 	debugFlags.fill(false);
@@ -2145,7 +2110,7 @@ void init()
 		}
 		//project.Scale(glm::vec3(1, .625f, 1));
 		project.Scale(glm::vec3(1, 2e-6f, 1));
-		boxes.Insert({project, false}, project.GetAABB());
+		boxes.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix());
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
@@ -2163,7 +2128,7 @@ void init()
 				RayCollision fumop{};
 				for (auto& temp : temps)
 				{
-					if (temp->box.Overlap(boxer))
+					if (temp->Overlap(boxer))
 					{
 						return true;
 					}
@@ -2200,6 +2165,11 @@ void init()
 	}
 	albertBuffer.BufferData(textVert, StaticDraw);
 	
+	// Decal stuff
+	OBB orbing;
+	orbing.ReCenter(glm::vec3(1, 1, 3));
+	orbing.ReScale(glm::vec3(0.5f));
+	decals = Decal::GetDecal(orbing, boxes);
 
 	// =============================================================
 	// Pathfinding stuff
@@ -2233,7 +2203,7 @@ void init()
 						RayCollision fumop{};
 						for (auto& temp : temps)
 						{
-							if (temp->box.Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+							if (temp->Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
 							{
 								return false;
 							}

@@ -9,8 +9,6 @@
 #include "Triangle.h"
 
 
-struct Polygon {}; // placeholder
-
 class BinarySpacePartition
 {
 using BSP = BinarySpacePartition;
@@ -20,19 +18,19 @@ protected:
 	std::vector<Triangle> collinear; // Likely to be small
 	BSP* front = nullptr, *behind = nullptr;
 
-	void AddPolygonInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& back);
+	void AddTriangleInternal(const Triangle& triangle, std::vector<Triangle>& front, std::vector<Triangle>& back);
 public:
 	BinarySpacePartition();
 	~BinarySpacePartition();
 
 	void ClearBSP();
-	void GenerateBSP(std::vector<Triangle>& polygons);
+	void GenerateBSP(std::vector<Triangle>& triangles);
 
-	// True -> point is contained within the geometry enclosed by this BSP, false -> it is not
+	// True -> point is "in bounds", False -> point is "out of bounds"
 	bool TestPoint(const glm::vec3& point) const;
 
 	// Should be used as little as possible, much less efficicent than doing it via bulk in BuildBSP
-	void AddPolygon(const Triangle& polygon);
+	void AddTriangle(const Triangle& triangle);
 
 	bool RayCast(const Ray& ray) const;
 	bool RayCast(const Ray& ray, RayCollision& collide) const;

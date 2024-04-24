@@ -108,7 +108,7 @@ inline Plane& Plane::operator=(const Plane& other) noexcept
 	return *this;
 }
 
-// TODO: Investigate constexpr
+// TODO: Investigate zeroing out close to zero values with EPSILON
 inline float Plane::Facing(const glm::vec3& vector) const noexcept
 {
 	return glm::dot(this->normal, vector) - this->constant;

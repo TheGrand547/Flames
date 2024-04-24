@@ -60,6 +60,8 @@ public:
 	inline GLenum GetElementType() const;
 	inline std::size_t GetElementSize() const;
 
+	Buffer<Type>& operator=(Buffer<Type>&& other) noexcept;
+
 	std::size_t Size() const;
 
 	void CleanUp();
@@ -148,6 +150,17 @@ template<BufferType Type> inline GLuint Buffer<Type>::GetElementCount() const
 template<BufferType Type> inline std::size_t Buffer<Type>::GetElementSize() const
 {
 	return this->elementSize;
+}
+
+template<BufferType Type> Buffer<Type>& Buffer<Type>::operator=(Buffer<Type>&& other) noexcept
+{
+	this->CleanUp();
+	std::swap(this->buffer, other.buffer);
+	std::swap(this->length, other.length);
+	std::swap(this->elementCount, other.elementCount);
+	std::swap(this->elementType, other.elementType);
+	std::swap(this->elementSize, other.elementSize);
+	return *this;
 }
 
 template<BufferType Type> inline GLenum Buffer<Type>::GetElementType() const

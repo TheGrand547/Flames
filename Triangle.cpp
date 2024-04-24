@@ -1,7 +1,6 @@
 #include "Triangle.h"
 #include "Plane.h"
 
-// TODO: account for being perfectly split down the middle
 bool Triangle::SplitByPlane(const Plane& plane) const
 {
 	return glm::isnan(this->GetRelation(plane));
@@ -20,7 +19,7 @@ Plane Triangle::GetPlane() const
 	return Plane(normal, this->vertices[2]);
 }
 
-int Triangle::GetRelation(const Plane& plane) const
+float Triangle::GetRelation(const Plane& plane) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
 	glm::vec3 signs = glm::sign(dots);
@@ -30,12 +29,12 @@ int Triangle::GetRelation(const Plane& plane) const
 	int sign = 0;
 
 	bool flag = true;
-	float critera = NAN; // Get something better
+	float critera = 0.f; // Get something better
 	for (int i = 0; i < 3; i++)
 	{
 		if (zeroes[i])
 			continue;
-		if (glm::isnan(critera))
+		if (critera == 0.f)
 		{
 			critera = signs[i];
 		}

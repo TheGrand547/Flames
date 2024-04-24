@@ -67,11 +67,11 @@ public:
 	constexpr bool empty() const { return this->items.empty(); }
 
 	typename std::list<T>::iterator begin() { return this->items.begin(); }
-	typename std::list<T>::const_iterator cbegin() { return this->items.cbegin(); }
+	typename std::list<T>::const_iterator cbegin() const { return this->items.cbegin(); }
 	typename std::list<T>::iterator end() { return this->items.end(); }
-	typename std::list<T>::const_iterator cend() { return this->items.cend(); }
+	typename std::list<T>::const_iterator cend() const { return this->items.cend(); }
 
-	std::list<Item> Search(const AABB& area);
+	std::list<Item> Search(const AABB& area) const;
 	std::list<Item> DepthSearch(const AABB& area);
 	std::list<Item> RayCast(const Ray& line) const;
 	std::list<Item> RayCastSort(const Ray& line) const;
@@ -107,7 +107,7 @@ inline StaticOctTree<T>::~StaticOctTree()
 }
 
 template<class T>
-inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::Search(const AABB& area)
+inline std::list<typename std::list<T>::iterator> StaticOctTree<T>::Search(const AABB& area) const
 {
 	return this->root.Search(area);
 }

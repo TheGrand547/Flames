@@ -10,10 +10,10 @@ BinarySpacePartition::~BinarySpacePartition()
 	this->ClearBSP();
 }
 
-void BinarySpacePartition::AddPolygonInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& behind)
+void BinarySpacePartition::AddTriangleInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& behind)
 {
 	// None of the triangles that are being called with this function 
-	int result = polygon.GetRelation(this->canonical); // returns -1 if behind, 0 if collinear, 1 if in front
+	float result = polygon.GetRelation(this->canonical); // returns -1 if behind, 0 if collinear, 1 if in front
 	if (result < 0)
 	{
 		behind.push_back(polygon);
@@ -52,7 +52,7 @@ void BinarySpacePartition::GenerateBSP(std::vector<Triangle>& polygons)
 		bool splitByPlane = current.SplitByPlane(this->canonical);
 		if (!splitByPlane)
 		{
-			this->AddPolygonInternal(current, front, behind);
+			this->AddTriangleInternal(current, front, behind);
 		}
 		else
 		{
@@ -60,7 +60,7 @@ void BinarySpacePartition::GenerateBSP(std::vector<Triangle>& polygons)
 			for (Triangle& polygon : split)
 			{
 				// All of them are guaranteed to not be split by the plane
-				this->AddPolygonInternal(polygon, front, behind);
+				this->AddTriangleInternal(polygon, front, behind);
 			}
 		}
 	}
@@ -83,27 +83,29 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 	{
 		if (this->front) 
 			return this->front->TestPoint(point);
+		return true;
 	}
 	else if (facing < 0)
 	{
 		if (this->behind) 
 			return this->behind->TestPoint(point);
+		return false;
 	}
 	else
 	{
-		for (const Triangle& polygon : this->collinear)
+		for (const Triangle& triangle : this->collinear)
 		{
-			// if (polygon.ContainsPoint(point))
-				return true;
+			if (triangle.ContainsPoint(point))
+				return false;
 		}
 	}
-	return false;
+	return true;
 }
 
-void BinarySpacePartition::AddPolygon(const Triangle& polygon)
+void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 {
 	// TODO: this but for things that can be split, should just be a little line of code or two
-	float result = polygon.Collinear(this->canonical);
+	float result = triangle.GetRelation(this->canonical);
 	if (result < 0)
 	{
 		if (!this->behind) 
@@ -111,13 +113,13 @@ void BinarySpacePartition::AddPolygon(const Triangle& polygon)
 			this->behind = new BSP();
 			if (this->behind)
 			{
-				std::vector temp{ polygon };
+				std::vector temp{ triangle };
 				this->behind->GenerateBSP(temp);
 			}
 		}
 		else
 		{
-			this->behind->AddPolygon(polygon);
+			this->behind->AddTriangle(triangle);
 		}
 	}
 	else if (result > 0)
@@ -127,18 +129,18 @@ void BinarySpacePartition::AddPolygon(const Triangle& polygon)
 			this->front = new BSP();
 			if (this->front)
 			{
-				std::vector temp{ polygon };
+				std::vector temp{ triangle };
 				this->front->GenerateBSP(temp);
 			}
 		}
 		else
 		{
-			this->front->AddPolygon(polygon);
+			this->front->AddTriangle(triangle);
 		}
 	}
 	else
 	{
-		this->collinear.push_back(polygon);
+		this->collinear.push_back(triangle);
 	}
 }
 
@@ -181,7 +183,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 	{
 		for (const Triangle& polygon : this->collinear)
 		{
-			//if (polygon.RayCast(ray, near, far))
+			//if (triangle.RayCast(ray, near, far))
 			return true;
 		}
 		return false;
@@ -207,6 +209,10 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		near = behindNear;
 		far = behindFar;
 		return true;
+	}
+	else
+	{
+		// TODO: Check each triangle in this->collinear
 	}
 	return false;
 }
