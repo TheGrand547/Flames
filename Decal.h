@@ -21,32 +21,28 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 	glm::vec3 halfs = box.GetScale();
 	// Maybe the other size too
 	glm::mat4 projection = glm::ortho(-halfs.x, halfs.x, -halfs.y, halfs.y, 0.1f, 1.f);
-	glm::mat4 view = glm::transpose(box.GetNormalMatrix());
+	glm::mat4 view = glm::transpose(glm::mat3(box.GetNormalMatrix()));
 	view[3] = glm::vec4(-box.Center(), 1.f);
+	projection = glm::mat4(1.f);
 	std::vector<Triangle> tris;
-	glm::mat4 projectionView = view;
+	glm::mat4 projectionView = view * projection;
 	for (auto& maybeHit : tree.Search(box.GetAABB()))
 	{
-		//if (maybeHit->Overlap(box))
+		if (maybeHit->Overlap(box))
 		{
-			std::cout << maybeHit->Forward() << std::endl;
-			std::cout << maybeHit->Cross() << std::endl;
-			std::cout << maybeHit->Up() << std::endl;
-			std::cout << maybeHit->Center() << std::endl;
 			for (const Triangle& tri : maybeHit->GetTriangles())
 			{
 				glm::mat3 local = tri.GetPoints();
 				for (glm::length_t i = 0; i < 3; i++)
 				{
 					glm::vec4 temp = projectionView * glm::vec4(local[i], 1.f);
-					//local[i] = glm::vec3(temp);
+					local[i] = glm::vec3(temp);
+					//std::cout << local[i] << std::endl;
 				}
-				tris.emplace_back(tri);
+				tris.emplace_back(local);
 			}
 		}
 	}
-	Buffer<ArrayBuffer> buffering;
-	buffering.BufferData(tris, StaticDraw);
 	glm::mat4 invProjectionView = box.GetNormalMatrix(); // Wrong but trying it anyway
 
 	std::vector<Triangle> results = Decal::ClipTrianglesToUniform(tris);
@@ -61,9 +57,8 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 		}
 		//transformedResults.emplace_back(local);
 	}
-	std::cout << results.size() << ":" << transformedResults.size() << std::endl;
-	
-	//buffering.BufferData(transformedResults, StaticDraw);
+	Buffer<ArrayBuffer> buffering;
+	buffering.BufferData(transformedResults, StaticDraw);
 	return buffering;
 }
 

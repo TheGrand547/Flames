@@ -1,9 +1,93 @@
 #include "Triangle.h"
 #include "Plane.h"
 
+bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
+{
+	glm::vec3 dots = plane.Facing(this->vertices);
+	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	signs *= glm::not_(zeroes);
+
+	// Flag is true means all are on the same side, so flag being false means they are on different ones
+	bool flag = true;
+	float critera = NAN; // Get something better
+	for (int i = 0; i < 3; i++)
+	{
+		if (zeroes[i])
+			continue;
+		if (glm::isnan(critera))
+		{
+			critera = signs[i];
+		}
+		else
+		{
+			flag &= (critera == signs[i]);
+		}
+	}
+	if (flag)
+	{
+		orientation = (glm::isnan(critera)) ? 0.f : critera;
+	}
+	return !flag;
+}
+
+
+// TODO: Un-sloppify
 bool Triangle::SplitByPlane(const Plane& plane) const
 {
-	return glm::isnan(this->GetRelation(plane));
+	glm::vec3 dots = plane.Facing(this->vertices);
+	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	signs *= glm::not_(zeroes);
+
+	bool flag = true;
+	float critera = NAN; // Get something better
+	for (int i = 0; i < 3; i++)
+	{
+		if (zeroes[i])
+			continue;
+		if (glm::isnan(critera))
+		{
+			critera = signs[i];
+		}
+		else
+		{
+			flag &= (critera == signs[i]);
+		}
+	}
+	return !flag;
+}
+
+float Triangle::GetRelation(const Plane& plane) const
+{
+	glm::vec3 dots = plane.Facing(this->vertices);
+	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	signs *= glm::not_(zeroes);
+	int sign = 0;
+
+	bool flag = true;
+	float critera = NAN; // Get something better
+	for (int i = 0; i < 3; i++)
+	{
+		if (zeroes[i])
+			continue;
+		if (glm::isnan(critera))
+		{
+			critera = signs[i];
+		}
+		else
+		{
+			flag &= (critera == signs[i]);
+		}
+	}
+	// Unrolled
+	/*
+	flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
+	flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
+	flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
+	*/
+	return (glm::isnan(critera)) ? 0.f : critera;
 }
 
 bool Triangle::Collinear(const Plane& plane) const
@@ -19,53 +103,23 @@ Plane Triangle::GetPlane() const
 	return Plane(normal, this->vertices[2]);
 }
 
-float Triangle::GetRelation(const Plane& plane) const
-{
-	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::vec3 signs = glm::sign(dots);
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0));
-	int sum = zeroes[0] + zeroes[1] + zeroes[2];
-	signs *= zeroes;
-	int sign = 0;
-
-	bool flag = true;
-	float critera = 0.f; // Get something better
-	for (int i = 0; i < 3; i++)
-	{
-		if (zeroes[i])
-			continue;
-		if (critera == 0.f)
-		{
-			critera = signs[i];
-		}
-		else
-		{
-			flag &= (critera == signs[i]);
-		}
-	}
-	// Unrolled
-	/*
-	flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
-	flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
-	flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
-	*/
-	return (flag) ? critera : NAN;
-}
-
-
 
 std::vector<Triangle> Triangle::Split(const Plane& plane) const
 {
 	std::vector<Triangle> triangles;
 
 	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::vec3 signs = glm::sign(dots);
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0));
-	signs *= zeroes;
+
+	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
+	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	signs *= glm::not_(zeroes);
 	int sum = zeroes[0] + zeroes[1] + zeroes[2];
 
+	float meh;
+
 	// If all the points are on one side of the plane or if more than two points are on the plane
-	if ((signs[0] == signs[1] && signs[1] == signs[2]) || (sum > 1))
+	//if ((signs[0] == signs[1] && signs[1] == signs[2]) || (sum > 1))
+	if (!this->SplitAndOrientation(plane, meh))
 	{
 		// Plane doesn't pass through this triangle, or all are collinear
 		triangles.push_back(*this);
@@ -115,6 +169,8 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 			}
 			else // splitBC && zeroes[0]
 			{
+				std::cout << splitAB << ":" << splitBC << ":" << splitCA << ":" << zeroes << std::endl;
+				std::cout << signs << std::endl;
 				firstLines = lineBC.Split(plane);
 				triangles.emplace_back(this->vertices[0], this->vertices[1], firstLines[0].B);
 				triangles.emplace_back(this->vertices[0], firstLines[1].B,   this->vertices[2]);

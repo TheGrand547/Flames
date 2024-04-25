@@ -496,12 +496,14 @@ void display()
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	moveable.ReScale(glm::vec3(0, 1, 1));
 	OBB orbing;
-	orbing.ReScale(glm::vec3(0.5f));
-	orbing.ReCenter(glm::vec3(1, 1, 3));
+	orbing.ReScale(glm::vec3(1.f));
+	orbing.Rotate(glm::eulerAngleY(glm::radians(45.f)));
+	orbing.ReCenter(glm::vec3(1, 1.5, 3));
 
 	
 	uniform.SetMat4("Model", orbing.GetModelMatrix());
-	uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
+	if (featureToggle)
+		uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
 	//glDepthMask(GL_FALSE)
 	// Albert
 	
@@ -2167,9 +2169,24 @@ void init()
 	
 	// Decal stuff
 	OBB orbing;
-	orbing.ReCenter(glm::vec3(1, 1, 3));
-	orbing.ReScale(glm::vec3(0.5f));
+	orbing.ReCenter(glm::vec3(1, 1.5, 3));
+	orbing.ReScale(glm::vec3(1.f));
+	orbing.Rotate(glm::eulerAngleY(glm::radians(45.f)));
+	auto trs = orbing.GetTriangles();
+	std::vector<Triangle> subscript;
+	std::copy(trs.begin() + 4, trs.begin() + 8, std::back_inserter(subscript));
+	auto decaled = Decal::ClipTrianglesToUniform(trs);
+	std::vector<glm::vec3> smarty;
+	for (auto& a : decaled)
+	{
+		for (auto& b : a.GetPointVector())
+		{
+			smarty.emplace_back(b);
+		}
+	}
+	//decals.BufferData(smarty, StaticDraw);
 	decals = Decal::GetDecal(orbing, boxes);
+
 
 	// =============================================================
 	// Pathfinding stuff

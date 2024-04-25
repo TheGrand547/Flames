@@ -115,8 +115,8 @@ inline float Plane::Facing(const glm::vec3& vector) const noexcept
 }
 
 inline glm::vec3 Plane::Facing(const glm::mat3& points) const noexcept
-{	
-	return this->normal * points - glm::vec3(this->constant);
+{
+	return (this->normal * points) - glm::vec3(this->constant);
 }
 
 inline float Plane::FacingNormal(const glm::vec3& vector) const noexcept

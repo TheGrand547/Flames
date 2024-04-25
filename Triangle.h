@@ -26,6 +26,10 @@ public:
 	bool SplitByPlane(const Plane& plane) const;
 	bool Collinear(const Plane& plane) const;
 
+	// True -> plane splits this triangle, orientation should be ignored
+	// False -> plane does NOT split this triangle, orientation holds the relevant direction respective to the plane
+	bool SplitAndOrientation(const Plane& plane, float& orientation) const;
+
 	Plane GetPlane() const;
 	// TODO: better name
 	// Assuming that the triangle is not split by the plane(NAN), at which point this result is worthless, which side is it on, +/0/-
