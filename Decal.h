@@ -20,12 +20,16 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 {
 	glm::vec3 halfs = box.GetScale();
 	// Maybe the other size too
+
 	glm::mat4 projection = glm::ortho(-halfs.x, halfs.x, -halfs.y, halfs.y, 0.1f, 1.f);
 	glm::mat4 view = glm::transpose(glm::mat3(box.GetNormalMatrix()));
 	view[3] = glm::vec4(-box.Center(), 1.f);
+	view = glm::inverse(box.GetNormalMatrix());
 	projection = glm::mat4(1.f);
+
 	std::vector<Triangle> tris;
-	glm::mat4 projectionView = view * projection;
+	glm::mat4 projectionView = view;
+
 	for (auto& maybeHit : tree.Search(box.GetAABB()))
 	{
 		if (maybeHit->Overlap(box))

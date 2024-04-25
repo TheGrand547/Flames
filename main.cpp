@@ -2186,6 +2186,17 @@ void init()
 	}
 	//decals.BufferData(smarty, StaticDraw);
 	decals = Decal::GetDecal(orbing, boxes);
+	std::vector<glm::vec3> wros;
+	auto dfagfda = OBB(*(planes.rbegin() + 5));
+	dfagfda.Scale(glm::vec3(1, 2e-6f, 1));
+	for (auto& a : dfagfda.GetTriangles())
+	{
+		for (auto& b : a.GetPointVector())
+		{
+			wros.emplace_back(b);
+		}
+	}
+	//decals.BufferData(wros, StaticDraw);
 
 
 	// =============================================================
