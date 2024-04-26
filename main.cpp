@@ -315,7 +315,7 @@ bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime;
 
 constexpr float BulletRadius = 0.05f;
-
+OBB orbing;
 struct Bullet
 {
 	glm::vec3 position, direction;
@@ -498,10 +498,6 @@ void display()
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	moveable.ReScale(glm::vec3(0, 1, 1));
-	OBB orbing;
-	orbing.ReScale(glm::vec3(1.f));
-	orbing.Rotate(glm::eulerAngleY(glm::radians(45.f)));
-	orbing.ReCenter(glm::vec3(1, 1.5, 3));
 
 	
 	uniform.SetMat4("Model", orbing.GetModelMatrix());
@@ -2174,13 +2170,13 @@ void init()
 	albertBuffer.BufferData(textVert, StaticDraw);
 	
 	// Decal stuff
-	OBB orbing;
-	orbing.ReCenter(glm::vec3(1, 1.5, 3));
-	orbing.ReScale(glm::vec3(1.f));
-	orbing.Rotate(glm::eulerAngleY(glm::radians(45.f)));
+	orbing.ReCenter(glm::vec3(1, 0.25, 3));
+	orbing.ReScale(glm::vec3(0.5f));
+	orbing.Rotate(glm::eulerAngleYX(glm::radians(45.f), glm::radians(26.f)));
 	auto trs = orbing.GetTriangles();
 	std::vector<Triangle> subscript;
 	std::copy(trs.begin() + 4, trs.begin() + 8, std::back_inserter(subscript));
+	/*
 	auto decaled = Decal::ClipTrianglesToUniform(trs);
 	std::vector<glm::vec3> smarty;
 	for (auto& a : decaled)
@@ -2190,7 +2186,7 @@ void init()
 			smarty.emplace_back(b);
 		}
 	}
-	//decals.BufferData(smarty, StaticDraw);
+	//decals.BufferData(smarty, StaticDraw);*/
 	{
 		QuickTimer _timer{ "Decal Generation" };
 		decals = Decal::GetDecal(orbing, boxes);

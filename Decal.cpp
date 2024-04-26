@@ -11,44 +11,31 @@ static void ClipToPlane(std::vector<Triangle>& in, std::vector<Triangle>& out, c
         // If the triangle isn't split by the plane, and is wholly behind/collinear it, then ignore the triangle, it doesn't intersect
         if (!isSplitByPlane && orient < 0)
         {
-            auto lo = inTri.GetPoints();
-            std::cout << "Dropped" << lo[0] << lo[1] << lo[2] << std::endl;
             continue;
         }
         // Get the split triangles
-        auto locals = inTri.Split(plane);
-        for (auto& local : locals)
+        for (const auto& local : inTri.Split(plane))
         {
             // Load them into the output
             isSplitByPlane = local.SplitAndOrientation(plane, orient);
-            if ((!isSplitByPlane && orient >= 0))// || isSplitByPlane)
+            if ((!isSplitByPlane && orient >= 0))
             {
-                if (isSplitByPlane)
-                {
-                    auto lo = local.GetPoints();
-                   
-                }
                 out.push_back(local);
-            }
-            else
-            {
-                auto lo = local.GetPoints();
-               
             }
         }
     }
 }
 
-std::vector<Triangle> Decal::ClipTrianglesToUniform(const std::vector<Triangle>& triangles)
+std::vector<Triangle> Decal::ClipTrianglesToUniform(const std::vector<Triangle>& triangles, const glm::vec3& scale)
 {
     std::vector<Triangle> splits;
     const std::array<Plane, 6> Planes = { 
-        Plane(glm::vec3( 1,  0,  0), glm::vec3(-1,  0,  0)),
-        Plane(glm::vec3(-1,  0,  0), glm::vec3( 1,  0,  0)),
-        Plane(glm::vec3( 0,  1,  0), glm::vec3( 0, -1,  0)),
-        Plane(glm::vec3( 0, -1,  0), glm::vec3( 0,  1,  0)),
-        Plane(glm::vec3( 0,  0,  1), glm::vec3( 0,  0, -1)),
-        Plane(glm::vec3( 0,  0, -1), glm::vec3( 0,  0,  1)),
+        Plane(glm::vec3( 1,  0,  0), glm::vec3(-scale.x,        0,        0)),
+        Plane(glm::vec3(-1,  0,  0), glm::vec3( scale.x,        0,        0)),
+        Plane(glm::vec3( 0,  1,  0), glm::vec3(       0, -scale.y,        0)),
+        Plane(glm::vec3( 0, -1,  0), glm::vec3(       0,  scale.y,        0)),
+        Plane(glm::vec3( 0,  0,  1), glm::vec3(       0,        0, -scale.z)),
+        Plane(glm::vec3( 0,  0, -1), glm::vec3(       0,        0,  scale.z)),
     };
     for (const Triangle& input: triangles)
     {
@@ -69,4 +56,31 @@ std::vector<Triangle> Decal::ClipTrianglesToUniform(const std::vector<Triangle>&
     }
 
     return splits;
+}
+
+std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale)
+{
+    const std::array<Plane, 6> Planes = {
+        Plane(glm::vec3( 1,  0,  0), glm::vec3(-scale.x,        0,        0)),
+        Plane(glm::vec3(-1,  0,  0), glm::vec3( scale.x,        0,        0)),
+        Plane(glm::vec3( 0,  1,  0), glm::vec3(       0, -scale.y,        0)),
+        Plane(glm::vec3( 0, -1,  0), glm::vec3(       0,  scale.y,        0)),
+        Plane(glm::vec3( 0,  0,  1), glm::vec3(       0,        0, -scale.z)),
+        Plane(glm::vec3( 0,  0, -1), glm::vec3(       0,        0,  scale.z)),
+    };
+    std::vector<Triangle> currentSet = { triangle };
+    for (std::size_t i = 0; i < 6; i++)
+    {
+        std::vector<Triangle> empty{};
+        // Clip the current set of triangles to the plane
+        ClipToPlane(currentSet, empty, Planes[i]);
+        // Ensure the newly clipped triangles are set as the next set of triangles to clip
+        std::swap(empty, currentSet);
+        if (currentSet.size() == 0)
+        {
+            return currentSet;
+        }
+    }
+    //std::copy(currentSet.begin(), currentSet.end(), std::back_inserter(output));
+    return currentSet;
 }
