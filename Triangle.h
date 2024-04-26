@@ -43,7 +43,7 @@ public:
 	inline bool RayCast(const Ray& ray) const noexcept;
 	inline bool RayCast(const Ray& ray, RayCollision& collision) const noexcept;
 
-	std::vector<Triangle> Split(const Plane& plane) const;
+	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
 };
 
 constexpr Triangle::Triangle() : vertices(1.f), normal()

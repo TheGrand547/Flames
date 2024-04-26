@@ -1839,6 +1839,59 @@ int main(int argc, char** argv)
 	std::cout << value2 << std::endl;
 	/*/
 
+	for (int x = -1; x <= 1; x++)
+	{
+		for (int y = -1; y <= 1; y++)
+		{
+			for (int z = -1; z <= 1; z++)
+			{
+				glm::vec3 dots = glm::vec3(x, y, z);
+				glm::vec3 signs = glm::sign(dots);
+				glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+				
+				signs *= glm::not_(zeroes);
+				bool flag = true;
+				float critera = NAN; // Get something better
+				for (int i = 0; i < 3; i++)
+				{
+					if (zeroes[i])
+						continue;
+					if (glm::isnan(critera))
+					{
+						critera = signs[i];
+					}
+					else
+					{
+						flag &= (critera == signs[i]);
+					}
+				}
+				if (flag) critera = (glm::isnan(critera)) ? 0.f : critera;
+				bool fool = false;
+				auto transfer = glm::greaterThan(signs, glm::vec3(0));
+				if (!glm::any(zeroes))
+				{
+					fool = (glm::all(transfer) || !glm::any(transfer));
+				}
+				else
+				{
+					fool = (glm::all(glm::greaterThanEqual(signs, glm::vec3(0))) ||
+						!glm::any(glm::greaterThan(signs, glm::vec3(0))));
+				}
+				float signify = NAN;
+				if (fool) // is split by the plane
+				{
+					signify = signs[0];
+					if (zeroes[0])
+					{
+						signify = (zeroes[1]) ? signs[2] : signs[1];
+					}
+					
+				}
+				//std::cout << dots << ":" << std::boolalpha << flag << ":" << critera << ":" << fool  << ":" << signify << std::endl;
+			}
+		}
+	}
+
 	int error = 0;
 	debugFlags.fill(false);
 
@@ -2168,7 +2221,7 @@ void init()
 		}
 	}
 	albertBuffer.BufferData(textVert, StaticDraw);
-	
+
 	// Decal stuff
 	orbing.ReCenter(glm::vec3(1, 0.25, 3));
 	orbing.ReScale(glm::vec3(0.5f));

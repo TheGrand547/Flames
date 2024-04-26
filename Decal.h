@@ -46,7 +46,7 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 						glm::vec2 older = innerLocal[i] / halfs;
 						innerLocal[i] = (inverseViw * innerLocal[i]) + center;
 						// Texture coordinates will be (x, y)
-						transformedResults.emplace_back<TextureVertex>({ local[i] + normal * 0.001f, older / 2.f + 0.5f });
+						transformedResults.emplace_back<TextureVertex>({ innerLocal[i] + normal * 0.001f, older / 2.f + 0.5f });
 					}
 				}
 			}

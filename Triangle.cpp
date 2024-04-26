@@ -4,31 +4,72 @@
 bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
 	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
-	signs *= glm::not_(zeroes);
+	// dots*=zeroes;
+	// if (glm::none(zeroes)) return glm::all(glm::greater(dots, glm::vec3(0))) || glm::none(glm::greater(dots, glm::vec3(0))
+	// else return glm::all(glm::greaterEqual(dots, glm::vec3(0))) || glm::none(glm::greaterEqual(dots, glm::vec3(0))
+	/*
+	+++ => false, +
+	++- => true,  ?
+	++0 => false, +
 
-	// Flag is true means all are on the same side, so flag being false means they are on different ones
-	bool flag = true;
-	float critera = NAN; // Get something better
-	for (int i = 0; i < 3; i++)
+	+-+ => true,  ?
+	+-- => true,  ?
+	+-0 => true,  ?
+
+	+0+ => false, +
+	+0- => true,  ?
+	+00 => false, +
+
+	-++ => true,  ?
+	-+- => true,  ?
+	-+0 => true,  ?
+
+	--+ => true,  ?
+	--- => false, -
+	--0 => false, -
+
+	-0+ => true,  ?
+	-0- => false, -
+	-00 => false, -
+
+	0++ => false, +
+	0+- => true,  ?
+	0+0 => false, +
+
+	0-+ => true,  ?
+	0-- => false, -
+	0-0 => false, -
+
+	00+ => false, +
+	00- => false, -
+	000 => false, 0
+	*/
+	glm::vec3 signs = glm::sign(dots);
+	signs *= glm::not_(zeroes);
+	bool fool = false;
+	auto transfer = glm::greaterThan(signs, glm::vec3(0));
+	if (!glm::any(zeroes))
 	{
-		if (zeroes[i])
-			continue;
-		if (glm::isnan(critera))
-		{
-			critera = signs[i];
-		}
-		else
-		{
-			flag &= (critera == signs[i]);
-		}
+		fool = (glm::all(transfer) || !glm::any(transfer));
 	}
-	if (flag)
+	else
 	{
-		orientation = (glm::isnan(critera)) ? 0.f : critera;
+		fool = (glm::all(glm::greaterThanEqual(signs, glm::vec3(0))) ||
+			!glm::any(transfer));
 	}
-	return !flag;
+	float signify = NAN;
+	if (fool) // is split by the plane
+	{
+		signify = signs[0];
+		if (zeroes[0])
+		{
+			signify = (zeroes[1]) ? signs[2] : signs[1];
+		}
+
+	}
+	orientation = signify;
+	return !fool;
 }
 
 
@@ -104,16 +145,15 @@ Plane Triangle::GetPlane() const
 }
 
 
-std::vector<Triangle> Triangle::Split(const Plane& plane) const
+std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
 {
 	std::vector<Triangle> triangles;
 
 	glm::vec3 dots = plane.Facing(this->vertices);
 
-	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
-	signs *= glm::not_(zeroes);
-	int sum = zeroes[0] + zeroes[1] + zeroes[2];
+	glm::vec3 signs = glm::sign(dots);
+	glm::bvec3 zeroes = glm::notEqual(dots, glm::vec3(0), EPSILON);
+	signs *= (zeroes);
 
 	float meh;
 
@@ -155,22 +195,20 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 		{
 			// TODO: maybe clean this up idk man
 			// Only one of splitAB, splitBC, and splitCA is true
-			if (splitAB && zeroes[2])
+			if (splitAB && !zeroes[2])
 			{
 				firstLines = lineAB.Split(plane);
 				triangles.emplace_back(this->vertices[2], this->vertices[0], firstLines[0].B);
 				triangles.emplace_back(this->vertices[2], firstLines[1].B,   firstLines[1].A);
 			}
-			else if (splitCA && zeroes[1])
+			else if (splitCA && !zeroes[1])
 			{
 				firstLines = lineCA.Split(plane);
 				triangles.emplace_back(this->vertices[1], this->vertices[2], firstLines[1].B);
 				triangles.emplace_back(this->vertices[1], firstLines[0].B, this->vertices[0]);
 			}
-			else // splitBC && zeroes[0]
+			else // splitBC && !zeroes[0]
 			{
-				std::cout << splitAB << ":" << splitBC << ":" << splitCA << ":" << zeroes << std::endl;
-				std::cout << signs << std::endl;
 				firstLines = lineBC.Split(plane);
 				triangles.emplace_back(this->vertices[0], this->vertices[1], firstLines[0].B);
 				triangles.emplace_back(this->vertices[0], firstLines[1].B,   this->vertices[2]);
@@ -183,9 +221,18 @@ std::vector<Triangle> Triangle::Split(const Plane& plane) const
 			triangles.push_back(*this);
 			return triangles;
 		}
-		triangles.emplace_back(firstLines[0].B,  firstLines[1].A, secondLines[1].B);
-		triangles.emplace_back(firstLines[0].A,  firstLines[0].B, secondLines[1].B);
-		triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
+		//triangles.emplace_back(firstLines[0].B,  firstLines[1].A, secondLines[1].B);
+		//triangles.emplace_back(firstLines[0].A,  firstLines[0].B, secondLines[1].B);
+		//triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
+		if (!cullBack || plane.Facing(firstLines[0].A) >= 0.f)
+		{
+			triangles.emplace_back(firstLines[0].A, firstLines[0].B, secondLines[1].B);
+			triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
+		}
+		if (!cullBack || plane.Facing(firstLines[1].A) >= 0.f)
+		{
+			triangles.emplace_back(firstLines[0].B, firstLines[1].A, secondLines[1].B);
+		}
 	}
 	return triangles;
 }
