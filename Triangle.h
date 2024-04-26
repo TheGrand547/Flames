@@ -23,6 +23,8 @@ public:
 	constexpr glm::mat3 GetPoints() const noexcept;
 	constexpr std::vector<glm::vec3> GetPointVector() const noexcept;
 
+	inline glm::vec3 GetNormal() const noexcept;
+
 	bool SplitByPlane(const Plane& plane) const;
 	bool Collinear(const Plane& plane) const;
 
@@ -65,6 +67,11 @@ constexpr glm::mat3 Triangle::GetPoints() const noexcept
 constexpr std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
 {
 	return std::vector<glm::vec3>({ this->vertices[0], this->vertices[1], this->vertices[2] });
+}
+
+inline glm::vec3 Triangle::GetNormal() const noexcept
+{
+	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[1]));
 }
 
 // Implemented based on https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates/23745#23745

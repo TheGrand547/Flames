@@ -203,7 +203,7 @@ ColorFrameBuffer scratchSpace;
 
 // Shaders
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
-Shader triColor;
+Shader triColor, decalShader;
 Shader pathNodeView, stencilTest;
 
 // Textures
@@ -212,7 +212,7 @@ Texture2D buttonA, buttonB;
 CubeMap mapper;
 
 // Vertex Array Objects
-VAO fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
+VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
 
 
 // Not explicitly tied to OpenGL Globals
@@ -437,16 +437,19 @@ void display()
 	plainVAO.BindArrayObject();
 	plainVAO.BindArrayBuffer(triBuf);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
-	plainVAO.BindArrayBuffer(decals);
-	triColor.DrawElements(DrawType::Triangle, decals);
 
 	DisableGLFeatures<FaceCulling>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	triColor.DrawElements(DrawType::Triangle, triBuf);
 	plainVAO.BindArrayBuffer(decals);
-	triColor.DrawElements(DrawType::Triangle, decals);
+	//triColor.DrawElements(DrawType::Triangle, decals);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
+
+	decalShader.SetActiveShader();
+	decalVAO.BindArrayBuffer(decals);
+	decalShader.SetTextureUnit("textureIn", texture, 0);
+	decalShader.DrawElements(DrawType::Triangle, decals);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -1934,6 +1937,7 @@ void init()
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders/");
+	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
 	expand.Compile("framebuffer", "expand");
 	fontShader.CompileSimple("font");
@@ -1951,21 +1955,23 @@ void init()
 
 	stencilTest.CompileSimple("stencil_");
 
-	uniform.UniformBlockBinding("Camera", 0);
+	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
 	pathNodeView.UniformBlockBinding("Camera", 0);
-	triColor.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);
+	triColor.UniformBlockBinding("Camera", 0);
+	uniform.UniformBlockBinding("Camera", 0);
 
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
 
 	// VAO SETUP
+	decalVAO.ArrayFormat<TextureVertex>(decalShader);
 	fontVAO.ArrayFormat<UIVertex>(fontShader);
 	
 	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
@@ -2185,17 +2191,11 @@ void init()
 		}
 	}
 	//decals.BufferData(smarty, StaticDraw);
-	decals = Decal::GetDecal(orbing, boxes);
-	std::vector<glm::vec3> wros;
-	auto dfagfda = OBB(*(planes.rbegin() + 5));
-	dfagfda.Scale(glm::vec3(1, 2e-6f, 1));
-	for (auto& a : dfagfda.GetTriangles())
 	{
-		for (auto& b : a.GetPointVector())
-		{
-			wros.emplace_back(b);
-		}
+		QuickTimer _timer{ "Decal Generation" };
+		decals = Decal::GetDecal(orbing, boxes);
 	}
+	
 	//decals.BufferData(wros, StaticDraw);
 
 

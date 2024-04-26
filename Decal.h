@@ -23,13 +23,14 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 
 	glm::mat4 projection = glm::ortho(-halfs.x, halfs.x, -halfs.y, halfs.y, 0.1f, 1.f);
 	glm::mat4 view = glm::transpose(glm::mat3(box.GetNormalMatrix()));
-	view[3] = glm::vec4(-box.Center(), 1.f);
-	view = glm::inverse(box.GetNormalMatrix());
+	//view[3] = glm::vec4(-box.Center(), 1.f);
+	//view = glm::inverse(box.GetNormalMatrix());
 	projection = glm::mat4(1.f);
 
 	std::vector<Triangle> tris;
 	glm::mat4 projectionView = view;
 
+	// TODO: reduce to a 3x3 mat to save on multiplication because the subtraction is already happening y'know what to do
 	for (auto& maybeHit : tree.Search(box.GetAABB()))
 	{
 		if (maybeHit->Overlap(box))
@@ -39,7 +40,7 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 				glm::mat3 local = tri.GetPoints();
 				for (glm::length_t i = 0; i < 3; i++)
 				{
-					glm::vec4 temp = projectionView * glm::vec4(local[i], 1.f);
+					glm::vec4 temp = projectionView * glm::vec4(local[i] - box.Center(), 1.f);
 					local[i] = glm::vec3(temp);
 					//std::cout << local[i] << std::endl;
 				}
@@ -51,18 +52,23 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 
 	std::vector<Triangle> results = Decal::ClipTrianglesToUniform(tris);
 	std::vector<glm::vec3> transformedResults{};
+	std::vector<TextureVertex> transformedResults2{};
 	for (const Triangle& tri : results)
 	{
 		glm::mat3 local = tri.GetPoints();
+		glm::vec3 normal = tri.GetNormal();
 		for (glm::length_t i = 0; i < 3; i++)
 		{
+			glm::vec2 older = local[i];
 			local[i] = invProjectionView * glm::vec4(local[i], 1.f);
-			transformedResults.push_back(local[i]);
+			// Texture coordinates will be (x, y)
+			transformedResults2.emplace_back(TextureVertex{ local[i] + normal * 0.001f, older / 2.f + 0.5f});
+			std::cout << older << std::endl;
 		}
 		//transformedResults.emplace_back(local);
 	}
 	Buffer<ArrayBuffer> buffering;
-	buffering.BufferData(transformedResults, StaticDraw);
+	buffering.BufferData(transformedResults2, StaticDraw);
 	return buffering;
 }
 
