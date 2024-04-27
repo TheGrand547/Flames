@@ -11,6 +11,7 @@ class Decal
 {
 public:
 	template<class T> static Buffer<ArrayBuffer> GetDecal(const OBB& box, const StaticOctTree<T>& tree);
+	template<class T> static void GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out);
 
 	// Clips triangles in the 2d plane to the range [-1, 1] x [-1, 1]
 	static std::vector<Triangle> ClipTrianglesToUniform(const std::vector<Triangle>& triangles, const glm::vec3& scale);
@@ -19,12 +20,21 @@ public:
 
 template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const StaticOctTree<OBB>& tree)
 {
+	
+	std::vector<TextureVertex> transformedResults{};
+	Decal::GetDecal(box, tree, transformedResults);
+	Buffer<ArrayBuffer> buffering;
+	buffering.BufferData(transformedResults, StaticDraw);
+	return buffering;
+}
+
+template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out)
+{
 	glm::vec3 halfs = box.GetScale();
 	glm::vec3 center = box.Center();
 	// Maybe the other size too
 	glm::mat3 inverseViw = glm::mat3(box.GetNormalMatrix());
 	glm::mat3 view = glm::transpose(inverseViw);
-	std::vector<TextureVertex> transformedResults{};
 
 	for (auto& maybeHit : tree.Search(box.GetAABB()))
 	{
@@ -33,6 +43,7 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 			for (const Triangle& tri : maybeHit->GetTriangles())
 			{
 				glm::mat3 local = tri.GetPoints();
+				glm::vec3 normal = tri.GetNormal();
 				for (glm::length_t i = 0; i < 3; i++)
 				{
 					local[i] = view * (local[i] - center);
@@ -40,21 +51,20 @@ template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const
 				for (const Triangle& inner : Decal::ClipTriangleToUniform(Triangle(local), halfs))
 				{
 					glm::mat3 innerLocal = inner.GetPoints();
-					glm::vec3 normal = inner.GetNormal();
+					// TODO: look into this
+					//if (glm::dot(normal, box.Forward()) > 0.5f)
+						//continue;
 					for (glm::length_t i = 0; i < 3; i++)
 					{
-						glm::vec2 older = innerLocal[i] / halfs;
+						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.x, halfs.y);
 						innerLocal[i] = (inverseViw * innerLocal[i]) + center;
 						// Texture coordinates will be (x, y)
-						transformedResults.emplace_back<TextureVertex>({ innerLocal[i] + normal * 0.001f, older / 2.f + 0.5f });
+						out.emplace_back<TextureVertex>({ innerLocal[i] + normal * 0.001f, older / 2.f + 0.5f });
 					}
 				}
 			}
 		}
 	}
-	Buffer<ArrayBuffer> buffering;
-	buffering.BufferData(transformedResults, StaticDraw);
-	return buffering;
 }
 
 

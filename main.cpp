@@ -324,6 +324,7 @@ struct Bullet
 std::vector<Bullet> bullets;
 // TODO: Look into GLM_FORCE_INTRINSICS
 
+std::vector<TextureVertex> bigVertex;
 
 /*
 New shading outputs
@@ -1303,7 +1304,37 @@ void idle()
 		{
 			if (boxers->Overlap(gamin, c))
 			{
+				{
+					QuickTimer _timer("New Decal Generation");
+					OBB boxed;
+					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
+					glm::mat3 dumb(1.f);
+					dumb[0] = glm::normalize(bullets[i].direction);
+					dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(0, 1, 0)));
+					dumb[1] = glm::normalize(glm::cross(dumb[2], dumb[0]));
+					glm::mat4 dumber{ dumb };
+					dumber[3] = glm::vec4(0, 0, 0, 1);
+					boxed.ReOrient(dumber);
+					boxed.ReScale(glm::vec3(gamin.radius * 5.f));
+					boxed.ReCenter(c.point);
+					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 0, 1)));
+					Decal::GetDecal(boxed, boxes, bigVertex);
+					int xb = 0;
+					for (auto& bp : boxed.GetTriangles())
+					{
+						xb++;
+						if (xb > 6)
+							break;
+						for (glm::length_t i = 0; i < 3; i++)
+						{
+							//bigVertex.emplace_back<TextureVertex>({ bp.GetPoints()[i], glm::vec2(xb) / 3.f});
+						}
+					}
+
+					decals.BufferData(bigVertex, StaticDraw);
+				}
 				gamin.center = c.point;
+				gamin.center = glm::vec3(20, 20, 20);
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
 			}
 		}
@@ -1312,6 +1343,7 @@ void idle()
 
 
 	// BSP Testing visualizations
+	/*
 	glm::mat3 toTrans{ glm::vec3(0), glm::vec3(-.5f, 1, 0), glm::vec3(0.5, 1, 0) };
 	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 10.f));
 	for (glm::length_t i = 0; i < 3; i++)
@@ -1353,9 +1385,9 @@ void idle()
 		}
 	}
 	splitTri.BufferData(scremer, StaticDraw);
-
+	*/
 	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", splitBoy.Collinear(splitter)));
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", false));
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -2165,14 +2197,14 @@ void init()
 		{
 			pathNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
 		}
-		//project.Scale(glm::vec3(1, .625f, 1));
-		project.Scale(glm::vec3(1, 2e-6f, 1));
+		project.Scale(glm::vec3(1, .0625f, 1));
+		project.Scale(glm::vec3(1, 0, 1));
 		boxes.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix());
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	{
-		QuickTimer _tim;
+		QuickTimer _tim("Node Culling");
 		std::erase_if(pathNodes,
 			[&](const PathNodePtr& A)
 			{
@@ -2225,27 +2257,11 @@ void init()
 	// Decal stuff
 	orbing.ReCenter(glm::vec3(1, 0.25, 3));
 	orbing.ReScale(glm::vec3(0.5f));
-	orbing.Rotate(glm::eulerAngleYX(glm::radians(45.f), glm::radians(26.f)));
-	auto trs = orbing.GetTriangles();
-	std::vector<Triangle> subscript;
-	std::copy(trs.begin() + 4, trs.begin() + 8, std::back_inserter(subscript));
-	/*
-	auto decaled = Decal::ClipTrianglesToUniform(trs);
-	std::vector<glm::vec3> smarty;
-	for (auto& a : decaled)
-	{
-		for (auto& b : a.GetPointVector())
-		{
-			smarty.emplace_back(b);
-		}
-	}
-	//decals.BufferData(smarty, StaticDraw);*/
+	orbing.Rotate(glm::eulerAngleYZ(glm::radians(-45.f), glm::radians(-26.f)));
 	{
 		QuickTimer _timer{ "Decal Generation" };
 		decals = Decal::GetDecal(orbing, boxes);
 	}
-	
-	//decals.BufferData(wros, StaticDraw);
 
 
 	// =============================================================

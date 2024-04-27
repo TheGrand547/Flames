@@ -167,9 +167,9 @@ std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
 	else
 	{
 		// If the result is -1 then one is positive and the other is negative, thus being split
-		bool splitAB = (signs[0] * signs[1]) == -1.f,
-			splitBC  = (signs[1] * signs[2]) == -1.f,
-			splitCA  = (signs[2] * signs[0]) == -1.f;
+		bool splitAB = (signs[0] * signs[1]) < 0.f,
+			splitBC  = (signs[1] * signs[2]) < 0.f,
+			splitCA  = (signs[2] * signs[0]) < 0.f;
 		std::vector<LineSegment> firstLines;
 		std::vector<LineSegment> secondLines;
 		LineSegment lineAB(this->vertices[0], this->vertices[1]);
@@ -224,12 +224,12 @@ std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
 		//triangles.emplace_back(firstLines[0].B,  firstLines[1].A, secondLines[1].B);
 		//triangles.emplace_back(firstLines[0].A,  firstLines[0].B, secondLines[1].B);
 		//triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
-		if (!cullBack || plane.Facing(firstLines[0].A) >= 0.f)
+		//if (!cullBack || plane.Facing(firstLines[0].A) >= 0.f)
 		{
 			triangles.emplace_back(firstLines[0].A, firstLines[0].B, secondLines[1].B);
 			triangles.emplace_back(secondLines[1].A, firstLines[0].A, secondLines[1].B);
 		}
-		if (!cullBack || plane.Facing(firstLines[1].A) >= 0.f)
+		//if (!cullBack || plane.Facing(firstLines[1].A) >= 0.f)
 		{
 			triangles.emplace_back(firstLines[0].B, firstLines[1].A, secondLines[1].B);
 		}
