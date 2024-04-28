@@ -5,9 +5,9 @@ PathNode::PathNode(const glm::vec3& position) : position(position), nodes(), dis
 
 }
 
-float PathNode::distance(const std::shared_ptr<PathNode>& other) noexcept
+float PathNode::distance(const PathNode& other) const noexcept
 {
-    auto location = this->distances.find(other);
+    auto location = this->distances.find(other.shared_from_this());
     if (location != this->distances.end())
     {
         return location->second;
@@ -15,7 +15,7 @@ float PathNode::distance(const std::shared_ptr<PathNode>& other) noexcept
     return std::numeric_limits<float>::infinity();
 }
 
-std::vector<std::weak_ptr<PathNode>> PathNode::neighbors()
+std::vector<std::weak_ptr<PathNode>> PathNode::neighbors() const
 {
     return this->nodes;
 }

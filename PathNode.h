@@ -14,12 +14,12 @@ template<typename T, typename W> concept ConditionFunction = requires(T t, std::
 	t(w1, w2);
 };
 
-class PathNode 
+class PathNode : public std::enable_shared_from_this<PathNode>
 {	
 protected:
 	glm::vec3 position;
 	std::vector<std::weak_ptr<PathNode>> nodes;
-	std::unordered_map<std::shared_ptr<PathNode>, float> distances;
+	std::unordered_map<std::shared_ptr<const PathNode>, float> distances;
 
 	PathNode(const glm::vec3& position);
 public:
@@ -32,8 +32,8 @@ public:
 
 	constexpr bool operator==(const PathNode& other) const noexcept;
 
-	float distance(const std::shared_ptr<PathNode>& other) noexcept;
-	std::vector<std::weak_ptr<PathNode>> neighbors();
+	float distance(const PathNode& other) const noexcept;
+	std::vector<std::weak_ptr<PathNode>> neighbors() const;
 
 
 	static bool addNeighborUnconditional(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B) noexcept;

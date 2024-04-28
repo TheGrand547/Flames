@@ -53,6 +53,7 @@ template<typename T, typename S = float> struct MinHeapValue
 	}
 };
 
+// TODO: consider using a stack for the output
 // TODO: [[nodiscard]]
 template<SearchNode Node, typename T>
 	requires HeuristicFunction<T, Node>
@@ -95,7 +96,7 @@ std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr
 				current = pathHistory[current];
 			}
 			// Has to be a better way!
-			std::reverse(finalPath.begin(), finalPath.end());
+			//std::reverse(finalPath.begin(), finalPath.end());
 			break;
 		}
 		// Front is removed from open

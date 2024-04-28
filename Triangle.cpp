@@ -1,4 +1,5 @@
 #include "Triangle.h"
+#include <glm/gtx/intersect.hpp>
 #include "Plane.h"
 
 bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const

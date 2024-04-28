@@ -112,6 +112,7 @@ inline bool Triangle::RayCast(const Ray& ray) const noexcept
 	return this->RayCast(ray, dummy);
 }
 
+// TODO: Investigate glm::intersectRayTriangle and such
 inline bool Triangle::RayCast(const Ray& ray, RayCollision& collision) const noexcept
 {
 	glm::vec3 edgeA = this->vertices[1] - vertices[0], edgeB = this->vertices[2] - vertices[1];

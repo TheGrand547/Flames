@@ -50,7 +50,7 @@
 
 template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
 {
-	left.insert(left.end(), std::make_move_iterator(right.begin()), std::make_move_iterator(right.end()));
+	std::copy(right.begin(), right.end(), std::back_inserter(left));
 }
 
 // TODO: GRRRRR DO THIS BETTER DUMB DUMB FUCKER
@@ -321,6 +321,17 @@ struct Bullet
 	glm::vec3 position, direction;
 };
 
+struct walkerboy
+{
+	Capsule capsule;
+	OBB box;
+	glm::vec3 velocity{0};
+	std::vector<PathNodePtr> path;
+} pathTestGuy;
+std::vector<PathNodePtr> pathNodes{};
+
+OBB finders{};
+
 std::vector<Bullet> bullets;
 // TODO: Look into GLM_FORCE_INTRINSICS
 
@@ -528,7 +539,8 @@ void display()
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
-	//uniform.DrawIndexed<Lines>(cubeOutlineIndex);
+	uniform.SetMat4("Model", finders.GetModelMatrix());
+	uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	//DisableGLFeatures<DepthTesting>();
@@ -674,13 +686,13 @@ void display()
 	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	//flatLighting.DrawIndexed<Triangle>(capsuleIndex);
+	flatLighting.DrawIndexed<DrawType::Triangle>(capsuleIndex);
 
 
 	meshVAO.BindArrayBuffer(movingCapsule);
-	flatLighting.SetMat4("modelMat", catapultBox.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", catapultBox.GetNormalMatrix());
-	//flatLighting.DrawIndexed<DrawType::Triangle>(movingCapsuleIndex);
+	flatLighting.SetMat4("modelMat", pathTestGuy.box.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", pathTestGuy.box.GetNormalMatrix());
+	flatLighting.DrawIndexed<DrawType::Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawIndexed(Triangle, sphereIndicies);
@@ -1307,39 +1319,102 @@ void idle()
 				{
 					QuickTimer _timer("New Decal Generation");
 					OBB boxed;
+
+					// TODO: investigate
 					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
 					glm::mat3 dumb(1.f);
-					dumb[0] = glm::normalize(bullets[i].direction);
-					dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(0, 1, 0)));
+					dumb[0] = glm::normalize(-c.axis);
+					if (glm::abs(glm::dot(c.axis, GravityUp)) < 0.85)
+					{
+						dumb[2] = glm::normalize(glm::cross(dumb[0], GravityUp));
+					}
+					else
+					{
+						dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(1, 0, 0)));
+					}
+					dumb[2] = glm::normalize(glm::cross(dumb[0], bullets[i].direction));
 					dumb[1] = glm::normalize(glm::cross(dumb[2], dumb[0]));
 					glm::mat4 dumber{ dumb };
 					dumber[3] = glm::vec4(0, 0, 0, 1);
 					boxed.ReOrient(dumber);
-					boxed.ReScale(glm::vec3(gamin.radius * 5.f));
-					boxed.ReCenter(c.point);
-					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 0, 1)));
+					boxed.ReScale(glm::vec3(gamin.radius * 2.f));
+					boxed.ReCenter(c.point - c.axis * BulletSpeed);
 					Decal::GetDecal(boxed, boxes, bigVertex);
-					int xb = 0;
-					for (auto& bp : boxed.GetTriangles())
-					{
-						xb++;
-						if (xb > 6)
-							break;
-						for (glm::length_t i = 0; i < 3; i++)
-						{
-							//bigVertex.emplace_back<TextureVertex>({ bp.GetPoints()[i], glm::vec2(xb) / 3.f});
-						}
-					}
-
 					decals.BufferData(bigVertex, StaticDraw);
 				}
 				gamin.center = c.point;
-				gamin.center = glm::vec3(20, 20, 20);
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
 			}
 		}
 		bullets[i].position = gamin.center;
 	}
+
+	// Pathfinding demo boy
+	if (pathTestGuy.path.size() == 0)
+	{
+		// REGENERATE PATH
+		pathTestGuy.velocity = glm::vec3(0);
+		glm::vec3 center = pathTestGuy.capsule.GetCenter();
+		PathNodePtr start = nullptr, end = nullptr;
+		float minDist = INFINITY;
+		for (auto& possible : pathNodes)
+		{
+			if (glm::distance(center, possible->GetPosition()) < minDist)
+			{
+				start = possible;
+				minDist = glm::distance(center, possible->GetPosition());
+			}
+		}
+		if (start)
+		{
+			end = pathNodes[std::rand() % pathNodes.size()];
+			pathTestGuy.path = AStarSearch<PathNode>(start, end,
+				[](const PathNode& a, const PathNode& b)
+				{
+					return glm::distance(a.GetPosition(), b.GetPosition());
+				}
+			).first;
+			for (auto& p : pathTestGuy.path)
+			{
+				std::cout << p->GetPosition() << std::endl;
+			}
+			std::cout << std::endl;
+		}
+	}
+	else
+	{
+		auto& target = pathTestGuy.path.back();
+		glm::vec3 pos = target->GetPosition();
+		if (glm::distance(pathTestGuy.capsule.ClosestPoint(pos), pos) < pathTestGuy.capsule.GetRadius())
+		{
+			// Need to move to the next node
+			pathTestGuy.path.pop_back();
+			pathTestGuy.velocity *= 0.5f;
+		}
+		else
+		{
+			finders.ReCenter(pos);
+			// Accelerate towards it
+			glm::vec3 delta = glm::normalize(pos - pathTestGuy.capsule.GetCenter());
+			if (glm::abs(glm::dot(glm::normalize(pathTestGuy.velocity), delta)) < 0.25f)
+			{
+				pathTestGuy.velocity *= 0.85f;
+			}
+			if (glm::length(pathTestGuy.velocity) < 0.5f)
+				pathTestGuy.velocity += delta * BoxAcceleration * timeDelta;
+		}
+	}
+	pathTestGuy.capsule.Translate(pathTestGuy.velocity);
+	
+	Collision placeholder;
+	for (auto& possible : boxes.Search(pathTestGuy.capsule.GetAABB()))
+	{
+		if (possible->Overlap(pathTestGuy.capsule, placeholder))
+		{
+			pathTestGuy.capsule.Translate(placeholder.normal * placeholder.depth);
+		}
+	}
+	pathTestGuy.box.ReCenter(pathTestGuy.capsule.GetCenter());
 
 
 	// BSP Testing visualizations
@@ -1871,59 +1946,6 @@ int main(int argc, char** argv)
 	std::cout << value2 << std::endl;
 	/*/
 
-	for (int x = -1; x <= 1; x++)
-	{
-		for (int y = -1; y <= 1; y++)
-		{
-			for (int z = -1; z <= 1; z++)
-			{
-				glm::vec3 dots = glm::vec3(x, y, z);
-				glm::vec3 signs = glm::sign(dots);
-				glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
-				
-				signs *= glm::not_(zeroes);
-				bool flag = true;
-				float critera = NAN; // Get something better
-				for (int i = 0; i < 3; i++)
-				{
-					if (zeroes[i])
-						continue;
-					if (glm::isnan(critera))
-					{
-						critera = signs[i];
-					}
-					else
-					{
-						flag &= (critera == signs[i]);
-					}
-				}
-				if (flag) critera = (glm::isnan(critera)) ? 0.f : critera;
-				bool fool = false;
-				auto transfer = glm::greaterThan(signs, glm::vec3(0));
-				if (!glm::any(zeroes))
-				{
-					fool = (glm::all(transfer) || !glm::any(transfer));
-				}
-				else
-				{
-					fool = (glm::all(glm::greaterThanEqual(signs, glm::vec3(0))) ||
-						!glm::any(glm::greaterThan(signs, glm::vec3(0))));
-				}
-				float signify = NAN;
-				if (fool) // is split by the plane
-				{
-					signify = signs[0];
-					if (zeroes[0])
-					{
-						signify = (zeroes[1]) ? signs[2] : signs[1];
-					}
-					
-				}
-				//std::cout << dots << ":" << std::boolalpha << flag << ":" << critera << ":" << fool  << ":" << signify << std::endl;
-			}
-		}
-	}
-
 	int error = 0;
 	debugFlags.fill(false);
 
@@ -1996,6 +2018,7 @@ void Dumber(std::size_t id) {}
 
 void init()
 {
+	std::srand(NULL);
 	// OpenGL Feature Enabling
 	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
 	DisableGLFeatures<MultiSampling>();
@@ -2184,8 +2207,6 @@ void init()
 	// The weird wall behind the player I think?
 	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
 
-	std::vector<PathNodePtr> pathNodes{};
-
 	std::vector<glm::mat4> awfulTemp{};
 	awfulTemp.reserve(planes.size());
 	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
@@ -2327,6 +2348,11 @@ void init()
 	
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
+
+
+	pathTestGuy.box.ReCenter(glm::vec3(0, 0.5f, 0));
+	pathTestGuy.capsule.Translate(glm::vec3(0, 0.5f, 0));
+	finders.Scale(0.35f);
 	// =============================================================
 
 	

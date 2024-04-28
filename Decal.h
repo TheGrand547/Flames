@@ -42,8 +42,11 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 		{
 			for (const Triangle& tri : maybeHit->GetTriangles())
 			{
+				// TODO: Overlap
 				glm::mat3 local = tri.GetPoints();
 				glm::vec3 normal = tri.GetNormal();
+				if (glm::dot(normal, box.Forward()) > 0.5f)
+					continue;
 				for (glm::length_t i = 0; i < 3; i++)
 				{
 					local[i] = view * (local[i] - center);
@@ -51,9 +54,6 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 				for (const Triangle& inner : Decal::ClipTriangleToUniform(Triangle(local), halfs))
 				{
 					glm::mat3 innerLocal = inner.GetPoints();
-					// TODO: look into this
-					//if (glm::dot(normal, box.Forward()) > 0.5f)
-						//continue;
 					for (glm::length_t i = 0; i < 3; i++)
 					{
 						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.x, halfs.y);
