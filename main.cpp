@@ -189,7 +189,7 @@ ASCIIFont fonter;
 // Buffers
 Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
-Buffer<ArrayBuffer> pathNodePositions, pathNodeLines;
+Buffer<ArrayBuffer> pathNodePositions, pathNodeLines, guyLines, guyNodes;
 Buffer<ArrayBuffer> singleTri, splitTri;
 Buffer<ArrayBuffer> decals;
 Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
@@ -414,6 +414,29 @@ void display()
 
 		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
 	}
+	// Visualize the pathfinder guy
+	{
+		EnableGLFeatures<Blending>();
+		glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+		pathNodeView.SetActiveShader();
+		pathNodeVAO.BindArrayObject();
+		pathNodeVAO.BindArrayBuffer(plainCube, 0);
+		pathNodeVAO.BindArrayBuffer(guyNodes, 1);
+		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
+		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
+		//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
+		glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE,
+			cubeIndicies.data(), guyNodes.GetElementCount());
+
+		uniform.SetActiveShader();
+		uniform.SetMat4("Model", glm::mat4(1.f));
+		plainVAO.BindArrayBuffer(guyLines);
+		glLineWidth(10.f);
+		uniform.DrawElements(DrawType::LineStrip, guyLines);
+
+		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
+	}
+
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -540,7 +563,7 @@ void display()
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
 	uniform.SetMat4("Model", finders.GetModelMatrix());
-	uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
+	//uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	//DisableGLFeatures<DepthTesting>();
@@ -1374,34 +1397,48 @@ void idle()
 					return glm::distance(a.GetPosition(), b.GetPosition());
 				}
 			).first;
-			for (auto& p : pathTestGuy.path)
+			std::vector<glm::vec3> positions, lines;
+			for (std::size_t i = 0; i < pathTestGuy.path.size(); i++)
 			{
-				std::cout << p->GetPosition() << std::endl;
+				positions.push_back(pathTestGuy.path[i]->GetPosition());
+				lines.push_back(pathTestGuy.path[i]->GetPosition());
 			}
-			std::cout << std::endl;
+			guyNodes.BufferData(positions, StaticDraw);
+			guyLines.BufferData(lines, StaticDraw);
 		}
 	}
 	else
 	{
 		auto& target = pathTestGuy.path.back();
 		glm::vec3 pos = target->GetPosition();
-		if (glm::distance(pathTestGuy.capsule.ClosestPoint(pos), pos) < pathTestGuy.capsule.GetRadius())
+		if (glm::distance(pathTestGuy.capsule.ClosestPoint(pos), pos) < pathTestGuy.capsule.GetRadius() / 2.f)
 		{
 			// Need to move to the next node
 			pathTestGuy.path.pop_back();
-			pathTestGuy.velocity *= 0.5f;
+			//pathTestGuy.velocity *= 0.5f;
 		}
 		else
 		{
 			finders.ReCenter(pos);
 			// Accelerate towards it
 			glm::vec3 delta = glm::normalize(pos - pathTestGuy.capsule.GetCenter());
+			glm::vec3 unitVelocity = glm::normalize(pathTestGuy.velocity);
+			float origin = glm::dot(unitVelocity, delta);
 			if (glm::abs(glm::dot(glm::normalize(pathTestGuy.velocity), delta)) < 0.25f)
 			{
-				pathTestGuy.velocity *= 0.85f;
+				//pathTestGuy.velocity *= 0.85f;
 			}
-			if (glm::length(pathTestGuy.velocity) < 0.5f)
-				pathTestGuy.velocity += delta * BoxAcceleration * timeDelta;
+			glm::vec3 direction = glm::normalize(delta - unitVelocity);
+			if (glm::any(glm::isnan(direction))) 
+				direction = delta;
+
+			//if (glm::length(pathTestGuy.velocity) < 0.5f)
+				pathTestGuy.velocity += direction * BoxAcceleration * timeDelta;
+			if (glm::length(pathTestGuy.velocity) > 1.f)
+			{
+				//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
+			}
+			//pathTestGuy.velocity = delta * timeDelta;
 		}
 	}
 	pathTestGuy.capsule.Translate(pathTestGuy.velocity);
@@ -2308,7 +2345,7 @@ void init()
 					{
 						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
 						float delta = glm::length(a - b);
-						if (delta > 3.f)
+						if (delta > 5.f) // TODO: Constant
 							return false;
 						Ray liota(a, b - a);
 						auto temps = boxes.RayCast(liota);
@@ -2327,6 +2364,7 @@ void init()
 				);
 			}
 		}
+		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
 		std::erase_if(pathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 	}
 
