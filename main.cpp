@@ -390,7 +390,7 @@ void display()
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
-	glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, static_cast<GLsizei>(planes.size()));
+	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
 
 	if (debugFlags[DEBUG_PATH])
 	{
@@ -410,7 +410,7 @@ void display()
 		uniform.SetMat4("Model", glm::mat4(1.f));
 		plainVAO.BindArrayBuffer(pathNodeLines);
 		glLineWidth(10.f);
-		uniform.DrawElements(DrawType::Lines, pathNodeLines);
+		uniform.DrawArray<DrawType::Lines>(pathNodeLines);
 
 		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
 	}
@@ -425,6 +425,7 @@ void display()
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 		//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
+
 		glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE,
 			cubeIndicies.data(), guyNodes.GetElementCount());
 
@@ -432,7 +433,7 @@ void display()
 		uniform.SetMat4("Model", glm::mat4(1.f));
 		plainVAO.BindArrayBuffer(guyLines);
 		glLineWidth(10.f);
-		uniform.DrawElements(DrawType::LineStrip, guyLines);
+		uniform.DrawArray<DrawType::LineStrip>(guyLines);
 
 		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
 	}
@@ -446,7 +447,7 @@ void display()
 	Model m22(glm::vec3(10, 0, 0));
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
-	uniform.DrawIndexed<DrawType::LineStrip>(stickIndicies);
+	uniform.DrawElements<DrawType::LineStrip>(stickIndicies);
 
 	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
@@ -459,10 +460,10 @@ void display()
 	ground.SetInt("redLine", 0);
 	ground.SetInt("amount", tessAmount);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//ground.DrawElements<Patches>(4);
+	//ground.DrawArray<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	ground.SetInt("redLine", 1);
-	//ground.DrawElements<Patches>(4);
+	//ground.DrawArray<Patches>(4);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
@@ -471,20 +472,20 @@ void display()
 	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;
 	plainVAO.BindArrayObject();
 	plainVAO.BindArrayBuffer(triBuf);
-	triColor.DrawElements(DrawType::Triangle, triBuf);
+	triColor.DrawArray<DrawType::Triangle>(triBuf);
 
 	DisableGLFeatures<FaceCulling>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	triColor.DrawElements(DrawType::Triangle, triBuf);
+	triColor.DrawArray<DrawType::Triangle>(triBuf);
 	plainVAO.BindArrayBuffer(decals);
-	//triColor.DrawElements(DrawType::Triangle, decals);
+	//triColor.DrawArray<DrawType::Triangle>(decals);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
 	decalShader.SetActiveShader();
 	decalVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
-	decalShader.DrawElements(DrawType::Triangle, decals);
+	decalShader.DrawArray<DrawType::Triangle>(decals);
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -500,11 +501,11 @@ void display()
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
-		if (debugFlags[TIGHT_BOXES]) uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
+		if (debugFlags[TIGHT_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
 
-		if (debugFlags[WIDE_BOXES]) uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
+		if (debugFlags[WIDE_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		for (const auto& box: boxes)
 		{
 			//glLineWidth((box.color) ? wid * 1.5f : wid);
@@ -512,15 +513,15 @@ void display()
 			if (debugFlags[TIGHT_BOXES])
 			{
 				uniform.SetMat4("Model", box.GetModelMatrix());
-				//uniform.DrawIndexedMemory<Triangle>(cubeIndicies);
-				uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
-				uniform.DrawElements<DrawType::Points>(8);
+				//uniform.DrawElementsMemory<Triangle>(cubeIndicies);
+				uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+				uniform.DrawArray<DrawType::Points>(8);
 			}
 			if (debugFlags[WIDE_BOXES])
 			{
 				uniform.SetMat4("Model", box.GetAABB().GetModel().GetModelMatrix());
-				uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
-				//uniform.DrawElements<Points>(8);
+				uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+				//uniform.DrawArray<Points>(8);
 			}
 		}
 	}
@@ -537,7 +538,7 @@ void display()
 	
 	uniform.SetMat4("Model", orbing.GetModelMatrix());
 	if (featureToggle)
-		uniform.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
+		uniform.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
 	//glDepthMask(GL_FALSE)
 	// Albert
 	
@@ -553,7 +554,7 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
-	//dither.DrawElements<Patches>(albertBuffer);
+	//dither.DrawArray<Patches>(albertBuffer);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
@@ -563,7 +564,7 @@ void display()
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
 	uniform.SetMat4("Model", finders.GetModelMatrix());
-	//uniform.DrawIndexed<DrawType::Lines>(cubeOutlineIndex);
+	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
 	//DisableGLFeatures<DepthTesting>();
@@ -571,7 +572,7 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
-	uniform.DrawElements<DrawType::Lines>(rayBuffer);
+	uniform.DrawArray<DrawType::Lines>(rayBuffer);
 	glLineWidth(1.f);
 	//EnableGLFeatures<DepthTesting>();
 
@@ -605,7 +606,7 @@ void display()
 	sphereMesh.SetTextureUnit("textureIn", texture, 0);
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
-	//sphereMesh.DrawIndexed<Triangle>(sphereIndicies);
+	//sphereMesh.DrawElements<Triangle>(sphereIndicies);
 	for (auto& bullet : bullets)
 	{
 		Model localModel;
@@ -616,7 +617,7 @@ void display()
 		sphereMesh.SetTextureUnit("textureIn", texture, 0);
 		//mapper.BindTexture(0);
 		//sphereMesh.SetTextureUnit("textureIn", 0);
-		sphereMesh.DrawIndexed<DrawType::Triangle>(sphereIndicies);
+		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
 	}
 
 
@@ -666,11 +667,11 @@ void display()
 	// Drawing of the appropriate volumes
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
-	stencilTest.DrawIndexed<DrawType::Triangle>(sphereIndicies);
+	stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
 
 	plainVAO.BindArrayBuffer(plainCube);
 	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
-	stencilTest.DrawIndexedMemory<DrawType::Triangle>(cubeIndicies);
+	stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
 
 	// Clean up
 	EnableGLFeatures<FaceCulling>();
@@ -693,8 +694,8 @@ void display()
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, windowWidth, windowHeight));
-	//uiRect.DrawElements(TriangleStrip, 4);
-	//uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawArray(TriangleStrip, 4);
+	//uiRect.DrawArray(TriangleStrip, 4);
 
 	DisableGLFeatures<StencilTesting>();
 	//EnableGLFeatures<DepthTesting>();
@@ -709,20 +710,20 @@ void display()
 	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	flatLighting.DrawIndexed<DrawType::Triangle>(capsuleIndex);
+	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
 
 
 	meshVAO.BindArrayBuffer(movingCapsule);
 	flatLighting.SetMat4("modelMat", pathTestGuy.box.GetNormalMatrix());
 	flatLighting.SetMat4("normalMat", pathTestGuy.box.GetNormalMatrix());
-	flatLighting.DrawIndexed<DrawType::Triangle>(movingCapsuleIndex);
+	flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
-	flatLighting.DrawIndexed(Triangle, sphereIndicies);
+	flatLighting.DrawElements(Triangle, sphereIndicies);
 	sphereModel.translation = moveSphere;
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	flatLighting.DrawIndexed(Triangle, sphereIndicies);
+	flatLighting.DrawElements(Triangle, sphereIndicies);
 	*/
 
 	DisableGLFeatures<DepthTesting>();
@@ -731,37 +732,37 @@ void display()
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0.5, 0.75, 0.25));
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
-	uiRect.DrawElements(DrawType::TriangleStrip, 4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
 	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, 0, 200, 100));
-	uiRect.DrawElements(DrawType::TriangleStrip, 4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
 	uiRect.SetVec4("rectangle", glm::vec4(0, windowHeight - 100, 200, 100));
-	uiRect.DrawElements(DrawType::TriangleStrip, 4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
 	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
-	uiRect.DrawElements(DrawType::TriangleStrip, 4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRect.SetVec4("rectangle", userPortion);
 	uiRect.SetVec4("color", glm::vec4(0.25, 0.25, 0.25, 0.85));
-	//uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRectTexture.SetActiveShader();
 	auto& colored = playerTextEntry.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
 		colored.GetWidth(), colored.GetHeight()));
-	//uiRect.DrawElements(TriangleStrip, 4);
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	uiRect.DrawElements(DrawType::TriangleStrip, 4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
-	fontShader.DrawElements<DrawType::Triangle>(textBuffer);
+	fontShader.DrawArray<DrawType::Triangle>(textBuffer);
 	// TODO: Set object amount in buffer function
 
 	DisableGLFeatures<Blending>();
@@ -783,7 +784,7 @@ void display()
 	frameShader.SetFloat("zNear", zNear);
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
-	frameShader.DrawElements<TriangleStrip>(4);
+	frameShader.DrawArray<TriangleStrip>(4);
 	*/
 	BindDefaultFrameBuffer();
 	glClearColor(1, 0.5, 0.25, 1);
@@ -802,12 +803,12 @@ void display()
 	expand.SetInt("depth", 5);
 	expand.SetInt("flag", featureToggle);
 	expand.SetInt("flag", false);
-	frameShader.DrawElements<DrawType::TriangleStrip>(4);
+	frameShader.DrawArray<DrawType::TriangleStrip>(4);
 	glStencilMask(0xFF);
 
 	glLineWidth(1.f);
 	widget.SetActiveShader();
-	widget.DrawElements<DrawType::Lines>(6);
+	widget.DrawArray<DrawType::Lines>(6);
 
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 

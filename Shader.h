@@ -40,6 +40,11 @@ enum ShaderStages : unsigned char
 	GeometryAndTesselation = Geometry | Tesselation,
 };
 
+struct IndirectDraw
+{
+	GLuint count, primCount, first, baseInstance;
+};
+
 class Shader
 {
 protected:
@@ -92,8 +97,8 @@ public:
 
 	constexpr bool Compiled() const;
 
-	GLuint Index(const std::string& name) ;
-	GLuint UniformIndex(const std::string& name) ;
+	GLuint Index(const std::string& name);
+	GLuint UniformIndex(const std::string& name);
 	GLuint UniformBlockIndex(const std::string& name);
 
 	void CalculateUniforms();
@@ -112,19 +117,35 @@ public:
 	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
-	inline void DrawElements(PrimitiveDrawingType type, const GLuint num, const GLuint elementOffset = 0);
-	inline void DrawElements(PrimitiveDrawingType type, Buffer<ArrayBuffer>& buffer, const GLuint elementOffset = 0);
+	// TODO: Maybe a draw function that takes a variable amount of VAO, Buffers, etc and does all that in a "magic" step
 
-	template<PrimitiveDrawingType type> inline void DrawElements(const GLuint num, const GLuint elementOffset = 0);
-	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ArrayBuffer>& buffer, const GLuint elementOffset = 0);
+	// Feed the data in the buffer, unchanged, directly to the shader
+	inline void DrawArray(PrimitiveDrawingType type, const GLuint primitiveCount, const GLuint elementOffset = 0);
+	inline void DrawArray(PrimitiveDrawingType type, Buffer<ArrayBuffer>& buffer, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type> inline void DrawArray(const GLuint primitiveCount, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type> inline void DrawArray(Buffer<ArrayBuffer>& buffer, const GLuint elementOffset = 0);
+
+	// Feed the shader the data in the buffer, augmented by the instance number, instance count times
+	template<PrimitiveDrawingType type> inline void DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
+																		const GLuint primitiveOffset = 0, const GLuint instanceOffset = 0);
+	template<PrimitiveDrawingType type> inline void DrawArrayInstanced(Buffer<ArrayBuffer>& primitiveBuffer, Buffer<ArrayBuffer>& instanceBuffer, 
+																		const GLuint elementOffset = 0, const GLuint instanceOffset = 0);
+
+	// Draw instanced data from the given parameter struct
+	template<PrimitiveDrawingType type> inline void DrawArrayIndirect(const IndirectDraw& parameters);
 
 	// TODO: maybe glDrawElementsRange() but probably not
 	// TODO: Maybe concept?
-	template<PrimitiveDrawingType type, class Container> inline void DrawIndexedMemory(const Container& contents);
-	template<class Container> inline void DrawIndexedMemory(PrimitiveDrawingType type, const Container& contents);
 
-	template<PrimitiveDrawingType type> inline void DrawIndexed(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
-	inline void DrawIndexed(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+	// Feed the data in the buffer to the shader in the order given by the passed container
+	template<PrimitiveDrawingType type, class Container> inline void DrawElementsMemory(const Container& contents);
+	template<class Container> inline void DrawElementsMemory(PrimitiveDrawingType type, const Container& contents);
+
+	// Feed the data in the buffer to the shader in the order given by the ElementArray buffer
+	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+	inline void DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+
+	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 	static void SetBasePath(const std::string& basePath);
@@ -175,6 +196,7 @@ inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
 	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
+
 inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit)
 {
 	glUniform1i(this->UniformIndex(name), unit);
@@ -191,35 +213,52 @@ inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingP
 	glUniformBlockBinding(this->program, this->UniformBlockIndex(name), bindingPoint);
 }
 
-inline void Shader::DrawElements(PrimitiveDrawingType type, const GLuint num, const GLuint offset)
+inline void Shader::DrawArray(PrimitiveDrawingType type, const GLuint primitiveCount, const GLuint offset)
 {
-	glDrawArrays(static_cast<GLenum>(type), offset, num);
+	glDrawArrays(static_cast<GLenum>(type), offset, primitiveCount);
 }
 
-template<PrimitiveDrawingType type> inline void Shader::DrawElements(const GLuint num, const GLuint offset)
+template<PrimitiveDrawingType type> inline void Shader::DrawArray(const GLuint primitiveCount, const GLuint offset)
 {
-	glDrawArrays(static_cast<GLenum>(type), offset, num);
+	glDrawArrays(static_cast<GLenum>(type), offset, primitiveCount);
 }
 
 
-inline void Shader::DrawElements(PrimitiveDrawingType type, Buffer<ArrayBuffer>& buffer, const GLuint offset)
+inline void Shader::DrawArray(PrimitiveDrawingType type, Buffer<ArrayBuffer>& buffer, const GLuint offset)
 {
-	this->DrawElements(type, buffer.GetElementCount(), offset);
+	this->DrawArray(type, buffer.GetElementCount(), offset);
 }
 
-template<PrimitiveDrawingType type> inline void Shader::DrawElements(Buffer<ArrayBuffer>& buffer, const GLuint elementOffset)
+template<PrimitiveDrawingType type> inline void Shader::DrawArray(Buffer<ArrayBuffer>& buffer, const GLuint elementOffset)
 {
-	this->DrawElements<type>(buffer.GetElementCount(), elementOffset);
+	this->DrawArray<type>(buffer.GetElementCount(), elementOffset);
 }
 
-inline void Shader::DrawIndexed(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset)
+template<PrimitiveDrawingType type> inline void Shader::DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
+																			const GLuint primitiveOffset, const GLuint instanceOffset)
+{
+	glDrawArraysInstancedBaseInstance(static_cast<GLenum>(type), primitiveOffset, primitiveCount, instanceCount, instanceOffset);
+}
+
+template<PrimitiveDrawingType type> inline void Shader::DrawArrayInstanced(Buffer<ArrayBuffer>& primitiveBuffer, Buffer<ArrayBuffer>& instanceBuffer, 
+																			const GLuint primitiveOffset, const GLuint instanceOffset)
+{
+	this->DrawArrayInstanced<type>(primitiveBuffer.GetElementCount(), instanceBuffer.GetElementCount(), primitiveOffset, instanceOffset);
+}
+
+template<PrimitiveDrawingType type> inline void Shader::DrawArrayIndirect(const IndirectDraw& parameters)
+{
+	glDrawArraysIndirect(static_cast<GLenum>(type), reinterpret_cast<const void*>(parameters));
+}
+
+inline void Shader::DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset)
 {
 	buffer.BindBuffer();
 	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(), 
 			reinterpret_cast<const void*>(buffer.GetElementSize() * elementOffset));
 }
 
-template<PrimitiveDrawingType type> inline void Shader::DrawIndexed(Buffer<ElementArray>& buffer, const GLuint elementOffset)
+template<PrimitiveDrawingType type> inline void Shader::DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset)
 {
 	buffer.BindBuffer();
 	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(),
@@ -227,7 +266,7 @@ template<PrimitiveDrawingType type> inline void Shader::DrawIndexed(Buffer<Eleme
 }
 
 // TODO: Some kind of type inference thingy for index types bullshit <- What does this mean
-template<PrimitiveDrawingType type, class Container> inline void Shader::DrawIndexedMemory(const Container& contents)
+template<PrimitiveDrawingType type, class Container> inline void Shader::DrawElementsMemory(const Container& contents)
 {
 	//constexpr GLuint offset = 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -236,7 +275,7 @@ template<PrimitiveDrawingType type, class Container> inline void Shader::DrawInd
 	CheckError();
 }
 
-template<class Container> inline void Shader::DrawIndexedMemory(PrimitiveDrawingType type, const Container& contents)
+template<class Container> inline void Shader::DrawElementsMemory(PrimitiveDrawingType type, const Container& contents)
 {
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDrawElements(static_cast<GLenum>(type), static_cast<GLsizei>(contents.size()), GL_UNSIGNED_BYTE, contents.data());
