@@ -192,7 +192,8 @@ Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
 Buffer<ArrayBuffer> pathNodePositions, pathNodeLines, guyLines, guyNodes;
 Buffer<ArrayBuffer> singleTri, splitTri;
 Buffer<ArrayBuffer> decals;
-Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, sphereIndicies, stickIndicies;
+
+Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
@@ -355,7 +356,7 @@ void display()
 	auto& sten = depthed.GetStencil();
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
-	glDepthMask(GL_TRUE);
+	EnableDepthBufferWrite();
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	DisableGLFeatures<StencilTesting>();
@@ -395,16 +396,15 @@ void display()
 	if (debugFlags[DEBUG_PATH])
 	{
 		EnableGLFeatures<Blending>();
-		glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+		DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.BindArrayObject();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
-		//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
-		glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE,
-			cubeIndicies.data(), pathNodePositions.GetElementCount());
+		
+		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, pathNodePositions);
 
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
@@ -412,30 +412,27 @@ void display()
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::Lines>(pathNodeLines);
 
-		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
+		EnableDepthBufferWrite();
 	}
 	// Visualize the pathfinder guy
 	{
 		EnableGLFeatures<Blending>();
-		glDepthMask(GL_FALSE); // Disable writing to the depth buffer
+		DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.BindArrayObject();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(guyNodes, 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
-		//glDrawArraysInstanced(GL_TRIANGLES, 0, static_cast<GLsizei>(plainCubeVerts.size()), static_cast<GLsizei>(pathNodePositions.Size()));
 
-		glDrawElementsInstanced(GL_TRIANGLES, static_cast<GLsizei>(cubeIndicies.size()), GL_UNSIGNED_BYTE,
-			cubeIndicies.data(), guyNodes.GetElementCount());
+		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, guyNodes);
 
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
 		plainVAO.BindArrayBuffer(guyLines);
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::LineStrip>(guyLines);
-
-		glDepthMask(GL_TRUE); // Renable writing to the depth buffer
+		EnableDepthBufferWrite();
 	}
 
 
@@ -788,7 +785,7 @@ void display()
 	*/
 	BindDefaultFrameBuffer();
 	glClearColor(1, 0.5, 0.25, 1);
-	glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT | GL_STENCIL_BUFFER_BIT);
+	ClearFramebuffer<DepthBuffer | StencilBuffer | ColorBuffer>();
 
 	DisableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
@@ -1397,7 +1394,7 @@ void idle()
 				{
 					return glm::distance(a.GetPosition(), b.GetPosition());
 				}
-			).first;
+			);
 			std::vector<glm::vec3> positions, lines;
 			for (std::size_t i = 0; i < pathTestGuy.path.size(); i++)
 			{
@@ -2168,6 +2165,7 @@ void init()
 	*/
 
 	stickBuffer.BufferData(stick, StaticDraw);
+	solidCubeIndex.BufferData(cubeIndicies, StaticDraw);
 
 	std::array<TextureVertex, 4> verts{};
 	//std::cout << sizeof(verts) << std::endl;

@@ -142,10 +142,11 @@ public:
 	template<class Container> inline void DrawElementsMemory(PrimitiveDrawingType type, const Container& contents);
 
 	// Feed the data in the buffer to the shader in the order given by the ElementArray buffer
-	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
-	inline void DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ElementArray>& indexBuffer, const GLuint elementOffset = 0, const GLuint indexOffset = 0);
+	inline void DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& indexBuffer, const GLuint elementOffset = 0, const GLuint indexOffset = 0);
 
-	template<PrimitiveDrawingType type> inline void DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type> inline void DrawElementsInstanced(Buffer<ElementArray>& indexBuffer, Buffer<ArrayBuffer>& instanceBuffer,
+															const GLuint elementOffset = 0, const GLuint indexOffset = 0, const GLint instanceOffset = 0);
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 	static void SetBasePath(const std::string& basePath);
@@ -251,18 +252,31 @@ template<PrimitiveDrawingType type> inline void Shader::DrawArrayIndirect(const 
 	glDrawArraysIndirect(static_cast<GLenum>(type), reinterpret_cast<const void*>(parameters));
 }
 
-inline void Shader::DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& buffer, const GLuint elementOffset)
+inline void Shader::DrawElements(PrimitiveDrawingType type, Buffer<ElementArray>& indexBuffer, const GLuint elementOffset, const GLuint indexOffset)
 {
-	buffer.BindBuffer();
-	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(), 
-			reinterpret_cast<const void*>(buffer.GetElementSize() * elementOffset));
+	indexBuffer.BindBuffer();
+	glDrawElementsBaseVertex(static_cast<GLenum>(type), indexBuffer.GetElementCount() - elementOffset, indexBuffer.GetElementType(),
+		reinterpret_cast<void*>(indexBuffer.GetElementSize() * elementOffset), indexOffset);
 }
 
-template<PrimitiveDrawingType type> inline void Shader::DrawElements(Buffer<ElementArray>& buffer, const GLuint elementOffset)
+template<PrimitiveDrawingType type> inline void Shader::DrawElements(Buffer<ElementArray>& indexBuffer, const GLuint elementOffset, const GLuint indexOffset)
 {
-	buffer.BindBuffer();
-	glDrawElements(static_cast<GLenum>(type), buffer.GetElementCount() - elementOffset, buffer.GetElementType(),
-		reinterpret_cast<const void*>(buffer.GetElementSize() * elementOffset));
+	indexBuffer.BindBuffer();
+	glDrawElementsBaseVertex(static_cast<GLenum>(type), indexBuffer.GetElementCount() - elementOffset, indexBuffer.GetElementType(),
+		reinterpret_cast<void*>(indexBuffer.GetElementSize() * elementOffset), indexOffset);
+}
+
+template<PrimitiveDrawingType type> inline void Shader::DrawElementsInstanced(Buffer<ElementArray>& indexBuffer, Buffer<ArrayBuffer>& instanceBuffer, 
+	const GLuint elementOffset, const GLuint indexOffset, const GLint instanceOffset)
+{
+	indexBuffer.BindBuffer();
+	glDrawElementsInstancedBaseVertexBaseInstance(static_cast<GLenum>(type),
+		indexBuffer.GetElementCount() - elementOffset,
+		indexBuffer.GetElementType(),
+		reinterpret_cast<const void*>(indexBuffer.GetElementSize() * elementOffset),
+		instanceBuffer.GetElementCount(),
+		indexOffset,
+		instanceOffset);
 }
 
 // TODO: Some kind of type inference thingy for index types bullshit <- What does this mean

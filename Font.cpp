@@ -21,7 +21,7 @@ namespace Font
 	Shader shader;
 	VAO vao;
 
-	void SetupShader()
+	static void SetupShader()
 	{
 		shader.CompileEmbedded(fontVertex.c_str(), fontFragment.c_str());
 		vao.Generate();
@@ -170,7 +170,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	framebuffer.Bind();
 	glViewport(0, 0, width, height);
 	glClearColor(0, 0, 0, 0);
-	glClear(GL_COLOR_BUFFER_BIT);
+	ClearFramebuffer();
 	Font::shader.SetActiveShader();
 	Font::shader.SetTextureUnit("fontTexture", this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);

@@ -2,6 +2,7 @@
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
 #include <vector>
+#include "AABB.h"
 #include "CollisionTypes.h"
 #include "glmHelp.h"
 #include "Lines.h"
@@ -13,8 +14,6 @@ class Triangle
 protected:
 	// Winding order 0 -> 1 -> 2, as expected
 	glm::mat3 vertices;
-	// TODO: Actually write this
-	glm::vec3 normal;
 public:
 	constexpr Triangle();
 	constexpr Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
@@ -24,6 +23,8 @@ public:
 	constexpr std::vector<glm::vec3> GetPointVector() const noexcept;
 
 	inline glm::vec3 GetNormal() const noexcept;
+
+	constexpr AABB GetAABB() const noexcept;
 
 	bool SplitByPlane(const Plane& plane) const;
 	bool Collinear(const Plane& plane) const;
@@ -46,16 +47,16 @@ public:
 	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
 };
 
-constexpr Triangle::Triangle() : vertices(1.f), normal()
+constexpr Triangle::Triangle() : vertices(1.f)
 {
 
 }
 
-constexpr Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) : vertices(a, b, c), normal()
+constexpr Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) : vertices(a, b, c)
 {
 }
 
-constexpr Triangle::Triangle(const glm::mat3& points) : vertices(points), normal()
+constexpr Triangle::Triangle(const glm::mat3& points) : vertices(points)
 {
 }
 
@@ -72,6 +73,11 @@ constexpr std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
 inline glm::vec3 Triangle::GetNormal() const noexcept
 {
 	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[1]));
+}
+
+constexpr AABB Triangle::GetAABB() const noexcept
+{
+	return AABB::MakeAABB(this->vertices[0], this->vertices[1], this->vertices[2]);
 }
 
 // Implemented based on https://gamedev.stackexchange.com/questions/23743/whats-the-most-efficient-way-to-find-barycentric-coordinates/23745#23745
@@ -144,13 +150,14 @@ inline bool Triangle::RayCast(const Ray& ray, RayCollision& collision) const noe
 	float t = depth * glm::dot(edgeB, dirCrossA);
 	if (t > EPSILON)
 	{
-		collision.axis = this->normal;
+		collision.axis = glm::normalize(glm::cross(edgeA, edgeB));
 		collision.depth = t;
 		collision.point = ray.point + t * ray.direction;
 		return true;
 	}
 	else
 	{
+		// ???
 		// hit exists, but negative
 	}
 	return false;

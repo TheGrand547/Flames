@@ -8,7 +8,6 @@
 #include "Buffer.h"
 #include "Vertex.h"
 
-// TODO: Sphere CLASS YOU DUMMY
 struct Sphere
 {
 	glm::vec3 center;

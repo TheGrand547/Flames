@@ -53,12 +53,12 @@ template<typename T, typename S = float> struct MinHeapValue
 	}
 };
 
-// TODO: consider using a stack for the output
-// TODO: [[nodiscard]]
+// Output vector will be empty if not path is found, if a path *is* found then it's stored with the first node target being the last in the array
+// And should essentially be treated as a stack
 template<SearchNode Node, typename T>
 	requires HeuristicFunction<T, Node>
-std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr<Node>>> AStarSearch(const std::shared_ptr<Node>& start,
-						const std::shared_ptr<Node>& target, T heuristic)
+[[nodiscard]] std::vector<std::shared_ptr<Node>> AStarSearch(const std::shared_ptr<Node>& start,
+						const std::shared_ptr<Node>& target, T heuristic, std::unordered_set<std::shared_ptr<Node>>* explored = nullptr)
 {
 	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
 	using SmartSearchNode = std::shared_ptr<Node>;
@@ -123,7 +123,11 @@ std::pair<std::vector<std::shared_ptr<Node>>, std::unordered_set<std::shared_ptr
 		}
 		closedSet.insert(current);
 	}
-	return std::make_pair(finalPath, closedSet);
+	if (explored != nullptr)
+	{
+		*explored = closedSet;
+	}
+	return finalPath;
 }
 
 #endif // PATHFINDING_H

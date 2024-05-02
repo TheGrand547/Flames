@@ -157,7 +157,6 @@
     <ClCompile Include="CollisionTypes.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="CubeMap.cpp" />
-    <ClCompile Include="Cylinder.cpp" />
     <ClCompile Include="Decal.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
@@ -169,7 +168,6 @@
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
-    <ClCompile Include="Polygon.cpp" />
     <ClCompile Include="QuickTimer.cpp" />
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
@@ -200,7 +198,6 @@
     <ClInclude Include="CollisionTypes.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="CubeMap.h" />
-    <ClInclude Include="Cylinder.h" />
     <ClInclude Include="Decal.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
@@ -213,7 +210,6 @@
     <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="PathNode.h" />
     <ClInclude Include="Plane.h" />
-    <ClInclude Include="Polygon.h" />
     <ClInclude Include="QuickTimer.h" />
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />

@@ -42,7 +42,8 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 		{
 			for (const Triangle& tri : maybeHit->GetTriangles())
 			{
-				// TODO: Overlap
+				if (!box.Overlap(tri.GetAABB()))
+					continue;
 				glm::mat3 local = tri.GetPoints();
 				glm::vec3 normal = tri.GetNormal();
 				if (glm::dot(normal, box.Forward()) > 0.5f)

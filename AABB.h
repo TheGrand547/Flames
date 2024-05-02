@@ -53,7 +53,8 @@ public:
 	inline constexpr bool Overlap(const AABB& other) const;
 	inline constexpr bool Contains(const AABB& other) const;
 
-	// TODO: Other forms without both collisions y'know
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir) const;
+	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit) const;
 	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
 	constexpr bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const;
 
@@ -168,21 +169,35 @@ inline constexpr void AABB::Translate(const glm::vec3& point)
 inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
+	bool result = glm::all(glm::lessThanEqual(negativeBound, point)) && glm::all(glm::lessThanEqual(point, positiveBound));
+#ifndef RELEASE
 	bool xInside = negativeBound.x <= point.x && point.x <= positiveBound.x;
 	bool yInside = negativeBound.y <= point.y && point.y <= positiveBound.y;
 	bool zInside = negativeBound.z <= point.z && point.z <= positiveBound.z;
-	//glm::all(glm::lessThanEqual(negativeBound, point)) && glm::all(glm::lessThanEqual(point, positiveBound))
-	return xInside && yInside && zInside;
+	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	{
+		std::cout << "Shortcut for Point in AABB failed" << std::endl;
+	}
+	result = xInside && yInside && zInside;
+#endif // !RELEASE
+	return result;
 }
 
 inline constexpr bool AABB::Overlap(const AABB& other) const
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
-
+	bool result = glm::all(glm::lessThanEqual(negativeBoundOther, positiveBound)) && glm::all(glm::lessThanEqual(negativeBound, positiveBoundOther));
+#ifndef RELEASE
 	bool xInside = negativeBoundOther.x <= positiveBound.x && positiveBoundOther.x >= negativeBound.x;
 	bool yInside = negativeBoundOther.y <= positiveBound.y && positiveBoundOther.y >= negativeBound.y;
 	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
+	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	{
+		std::cout << "Shortcut for AABB overlap AABB failed" << std::endl;
+	}
+	result = xInside && yInside && zInside;
+#endif // !RELEASE
 	return xInside && yInside && zInside;
 }
 
@@ -190,10 +205,17 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
-
+	bool result = glm::all(glm::lessThanEqual(negativeBound, negativeBoundOther)) && glm::all(glm::lessThanEqual(positiveBoundOther, positiveBound));
+#ifndef RELEASE
 	bool xInside = negativeBound.x <= negativeBoundOther.x && positiveBound.x >= positiveBoundOther.x;
 	bool yInside = negativeBound.y <= negativeBoundOther.y && positiveBound.y >= positiveBoundOther.y;
 	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
+	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	{
+		std::cout << "Shortcut for AABB inside AABB failed" << std::endl;
+	}
+	result = xInside && yInside && zInside;
+#endif // !RELEASE
 	return xInside && yInside && zInside;
 }
 
@@ -201,6 +223,19 @@ inline bool AABB::Overlap(const Sphere& other) const
 {
 	Collision collide{};
 	return this->Overlap(other, collide);
+}
+
+inline constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir) const
+{
+	Collision near{}, far{};
+
+	return this->Intersect(point, dir, near, far);
+}
+
+inline constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& near) const
+{
+	Collision far{};
+	return this->Intersect(point, dir, near, far);
 }
 
 // Modified version of the OBB code to be in theory "better", ie faster

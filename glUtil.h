@@ -6,8 +6,8 @@
 
 enum FramebufferClearFlags : int
 {
-    ColorBuffer = 1 << 0, 
-    DepthBuffer = 1 << 1,
+    ColorBuffer   = 1 << 0, 
+    DepthBuffer   = 1 << 1,
     StencilBuffer = 1 << 2
 };
 
@@ -120,6 +120,16 @@ inline void DisableGLFeatures()
 inline void BindDefaultFrameBuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
+}
+
+inline void DisableDepthBufferWrite()
+{
+    glDepthMask(GL_FALSE);
+}
+
+inline void EnableDepthBufferWrite()
+{
+    glDepthMask(GL_TRUE);
 }
 
 #endif // GL_UTIL_H
