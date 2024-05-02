@@ -48,11 +48,15 @@ public:
 	inline void ReCenter(const glm::vec3& center) noexcept;
 
 	inline void ReOrient(const glm::mat4& rotation);
+
+	// Takes input in degrees
 	inline void ReOrient(const glm::vec3& euler);
 
 	inline void ReScale(const glm::vec3& scale) noexcept;
 
 	inline void Rotate(const glm::mat4& rotation);
+
+	// Takes input in degrees
 	inline void Rotate(const glm::vec3& euler);
 
 	inline void RotateAbout(const glm::mat4& rotation, const glm::vec3& point);
@@ -199,7 +203,6 @@ inline void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
 
 inline void OrientedBoundingBox::ReOrient(const glm::vec3& euler)
 {
-	// TODO: Standardize using degrees or radians
 	glm::vec4 center = this->matrix[3];
 	this->matrix = glm::mat4(1.f);
 	this->Rotate(euler);
@@ -226,18 +229,19 @@ inline void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
 
 inline void OrientedBoundingBox::Rotate(const glm::vec3& euler)
 {
-	this->Rotate(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)));
+	glm::vec3 temp(glm::radians(euler));
+	this->Rotate(glm::eulerAngleXYZ(temp.x, temp.y, temp.z));
 }
 
 inline void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const glm::vec3& point)
 {
-	// TODO: Something feels wrong about this
 	this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
 }
 
 inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point)
 {
-	this->RotateAbout(glm::eulerAngleXYZ(glm::radians(euler.x), glm::radians(euler.y), glm::radians(euler.z)), point);
+	glm::vec3 temp(glm::radians(euler));
+	this->RotateAbout(glm::eulerAngleXYZ(temp.x, temp.y, temp.z), point);
 }
 
 inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)

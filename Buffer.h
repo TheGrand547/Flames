@@ -8,8 +8,6 @@
 #include <vector>
 #include "log.h"
 
-// TODO: Paranoia checks removal in release, ie if RELEASE then don't do a bunch of checks with error messages
-
 enum BufferAccess
 {
 	StreamDraw  = GL_STREAM_DRAW, 

@@ -114,7 +114,6 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
 
-	// TODO: Maybe look into the x offset being weird?
 	float x = 0, y = this->pixelHeight * 0.8f;
 
 	float originX = 0, originY = y;
@@ -196,7 +195,7 @@ void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::s
 {
 	// TODO: Make this not a hack that ignores the coords and colors
 	ColorFrameBuffer buffer = this->Render(message);
-	buffer.ReadColor(texture);
+	buffer.ReadColorIntoTexture(texture);
 }
 
 

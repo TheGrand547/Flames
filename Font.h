@@ -22,7 +22,7 @@ protected:
 	int ascender, descender, lineGap;
 	float lineSkip;
 
-	Texture2D texture; // TODO: Maybe shared texture class or smth?, maybe just a shared pointer who knows
+	Texture2D texture;
 public:
 	inline ASCIIFont();
 

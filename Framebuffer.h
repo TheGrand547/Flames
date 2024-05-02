@@ -237,7 +237,7 @@ public:
 	}
 
 	template<typename = std::enable_if_t<HasColor>>
-	inline void ReadColor(const std::size_t i = 0)
+	inline void ReadColorIntoTexture(const std::size_t i = 0)
 	{
 		assert(i < ColorAttachments);
 		glBindFramebuffer(GL_READ_FRAMEBUFFER, this->frameBuffer);
@@ -246,9 +246,9 @@ public:
 
 	// TODO: incorporate the other variables
 	template<typename = std::enable_if_t<HasColor>>
-	inline void ReadColor(Texture2D& texture, const std::size_t i = 0)
+	inline void ReadColorIntoTexture(Texture2D& texture, const std::size_t i = 0)
 	{
-		this->ReadColor(i);
+		this->ReadColorIntoTexture(i);
 		Texture2D& source = this->GetColorBuffer(i);
 		texture.CopyFromFramebuffer(glm::ivec2(source.GetWidth(), source.GetHeight()));
 

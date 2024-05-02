@@ -13,7 +13,7 @@ BinarySpacePartition::~BinarySpacePartition()
 void BinarySpacePartition::AddTriangleInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& behind)
 {
 	// None of the triangles that are being called with this function 
-	float result = polygon.GetRelation(this->canonical); // returns -1 if behind, 0 if collinear, 1 if in front
+	float result = polygon.GetSpatialRelation(this->canonical); // returns -1 if behind, 0 if collinear, 1 if in front
 	if (result < 0)
 	{
 		behind.push_back(polygon);
@@ -105,7 +105,7 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 {
 	// TODO: this but for things that can be split, should just be a little line of code or two
-	float result = triangle.GetRelation(this->canonical);
+	float result = triangle.GetSpatialRelation(this->canonical);
 	if (result < 0)
 	{
 		if (!this->behind) 

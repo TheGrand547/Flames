@@ -165,7 +165,6 @@ inline constexpr void AABB::Translate(const glm::vec3& point)
 	this->center += point;
 }
 
-
 inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
@@ -350,13 +349,17 @@ constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)
 
 constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 {
-	glm::vec3 min(INFINITY, INFINITY, INFINITY), max(-INFINITY, -INFINITY, -INFINITY);
-	for (int i = 0; i < points.size(); i++)
+	if (points.size() > 0)
 	{
-		min = glm::fmin(min, points[i]);
-		max = glm::fmax(max, points[i]);
+		glm::vec3 min(points[0]), max(points[0]);
+		for (std::size_t i = 1; i < points.size(); i++)
+		{
+			min = glm::fmin(min, points[i]);
+			max = glm::fmax(max, points[i]);
+		}
+		return AABB(min, max);
 	}
-	return AABB(min, max);
+	return AABB(glm::vec3(-INFINITY), glm::vec3(INFINITY));
 }
 
 constexpr AABB AABB::CombineAABB(const AABB& A, const AABB& B)

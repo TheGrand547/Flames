@@ -10,9 +10,8 @@
 static std::map<std::string, std::string> shaderIncludeMapping;
 static std::string shaderBasePath = "";
 static bool Recompile = false;
-// TODO: Actually use these dummy
 static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.glsl", "tc.glsl", "te.glsl" };
-static const std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
+static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
 	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 
 void Shader::SetBasePath(const std::string& basePath)
@@ -81,30 +80,29 @@ static GLuint CompileShader(GLenum type, std::string data)
 	return vertex;
 }
 
-Shader::Shader(ShaderStages stages) : compiled(false), precompiled(false), program(0), stages(stages), mapping()
+Shader::Shader(ShaderStages stages) : compiled(false), precompiled(false), program(0), stages(stages)
 {
 
 }
-// TODO: Thingy to make sure that gaming happens
 
 // If force is not set it will first check if a 'name.csp' (compiled shader program? no clue what industry standard is)
 // Takes name for a shader, and reads the files 'namev.glsl' and 'namef.glsl'
-Shader::Shader(const std::string& name) : compiled(false), precompiled(false), name(name), program(0), mapping()
+Shader::Shader(const std::string& name) : compiled(false), precompiled(false), name(name), program(0)
 {
 	this->CompileSimple(name);
 }
 
 Shader::Shader(const std::string& vertex, const std::string& fragment) : compiled(false), precompiled(false), 
-																		name(""), program(0), mapping()
+																		name(""), program(0)
 {
 	this->Compile(vertex, fragment);
 }
-Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0), mapping()
+Shader::Shader(const char* vertex, const char* fragment) : compiled(false), precompiled(false), name(""), program(0)
 {
 	this->CompileEmbedded(vertex, fragment);
 }
 
-Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0), mapping()
+Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), name(""), program(0)
 {
 	*this = std::forward<Shader>(other);
 }
@@ -123,7 +121,6 @@ Shader& Shader::operator=(Shader&& other) noexcept
 		this->compiled = other.compiled;
 		this->precompiled = other.precompiled;
 		this->name = other.name;
-		this->mapping = other.mapping;
 		other.program = 0;
 		other.CleanUp();
 	}
@@ -210,11 +207,9 @@ bool Shader::CompileSimple(const std::string& name)
 	this->CleanUp();
 	this->name = name;
 #ifdef RELEASE
-	Log("Compile Simple should not be used in release mode! Please embed the shaders.")
+	#pragma message("Compile Simple should not be used in release mode! Please embed the shaders.")
 #endif // RELEASE
-	// TODO: this is all bad stop it
 	{
-		std::vector<GLuint> shaders;
 		std::chrono::system_clock::rep timer = 0;
 		int mask = 0;
 		for (std::size_t i = 0; i < 5; i++)
@@ -226,13 +221,12 @@ bool Shader::CompileSimple(const std::string& name)
 				mask |= (1 << i);
 			}
 		}
-		// TODO: Allow for identity vertex shader
 		// Must have fragment and vertex shaders present
 		if (!this->TryLoadCompiled(name, timer) && (mask & 3) == 3)
 		{
 			// These *must* exist
-			std::filesystem::path vertexPath(shaderBasePath + name + "v.glsl");
-			std::filesystem::path fragmentPath(shaderBasePath + name + "f.glsl");
+			std::filesystem::path vertexPath(shaderBasePath + name + extensions[0]);
+			std::filesystem::path fragmentPath(shaderBasePath + name + extensions[1]);
 			std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 			std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 			std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
@@ -244,7 +238,7 @@ bool Shader::CompileSimple(const std::string& name)
 			// Only Geometry is present
 			case 1:
 			{
-				std::filesystem::path geometryPath(shaderBasePath + name + "g.glsl");
+				std::filesystem::path geometryPath(shaderBasePath + name + extensions[2]);
 				std::ifstream geometryFile(geometryPath.string(), std::ifstream::in);
 				std::string geometry(std::istreambuf_iterator<char>{geometryFile}, {});
 				this->CompileEmbeddedGeometry(vertex, fragment, geometry);
@@ -254,8 +248,8 @@ bool Shader::CompileSimple(const std::string& name)
 			// Tess control and evaluation are present
 			case 6:
 			{
-				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
-				std::filesystem::path tcPath(shaderBasePath + name + "tc.glsl");
+				std::filesystem::path tcPath(shaderBasePath + name + extensions[3]);
+				std::filesystem::path tePath(shaderBasePath + name + extensions[4]);
 				std::ifstream teFile(tePath.string(), std::ifstream::in);
 				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
 				std::string te(std::istreambuf_iterator<char>{teFile}, {});
@@ -268,9 +262,9 @@ bool Shader::CompileSimple(const std::string& name)
 			// All are present
 			case 7:
 			{
-				std::filesystem::path geometryPath(shaderBasePath + name + "g.glsl");
-				std::filesystem::path tePath(shaderBasePath + name + "te.glsl");
-				std::filesystem::path tcPath(shaderBasePath + name + "tc.glsl");
+				std::filesystem::path geometryPath(shaderBasePath + name + extensions[2]);
+				std::filesystem::path tcPath(shaderBasePath + name + extensions[3]);
+				std::filesystem::path tePath(shaderBasePath + name + extensions[4]);
 				std::ifstream geometryFile(geometryPath.string(), std::ifstream::in);
 				std::ifstream teFile(tePath.string(), std::ifstream::in);
 				std::ifstream tcFile(tcPath.string(), std::ifstream::in);
@@ -304,8 +298,8 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	this->CleanUp();
 	std::string combined = (vert == frag) ? vert : vert + frag;
 	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
-	std::filesystem::path vertexPath(shaderBasePath + vert + "v.glsl");
-	std::filesystem::path fragmentPath(shaderBasePath + frag + "f.glsl");
+	std::filesystem::path vertexPath(shaderBasePath + vert + extensions[0]);
+	std::filesystem::path fragmentPath(shaderBasePath + frag + extensions[1]);
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
@@ -317,53 +311,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	if (TryLoadCompiled(combined, std::max(std::filesystem::last_write_time(vertexPath).time_since_epoch().count(), 
 		std::filesystem::last_write_time(fragmentPath).time_since_epoch().count())))
 		return true;
-	/*
-	std::ifstream input;
-	if (!Recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
-	{
-		auto compiledTime = std::filesystem::last_write_time(compiledPath).time_since_epoch().count();
-		auto vertexTime   = std::filesystem::last_write_time(vertexPath).time_since_epoch().count();
-		auto fragmentTime = std::filesystem::last_write_time(fragmentPath).time_since_epoch().count();
-
-		// If geometry exists then check it out but if not no big deal
-		auto geometryFlag = !std::filesystem::exists(geometryPath) || std::filesystem::last_write_time(geometryPath).time_since_epoch().count();
-		if (compiledTime > vertexTime && compiledTime > fragmentTime && geometryFlag)
-		{
-			input.open(compiledPath.string(), std::ios::binary);
-			if (input.is_open())
-			{
-				std::cout << "Reading '" << this->name << "' from compiled shader file." << std::endl;
-				GLint length = 0;
-				GLenum format = 0;
-				input.read((char*)&length, sizeof(GLint));
-				input.read((char*)&format, sizeof(GLenum));
-				char* data = new char[length];
-				input.read(data, length);
-				this->program = glCreateProgram();
-				glProgramBinary(this->program, format, reinterpret_cast<void*>(data), length);
-				delete[] data;
-				input.close();
-
-				int result;
-				glGetProgramiv(this->program, GL_LINK_STATUS, &result);
-				if (result)
-				{
-					this->compiled = true;
-					this->precompiled = true;
-					return true;
-				}
-				GLint logSize;
-				glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &logSize);
-				char* logMsg = new char[logSize];
-				glGetProgramInfoLog(this->program, logSize, NULL, logMsg);
-				std::cerr << "Error reading compiled shader from file '" << name << ".csp'" << std::endl << logMsg << std::endl;
-				delete[] logMsg;
-				input.close();
-				this->program = 0;
-			}
-		}
-	}*/
-
+	
 	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
@@ -487,43 +435,19 @@ bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::st
 	return this->compiled;
 }
 
-// TODO: Maybe store in an unordered_map?
 GLuint Shader::Index(const std::string& name) 
 {
-	return (GLuint) glGetAttribLocation(this->program, name.c_str());
+	return static_cast<GLuint>(glGetAttribLocation(this->program, name.c_str()));
 }
 
 GLuint Shader::UniformIndex(const std::string& name)
 {
-	if (this->mapping.find(name) != this->mapping.end())
-	{
-		return this->mapping[name];
-	}
-	this->mapping[name] = glGetUniformLocation(this->program, name.c_str());
-	return this->mapping[name];
+	return glGetUniformLocation(this->program, name.c_str());
 }
 
 GLuint Shader::UniformBlockIndex(const std::string& name)
 {
 	return glGetUniformBlockIndex(this->program, name.c_str());
-}
-
-void Shader::CalculateUniforms()
-{
-	this->mapping.clear();
-	const GLsizei bufferSize = 20;
-	GLchar buffer[bufferSize];
-	GLint count, size;
-	GLsizei length;
-	GLenum enumer;
-	
-	glGetProgramiv(this->program, GL_ACTIVE_UNIFORMS, &count);
-
-	for (GLuint i = 0; i < (GLuint) count; i++)
-	{
-		glGetActiveUniform(this->program, i, bufferSize, &length, &size, &enumer, buffer);
-		this->mapping[buffer] = i;
-	}
 }
 
 void Shader::CleanUp()
@@ -536,7 +460,6 @@ void Shader::CleanUp()
 		this->precompiled = false;
 		this->name = "";
 	}
-	this->mapping.clear();
 }
 
 void Shader::ExportCompiled()

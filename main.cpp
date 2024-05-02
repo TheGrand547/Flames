@@ -45,27 +45,12 @@
 #include "util.h"
 #include "Vertex.h"
 #include "VertexArray.h"
-#include "Wall.h"
 #include "UserInterface.h"
 
 template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
 {
 	std::copy(right.begin(), right.end(), std::back_inserter(left));
 }
-
-// TODO: GRRRRR DO THIS BETTER DUMB DUMB FUCKER
-std::array<ColoredVertex, 8> coloredCubeVertex{
-	{
-		{{-1, -1, -1}, {1, 1, 1}},
-		{{ 1, -1, -1}, {0, 1, 1}},
-		{{ 1,  1, -1}, {0, 0, 1}},
-		{{-1,  1, -1}, {1, 0, 1}},
-		{{-1, -1,  1}, {1, 1, 0}},
-		{{ 1, -1,  1}, {0, 1, 0}},
-		{{ 1,  1,  1}, {0, 0, 0}},
-		{{-1,  1,  1}, {1, 0, 0}},
-	}
-};
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -366,7 +351,6 @@ void display()
 	glStencilMask(0xFF);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	*/
-	// TODO: fix this thing so it's more efficient
 	// Camera matrix
 	glm::vec3 angles2 = glm::radians(cameraRotation);
 
@@ -760,7 +744,6 @@ void display()
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	fontShader.DrawArray<DrawType::Triangle>(textBuffer);
-	// TODO: Set object amount in buffer function
 
 	DisableGLFeatures<Blending>();
 	EnableGLFeatures<DepthTesting>();
@@ -837,7 +820,6 @@ void smartBoxAlignCorner(OBB& other, glm::length_t minDotI, glm::length_t maxDot
 	glm::vec3 delta = other.Center() - smartBox.Center();
 
 	// Maintain right handedness
-	// TODO: maybe 2, 0 for the second one?
 	int indexA[3] = { 0, 0, 1 };
 	int indexB[3] = { 1, 2, 2 };
 	for (int i = 0; i < 3; i++)
@@ -1089,8 +1071,7 @@ void idle()
 	static auto lastTimers = std::chrono::high_resolution_clock::now();
 	static std::deque<float> frames;
 	static std::deque<long long> displayTimes, idleTimes;
-	static glm::vec3 previously{};
-
+	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	frameCounter++;
 	const auto now = std::chrono::high_resolution_clock::now();
@@ -1098,7 +1079,7 @@ void idle()
 
 	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
 	goober2.Translate(glm::vec3(2, 0.1, 0));	
-	goober2.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
+	goober2.ReOrient(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
 	glm::mat4 tester = goober2.GetNormalMatrix();
 
 	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
@@ -1112,7 +1093,6 @@ void idle()
 
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
-	// TODO: Rolling buffer size thingy setting
 	auto idleDelta = idleTime.count() / 1000;
 	auto displayDelta = displayTime.count() / 1000;
 	frames.push_back(1.f / timeDelta);
@@ -1132,14 +1112,11 @@ void idle()
 		averageDisplay += displayTimes[i] / displayTimes.size();
 		averageIdle += idleTimes[i] / idleTimes.size();
 	}
-	// TODO: Consider using an expoentially weighted average, average = x * current + (1 - x) * previous_average to save time on addition stuff
-
-	previously = smartBoxPhysics.axisOfGaming;
-
-	/*
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("Right: {}\nLeft: {}\nUp: {}\nDown: {}", keyState[ArrowKeyRight], keyState[ArrowKeyLeft],
-		keyState[ArrowKeyUp], keyState[ArrowKeyDown]));
-	*/
+	// This will be used for "release" mode as it's faster but noisier
+	if (!idleSimple) idleSimple = idleDelta;
+	if (!displaySimple) displaySimple = displayDelta;
+	idleSimple =  (idleSimple / 2) + (idleDelta / 2);
+	displaySimple =  (displaySimple / 2) + (displayDelta / 2);
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -2392,16 +2369,12 @@ void init()
 	finders.Scale(0.35f);
 	// =============================================================
 
-	
-	// FRAMEBUFFER SETUP
-	// TODO: Renderbuffer for buffers that don't need to be directly read
-
-	// This was moved to the window-resizing place, TODO: see if that's the bottleneck on startup
-
-
-	Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
-	Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
-	Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
+	{
+		QuickTimer _tim{ "Sphere/Capsule Generation" };
+		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
+		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
+		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
+	}
 
 	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
 	catapult.SetRadius(0.25f);

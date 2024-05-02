@@ -181,7 +181,6 @@
     <ClCompile Include="UserInterface.cpp" />
     <ClCompile Include="util.cpp" />
     <ClCompile Include="VertexArray.cpp" />
-    <ClCompile Include="Wall.cpp" />
     <ClCompile Include="Window.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -229,7 +228,6 @@
     <ClInclude Include="util.h" />
     <ClInclude Include="Vertex.h" />
     <ClInclude Include="VertexArray.h" />
-    <ClInclude Include="Wall.h" />
     <ClInclude Include="Window.h" />
   </ItemGroup>
   <ItemGroup>

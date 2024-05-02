@@ -100,7 +100,7 @@ bool Triangle::SplitByPlane(const Plane& plane) const
 	return !flag;
 }
 
-float Triangle::GetRelation(const Plane& plane) const
+float Triangle::GetSpatialRelation(const Plane& plane) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
 	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
@@ -134,7 +134,7 @@ float Triangle::GetRelation(const Plane& plane) const
 
 bool Triangle::Collinear(const Plane& plane) const
 {
-	return this->GetRelation(plane) == 0.f;
+	return this->GetSpatialRelation(plane) == 0.f;
 }
 
 Plane Triangle::GetPlane() const

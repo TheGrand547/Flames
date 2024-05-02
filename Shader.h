@@ -6,7 +6,6 @@
 #include <glew.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
-#include <map>
 #include <string>
 #include "Buffer.h"
 #include "Texture2D.h"
@@ -53,7 +52,6 @@ protected:
 	ShaderStages stages;
 
 	std::string name;
-	std::map<std::string, GLuint> mapping; // This is dumb
 
 	// True -> loaded successfully from file, False -> did not load shader from file
 	bool TryLoadCompiled(const std::string& name, std::chrono::system_clock::rep threshold);
@@ -72,8 +70,6 @@ public:
 	Shader& operator=(const Shader& other) = delete;
 	Shader& operator=(Shader&& other) noexcept;
 
-	// TODO: This sucks, don't do this
-
 	// Compiles all stages available starting with the given filename
 	// [name]v, [name]f,  [name]g,            [name]tc,             [name]te 
 	// Vertex, fragment, geometry, tesselation control, tesselation evaluate, respectively
@@ -82,12 +78,6 @@ public:
 
 	bool Compile(const std::string& vertex, const std::string& frag);
 
-	// TODO: Maybe later
-	/*
-	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry);
-	bool Compile(const std::string& vertex, const std::string& frag, const std::string& tessControl, const std::string& tessEval);
-	bool Compile(const std::string& vertex, const std::string& frag, const std::string& geometry, const std::string& tessControl, const std::string& tessEval);
-	*/
 	// These all work on shader code as a string, not read in from a file
 	bool CompileEmbedded(const std::string& vertex, const std::string& fragment);
 	bool CompileEmbeddedGeometry(const std::string& vertex, const std::string& fragment, const std::string& geometry);
@@ -101,7 +91,6 @@ public:
 	GLuint UniformIndex(const std::string& name);
 	GLuint UniformBlockIndex(const std::string& name);
 
-	void CalculateUniforms();
 	void CleanUp();
 	void ExportCompiled();
 
@@ -135,7 +124,6 @@ public:
 	template<PrimitiveDrawingType type> inline void DrawArrayIndirect(const IndirectDraw& parameters);
 
 	// TODO: maybe glDrawElementsRange() but probably not
-	// TODO: Maybe concept?
 
 	// Feed the data in the buffer to the shader in the order given by the passed container
 	template<PrimitiveDrawingType type, class Container> inline void DrawElementsMemory(const Container& contents);
@@ -279,14 +267,10 @@ template<PrimitiveDrawingType type> inline void Shader::DrawElementsInstanced(Bu
 		instanceOffset);
 }
 
-// TODO: Some kind of type inference thingy for index types bullshit <- What does this mean
 template<PrimitiveDrawingType type, class Container> inline void Shader::DrawElementsMemory(const Container& contents)
 {
-	//constexpr GLuint offset = 
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-	CheckError();
 	glDrawElements(static_cast<GLenum>(type), static_cast<GLsizei>(contents.size()), GL_UNSIGNED_BYTE, reinterpret_cast<const void*>(contents.data()));
-	CheckError();
 }
 
 template<class Container> inline void Shader::DrawElementsMemory(PrimitiveDrawingType type, const Container& contents)

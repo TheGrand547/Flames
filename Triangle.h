@@ -34,9 +34,8 @@ public:
 	bool SplitAndOrientation(const Plane& plane, float& orientation) const;
 
 	Plane GetPlane() const;
-	// TODO: better name
 	// Assuming that the triangle is not split by the plane(NAN), at which point this result is worthless, which side is it on, +/0/-
-	float GetRelation(const Plane& plane) const;
+	float GetSpatialRelation(const Plane& plane) const;
 
 	// Figure out if these should be inlined or not
 	inline bool ContainsPoint(const glm::vec3& point) const noexcept;

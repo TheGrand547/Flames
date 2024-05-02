@@ -171,23 +171,17 @@ template<> inline void VertexArray::ArrayFormat<MeshVertex>(Shader& shader, GLui
 	this->strides[bindingPoint] = sizeof(MeshVertex);
 }
 
-// TODO: Un-sloppy this
 template<> inline void VertexArray::ArrayFormat<glm::mat4>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("Model"), 4, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("Model") + 1, 4, GL_FLOAT, GL_FALSE, 16);
-	glVertexAttribFormat(shader.Index("Model") + 2, 4, GL_FLOAT, GL_FALSE, 32);
-	glVertexAttribFormat(shader.Index("Model") + 3, 4, GL_FLOAT, GL_FALSE, 48);
-	glVertexAttribBinding(shader.Index("Model"), bindingPoint);
-	glVertexAttribBinding(shader.Index("Model") + 1, bindingPoint);
-	glVertexAttribBinding(shader.Index("Model") + 2, bindingPoint);
-	glVertexAttribBinding(shader.Index("Model") + 3, bindingPoint);
-	glEnableVertexAttribArray(shader.Index("Model"));
-	glEnableVertexAttribArray(shader.Index("Model") + 1);
-	glEnableVertexAttribArray(shader.Index("Model") + 2);
-	glEnableVertexAttribArray(shader.Index("Model") + 3);
+	GLuint index = shader.Index("Model");
+	for (int i = 0; i < 4; i++)
+	{
+		glVertexAttribFormat(index + i, 4, GL_FLOAT, GL_FALSE, 16 * i);
+		glVertexAttribBinding(index + i, bindingPoint);
+		glEnableVertexAttribArray(index + i);
+	}
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(glm::mat4);
 }
@@ -197,24 +191,25 @@ template<class V> inline void VertexArray::ArrayFormatOverride(const std::string
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	// TODO: more of these
+	GLuint index = shader.Index(name);
 	if constexpr (std::is_same_v<V, glm::vec1>)
 	{
-		glVertexAttribFormat(shader.Index(name), 1, GL_FLOAT, GL_FALSE, relativeOffset);
+		glVertexAttribFormat(index, 1, GL_FLOAT, GL_FALSE, relativeOffset);
 	}
 	if constexpr (std::is_same_v<V, glm::vec2>)
 	{
-		glVertexAttribFormat(shader.Index(name), 2, GL_FLOAT, GL_FALSE, relativeOffset);
+		glVertexAttribFormat(index, 2, GL_FLOAT, GL_FALSE, relativeOffset);
 	}
 	if constexpr (std::is_same_v<V, glm::vec3>)
 	{
-		glVertexAttribFormat(shader.Index(name), 3, GL_FLOAT, GL_FALSE, relativeOffset);
+		glVertexAttribFormat(index, 3, GL_FLOAT, GL_FALSE, relativeOffset);
 	}
 	if constexpr (std::is_same_v<V, glm::vec4>)
 	{
-		glVertexAttribFormat(shader.Index(name), 4, GL_FLOAT, GL_FALSE, relativeOffset);
+		glVertexAttribFormat(index, 4, GL_FLOAT, GL_FALSE, relativeOffset);
 	}
-	glVertexAttribBinding(shader.Index(name), bindingPoint);
-	glEnableVertexAttribArray(shader.Index(name));
+	glVertexAttribBinding(index, bindingPoint);
+	glEnableVertexAttribArray(index);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	if (!relativeOffset)
 	{
@@ -225,8 +220,8 @@ template<class V> inline void VertexArray::ArrayFormatOverride(const std::string
 template<class T> static void VertexArray::GenerateArrays(T& arrays)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(arrays))>::type, VertexArray>::value);
-	GLuint *intermediate = (GLuint) new GLuint[std::size(arrays)];
-	glGenVertexArrays((GLsizei) std::size(arrays), intermediate);
+	GLuint *intermediate = new GLuint[std::size(arrays)];
+	glGenVertexArrays(static_cast<GLsizei>(std::size(arrays)), intermediate);
 	for (std::size_t i = 0; i < std::size(arrays); i++)
 	{
 		arrays[i].array = intermediate[i];
@@ -237,7 +232,7 @@ template<class T> static void VertexArray::GenerateArrays(T& arrays)
 template<class T> static void VertexArray::GenerateArrays(std::map<T, VertexArray>& arrays)
 {
 	std::vector<GLuint> intermediate(arrays.size());
-	glGenVertexArrays((GLsizei) arrays.size(), intermediate.data());
+	glGenVertexArrays(static_cast<GLsizei>(arrays.size()), intermediate.data());
 	auto begin = std::begin(arrays);
 	for (std::size_t i = 0; i < arrays.size(); i++)
 	{
