@@ -169,7 +169,7 @@ inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	bool result = glm::all(glm::lessThanEqual(negativeBound, point)) && glm::all(glm::lessThanEqual(point, positiveBound));
-#ifndef RELEASE
+#ifdef _DEBUG
 	bool xInside = negativeBound.x <= point.x && point.x <= positiveBound.x;
 	bool yInside = negativeBound.y <= point.y && point.y <= positiveBound.y;
 	bool zInside = negativeBound.z <= point.z && point.z <= positiveBound.z;
@@ -178,7 +178,7 @@ inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 		std::cout << "Shortcut for Point in AABB failed" << std::endl;
 	}
 	result = xInside && yInside && zInside;
-#endif // !RELEASE
+#endif // !_DEBUG
 	return result;
 }
 
@@ -187,7 +187,7 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
 	bool result = glm::all(glm::lessThanEqual(negativeBoundOther, positiveBound)) && glm::all(glm::lessThanEqual(negativeBound, positiveBoundOther));
-#ifndef RELEASE
+#ifdef _DEBUG
 	bool xInside = negativeBoundOther.x <= positiveBound.x && positiveBoundOther.x >= negativeBound.x;
 	bool yInside = negativeBoundOther.y <= positiveBound.y && positiveBoundOther.y >= negativeBound.y;
 	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
@@ -196,8 +196,8 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 		std::cout << "Shortcut for AABB overlap AABB failed" << std::endl;
 	}
 	result = xInside && yInside && zInside;
-#endif // !RELEASE
-	return xInside && yInside && zInside;
+#endif // !_DEBUG
+	return result;
 }
 
 inline constexpr bool AABB::Contains(const AABB& other) const
@@ -205,7 +205,7 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
 	bool result = glm::all(glm::lessThanEqual(negativeBound, negativeBoundOther)) && glm::all(glm::lessThanEqual(positiveBoundOther, positiveBound));
-#ifndef RELEASE
+#ifdef _DEBUG
 	bool xInside = negativeBound.x <= negativeBoundOther.x && positiveBound.x >= positiveBoundOther.x;
 	bool yInside = negativeBound.y <= negativeBoundOther.y && positiveBound.y >= positiveBoundOther.y;
 	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
@@ -214,8 +214,8 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 		std::cout << "Shortcut for AABB inside AABB failed" << std::endl;
 	}
 	result = xInside && yInside && zInside;
-#endif // !RELEASE
-	return xInside && yInside && zInside;
+#endif // !_DEBUG
+	return result;
 }
 
 inline bool AABB::Overlap(const Sphere& other) const

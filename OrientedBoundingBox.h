@@ -347,7 +347,6 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		{
 			if (abs(parallel) > scale)
 			{
-				//std::cout << "Parallel check" << std::endl;
 				return false;
 			}
 			else
@@ -375,15 +374,12 @@ constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm:
 		}
 		if (nearHit.distance > farHit.distance)
 		{
-			//1std::cout << "Inversion check" << std::endl;
 			return false;
 		}
 		if (farHit.distance < 0)
 		{
-			//std::cout << "Farness test" << std::endl;
 			return false;
 		}
-		//std::cout << std::endl;
 	}
 	nearHit.point = nearHit.distance * dir + point;
 	farHit.point = farHit.distance * dir + point;
@@ -406,56 +402,67 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 	const glm::mat<3, 2, const glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
 	std::array<glm::vec3, 15> separatingAxes{};
 	glm::mat3 dotProducts{};
-	glm::mat3 crossLengths{};
-	for (glm::length_t i = 0; i < 3; i++)
+
+	if (!std::is_constant_evaluated())
 	{
-		glm::vec3 myAxis = this->matrix[i];
-		separatingAxes[static_cast<std::size_t>(i) * 5] = myAxis;
-		separatingAxes[static_cast<std::size_t>(i) * 5 + 1] = other.matrix[i];
-		for (glm::length_t j = 0; j < 3; j++)
+		dotProducts = glm::transpose(glm::mat3(other.matrix)) * glm::mat3(this->matrix);
+		for (glm::length_t i = 0; i < 3; i++)
 		{
-			glm::vec3 otherAxis = other.matrix[j];
-			glm::vec3 crossResult = glm::cross(myAxis, glm::vec3(otherAxis));
-
-			float crossLength = 1.f / glm::length(crossResult);
-			separatingAxes[static_cast<std::size_t>(i) * 5 + 2 + j] = crossResult * crossLength;
-
-			// Look into possibly doing this via abs(transpose(this) * other), might have to be the other way around though
-			dotProducts[i][j] = glm::abs(glm::dot(myAxis, otherAxis));
-			crossLengths[i][j] = crossLength;
+			dotProducts[i] = glm::abs(dotProducts[i]);
+#ifdef _DEBUG
+			for (glm::length_t j = 0; j < 3; j++)
+			{
+				assert(dotProducts[i][j] == glm::abs(glm::dot(glm::vec3(this->matrix[i]), other[j])));
+			}
+#endif // _DEBUG
 		}
 	}
+	else
+	{
+		for (glm::length_t i = 0; i < 3; i++)
+		{
+			glm::vec3 myAxis = this->matrix[i];
+			for (glm::length_t j = 0; j < 3; j++)
+			{
+				dotProducts[i][j] = glm::abs(glm::dot(myAxis, other[j]));
+			}
+		}
+	}
+
 	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
 	const glm::vec3 delta = this->Center() - other.Center();
 	result.distance = INFINITY;
 	glm::length_t index = 0;
 	for (glm::length_t i = 0; i < separatingAxes.size(); i++)
 	{
-		glm::vec3 axis = separatingAxes[i];
-		const float deltaProjection = glm::abs(glm::dot(axis, delta));
-		float obbProjections = 0;
+		float deltaProjection = 0, obbProjections = 0;
 		glm::length_t truncatedIndex = i % 5;
 		glm::length_t axialIndex = i / 5;
-
 		if (truncatedIndex == 0) // Axis from this OBB
 		{
-			/*
-			obbProjections = this->halfs[axialIndex] + other.halfs[0] * dotProducts[axialIndex][0] + other.halfs[1] * dotProducts[axialIndex][1]
-				+ other.halfs[2] * dotProducts[axialIndex][2];
-				*/
-			// I think this is correct?
+			// Works because the dot products to be multipled form a column in the dot product matrix
 			obbProjections = this->halfs[axialIndex] + glm::dot(other.halfs, dotProducts[axialIndex]);
+			separatingAxes[i] = (*this)[axialIndex];
 		}
 		else if (truncatedIndex == 1) // Axis from the other OBB
 		{
 			obbProjections = other.halfs[axialIndex] + this->halfs[0] * dotProducts[0][axialIndex] + this->halfs[1] * dotProducts[1][axialIndex]
 				+ this->halfs[2] * dotProducts[2][axialIndex];
+			separatingAxes[i] = other[axialIndex];
 		}
 		else
-		{	 
+		{
 			// Truncated index is [2,4], map to [0, 2]
 			// Axis is this[axialIndex] cross other[truncatedIndex - 2]
 			truncatedIndex -= 2;
+
+			glm::vec3 myAxis = this->matrix[axialIndex];
+			glm::vec3 otherAxis = other.matrix[truncatedIndex];
+			glm::vec3 crossResult = glm::cross(myAxis, glm::vec3(otherAxis));
+
+			float crossLength = 1.f / glm::length(crossResult);
+			separatingAxes[i] = crossResult * crossLength;
+
 
 			glm::length_t firstPairA = indexLookUp[axialIndex][0], firstPairB = indexLookUp[axialIndex][1];
 			glm::length_t secondPairA = indexLookUp[truncatedIndex][0], secondPairB = indexLookUp[truncatedIndex][1];
@@ -466,13 +473,15 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 
 			obbProjections += other.halfs[secondPairA] * dotProducts[axialIndex][secondPairB] +
 				other.halfs[secondPairB] * dotProducts[axialIndex][secondPairA];
-			obbProjections *= crossLengths[axialIndex][truncatedIndex];
+			obbProjections *= crossLength;
 			truncatedIndex += 2;
 		}
+		deltaProjection = glm::abs(glm::dot(separatingAxes[i], delta));
 
 		// In Case of Collision Whackiness break glass
-#ifndef NDEBUG
+#ifdef _DEBUG
 		float cardinal = 0.f;
+		glm::vec3 axis = separatingAxes[i];
 		for (glm::length_t i = 0; i < 3; i++)
 		{
 			cardinal += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
@@ -487,7 +496,7 @@ constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, Sl
 					":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << cardinal << std::endl;
 			}
 		}
-#endif // NDEBUG
+#endif // _DEBUG
 		const float overlap = obbProjections - deltaProjection;
 		// This axis is a separating one 
 		if (deltaProjection > obbProjections)
@@ -538,9 +547,7 @@ inline bool OrientedBoundingBox::Overlap(const Sphere& other) const
 inline float OrientedBoundingBox::ProjectionLength(const glm::vec3& vector) const
 {
 	float result = 0.f;
-	result += glm::abs(glm::dot(glm::vec3(this->matrix[0]), vector)) * this->halfs[0];
-	result += glm::abs(glm::dot(glm::vec3(this->matrix[1]), vector)) * this->halfs[1];
-	result += glm::abs(glm::dot(glm::vec3(this->matrix[2]), vector)) * this->halfs[2];
+	result = glm::dot(glm::abs(vector * glm::mat3(this->matrix)), this->halfs);
 	return result;
 }
 

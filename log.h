@@ -33,6 +33,10 @@ constexpr std::string LocationFormat(const std::source_location location)
 		file = file.substr(pos + 1);
 	if ((pos = func.rfind(cDecl)) != std::string::npos)
 		func = func.erase(pos, length);
+#ifdef CLEANER_FUNCTIONS
+	if ((pos = func.find('(')) != std::string::npos)
+		func = func.substr(0, pos);
+#endif // CLEANER_FUNCTIONS
 	std::string result = replaceFiller;
 	result = result.replace(lineLocation, 1, std::to_string(line));
 	result = result.replace(funcLocation, 1, func);
@@ -56,6 +60,10 @@ constexpr std::string LocationFormat(const std::source_location location)
 
 	if ((pos = func.rfind(cDecl)) != std::string::npos)
 		func = func.erase(pos, length);
+#ifdef CLEANER_FUNCTIONS
+	if ((pos = func.find('(')) != std::string::npos)
+		func = func.substr(0, pos);
+#endif // CLEANER_FUNCTIONS
 	std::string result = replaceFiller;
 	result = result.replace(lineLocation, 1, std::to_string(line));
 	result = result.replace(funcLocation, 1, func);
@@ -64,7 +72,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 
 #endif // OMIT_FILENAMES
 
-#ifndef NDEBUG
+#ifdef _DEBUG
 
 #define LogF(...) {printf("%s", LocationFormat().c_str()); printf(__VA_ARGS__);}
 #define LogSourceF(x, ...) {printf("%s", LocationFormat(x).c_str()); printf(__VA_ARGS__);}
@@ -73,7 +81,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 
 #define Before(...) std::cout << "Before: " << __VA_ARGS__ << std::endl;
 #define After(...) std::cout << "After: " << __VA_ARGS__ << std::endl;
-#else // NDEBUG
+#else // _DEBUG
 
 #define CheckError(...)
 #define Log(...) CheckError()
@@ -83,7 +91,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 #define Before(...)
 #define After(...)
 
-#endif // NDEBUF
+#endif // _DEBUG
 
 void CheckError(const std::source_location location = std::source_location::current());
 

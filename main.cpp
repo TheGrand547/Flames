@@ -1158,11 +1158,11 @@ void idle()
 		playerBounds.Center(cameraPosition);
 
 		OBB playerOb(playerBounds);
-		playerOb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
-		//playerOb.Rotate(glm::radians(glm::vec3(0, 45, 0)));
+		//playerOb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
+		playerOb.Rotate(glm::vec3(0, -cameraRotation.y, 0));
 
 		goober.Translate(glm::vec3(2, 0, 0));
-		goober.Rotate(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
+		goober.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
 		for (auto& wall : boxes)
 		{
 			if (wall.Overlap(playerOb))
@@ -1683,14 +1683,11 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//loom.ReOrient(glm::vec3(0, 0, 90.f));
 		loom.ReOrient(cameraOrientation);
-		//loom.ReCenter(cameraPosition);
-		//loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+		loom.ReCenter(cameraPosition);
+		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
 		loom.Rotate(glm::vec3(0, 0, 90.f));
 		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
-		Bullet locals{};
-		locals.position = cameraPosition;
-		locals.direction = liota.delta;
-		bullets.push_back(locals);
+		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
 	}
 	testButton.MouseUpdate(mouseStatus);
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
@@ -1795,9 +1792,6 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			}*/
 		}
 	}
-
-
-
 	mousePreviousX = x;
 	mousePreviousY = y;
 }

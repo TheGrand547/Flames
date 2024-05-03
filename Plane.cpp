@@ -21,7 +21,7 @@ bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, glm::vec3&
 	float denom = glm::dot(glm::cross(n0, n1), n2);
 	if (glm::abs(denom) > EPSILON)
 	{
-		result = glm::cross(n1, n2) * this->constant;
+		result  = glm::cross(n1, n2) * this->constant;
 		result += glm::cross(n2, n0) * planeA.constant;
 		result += glm::cross(n0, n1) * planeB.constant;
 		result /= denom;

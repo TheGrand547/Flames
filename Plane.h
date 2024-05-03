@@ -45,12 +45,13 @@ public:
 	static inline bool TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC, glm::vec3& result);
 };
 
-inline Plane::Plane(float a, float b, float c, float d, bool twoSided) noexcept : normal(glm::normalize(glm::vec3(a, b, c))), constant(d), twoSided(twoSided)
+inline Plane::Plane(float a, float b, float c, float d, bool twoSided) noexcept : normal(glm::normalize(glm::vec3(a, b, c))), 
+			constant(d / glm::length(glm::vec3(a, b, c))), twoSided(twoSided)
 {
 	assert(!glm::any(glm::isnan(this->normal)));
 }
 
-inline Plane::Plane(const glm::vec3& vector, float f, bool twoSided) noexcept : normal(glm::normalize(vector)), constant(f), twoSided(twoSided)
+inline Plane::Plane(const glm::vec3& vector, float f, bool twoSided) noexcept : normal(glm::normalize(vector)), constant(f / glm::length(vector)), twoSided(twoSided)
 {
 	assert(!glm::any(glm::isnan(this->normal)));
 }
