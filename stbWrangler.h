@@ -5,6 +5,9 @@
 #define STBI_ONLY_JPEG
 #define STBI_ONLY_PNG
 
+#include <stdio.h>
+#include <string.h>
+
 #include "stb_image.h"
 #include "stb_perlin.h"
 #include "stb_rect_pack.h"
