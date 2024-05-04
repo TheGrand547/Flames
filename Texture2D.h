@@ -141,7 +141,7 @@ template<class T> inline void Texture2D::Load(const std::vector<T>& data, Textur
 		this->internalFormat = static_cast<GLenum>(internal);
 		this->width = static_cast<GLsizei>(width);
 		this->height = static_cast<GLsizei>(height);
-		this->channels = 3; // TODO: Get a proper calculation on this
+		this->channels = Texture::GetColorChannels(internal);
 		this->SetFilters();
 	}
 }
@@ -169,10 +169,8 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 		this->internalFormat = static_cast<GLenum>(internal);
 		this->width = static_cast<GLsizei>(width);
 		this->height = static_cast<GLsizei>(height);
-		this->channels = 3;
+		this->channels = Texture::GetColorChannels(internal);
 		this->SetFilters();
 	}
 }
-
-
 #endif //TEXTURE_2D_H

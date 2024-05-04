@@ -16,7 +16,7 @@ static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGM
 
 void Shader::SetBasePath(const std::string& basePath)
 {
-	shaderBasePath = basePath;
+	shaderBasePath = basePath + FILEPATH_SLASH;
 }
 
 void Shader::SetRecompilationFlag(bool flag)

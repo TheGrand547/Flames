@@ -5,14 +5,15 @@
 #include <glm/ext/scalar_constants.hpp>
 #include "glmHelp.h"
 
+// Set of points(P), defined by a normal(N) and a constant C such that P*N-C = 0
+// Equivalently, for any given point A on the plane, (P-A)*N=0
 class Plane
 {
 private:
-	// ax + by + cx = d
+	
 	float constant;
 	glm::vec3 normal;
 	bool twoSided;
-	
 public:
 	Plane(float a, float b, float c, float d, bool twoSided = false) noexcept;
 	Plane(const glm::vec3& vector, float f, bool twoSided = false) noexcept;

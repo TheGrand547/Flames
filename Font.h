@@ -14,6 +14,13 @@ namespace Font
 
 // TODO: Settings struct with back/foreground color, position, etc
 
+struct FontSettings
+{
+	glm::vec2 position = glm::vec2(0);
+	glm::vec4 textColor = glm::vec4(1);
+	glm::vec4 backgroundColor = glm::vec4(0);
+};
+
 class ASCIIFont
 {
 protected:
@@ -32,7 +39,6 @@ public:
 	void RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message);
 	void RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message);
 
-	// TODO: Maybe a renderbuffer?
 	// Standard framebuffer is set to active after this is called
 	ColorFrameBuffer Render(const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0));
 	void Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0));

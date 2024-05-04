@@ -2,6 +2,7 @@
 #ifndef TEXTURE_H
 #define TEXTURE_H
 #include <glew.h>
+#include <string>
 
 // TODO: Base texture class so I don't have to rewrite things as much smh
 
@@ -95,56 +96,56 @@ enum TextureFormatInternal
 	InternalStencil              = GL_STENCIL_INDEX,
 
 	// FLOAT IS *VERY* SLOW COMPARED TO THE OTHER ONES -- USER BEWARE
-	InternalFloatRed16           = GL_R16F,
-	InternalFloatRedGreen16      = GL_RG16F,
-	InternalFloatRGB16           = GL_RGB16F,
-	InternalFloatRGBA16          = GL_RGBA16F,
-	InternalFloatRed32           = GL_R32F,
-	InternalFloatRedGreen32      = GL_RG32F,
-	InternalFloatRGB32           = GL_RGB32F,
-	InternalFloatRGBA32          = GL_RGBA32F,
-	InternalFloatR11G11B10       = GL_R11F_G11F_B10F,
+	InternalFloatRed16            = GL_R16F,
+	InternalFloatRedGreen16       = GL_RG16F,
+	InternalFloatRGB16            = GL_RGB16F,
+	InternalFloatRGBA16           = GL_RGBA16F,
+	InternalFloatRed32            = GL_R32F,
+	InternalFloatRedGreen32       = GL_RG32F,
+	InternalFloatRGB32            = GL_RGB32F,
+	InternalFloatRGBA32           = GL_RGBA32F,
+	InternalFloatR11G11B10        = GL_R11F_G11F_B10F,
 
-	InternalFloatShared5RGB9     = GL_RGB9_E5,
-	InternalIntRed8              = GL_R8I,
-	InternalUnignedIntRed8       = GL_R8UI,
-	InternalIntRed16             = GL_R16I,
-	InternalUnignedIntRed16      = GL_R16UI,
-	InternalIntRed32             = GL_R32I,
-	InternalUnignedIntRed32      = GL_R32UI,
-	InternalIntRedGreen8         = GL_RG8I,
-	InternalUnignedIntRedGreen8  = GL_RG8UI,
-	InternalIntRedGreen16        = GL_RG16I,
-	InternalUnignedIntRedGreen16 = GL_RG16UI,
-	InternalIntRedGreen32        = GL_RG32I,
-	InternalUnignedIntRedGreen32 = GL_RG32UI,
-	InternalIntRGB8              = GL_RGB8I,
-	InternalUnsignedIntRGB8      = GL_RGB8UI,
-	InternalIntRGB16             = GL_RGB16I,
-	InternalUnsignedIntRGB16     = GL_RGB16UI,
-	InternalIntRGB32             = GL_RGB32I,
-	InternalUnsignedIntRGB32     = GL_RGB32UI,
-	InternalIntRGBA8             = GL_RGBA8I,
-	InternalUnsignedIntRGBA8     = GL_RGBA8UI,
-	InternalIntRGBA16            = GL_RGBA16I,
-	InternalUnsignedIntRGBA16    = GL_RGBA16UI,
-	InternalIntRGBA32            = GL_RGBA32I,
-	InternalUnsignedIntRGBA32    = GL_RGBA32UI,
-	InternalCompressedRed        = GL_COMPRESSED_RED,
-	InternalCompressedRedGreen   = GL_COMPRESSED_RG,
-	InternalCompressedRGB        = GL_COMPRESSED_RGB,
-	InternalCompressedRGBA       = GL_COMPRESSED_RGBA,
-	InternalCompressedSRGB       = GL_COMPRESSED_SRGB,
-	InternalCompressedSRGBA      = GL_COMPRESSED_SRGB_ALPHA,
-	InternalRGTCRed              = GL_COMPRESSED_RED_RGTC1,
-	InternalSignedRGTCRed        = GL_COMPRESSED_SIGNED_RED_RGTC1,
-	InternalRGTCRedGreen         = GL_COMPRESSED_RG_RGTC2,
-	InternalSignedRGTCRedGreen   = GL_COMPRESSED_SIGNED_RG_RGTC2,
-	InternalUnsignedBPTCRGBA     = GL_COMPRESSED_RGBA_BPTC_UNORM,
-	InternalUnsignedBPTCSRGBA    = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM,
-	InternalFloatBPTCRGB         = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
-	InternalUnsignedFloatBPTCRGB = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
-	InternalUnspecified          = 666,
+	InternalFloatShared5RGB9      = GL_RGB9_E5,
+	InternalIntRed8               = GL_R8I,
+	InternalUnsignedIntRed8       = GL_R8UI,
+	InternalIntRed16              = GL_R16I,
+	InternalUnsignedIntRed16      = GL_R16UI,
+	InternalIntRed32              = GL_R32I,
+	InternalUnsignedIntRed32      = GL_R32UI,
+	InternalIntRedGreen8          = GL_RG8I,
+	InternalUnsignedIntRedGreen8  = GL_RG8UI,
+	InternalIntRedGreen16         = GL_RG16I,
+	InternalUnsignedIntRedGreen16 = GL_RG16UI,
+	InternalIntRedGreen32         = GL_RG32I,
+	InternalUnsignedIntRedGreen32 = GL_RG32UI,
+	InternalIntRGB8               = GL_RGB8I,
+	InternalUnsignedIntRGB8       = GL_RGB8UI,
+	InternalIntRGB16              = GL_RGB16I,
+	InternalUnsignedIntRGB16      = GL_RGB16UI,
+	InternalIntRGB32              = GL_RGB32I,
+	InternalUnsignedIntRGB32      = GL_RGB32UI,
+	InternalIntRGBA8              = GL_RGBA8I,
+	InternalUnsignedIntRGBA8      = GL_RGBA8UI,
+	InternalIntRGBA16             = GL_RGBA16I,
+	InternalUnsignedIntRGBA16     = GL_RGBA16UI,
+	InternalIntRGBA32             = GL_RGBA32I,
+	InternalUnsignedIntRGBA32     = GL_RGBA32UI,
+	InternalCompressedRed         = GL_COMPRESSED_RED,
+	InternalCompressedRedGreen    = GL_COMPRESSED_RG,
+	InternalCompressedRGB         = GL_COMPRESSED_RGB,
+	InternalCompressedRGBA        = GL_COMPRESSED_RGBA,
+	InternalCompressedSRGB        = GL_COMPRESSED_SRGB,
+	InternalCompressedSRGBA       = GL_COMPRESSED_SRGB_ALPHA,
+	InternalRGTCRed               = GL_COMPRESSED_RED_RGTC1,
+	InternalSignedRGTCRed         = GL_COMPRESSED_SIGNED_RED_RGTC1,
+	InternalRGTCRedGreen          = GL_COMPRESSED_RG_RGTC2,
+	InternalSignedRGTCRedGreen    = GL_COMPRESSED_SIGNED_RG_RGTC2,
+	InternalUnsignedBPTCRGBA      = GL_COMPRESSED_RGBA_BPTC_UNORM,
+	InternalUnsignedBPTCSRGBA     = GL_COMPRESSED_SRGB_ALPHA_BPTC_UNORM,
+	InternalFloatBPTCRGB          = GL_COMPRESSED_RGB_BPTC_SIGNED_FLOAT,
+	InternalUnsignedFloatBPTCRGB  = GL_COMPRESSED_RGB_BPTC_UNSIGNED_FLOAT,
+	InternalUnspecified           = 666,
 };
 
 enum TextureDataInput
@@ -169,5 +170,14 @@ enum TextureDataInput
 	DataUnsignedInt1010102    = GL_UNSIGNED_INT_10_10_10_2,
 	DateUnsignedInt1010102Rev = GL_UNSIGNED_INT_2_10_10_10_REV
 };
+
+// TODO: Maybe put the enums here
+namespace Texture
+{
+	std::string GetBasePath();
+	void SetBasePath(const std::string& basePath);
+	GLuint GetColorChannels(const TextureFormatInternal& format);
+	GLuint GetColorChannels(const TextureFormat& format);
+}
 
 #endif // TEXTURE_H

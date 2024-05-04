@@ -88,13 +88,13 @@ void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInterna
 	this->width = size.x;
 	this->height = size.y;
 	this->internalFormat = static_cast<GLenum>(internalFormat);
-	this->channels = 4; // TODO: What are you doing
+	this->channels = Texture::GetColorChannels(internalFormat); 
 }
 
 void Texture2D::Load(const std::string& filename, TextureFormatInternal internal)
 {
 	this->CleanUp();
-	const unsigned char *data = stbi_load(filename.c_str(), &this->width, &this->height, &this->channels, 0);
+	const unsigned char *data = stbi_load((Texture::GetBasePath() + filename).c_str(), &this->width, &this->height, &this->channels, 0);
 	if (data)
 	{
 		glGenTextures(1, &this->texture);
@@ -120,7 +120,7 @@ void Texture2D::Load(const std::string& filename, TextureFormatInternal internal
 	}
 	else
 	{
-		printf("Error Loading Image '%s': %s\n", filename.c_str(), stbi_failure_reason());
+		printf("Error Loading Image '%s%s': %s\n", Texture::GetBasePath().c_str(), filename.c_str(), stbi_failure_reason());
 	}
 	stbi_image_free(std::bit_cast<void*>(data));
 }
@@ -174,6 +174,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	this->internalFormat = internalFormat;
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);
+	this->channels = Texture::GetColorChannels(type);
 }
 
 void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)

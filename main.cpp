@@ -2046,7 +2046,7 @@ void init()
 	//Shader::IncludeInShaderFilesystem("noise2D.glsl", "noise2D.glsl");
 
 	// SHADER SETUP
-	Shader::SetBasePath("Shaders/");
+	Shader::SetBasePath("Shaders");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
 	expand.Compile("framebuffer", "expand");
@@ -2102,26 +2102,26 @@ void init()
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
 
 	// TEXTURE SETUP
-	// TODO: texture loading base path thingy
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
-	depthMap.Load("Textures/depth.png");
+	Texture::SetBasePath("Textures");
+	depthMap.Load("depth.png");
 	depthMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	depthMap.SetAnisotropy(16.f);
 
 	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
-	hatching.Load("Textures/hatching.png");
+	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
-	normalMap.Load("Textures/normal.png");
+	normalMap.Load("normal.png");
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
 
-	texture.Load("Textures/text.png");
+	texture.Load("text.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
-	wallTexture.Load("Textures/flowed.png");
+	wallTexture.Load("flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
 	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(0, 1, 1, 1));
