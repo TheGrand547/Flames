@@ -70,13 +70,13 @@ void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, co
 			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
 
 
-			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 
-			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
 		}
 		else if (letter == '\n')
 		{
@@ -131,13 +131,13 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 			width = std::max(width, static_cast<int>(std::ceil(quad.x1)));
 			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
 
-			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-			results.push_back({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
 
-			results.push_back({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.push_back({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
-			results.push_back({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
+			results.emplace_back<UIVertex>({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
+			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
 		}
 		else if (letter == '\n')
 		{

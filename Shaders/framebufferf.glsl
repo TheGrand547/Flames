@@ -13,24 +13,6 @@ uniform int zoop;
 void main()
 {	
 	float kernel[25];
-	/*
-	if (zoop != 1) 
-	{
-		kernel = float[](
-			-1, -1, -1,
-			-1,	 8, -1,
-			-1, -1, -1
-		);
-	}
-	else
-	{
-		kernel = float[](
-			-1.5, -1, -1.5,
-			-1,	 10, -1,
-			-1.5, -1, -1.5
-		);
-	}
-	*/
 	// 5x5 Sharpen Kernel
 	kernel = float[](
 			-1, -1, -1, -1, -1,

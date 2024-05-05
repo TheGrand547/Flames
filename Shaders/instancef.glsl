@@ -24,24 +24,30 @@ void main()
 	float ambient = 0.2f; // TODO: material setting
 	
 	vec3 ambientColor = lightColor * ambient;
-	
-	mat3 invs = inverse(fBTN);
-	
-	vec3 viewDirection = normalize((invs * viewPos - invs * fPos));
-	float factor = 0.1f;
-	vec2 texLoc = (viewDirection.xy / viewDirection.z) * texture(depthMapIn, fTex).r * factor;
-	
+	vec3 viewDirection, norm;
 	if (flops != 0)
-		texLoc = fTex - texLoc;
+	{
+		mat3 invs = inverse(fBTN);
+		
+		viewDirection = normalize((invs * viewPos - invs * fPos));
+		float factor = 0.1f;
+		vec2 texLoc = (viewDirection.xy / viewDirection.z) * texture(depthMapIn, fTex).r * factor;
+		
+		if (flops != 0)
+			texLoc = fTex - texLoc;
+		else
+			texLoc = fTex;
+		//viewDirection = normalize(viewPos - fPos);
+		
+		norm = fNorm;
+		vec3 inNorm = normalize(texture(normalMapIn, texLoc).xyz * 2.0 - 1.0);
+		norm = fBTN * inNorm;
+	}
 	else
-		texLoc = fTex;
-	viewDirection = normalize(viewPos - fPos);
-	
-	vec3 norm = fNorm;
-	vec3 inNorm = normalize(texture(normalMapIn, texLoc).xyz * 2.0 - 1.0);
-	norm = fBTN * inNorm;
-	
-	
+	{
+		norm = fNorm;
+		viewDirection = normalize(viewPos - fPos);
+	}
 	
 	
 	

@@ -298,7 +298,7 @@ OBB moveable;
 int tessAmount = 5;
 
 bool featureToggle = false;
-std::chrono::nanoseconds idleTime, displayTime;
+std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 
 constexpr float BulletRadius = 0.05f;
 OBB orbing;
@@ -332,13 +332,11 @@ New shading outputs
 
 void display()
 {
-	const auto now = std::chrono::high_resolution_clock::now();
+	auto displayStart = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	depthed.Bind();
+	//depthed.Bind();
 	glViewport(0, 0, windowWidth, windowHeight);
 	glClearColor(0, 0, 0, 1);
-	// TODO: Maybe clear the stencil buffer explicitly? idk
-	auto& sten = depthed.GetStencil();
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
 	EnableDepthBufferWrite();
@@ -766,6 +764,7 @@ void display()
 	frameShader.SetInt("zoop", 0);
 	frameShader.DrawArray<TriangleStrip>(4);
 	*/
+	/*
 	BindDefaultFrameBuffer();
 	glClearColor(1, 0.5, 0.25, 1);
 	ClearFramebuffer<DepthBuffer | StencilBuffer | ColorBuffer>();
@@ -783,20 +782,23 @@ void display()
 	expand.SetInt("depth", 5);
 	expand.SetInt("flag", featureToggle);
 	expand.SetInt("flag", false);
-	frameShader.DrawArray<DrawType::TriangleStrip>(4);
+	expand.DrawArray<DrawType::TriangleStrip>(4);
+	*/
 	glStencilMask(0xFF);
 
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawArray<DrawType::Lines>(6);
-
+	
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
 	// TODO: Seperate cpu rendering and render latency timers
-	//glFlush();
-	glFinish();
 	auto end = std::chrono::high_resolution_clock::now();
-	displayTime = end - now;
+	displayTime = end - displayStart;
+	displayStart = end;
+	glFinish();
+	end = std::chrono::high_resolution_clock::now();
+	renderDelay = end - displayStart;
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -1070,7 +1072,7 @@ void idle()
 {
 	static auto lastTimers = std::chrono::high_resolution_clock::now();
 	static std::deque<float> frames;
-	static std::deque<long long> displayTimes, idleTimes;
+	static std::deque<long long> displayTimes, idleTimes, renderTimes;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	frameCounter++;
@@ -1095,22 +1097,26 @@ void idle()
 	
 	auto idleDelta = idleTime.count() / 1000;
 	auto displayDelta = displayTime.count() / 1000;
+	auto renderDelta = renderDelay.count() / 1000;
 	frames.push_back(1.f / timeDelta);
 	displayTimes.push_back(displayDelta);
 	idleTimes.push_back(idleDelta);
+	renderTimes.push_back(renderDelta);
 	if (frames.size() > 300)
 	{
 		frames.pop_front();
 		displayTimes.pop_front();
 		idleTimes.pop_front();
+		renderTimes.pop_front();
 	}
 	float averageFps = 0.f;
-	long long averageIdle = 0, averageDisplay = 0;
+	long long averageIdle = 0, averageDisplay = 0, averageRender = 0;
 	for (std::size_t i = 0; i < frames.size(); i++)
 	{
 		averageFps += frames[i] / frames.size();
 		averageDisplay += displayTimes[i] / displayTimes.size();
 		averageIdle += idleTimes[i] / idleTimes.size();
+		averageRender += renderTimes[i] / renderTimes.size();
 	}
 	// This will be used for "release" mode as it's faster but noisier
 	if (!idleSimple) idleSimple = idleDelta;
@@ -1473,8 +1479,8 @@ void idle()
 	}
 	splitTri.BufferData(scremer, StaticDraw);
 	*/
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nCPU:{}ns\nGPU:{}ns\n{} Version\nTest Bool: {}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, (featureToggle) ? "New" : "Old", false));
+	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", false));
 
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
@@ -1487,7 +1493,7 @@ void idle()
 	/*
 	if (idleTime < std::chrono::milliseconds(10))
 	{
-		while (std::chrono::high_resolution_clock::now() - now <= std::chrono::milliseconds(10));
+		while (std::chrono::high_resolution_clock::displayStart() - displayStart <= std::chrono::milliseconds(10));
 	}
 	*/
 }
@@ -1679,7 +1685,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 				point = &(*item);
 			}
 		}
-		// Point now has the pointer to the closest element
+		// Point displayStart has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//loom.ReOrient(glm::vec3(0, 0, 90.f));
 		loom.ReOrient(cameraOrientation);
@@ -2382,7 +2388,7 @@ void init()
 	Font::SetFontDirectory("Fonts");
 
 	// Awkward syntax :(
-	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 50.f, 2, 2);
+	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
 
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
