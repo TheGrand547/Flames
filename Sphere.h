@@ -17,6 +17,8 @@ struct Sphere
 	constexpr void Translate(const glm::vec3& amount) noexcept;
 	constexpr void Scale(const float& amount) noexcept;
 
+	inline float SignedDistance(const glm::vec3& point) const noexcept;
+
 	glm::mat4 GetModelMatrix() const noexcept;
 	glm::mat4 GetNormalMatrix() const noexcept;
 
@@ -44,6 +46,11 @@ constexpr void Sphere::Translate(const glm::vec3& amount) noexcept
 constexpr void Sphere::Scale(const float& amount) noexcept
 {
 	this->radius *= amount;
+}
+
+inline float Sphere::SignedDistance(const glm::vec3& point) const noexcept
+{
+	return glm::length(point - this->center) - this->radius;
 }
 
 constexpr AABB Sphere::GetAABB() const noexcept

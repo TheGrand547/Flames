@@ -46,7 +46,7 @@ bool OrientedBoundingBox::Overlap(const Capsule& other, Collision& collide) cons
 bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) const
 {
 	AABB local(this->halfs * 2.f); // Why is this multiplied by 2?
-	glm::vec3 transformed = this->WorldToLocal(other.center - this->Center());
+	glm::vec3 transformed = this->WorldToLocal(other.center);
 	Sphere temp{ other.radius, transformed };
 	bool result = local.Overlap(temp, collision);
 	collision.normal = this->matrix * glm::vec4(collision.normal, 0);
@@ -198,9 +198,9 @@ bool OrientedBoundingBox::OverlapCompleteResponse(const OrientedBoundingBox& oth
 // World is in normalized coordinates so this is trivial
 glm::vec3 OrientedBoundingBox::WorldToLocal(const glm::vec3& in) const
 {
-	// Inverse of an ortho-normal matrix is it's transpose
-	//return glm::inverse(glm::mat3(this->matrix)) * in;
-	return glm::transpose(glm::mat3(this->matrix)) * in;
+	// Inverse of an ortho-normal matrix is its transpose
+	// (3x3)T * 3x1 == 1x3 * 3x3 in this situation, due to how glm does math
+	return (in - this->Center()) * glm::mat3(this->matrix);
 }
 
 static const std::array<const glm::vec3, 8> multiples = {

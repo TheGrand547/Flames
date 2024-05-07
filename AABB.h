@@ -3,6 +3,7 @@
 #define AXIS_ALIGNED_BOUNDING_BOX_H
 #include <glm/glm.hpp>
 #include <glm/ext/vector_common.hpp>
+#include <glm/gtx/component_wise.hpp>
 #include <vector>
 #include "CollisionTypes.h"
 #include "glmHelp.h"
@@ -34,6 +35,8 @@ public:
 	Model GetModel() const;
 	
 	inline constexpr float Volume() const;
+
+	inline float SignedDistance(const glm::vec3& point) const noexcept;
 
 	// Get the Center of the AABB
 	inline constexpr glm::vec3 GetCenter() const;
@@ -101,6 +104,13 @@ constexpr AABB::AABB(const AABB& other) : center(other.center), halfs(other.half
 inline constexpr float AABB::Volume() const
 {
 	return this->halfs.x * this->halfs.y * this->halfs.z * 8.f;
+}
+
+// From https://iquilezles.org/articles/distfunctions/
+inline float AABB::SignedDistance(const glm::vec3& point) const noexcept
+{
+	glm::vec3 transformed = glm::abs(point - this->center) - this->halfs;
+	return glm::length(glm::max(transformed, glm::vec3(0.f))) + glm::min(glm::compMax(transformed), 0.f);
 }
 
 inline constexpr glm::vec3 AABB::GetCenter() const

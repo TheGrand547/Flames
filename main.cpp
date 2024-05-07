@@ -206,6 +206,7 @@ std::mutex bufferMutex;
 
 OBB smartBox, dumbBox;
 std::vector<Model> planes;
+std::vector<MaxHeapValue<OBB>> plans;
 StaticOctTree<OBB> boxes(glm::vec3(20));
 
 static unsigned int frameCounter = 0;
@@ -366,10 +367,30 @@ void display()
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
 	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
-	instancing.SetInt("flops", featureToggle);
+	instancing.SetInt("flops", true);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	//DisableGLFeatures<FaceCulling>();
+	if (frameCounter % 500 == 0)
+	{
+		// Dumb thing
+		QuickTimer _timer{ "Depth Sorting" };
+		for (auto& p : plans)
+		{
+			p.value = p.element.SignedDistance(cameraPosition);
+		}
+		std::sort(plans.begin(), plans.end());
+		std::vector<glm::mat4> combo;
+		combo.reserve(planes.size());
+		for (auto& p : plans)
+		{
+			glm::mat4 fumo = p.element.GetModelMatrix();
+			fumo[1] = glm::vec4(p.element[1], 0);
+			combo.push_back(fumo);
+		}
+		instanceBuffer.BufferData(combo, StaticDraw);
+	}
+
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
@@ -1957,7 +1978,7 @@ int main(int argc, char** argv)
 	std::cout << "Max Error: " << maxError << std::endl;
 	std::cout << value2 << std::endl;
 	/*/
-
+	
 	int error = 0;
 	debugFlags.fill(false);
 
@@ -2234,7 +2255,8 @@ void init()
 		project.Scale(glm::vec3(1, .0625f, 1));
 		project.Scale(glm::vec3(1, 0, 1));
 		boxes.Insert(project, project.GetAABB());
-		awfulTemp.push_back(ref.GetModelMatrix());
+		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using planes to draw them this doesn't have to be the projection for some reason
+		plans.emplace_back<MaxHeapValue<OBB>>({project, 0});
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	{

@@ -44,6 +44,8 @@ public:
 
 	inline glm::vec3 GetScale() const noexcept;
 
+	inline float SignedDistance(const glm::vec3& point) const noexcept;
+
 	// TODO: Rethink the rotate/reorient from mat4 thing, replace with "Apply Transform" 
 	inline void ReCenter(const glm::vec3& center) noexcept;
 
@@ -165,7 +167,7 @@ inline glm::vec3 OrientedBoundingBox::Cross() const noexcept
 inline glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const
 {
 	assert(t < 3);
-	return this->matrix[(glm::length_t) t];
+	return this->matrix[static_cast<glm::length_t>(t)];
 }
 
 inline glm::vec3 OrientedBoundingBox::Center() const noexcept
@@ -176,6 +178,12 @@ inline glm::vec3 OrientedBoundingBox::Center() const noexcept
 inline glm::vec3 OrientedBoundingBox::GetScale() const noexcept
 {
 	return this->halfs;
+}
+
+inline float OrientedBoundingBox::SignedDistance(const glm::vec3& point) const noexcept
+{
+	glm::vec3 transformed = glm::abs(this->WorldToLocal(point)) - this->halfs;
+	return glm::length(glm::max(transformed, glm::vec3(0.f))) + glm::min(glm::compMax(transformed), 0.f);
 }
 
 inline Model OrientedBoundingBox::GetModel() const
