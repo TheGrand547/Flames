@@ -18,8 +18,8 @@ static ColorFrameBuffer defaultRenderBuffer;
 
 namespace Font
 {
-	Shader shader;
-	VAO vao;
+	static Shader shader;
+	static VAO vao;
 
 	static void SetupShader()
 	{
@@ -44,81 +44,35 @@ constexpr char lastCharInAtlas = '~';
 constexpr int charsInAtlas = lastCharInAtlas - firstCharInAtlas;
 constexpr int fontIndex0 = 0;
 
-// TODO: Version that returns the size of it, and maybe another that doesn't bake the coordinates into the render and stuff
-void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message)
+ASCIIFont::~ASCIIFont()
+{
+	this->Clear();
+}
+
+void ASCIIFont::Clear()
+{
+	this->texture.CleanUp();
+	this->characters.fill({});
+	this->ascender = 0;
+	this->lineSkip = 0;
+	this->lineGap = 0;
+}
+
+void ASCIIFont::Load(const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
+{
+	ASCIIFont::LoadFont(*this, filename, fontSize, sampleX, sampleY, padding);
+}
+
+glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message) const
 {
 	buffer.CleanUp();
 	std::vector<UIVertex> results{};
 	results.reserve(6 * message.size());
 	
-	// TODO: Maybe look into the x offset being weird?
 	y += this->pixelHeight * 0.8f;
-	
 	float originX = x, originY = y;
 	stbtt_aligned_quad quad{};
 	
-	int width = 0, height = int(std::ceil(this->lineSkip));
-
-	for (char letter : message)
-	{
-		if (letter >= firstCharInAtlas && letter <= lastCharInAtlas)
-		{
-			// Align to integer because it looks slightly better probably, I don't know
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
-
-			width  = std::max(width, static_cast<int>(std::ceil(quad.x1)));
-			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
-
-
-			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-			results.emplace_back<UIVertex>({ {quad.x1, quad.y0}, {quad.s1, quad.t0} });
-
-			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
-			results.emplace_back<UIVertex>({ {quad.x0, quad.y1}, {quad.s0, quad.t1} });
-			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
-		}
-		else if (letter == '\n')
-		{
-			x = originX;
-			y = originY + this->lineSkip;
-			originY = y;
-		}
-		else if (letter == '\t')
-		{
-			// SLOPPY
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, ' ', &x, &y, &quad, 1);
-		}
-		else
-		{
-			LogF("Couldn't find character with hex code '%x' in dictionary\n", (int)letter);
-		}
-	}
-	buffer.Generate();
-	buffer.BufferData(results, StaticDraw);
-}
-
-void ASCIIFont::RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message)
-{
-	this->RenderToScreen(buffer, coords.x, coords.y, message);
-}
-
-// TODO: this is a mess man
-void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
-{
-	Buffer<ArrayBuffer> buffer;
-
-	std::vector<UIVertex> results{};
-	results.reserve(6 * message.size());
-
-	float x = 0, y = this->pixelHeight * 0.8f;
-
-	float originX = 0, originY = y;
-	stbtt_aligned_quad quad{};
-
 	int width = 0, height = static_cast<int>(std::ceil(this->lineSkip));
 
 	for (char letter : message)
@@ -128,8 +82,9 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 			// Align to integer because it looks slightly better probably, I don't know
 			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
 
-			width = std::max(width, static_cast<int>(std::ceil(quad.x1)));
+			width  = std::max( width, static_cast<int>(std::ceil(quad.x1)));
 			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
+
 
 			results.emplace_back<UIVertex>({ {quad.x0, quad.y0}, {quad.s0, quad.t0} });
 			results.emplace_back<UIVertex>({ {quad.x1, quad.y1}, {quad.s1, quad.t1} });
@@ -158,20 +113,32 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 			LogF("Couldn't find character with hex code '%x' in dictionary\n", static_cast<int>(letter));
 		}
 	}
-	buffer.Generate();
 	buffer.BufferData(results, StaticDraw);
+	return glm::vec2(width, height);
+}
 
-	framebuffer.GetColor().CreateEmpty(width, height, InternalRGBA, backgroundColor);
+glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message) const
+{
+	return this->GetTextTris(buffer, coords.x, coords.y, message);
+}
+
+// TODO: this is a mess man
+void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
+{
+	Buffer<ArrayBuffer> buffer;
+	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
+	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA, backgroundColor);
+	framebuffer.GetColor().FillTexture(backgroundColor);
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
 	framebuffer.Assemble();
-	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(width), static_cast<float>(height), 0.f);
+	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(size.x), static_cast<float>(size.y), 0.f);
 	framebuffer.Bind();
-	glViewport(0, 0, width, height);
-	glClearColor(0, 0, 0, 0);
-	ClearFramebuffer();
+	glViewport(0, 0, size.x, size.y);
+
+	// TODO: Ensure blending is active
 	Font::shader.SetActiveShader();
-	Font::shader.SetTextureUnit("fontTexture", this->texture, 0);
+	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
 	Font::shader.SetVec4("colorIn", textColor);
 	Font::vao.BindArrayBuffer(buffer);
@@ -179,21 +146,15 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	BindDefaultFrameBuffer();
 }
 
-ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor)
+ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
 	ColorFrameBuffer framebuffer;
 	this->Render(framebuffer, message, textColor, backgroundColor);
 	return framebuffer;
 }
 
-void ASCIIFont::Render(Texture2D& texture, float x, float y, const std::string& message)
+void ASCIIFont::RenderToTexture(Texture2D& texture,  const std::string& message) const
 {
-	this->Render(texture, glm::vec2(x, y), message);
-}
-
-void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::string& message)
-{
-	// TODO: Make this not a hack that ignores the coords and colors
 	ColorFrameBuffer buffer = this->Render(message);
 	buffer.ReadColorIntoTexture(texture);
 }
@@ -202,6 +163,7 @@ void ASCIIFont::Render(Texture2D& texture, const glm::vec2& coords, const std::s
 bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
 {
 	Font::SetupShader();
+	font.Clear();
 	std::filesystem::path fontFile(Font::basePath + "/" + filename);
 	if (!std::filesystem::exists(fontFile))
 	{
@@ -225,12 +187,12 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		font.scalingFactor = fontSize / (font.ascender - font.descender);
 		font.lineSkip = (font.ascender - font.descender + font.lineGap) * font.scalingFactor;
 
-		// TODO: Dynamically resize the atlas for better memory layout
+		// TODO: Pre-calculate the sizes for the types and y'know
 		int x0, y0, x1, y1;
 		stbtt_GetFontBoundingBox(&information, &x0, &y0, &x1, &y1);
 		float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
 		float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
-
+		
 		std::vector<unsigned char> scratchSpace{}; // Has to be the same size as the buffer
 		scratchSpace.reserve(atlasWidth * atlasHeight);
 		stbtt_pack_context contextual{};

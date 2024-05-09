@@ -435,17 +435,17 @@ bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::st
 	return this->compiled;
 }
 
-GLuint Shader::Index(const std::string& name) 
+GLuint Shader::Index(const std::string& name)  const
 {
 	return static_cast<GLuint>(glGetAttribLocation(this->program, name.c_str()));
 }
 
-GLuint Shader::UniformIndex(const std::string& name)
+GLuint Shader::UniformIndex(const std::string& name) const
 {
 	return glGetUniformLocation(this->program, name.c_str());
 }
 
-GLuint Shader::UniformBlockIndex(const std::string& name)
+GLuint Shader::UniformBlockIndex(const std::string& name) const
 {
 	return glGetUniformBlockIndex(this->program, name.c_str());
 }

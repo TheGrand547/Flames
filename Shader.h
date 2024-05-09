@@ -87,23 +87,23 @@ public:
 
 	constexpr bool Compiled() const;
 
-	GLuint Index(const std::string& name);
-	GLuint UniformIndex(const std::string& name);
-	GLuint UniformBlockIndex(const std::string& name);
+	GLuint Index(const std::string& name) const;
+	GLuint UniformIndex(const std::string& name) const;
+	GLuint UniformBlockIndex(const std::string& name) const;
 
 	void CleanUp();
 	void ExportCompiled();
 
 	inline GLuint GetProgram() const;
 	inline void SetActiveShader();
-	inline void SetInt(const std::string& name, const int i);
-	inline void SetFloat(const std::string& name, const float i);
-	inline void SetVec2(const std::string& name, const glm::vec2& vec);
-	inline void SetVec3(const std::string& name, const glm::vec3& vec);
-	inline void SetVec4(const std::string& name, const glm::vec4& vec);
-	inline void SetMat4(const std::string& name, const glm::mat4& mat);
-	inline void SetTextureUnit(const std::string& name, const GLuint unit);
-	inline void SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit);
+	inline void SetInt(const std::string& name, const int i) const;
+	inline void SetFloat(const std::string& name, const float i) const;
+	inline void SetVec2(const std::string& name, const glm::vec2& vec) const;
+	inline void SetVec3(const std::string& name, const glm::vec3& vec) const;
+	inline void SetVec4(const std::string& name, const glm::vec4& vec) const;
+	inline void SetMat4(const std::string& name, const glm::mat4& mat) const;
+	inline void SetTextureUnit(const std::string& name, const GLuint unit) const;
+	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit) const;
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
 	// TODO: Maybe a draw function that takes a variable amount of VAO, Buffers, etc and does all that in a "magic" step
@@ -155,43 +155,42 @@ inline void Shader::SetActiveShader()
 	glUseProgram(this->program);
 }
 
-inline void Shader::SetInt(const std::string& name, const int i)
+inline void Shader::SetInt(const std::string& name, const int i) const
 {
 	glUniform1i(this->UniformIndex(name), i);
 }
 
-inline void Shader::SetFloat(const std::string& name, const float i)
+inline void Shader::SetFloat(const std::string& name, const float i) const
 {
 	glUniform1f(this->UniformIndex(name), i);
 }
 
-inline void Shader::SetVec2(const std::string& name, const glm::vec2& vec)
+inline void Shader::SetVec2(const std::string& name, const glm::vec2& vec) const
 {
 	glUniform2fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
-inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec)
+inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const
 {
 	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
-inline void Shader::SetVec4(const std::string& name, const glm::vec4& vec)
+inline void Shader::SetVec4(const std::string& name, const glm::vec4& vec) const
 {
 	glUniform4fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
-inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat)
+inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 {
 	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
-
-inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit)
+inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit) const
 {
 	glUniform1i(this->UniformIndex(name), unit);
 }
 
-inline void Shader::SetTextureUnit(const std::string& name, Texture2D& texture, const GLuint unit)
+inline void Shader::SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit) const
 {
 	texture.BindTexture(unit);
 	glUniform1i(this->UniformIndex(name), unit);

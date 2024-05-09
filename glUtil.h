@@ -116,7 +116,6 @@ inline void DisableGLFeatures()
     ApplyFeatureFlags<glDisable, flags>();
 }
 
-
 inline void BindDefaultFrameBuffer()
 {
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -131,5 +130,6 @@ inline void EnableDepthBufferWrite()
 {
     glDepthMask(GL_TRUE);
 }
+
 
 #endif // GL_UTIL_H

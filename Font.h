@@ -16,8 +16,8 @@ namespace Font
 
 struct FontSettings
 {
-	glm::vec2 position = glm::vec2(0);
-	glm::vec4 textColor = glm::vec4(1);
+	glm::vec2 position        = glm::vec2(0);
+	glm::vec4 textColor       = glm::vec4(1);
 	glm::vec4 backgroundColor = glm::vec4(0);
 };
 
@@ -32,21 +32,24 @@ protected:
 	Texture2D texture;
 public:
 	inline ASCIIFont();
+	~ASCIIFont();
 
 	inline Texture2D& GetTexture();
 
+	void Clear();
+
+	void Load(const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1);
+
 	// Provide a buffer filled with the position and texture coordinates that with this font's texture can be draw to whatever target
-	void RenderToScreen(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message);
-	void RenderToScreen(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message);
+	glm::vec2 GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message) const;
+	glm::vec2 GetTextTris(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message) const;
 
 	// Standard framebuffer is set to active after this is called
-	ColorFrameBuffer Render(const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0));
-	void Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0));
+	ColorFrameBuffer Render(const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
+	void Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
 
-	// TODO: This is bad
 	// Renders directly to the texture
-	void Render(Texture2D& texture, float x, float y, const std::string& message);
-	void Render(Texture2D& texture, const glm::vec2& coords, const std::string& message);
+	void RenderToTexture(Texture2D& texture, const std::string& message) const;
 
 	static bool LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1);
 };

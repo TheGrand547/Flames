@@ -754,7 +754,7 @@ void display()
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
 		colored.GetWidth(), colored.GetHeight()));
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
@@ -1500,7 +1500,7 @@ void idle()
 	}
 	splitTri.BufferData(scremer, StaticDraw);
 	*/
-	fonter.RenderToScreen(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
+	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", false));
 
 
@@ -1545,7 +1545,15 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 
 	if (action != GLFW_RELEASE && key < 0xFF)
 	{
-		letters << letter;
+		unsigned char copied = letter;
+		if (std::isalnum(copied))
+		{
+			if (!(mods & GLFW_MOD_CAPS_LOCK) && mods & GLFW_MOD_SHIFT)
+				copied = std::tolower(copied);
+			else if (!(mods & GLFW_MOD_SHIFT)) 
+				copied = std::tolower(copied);
+		}
+		letters << copied;
 	}
 
 	// If key is an ascii, then GLFW_KEY_* will be equal to '*', ie GLFW_KEY_M = 'M', all uppercase by default
@@ -1889,23 +1897,6 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 }
 
 void init();
-
-constexpr std::size_t MapSize = 10;
-static const std::array<const unsigned char, MapSize * MapSize> mapData =
-{
-	{
-		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 
-		0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 
-		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0xFF,
-		0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF,
-		0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0x00, 0x00, 0x00,
-		0xFF, 0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00, 0xFF, 0x00, 0x00,
-		0xFF, 0x00, 0xFF, 0x00, 0x00, 0x00, 0x00, 0xFF, 0x00, 0x00,
-		0xFF, 0x00, 0xFF, 0x00, 0xFF, 0xFF, 0x00, 0xFF, 0xFF, 0xFF,
-		0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0x00, 0x00, 0x00,
-		0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF
-	}
-};
 
 struct PathDummy
 {
@@ -2362,7 +2353,7 @@ void init()
 					for (std::size_t k = j; k < localBoys.size(); k++)
 					{
 						PathNodePtr weakest;
-						if ((weaker = localBoys[k].lock()))
+						if ((weakest = localBoys[k].lock()))
 						{
 							glm::vec3 deltaB = weakest->GetPosition() - local->GetPosition();
 							// This sucks
@@ -2443,8 +2434,8 @@ void init()
 	//Log("Doing it");
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
-	fonter.Render(buttonA, glm::vec2(), "Soft");
-	fonter.Render(buttonB, glm::vec2(), "Not");
+	fonter.RenderToTexture(buttonA, "Soft");
+	fonter.RenderToTexture(buttonB, "Not");
 	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 

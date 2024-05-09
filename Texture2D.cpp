@@ -171,7 +171,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	// TODO: store these values or something so things like FillTexture won't throw an annoying error
 	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
 		BORDER_PARAMETER, pixelType, pixelDataFormat, nullptr);
-	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, &color);
+	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
 	this->internalFormat = internalFormat;
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);
