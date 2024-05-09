@@ -30,12 +30,15 @@ void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& i
 	std::vector<NormalVertex> points;
 	std::vector<GLuint> index;
 
-	// Avoid unnecessary reallocations
-	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
-	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
+	std::size_t latSlices = latitudeSlices, longSlices = longitudeSlices;
 
-	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
-	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
+	// Avoid unnecessary reallocations
+	points.reserve(latSlices + 1 * (longSlices + 1));
+	index.reserve(6 * (longSlices - 1) * latSlices);
+
+	// because they're based on the other one's step
+	const float latitudeStep = glm::two_pi<float>() / static_cast<float>(latSlices);
+	const float longitudeStep = glm::pi<float>() / static_cast<float>(longSlices);
 
 	for (unsigned int i = 0; i <= longitudeSlices; i++)
 	{
@@ -90,12 +93,15 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 	std::vector<MeshVertex> points;
 	std::vector<GLuint> index;
 
-	// Avoid unnecessary reallocations
-	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
-	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
+	std::size_t latSlices = latitudeSlices, longSlices = longitudeSlices;
 
-	const float latitudeStep = glm::two_pi<float>() / (float) latitudeSlices;
-	const float longitudeStep = glm::pi<float>() / (float) longitudeSlices;
+	// Avoid unnecessary reallocations
+	points.reserve(latSlices + 1 * (longSlices + 1));
+	index.reserve(6 * (longSlices - 1) * latSlices);
+
+	// because they're based on the other one's step
+	const float latitudeStep = glm::two_pi<float>() / static_cast<float>(latSlices);
+	const float longitudeStep = glm::pi<float>() / static_cast<float>(longSlices);
 
 	for (std::uint8_t i = 0; i <= longitudeSlices; i++)
 	{
@@ -156,21 +162,22 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 	std::vector<Vertex> points;
 	std::vector<GLuint> index;
 
-	// TODO: Look into this not playing nice with exception handling bullshit
+	std::size_t latSlices = latitudeSlices, longSlices = longitudeSlices;
+
 	// Avoid unnecessary reallocations
-	points.reserve(std::size_t(latitudeSlices + 1) * std::size_t(longitudeSlices + 1));
-	index.reserve(6 * std::size_t(longitudeSlices - 1) * latitudeSlices);
+	points.reserve(latSlices + 1 * (longSlices + 1));
+	index.reserve(6 * (longSlices - 1) * latSlices);
 
 	// because they're based on the other one's step
-	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
-	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
+	const float latitudeStep = glm::two_pi<float>() / static_cast<float>(latSlices);
+	const float longitudeStep = glm::pi<float>() / static_cast<float>(longSlices);
 
-	for (unsigned int i = 0; i <= longitudeSlices; i++)
+	for (unsigned int i = 0; i <= longSlices; i++)
 	{
 		float angle = glm::half_pi<float>() - i * longitudeStep;
 		float width = cos(angle);
 		float height = sin(angle);
-		for (unsigned int j = 0; j <= latitudeSlices; j++)
+		for (unsigned int j = 0; j <= latSlices; j++)
 		{
 			float miniAngle = j * latitudeStep;
 			glm::vec3 vertex{};

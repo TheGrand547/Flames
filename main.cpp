@@ -207,6 +207,8 @@ std::mutex bufferMutex;
 OBB smartBox, dumbBox;
 std::vector<Model> planes;
 std::vector<MaxHeapValue<OBB>> plans;
+glm::vec3 lastCameraPos;
+
 StaticOctTree<OBB> boxes(glm::vec3(20));
 
 static unsigned int frameCounter = 0;
@@ -370,11 +372,11 @@ void display()
 	instancing.SetInt("flops", true);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	//DisableGLFeatures<FaceCulling>();
-	if (frameCounter % 500 == 0)
+	// Maybe move this elsewhere
+	if (frameCounter % 500 == 0 && lastCameraPos != cameraPosition)
 	{
-		// Dumb thing
-		QuickTimer _timer{ "Depth Sorting" };
+		lastCameraPos = cameraPosition;
+		QUICKTIMER("DepthSorting");
 		for (auto& p : plans)
 		{
 			p.value = p.element.SignedDistance(cameraPosition);
@@ -813,7 +815,6 @@ void display()
 	
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
-	// TODO: Seperate cpu rendering and render latency timers
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStart;
 	displayStart = end;
@@ -969,7 +970,6 @@ bool smartBoxCollide()
 	//Before(smartBoxPhysics.axisOfGaming);
 	float dot = INFINITY;
 
-	// TODO: Another test with a slightly scaled up version if there is no intersection, to provide a surface normal or a rotation target
 	for (auto& currentBox : potentialCollisions)
 	{
 		SlidingCollision c;
@@ -1596,21 +1596,6 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 // TODO: struct or something idk
 static bool rightMouseHeld = false, leftMouseHeld = false;
 static float mousePreviousX = 0, mousePreviousY = 0;
-
-// TODO: this needs to be it's own function
-glm::vec2 GetProjectionHalfs(glm::mat4& mat)
-{
-	glm::vec2 result{};
-
-	Plane rightPlane(mat[0][3] - mat[0][0], mat[1][3] - mat[1][0], mat[2][3] - mat[2][0], -mat[3][3] + mat[3][0]);
-	Plane topPlane  (mat[0][3] - mat[0][1], mat[1][3] - mat[1][1], mat[2][3] - mat[2][1], -mat[3][3] + mat[3][1]);
-	Plane nearPlane (mat[0][3] + mat[0][2], mat[1][3] + mat[1][2], mat[2][3] + mat[2][2], -mat[3][3] - mat[3][2]);
-	glm::vec3 local{};
-	nearPlane.TripleIntersect(rightPlane, topPlane, local);
-	result.x = local.x;
-	result.y = local.y;
-	return result;
-}
 
 Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 {
@@ -2364,6 +2349,28 @@ void init()
 		}
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
 		std::erase_if(pathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
+		for (std::size_t i = 0; i < pathNodes.size(); i++)
+		{
+			auto& local = pathNodes[i];
+			auto localBoys = local->neighbors();
+			for (std::size_t j = 0; j < localBoys.size(); j++)
+			{
+				PathNodePtr weaker;
+				if ((weaker = localBoys[j].lock()))
+				{
+					glm::vec3 deltaA = weaker->GetPosition() - local->GetPosition();
+					for (std::size_t k = j; k < localBoys.size(); k++)
+					{
+						PathNodePtr weakest;
+						if ((weaker = localBoys[k].lock()))
+						{
+							glm::vec3 deltaB = weakest->GetPosition() - local->GetPosition();
+							// This sucks
+						}
+					}
+				}
+			}
+		}
 	}
 
 

@@ -15,4 +15,8 @@ public:
 	~QuickTimer();
 };
 
+#define __QUICKTIMER(x, y) QuickTimer __##y##(x)
+#define __QUICKTIMER2(x, y) __QUICKTIMER(x, y)
+#define QUICKTIMER(x) __QUICKTIMER2(x, __LINE__)
+
 #endif // QUICK_TIMER_H

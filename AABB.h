@@ -20,7 +20,7 @@ protected:
 	glm::vec3 center, halfs;
 public:
 	constexpr AABB();
-	constexpr AABB(const glm::vec3& dimension);
+	constexpr AABB(const glm::vec3& sideLengths);
 	constexpr AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound);
 	constexpr AABB(const AABB& other);
 
@@ -85,7 +85,7 @@ constexpr AABB::AABB() : center(0), halfs(1)
 
 }
 
-constexpr AABB::AABB(const glm::vec3& dimension) : center(0), halfs(glm::abs(dimension) / 2.f)
+constexpr AABB::AABB(const glm::vec3& sideLengths) : center(0), halfs(glm::abs(sideLengths) / 2.f)
 {
 
 }

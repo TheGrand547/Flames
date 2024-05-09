@@ -14,7 +14,7 @@ Model AABB::GetModel() const
 	// Will return the transform matrix for the unit cube centered at the origin with 2x2x2 dimension
 	glm::vec3 transform = this->GetCenter();
 	glm::vec3 scale     = this->Deviation();
-	return Model(transform, glm::vec3(0, 0, 0), scale);
+	return Model(transform, glm::vec3(0), scale);
 }
 
 
@@ -29,10 +29,5 @@ bool AABB::Overlap(const Sphere& other, Collision& collision) const
 	}
 	collision.distance = other.radius - distance;
 	collision.point = other.center + collision.normal * collision.distance;
-	// TODO: RETURN TO THIS
-	//std::cout << (distance - other.radius) << ":" << EPSILON << std::endl;
-	// If the distance from the closest point on this AABB to the center of the sphere
-	// Is less than EPSILON(be overly permissive)
-	//return distance - other.radius < EPSILON;
 	return distance < other.radius;
 }

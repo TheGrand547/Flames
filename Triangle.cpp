@@ -74,30 +74,24 @@ bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 }
 
 
-// TODO: Un-sloppify
 bool Triangle::SplitByPlane(const Plane& plane) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
 	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	glm::vec3 signs = glm::sign(dots);
 	signs *= glm::not_(zeroes);
-
-	bool flag = true;
-	float critera = NAN; // Get something better
-	for (int i = 0; i < 3; i++)
+	bool fool = false;
+	auto transfer = glm::greaterThan(signs, glm::vec3(0));
+	if (!glm::any(zeroes))
 	{
-		if (zeroes[i])
-			continue;
-		if (glm::isnan(critera))
-		{
-			critera = signs[i];
-		}
-		else
-		{
-			flag &= (critera == signs[i]);
-		}
+		fool = (glm::all(transfer) || !glm::any(transfer));
 	}
-	return !flag;
+	else
+	{
+		fool = (glm::all(glm::greaterThanEqual(signs, glm::vec3(0))) ||
+			!glm::any(transfer));
+	}
+	return fool;
 }
 
 float Triangle::GetSpatialRelation(const Plane& plane) const

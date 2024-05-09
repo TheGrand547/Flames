@@ -2,6 +2,7 @@
 #include "glmHelp.h"
 #include "stbWrangler.h"
 #include "util.h"
+#include <glm/gtc/type_ptr.hpp>
 
 // TODO: General texture class thingy
 
@@ -185,5 +186,5 @@ void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, Te
 
 void Texture2D::FillTexture(const glm::vec4& color, int level)
 {
-	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, &color);
+	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
 }

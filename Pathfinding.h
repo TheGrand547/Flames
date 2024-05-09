@@ -58,7 +58,8 @@ template<typename T, typename S = float> struct MinHeapValue
 template<SearchNode Node, typename T>
 	requires HeuristicFunction<T, Node>
 [[nodiscard]] std::vector<std::shared_ptr<Node>> AStarSearch(const std::shared_ptr<Node>& start,
-						const std::shared_ptr<Node>& target, T heuristic, std::unordered_set<std::shared_ptr<Node>>* explored = nullptr)
+						const std::shared_ptr<Node>& target, T heuristic = [](const Node& a, const Node& b) {return 0.f}, 
+						std::unordered_set<std::shared_ptr<Node>>* explored = nullptr)
 {
 	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
 	using SmartSearchNode = std::shared_ptr<Node>;

@@ -42,7 +42,6 @@ bool OrientedBoundingBox::Overlap(const Capsule& other, Collision& collide) cons
 	return this->Overlap(Sphere(other.GetRadius(), other.ClosestPoint(this->Center())), collide);
 }
 
-// TODO: Standarize what the collision.point thingies mean
 bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) const
 {
 	AABB local(this->halfs * 2.f); // Why is this multiplied by 2?

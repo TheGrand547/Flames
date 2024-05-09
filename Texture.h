@@ -4,8 +4,6 @@
 #include <glew.h>
 #include <string>
 
-// TODO: Base texture class so I don't have to rewrite things as much smh
-
 enum TextureMagFilter
 {
 	// "Pixel Perfect"

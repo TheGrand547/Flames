@@ -16,4 +16,6 @@ inline glm::vec3 SlideAlongPlane(const glm::vec3& plane, const glm::vec3& direct
 	return glm::normalize(direction - glm::dot(direction, plane) * plane);
 }
 
+glm::vec2 GetProjectionHalfs(glm::mat4& mat);
+
 #endif // UTIL_H
