@@ -122,7 +122,6 @@ glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, const glm::vec2& c
 	return this->GetTextTris(buffer, coords.x, coords.y, message);
 }
 
-// TODO: this is a mess man
 void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
 	Buffer<ArrayBuffer> buffer;
@@ -136,13 +135,15 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	framebuffer.Bind();
 	glViewport(0, 0, size.x, size.y);
 
-	// TODO: Ensure blending is active
+	EnableGLFeatures<Blending>();
+	glBlendFunc(GL_SOURCE0_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	Font::shader.SetActiveShader();
 	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
 	Font::shader.SetVec4("colorIn", textColor);
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawArray<DrawType::Triangle>(buffer);
+	DisableGLFeatures<Blending>();
 	BindDefaultFrameBuffer();
 }
 
@@ -153,9 +154,9 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 	return framebuffer;
 }
 
-void ASCIIFont::RenderToTexture(Texture2D& texture,  const std::string& message) const
+void ASCIIFont::RenderToTexture(Texture2D& texture,  const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
-	ColorFrameBuffer buffer = this->Render(message);
+	ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
 	buffer.ReadColorIntoTexture(texture);
 }
 

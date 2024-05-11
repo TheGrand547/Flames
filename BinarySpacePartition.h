@@ -34,7 +34,6 @@ public:
 
 	bool RayCast(const Ray& ray) const;
 	bool RayCast(const Ray& ray, RayCollision& collide) const;
-	bool RayCast(const Ray& ray, RayCollision& near, RayCollision& far) const;
 };
 
 #endif // BINARY_SPACE_PARTITION_H

@@ -47,11 +47,6 @@
 #include "VertexArray.h"
 #include "UserInterface.h"
 
-template <class T> inline void CombineVector(std::vector<T>& left, const std::vector<T>& right)
-{
-	std::copy(right.begin(), right.end(), std::back_inserter(left));
-}
-
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
 		{-1, -1, -1},   // -x, -y, -z
@@ -64,6 +59,9 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 		{-1,  1,  1},   // -x, +y, +z
 	}
 };
+// TODO: https://github.com/zeux/meshoptimizer once you use meshes
+// TODO: imGUI
+
 
 // TODO: Better indexing so vertiex texture coordinates don't have to be repeated with in the same face
 // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
@@ -267,21 +265,19 @@ enum GeometryThing : unsigned short
 	All = 0xFF,
 };
 
-std::vector<Model> GetPlaneSegment(const glm::vec3& base, GeometryThing flags)
+void GetPlaneSegment(const glm::vec3& base, GeometryThing flags, std::vector<Model>& results)
 {
-	std::vector<Model> results;
-	if (flags & PlusX)  results.push_back({ base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f) });
-	if (flags & MinusX) results.push_back({ base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f) });
-	if (flags & PlusZ)  results.push_back({ base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0) });
-	if (flags & MinusZ) results.push_back({ base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0) });
-	if (flags & PlusY)  results.push_back({ base });
-	if (flags & MinusY) results.push_back({ base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0) });
-	return results;
+	if (flags & PlusX)  results.emplace_back(base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f));
+	if (flags & MinusX) results.emplace_back(base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f));
+	if (flags & PlusZ)  results.emplace_back(base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0));
+	if (flags & MinusZ) results.emplace_back(base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0));
+	if (flags & PlusY)  results.emplace_back(base);
+	if (flags & MinusY) results.emplace_back(base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0));
 }
 
-std::vector<Model> GetHallway(const glm::vec3& base, bool openZ = true)
+void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ = true)
 {
-	return GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX);
+	GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX, results);
 }
 
 bool buttonToggle = false;
@@ -1523,10 +1519,6 @@ void smartReset()
 {
 	smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
 	smartBox.ReOrient(glm::vec3(0, 0, 0));
-	/*
-	smartBox.ReCenter(glm::vec3(2, 1.f, 0));
-	smartBox.ReOrient(glm::vec3(0, 135, 0));
-	*/
 }
 
 void window_focus_callback(GLFWwindow* window, int focused)
@@ -2138,13 +2130,10 @@ void init()
 		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
 	*/
 
-	stickBuffer.BufferData(stick, StaticDraw);
-	solidCubeIndex.BufferData(cubeIndicies, StaticDraw);
+	stickBuffer.BufferData(stick);
+	solidCubeIndex.BufferData(cubeIndicies);
 
 	std::array<TextureVertex, 4> verts{};
-	//std::cout << sizeof(verts) << std::endl;
-	//std::cout << sizeof(TextureVertex) << std::endl;
-	//std::cout << sizeof(TextureVertex) * 4 << std::endl;
 
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
@@ -2156,21 +2145,21 @@ void init()
 	std::array<TangentVertex, 4> tangents{};
 	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
 
-	normalMapBuffer.BufferData(tangents, StaticDraw);
+	normalMapBuffer.BufferData(tangents);
 
-	texturedPlane.BufferData(verts, StaticDraw);
+	texturedPlane.BufferData(verts);
 
-	planeBO.BufferData(plane, StaticDraw);
+	planeBO.BufferData(plane);
 
-	plainCube.BufferData(plainCubeVerts, StaticDraw);
+	plainCube.BufferData(plainCubeVerts);
 
 	std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
-	pathNodePositions.BufferData(funnys, StaticDraw);
+	pathNodePositions.BufferData(funnys);
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0));
-	rayBuffer.BufferData(rays, StaticDraw);
+	rayBuffer.BufferData(rays);
 	// CREATING OF THE PLANES
 
 	for (int i = -5; i <= 5; i++)
@@ -2179,47 +2168,46 @@ void init()
 			continue;
 		if (abs(i) == 3)
 		{
-			CombineVector(planes, GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY));
-			CombineVector(planes, GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY));
+			GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY, planes);
+			GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY, planes);
 
-			CombineVector(planes, GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY));
-			CombineVector(planes, GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY));
+			GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY, planes);
+			GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY, planes);
 			for (int x = -2; x <= 2; x++)
 			{
 				if (x == 0)
 					continue;
-				CombineVector(planes, GetHallway(glm::vec3(2 * x, 0, 2 * i), false));
-				CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 2 * x), true));
+				GetHallway(glm::vec3(2 * x, 0, 2 * i), planes, false);
+				GetHallway(glm::vec3(2 * i, 0, 2 * x), planes, true);
 			}
 			continue;
 		}
-		CombineVector(planes, GetHallway(glm::vec3(0, 0, 2 * i), true));
-		CombineVector(planes, GetHallway(glm::vec3(2 * i, 0, 0), false));
+		GetHallway(glm::vec3(0, 0, 2 * i), planes, true);
+		GetHallway(glm::vec3(2 * i, 0, 0), planes, false);
 	}
 	for (int i = 0; i < 9; i++)
 	{
-		CombineVector(planes, GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY));
+		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, planes);
 	}
 	// Diagonal Walls
-	planes.push_back(Model(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
-	planes.push_back(Model(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
-	planes.push_back(Model(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
-	planes.push_back(Model(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2)))));
+	planes.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	planes.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	planes.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	planes.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
 
-
-	planes.push_back(Model(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f)));
-	planes.push_back(Model(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f)));
+	planes.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
+	planes.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
 
 
 	// The ramp
-	planes.push_back(Model(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1)));
+	planes.emplace_back(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1));
 
 	// The weird wall behind the player I think?
-	planes.push_back(Model(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f)));
+	planes.emplace_back(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f));
 
 	std::vector<glm::mat4> awfulTemp{};
 	awfulTemp.reserve(planes.size());
-	//planes.push_back(Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f)));
+	//planes.emplace_back(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f));
 	for (const auto& ref : planes)
 	{
 		OBB project(ref);
@@ -2408,7 +2396,11 @@ void init()
 	Font::SetFontDirectory("Fonts");
 
 	// Awkward syntax :(
-	ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
+
+	{
+		QUICKTIMER("Font Loading");
+		ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
+	}
 
 	stickIndicies.BufferData(stickDex, StaticDraw);
 

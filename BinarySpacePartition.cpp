@@ -104,8 +104,16 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 
 void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 {
-	// TODO: this but for things that can be split, should just be a little line of code or two
-	float result = triangle.GetSpatialRelation(this->canonical);
+	float result;
+	bool isSplit = triangle.SplitAndOrientation(this->canonical, result);
+	if (isSplit)
+	{
+		for (Triangle& tri : triangle.Split(this->canonical))
+		{
+			this->AddTriangle(tri);
+		}
+		return;
+	}
 	if (result < 0)
 	{
 		if (!this->behind) 
@@ -146,20 +154,14 @@ void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 
 bool BinarySpacePartition::RayCast(const Ray& ray) const
 {
-	RayCollision near{}, far{};
-	return this->RayCast(ray, near, far);
+	RayCollision near{};
+	return this->RayCast(ray, near);
 }
 
-bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& collide) const
-{
-	RayCollision far{};
-	return this->RayCast(ray, collide, far);
-}
 
-bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollision& far) const
+bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 {
 	near.Clear();
-	far.Clear();
 
 	float distance = this->canonical.Facing(ray.initial);
 	float direction = glm::sign(this->canonical.FacingNormal(ray.direction));
@@ -168,7 +170,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		// In front and pointing away/normal to my plane
 		if (direction >= 0)
 		{
-			return (this->front) ? this->front->RayCast(ray, near, far) : false;
+			return (this->front) ? this->front->RayCast(ray, near) : false;
 		}
 	}
 	else if (distance < 0)
@@ -176,43 +178,50 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near, RayCollis
 		// Behind and pointing away/normal to my plane
 		if (direction <= 0)
 		{
-			return (this->behind) ? this->behind->RayCast(ray, near, far) : false;
+			return (this->behind) ? this->behind->RayCast(ray, near) : false;
 		}
 	}
 	else
 	{
-		for (const Triangle& polygon : this->collinear)
+		// Starts somewhere on this plane
+		for (const Triangle& triangle : this->collinear)
 		{
-			//if (triangle.RayCast(ray, near, far))
-			return true;
+			if (triangle.RayCast(ray, near))
+			{
+				return true;
+			}
 		}
-		return false;
 	}
 	// Going to have to check both sides
-	RayCollision frontNear{}, frontFar{};
-	RayCollision behindNear{}, behindFar{};
-	bool frontCollide = (this->front) ? this->front->RayCast(ray, frontNear, frontFar) : false;
-	bool behindCollide = (this->behind) ? this->behind->RayCast(ray, behindNear, behindFar) : false;
+	RayCollision frontNear{};
+	RayCollision behindNear{};
+	bool frontCollide = (this->front) ? this->front->RayCast(ray, frontNear) : false;
+	bool behindCollide = (this->behind) ? this->behind->RayCast(ray, behindNear) : false;
 	if (frontCollide && behindCollide)
 	{
 		// Compare them
+		near = (frontNear.depth < behindNear.depth) ? frontNear : behindNear;
 		return true;
 	}
 	else if (frontCollide)
 	{
 		near = frontNear;
-		far = frontFar;
 		return true;
 	}
 	else if (behindCollide)
 	{
 		near = behindNear;
-		far = behindFar;
 		return true;
 	}
 	else
 	{
-		// TODO: Check each triangle in this->collinear
+		for (const Triangle& triangle : this->collinear)
+		{
+			if (triangle.RayCast(ray, near))
+			{
+				return true;
+			}
+		}
 	}
 	return false;
 }

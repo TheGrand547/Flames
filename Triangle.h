@@ -1,6 +1,7 @@
 #pragma once
 #ifndef TRIANGLE_H
 #define TRIANGLE_H
+#include <glm/gtx/intersect.hpp>
 #include <vector>
 #include "AABB.h"
 #include "CollisionTypes.h"
@@ -117,49 +118,16 @@ inline bool Triangle::RayCast(const Ray& ray) const noexcept
 	return this->RayCast(ray, dummy);
 }
 
-// TODO: Investigate glm::intersectRayTriangle and such
 inline bool Triangle::RayCast(const Ray& ray, RayCollision& collision) const noexcept
 {
-	glm::vec3 edgeA = this->vertices[1] - vertices[0], edgeB = this->vertices[2] - vertices[1];
-	glm::vec3 dirCrossB = glm::normalize(glm::cross(ray.direction, edgeB));
-
-	float depth = glm::dot(dirCrossB, edgeA);
-
-	// Parallel
-	if (glm::abs(depth) < EPSILON)
+	glm::vec2 barycentric{};
+	bool result = glm::intersectRayTriangle(ray.point, ray.direction, this->vertices[0], this->vertices[1], this->vertices[2], barycentric, collision.depth);
+	if (result)
 	{
-		return false; 
+		collision.normal = this->GetNormal();
+		collision.point = ray.point + collision.depth * ray.direction;
 	}
-	depth = 1.f / depth; // Invert it
-	glm::vec3 deltaA = ray.point - this->vertices[0];
-	// What does u even mean??
-	float u = depth * glm::dot(deltaA, dirCrossB);
-	// Dunno what
-	if (u < 0 || u > 1)
-	{
-		return false;
-	}
-
-	glm::vec3 dirCrossA = glm::normalize(glm::cross(deltaA, edgeA));
-	float v = depth * glm::dot(dirCrossA, ray.direction);
-	if (v < 0 || u + v > 1)
-	{
-		return false;
-	}
-	float t = depth * glm::dot(edgeB, dirCrossA);
-	if (t > EPSILON)
-	{
-		collision.axis = glm::normalize(glm::cross(edgeA, edgeB));
-		collision.depth = t;
-		collision.point = ray.point + t * ray.direction;
-		return true;
-	}
-	else
-	{
-		// ???
-		// hit exists, but negative
-	}
-	return false;
+	return result;
 }
 
 #endif // TRIANGLE_H

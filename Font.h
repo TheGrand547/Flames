@@ -12,8 +12,6 @@ namespace Font
 	void SetFontDirectory(const std::string& directory);
 }
 
-// TODO: Settings struct with back/foreground color, position, etc
-
 struct FontSettings
 {
 	glm::vec2 position        = glm::vec2(0);
@@ -49,7 +47,7 @@ public:
 	void Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
 
 	// Renders directly to the texture
-	void RenderToTexture(Texture2D& texture, const std::string& message) const;
+	void RenderToTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
 
 	static bool LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1);
 };
