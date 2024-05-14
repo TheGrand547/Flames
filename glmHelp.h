@@ -23,7 +23,6 @@
 #define absdot(x, y) glm::abs(glm::dot(x, y))
 
 namespace Constexpr
-
 {
 	// Sourced from https://stackoverflow.com/questions/8622256/in-c11-is-sqrt-defined-as-constexpr/34134071#34134071
 	template<typename T = double>
@@ -37,19 +36,28 @@ namespace Constexpr
 	template<typename T = double>
 	inline T constexpr sqrt(T x)
 	{
-		return x >= 0 && x < std::numeric_limits<T>::infinity()
-			? sqrtNewtonRaphson<T>(x, x, static_cast<T>(0))
-			: std::numeric_limits<T>::quiet_NaN();
+		[[unlikely]]
+		if (std::is_constant_evaluated())
+		{
+			return x >= 0 && x < std::numeric_limits<T>::infinity()
+				? sqrtNewtonRaphson<T>(x, x, static_cast<T>(0))
+				: std::numeric_limits<T>::quiet_NaN();
+		}
+		else
+		{
+			return ::glm::sqrt<T>(x);
+		}
 	}
 
 
 	template<::glm::length_t T, typename W, ::glm::qualifier Q>
 	inline constexpr W dot(const ::glm::vec<T, W, Q>& a, const ::glm::vec<T, W, Q>& b)
 	{
+		[[unlikely]]
 		if (std::is_constant_evaluated())
 		{
 			W total{};
-			for (glm::length_t i = 0; i < T; i++)
+			for (::glm::length_t i = 0; i < T; i++)
 			{
 				total += a[i] * b[i];
 			}
@@ -57,34 +65,43 @@ namespace Constexpr
 		}
 		else
 		{
-			return glm::dot(a, b);
+			return glm::dot<T, W, Q>(a, b);
 		}
 	}
 
 	template<::glm::length_t T, typename W, ::glm::qualifier Q>
 	inline constexpr W length(const ::glm::vec<T, W, Q>& a)
 	{
+		[[unlikely]]
 		if (std::is_constant_evaluated())
 		{
 			return ::Constexpr::sqrt<W>(::Constexpr::dot(a, a));
 		}
 		else
 		{
-			return glm::length(a);
+			return glm::length<T, W, Q>(a);
 		}
 	}
 
 	template<::glm::length_t T, typename W, ::glm::qualifier Q>
 	inline constexpr ::glm::vec<T, W, Q> normalize(const ::glm::vec<T, W, Q>& a)
 	{
+		[[unlikely]]
 		if (std::is_constant_evaluated())
 		{
-			return a / ::Constexpr::length(a);
+			return a * (static_cast<W>(1) / ::Constexpr::length(a));
 		}
 		else
 		{
-			return glm::normalize(a);
+			return glm::normalize<T, W, Q>(a);
 		}
+	}
+
+	// Returns the absolute value of the dot product of x on y
+	template<::glm::length_t L, typename T, ::glm::qualifier Q> 
+	inline constexpr T adot(::glm::vec<L, T, Q> const& x, ::glm::vec<L, T, Q> const& y)
+	{
+		return ::glm::abs<T>(::Constexpr::dot<L, T, Q>(x, y));
 	}
 }
 
@@ -125,14 +142,5 @@ inline std::ostream& operator<<(std::ostream& os, const glm::quat& vec)
 }
 
 template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::vec3>;
-
-namespace glm 
-{
-	// Returns the absolute value of the dot product of x on y
-	template<length_t L, typename T, qualifier Q> inline T adot(vec<L, T, Q> const& x, vec<L, T, Q> const& y)
-	{
-		return glm::abs(glm::dot(x, y));
-	}
-}
 
 #endif // GLM_HELP_H

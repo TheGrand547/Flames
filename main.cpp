@@ -7,6 +7,7 @@
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtc/ulp.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/hash.hpp>
 #include <iostream>
@@ -61,6 +62,7 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 };
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
+// TODO: Delaunay Trianglulation
 
 
 // TODO: Better indexing so vertiex texture coordinates don't have to be repeated with in the same face
@@ -1913,39 +1915,38 @@ namespace std
 }
 float heur(const PathDummy& dum1, const PathDummy& dum2) { return dum1.distance(dum2); }
 
+template<typename T = double>
+inline T constexpr SQRT_TEST(T x)
+{
+	return x >= 0 && x < std::numeric_limits<T>::infinity()
+		? Constexpr::sqrtNewtonRaphson<T>(x, x, static_cast<T>(0))
+		: std::numeric_limits<T>::quiet_NaN();
+}
 
 int main(int argc, char** argv)
 {
-	/* Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
+	// Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
 	std::random_device r;
 	std::default_random_engine randEngine(r());
-	std::uniform_real_distribution distrib(1., 2000.);
-	double accumulator = 0, totalA = 0, totalB = 0;
+	std::uniform_real_distribution distrib(0., 2.);
 	int fails = 0;
 	int timesT = 200000;
 	double maxError = 0;
-	double value2 = 0;
+	long long maxOf = 0;
 	for (int i = 0; i < timesT; i++)
 	{
 		auto temp = distrib(randEngine);
 		auto A = sqrt(temp);
-		auto B = Constexpr::sqrt(temp);
-		accumulator += abs(A - B);
-		if (maxError < abs(A - B))
+		auto B = SQRT_TEST(temp);
+		auto D = glm::abs(glm::floatDistance(A, B));
+		maxOf = (maxOf < D) ? D : maxOf;
+		if (D > 1)
 		{
-			maxError = abs(A - B);
-			value2 = temp;
+			std::cout << D << " : " << std::format(" {} : {} : {}", glm::abs(A - B), A, B) << std::endl;
+			fails++;
 		}
-		if (abs(A - B) != 0.f)
-		{
-			fails += 1;
-		}
-		//std::cout << sqrt(temp) << ":" << ConstexprSQRT(temp) << ":" << abs(sqrt(temp) - ConstexprSQRT(temp)) << std::endl;
 	}
-	std::cout << accumulator << " : " << accumulator / timesT << " : " << fails << " : " <<  double(fails) / timesT << std::endl;
-	std::cout << "Max Error: " << maxError << std::endl;
-	std::cout << value2 << std::endl;
-	/*/
+	std::cout << std::format("Number of sqrts off by more than 1 ULP at double precision: {}", fails) << std::endl;
 	
 	int error = 0;
 	debugFlags.fill(false);

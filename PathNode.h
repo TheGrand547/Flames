@@ -1,7 +1,6 @@
 #pragma once
 #ifndef PATH_NODE_H
 #define PATH_NODE_H
-#define GLM_ENABLE_EXPERIMENTAL
 #include <glm/gtx/hash.hpp>
 #include <unordered_map>
 #include <vector>

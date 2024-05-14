@@ -72,6 +72,8 @@ constexpr std::string LocationFormat(const std::source_location location)
 
 #endif // OMIT_FILENAMES
 
+void CheckError(const std::source_location location = std::source_location::current());
+
 #ifdef _DEBUG
 
 #define LogF(...) {printf("%s", LocationFormat().c_str()); printf(__VA_ARGS__);}
@@ -83,7 +85,6 @@ constexpr std::string LocationFormat(const std::source_location location)
 #define After(...) std::cout << "After: " << __VA_ARGS__ << std::endl;
 #else // _DEBUG
 
-#define CheckError(...)
 #define Log(...) CheckError()
 #define LogSource(...) CheckError()
 #define LogF(...) CheckError()
@@ -92,7 +93,4 @@ constexpr std::string LocationFormat(const std::source_location location)
 #define After(...)
 
 #endif // _DEBUG
-
-void CheckError(const std::source_location location = std::source_location::current());
-
 #endif // FLAMES_LOG_H

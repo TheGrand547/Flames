@@ -5,8 +5,6 @@
 #include <iostream>
 #include "glmHelp.h"
 
-// TODO: Better wordings so these can apply to more cases, these are most suitable for ray/sphere/capsule intersection tests than general collision
-
 /*
  * For a function A.Overlaps(B) or A.Intersection(B): A will be treated a static entity, B will be a moveable one
  * 

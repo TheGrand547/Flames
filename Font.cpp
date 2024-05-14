@@ -136,7 +136,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	glViewport(0, 0, size.x, size.y);
 
 	EnableGLFeatures<Blending>();
-	glBlendFunc(GL_SOURCE0_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	Font::shader.SetActiveShader();
 	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
