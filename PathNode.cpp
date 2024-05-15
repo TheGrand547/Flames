@@ -15,7 +15,7 @@ float PathNode::distance(const PathNode& other) const noexcept
     return std::numeric_limits<float>::infinity();
 }
 
-std::vector<std::weak_ptr<PathNode>> PathNode::neighbors() const
+std::vector<std::weak_ptr<PathNode>> PathNode::neighbors() const noexcept
 {
     return this->nodes;
 }

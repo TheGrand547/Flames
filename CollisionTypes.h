@@ -33,11 +33,11 @@ struct Collision
 	Collision() = default;
 	inline consteval Collision(const glm::vec3& point, const glm::vec3& normal, const float& distance) noexcept 
 		: point(point), normal(normal), distance(distance) {}
-	~Collision() = default;
-	consteval bool operator==(const Collision& other) const = default;
-	consteval bool operator!=(const Collision& other) const = default;
+	~Collision() noexcept = default;
+	consteval bool operator==(const Collision& other) const noexcept = default;
+	consteval bool operator!=(const Collision& other) const noexcept = default;
 	
-	inline constexpr void Clear()
+	inline void Clear() noexcept
 	{
 		this->point = glm::vec3(0);
 		this->normal = glm::vec3(0);

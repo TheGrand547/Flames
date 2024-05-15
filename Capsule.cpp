@@ -7,7 +7,7 @@ bool Capsule::Intersect(const Capsule& other) const noexcept
 	return this->Intersect(other, temp);
 }
 
-AABB Capsule::GetAABB() const
+AABB Capsule::GetAABB() const noexcept
 {
 	AABB result{};
 	Sphere top{ this->radius, this->line.A };
@@ -42,20 +42,20 @@ bool Capsule::Intersect(const Sphere& other, Collision& hit) const noexcept
 	return hit.distance > 0;
 }
 
-glm::vec3 Capsule::ClosestPoint(const glm::vec3& other) const
+glm::vec3 Capsule::ClosestPoint(const glm::vec3& other) const noexcept
 {
 	return this->line.PointClosestTo(other);
 }
 
 void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
-	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) const
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) const noexcept
 {
 	::Capsule::GenerateMesh(verts, indicies, this->radius, this->line.Length(), latitudeSlices, longitudeSlices);
 }
 
 
 void Capsule::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
-	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices)
+	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{

@@ -1323,9 +1323,8 @@ void idle()
 	}
 
 	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
-	Sphere gamin{};
+	Sphere gamin{BulletRadius};
 	Collision c;
-	gamin.radius = BulletRadius;
 	for (std::size_t i = 0; i < bullets.size(); i++)
 	{
 		if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))

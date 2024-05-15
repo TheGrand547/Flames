@@ -19,91 +19,92 @@ class AABB
 protected:
 	glm::vec3 center, halfs;
 public:
-	constexpr AABB();
-	constexpr AABB(const glm::vec3& sideLengths);
-	constexpr AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound);
-	constexpr AABB(const AABB& other);
+	inline AABB() noexcept;
+	inline AABB(const glm::vec3& sideLengths) noexcept;
+	inline AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) noexcept;
+	inline AABB(const AABB& other) noexcept;
 
-	~AABB() = default;
+	~AABB() noexcept = default;
 
 	AABB& operator=(const AABB& other) noexcept;
-	inline constexpr AABB operator+(const glm::vec3& point) const;
-	inline constexpr AABB operator-(const glm::vec3& point) const;
-	inline constexpr AABB& operator+=(const glm::vec3& point);
-	inline constexpr AABB& operator-=(const glm::vec3& point);
+	inline AABB operator+(const glm::vec3& point) const noexcept;
+	inline AABB operator-(const glm::vec3& point) const noexcept;
+	inline AABB& operator+=(const glm::vec3& point) noexcept;
+	inline AABB& operator-=(const glm::vec3& point) noexcept;
 
-	Model GetModel() const;
+	Model GetModel() const noexcept;
 	
-	inline constexpr float Volume() const;
+	inline float Volume() const noexcept;
 
 	inline float SignedDistance(const glm::vec3& point) const noexcept;
 
 	// Get the Center of the AABB
-	inline constexpr glm::vec3 GetCenter() const;
+	inline glm::vec3 GetCenter() const noexcept;
 	// Get the Half-Lengths of the AABB
-	inline constexpr glm::vec3 Deviation() const;
+	inline glm::vec3 Deviation() const noexcept;
 
 	// Recenter the AABB
-	inline constexpr void Center(const glm::vec3& point) noexcept;
-	inline constexpr void SetScale(const glm::vec3& factor) noexcept;
-	inline constexpr void SetScale(const float& value) noexcept;
-	inline constexpr void ScaleInPlace(const glm::vec3& factor) noexcept;
-	inline constexpr void ScaleInPlace(float x, float y = 1.0f, float z = 1.0f);
+	inline void Center(const glm::vec3& point) noexcept;
+	inline void SetScale(const glm::vec3& factor) noexcept;
+	inline void SetScale(const float& value) noexcept;
+	inline void ScaleInPlace(const glm::vec3& factor) noexcept;
+	inline void ScaleInPlace(float x, float y = 1.0f, float z = 1.0f) noexcept;
 	// Move the AABB by factor in space
-	inline constexpr void Translate(const glm::vec3& factor);
+	inline void Translate(const glm::vec3& factor) noexcept;
 
-	inline constexpr bool PointInside(const glm::vec3& point) const;
-	inline constexpr bool Overlap(const AABB& other) const;
-	inline constexpr bool Contains(const AABB& other) const;
+	inline bool PointInside(const glm::vec3& point) const noexcept;
+	inline bool Overlap(const AABB& other) const noexcept;
+	inline bool Contains(const AABB& other) const noexcept;
 
-	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir) const;
-	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit) const;
-	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const;
-	constexpr bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const;
+	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir) const noexcept;
+	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit) const noexcept;
+	bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const noexcept;
+	bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept;
 
-	inline bool Overlap(const Sphere& other) const;
-	bool Overlap(const Sphere& other, Collision& collision) const;
+	inline bool Overlap(const Sphere& other) const noexcept;
+	bool Overlap(const Sphere& other, Collision& collision) const noexcept;
 
-	static constexpr AABB MakeAABB(const glm::vec3& left, const glm::vec3& right);
-	static constexpr AABB MakeAABB(const std::vector<glm::vec3>& points);
-	static constexpr AABB CombineAABB(const AABB& A, const AABB& B);
-	template<IsVec3... Args> inline static constexpr AABB MakeAABB(const Args... args);
+	inline static AABB MakeAABB(const glm::vec3& left, const glm::vec3& right) noexcept;
+	inline static AABB MakeAABB(const std::vector<glm::vec3>& points) noexcept;
+	inline static AABB CombineAABB(const AABB& A, const AABB& B) noexcept;
+	template<IsVec3... Args> inline static AABB MakeAABB(const Args... args) noexcept;
 
 
-	constexpr bool operator==(const AABB& other) const
+	bool operator==(const AABB& other) const noexcept
 	{
 		return this->center == other.center && this->halfs == other.halfs;
 	}
-	constexpr bool operator!=(const AABB& other) const
+
+	bool operator!=(const AABB& other) const noexcept
 	{
 		return !(*this == other);
 	}
 };
 
-constexpr AABB::AABB() : center(0), halfs(1)
+inline AABB::AABB() noexcept : center(0), halfs(1)
 {
 
 }
 
-constexpr AABB::AABB(const glm::vec3& sideLengths) : center(0), halfs(glm::abs(sideLengths) / 2.f)
+inline AABB::AABB(const glm::vec3& sideLengths) noexcept : center(0), halfs(glm::abs(sideLengths) / 2.f)
 {
 
 }
 
-constexpr AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) : center((negativeBound + positiveBound) / 2.f), 
+inline  AABB::AABB(const glm::vec3& negativeBound, const glm::vec3& positiveBound) noexcept : center((negativeBound + positiveBound) / 2.f),
 																						halfs(glm::abs(negativeBound - positiveBound) / 2.f)
 {
 
 }
 
-constexpr AABB::AABB(const AABB& other) : center(other.center), halfs(other.halfs)
+inline AABB::AABB(const AABB& other) noexcept : center(other.center), halfs(other.halfs)
 {
 
 }
 
-inline constexpr float AABB::Volume() const
+inline float AABB::Volume() const noexcept
 {
-	return this->halfs.x * this->halfs.y * this->halfs.z * 8.f;
+	return glm::compMul(this->halfs) * 8.f;
 }
 
 // From https://iquilezles.org/articles/distfunctions/
@@ -113,69 +114,69 @@ inline float AABB::SignedDistance(const glm::vec3& point) const noexcept
 	return glm::length(glm::max(transformed, glm::vec3(0.f))) + glm::min(glm::compMax(transformed), 0.f);
 }
 
-inline constexpr glm::vec3 AABB::GetCenter() const
+inline glm::vec3 AABB::GetCenter() const noexcept
 {
 	return this->center;
 }
 
-inline constexpr glm::vec3 AABB::Deviation() const
+inline glm::vec3 AABB::Deviation() const noexcept
 {
 	return this->halfs;
 }
 
-inline constexpr AABB AABB::operator+(const glm::vec3& point) const
+inline AABB AABB::operator+(const glm::vec3& point) const noexcept
 {
 	return AABB(this->center + point, this->halfs);
 }
 
-inline constexpr AABB AABB::operator-(const glm::vec3& point) const
+inline AABB AABB::operator-(const glm::vec3& point) const noexcept
 {
 	return AABB(this->center - point, this->halfs);
 }
 
-inline constexpr AABB& AABB::operator+=(const glm::vec3& point) 
+inline AABB& AABB::operator+=(const glm::vec3& point) noexcept
 {
 	this->center += point;
 	return *this;
 }
 
-inline constexpr AABB& AABB::operator-=(const glm::vec3& point)
+inline AABB& AABB::operator-=(const glm::vec3& point) noexcept
 {
 	this->center -= point;
 	return *this;
 }
 
-inline constexpr void AABB::Center(const glm::vec3& point) noexcept
+inline void AABB::Center(const glm::vec3& point) noexcept
 {
 	this->center = point;
 }
 
-inline constexpr void AABB::SetScale(const glm::vec3& factor) noexcept
+inline void AABB::SetScale(const glm::vec3& factor) noexcept
 {
 	this->halfs = factor;
 }
 
-inline constexpr void AABB::SetScale(const float& scale) noexcept
+inline void AABB::SetScale(const float& scale) noexcept
 {
 	this->halfs = glm::vec3(scale);
 }
 
-inline constexpr void AABB::ScaleInPlace(const glm::vec3& scale) noexcept
+inline void AABB::ScaleInPlace(const glm::vec3& scale) noexcept
 {
 	this->halfs *= glm::abs(scale);
 }
 
-inline constexpr void AABB::ScaleInPlace(float x, float y, float z)
+inline void AABB::ScaleInPlace(float x, float y, float z) noexcept
 {
 	this->ScaleInPlace(glm::vec3(x, y, z));
 }
 
-inline constexpr void AABB::Translate(const glm::vec3& point)
+inline void AABB::Translate(const glm::vec3& point) noexcept
 {
 	this->center += point;
 }
 
-inline constexpr bool AABB::PointInside(const glm::vec3& point) const
+inline bool AABB::PointInside(const glm::vec3& point) const noexcept
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	bool result = glm::all(glm::lessThanEqual(negativeBound, point)) && glm::all(glm::lessThanEqual(point, positiveBound));
@@ -183,7 +184,7 @@ inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 	bool xInside = negativeBound.x <= point.x && point.x <= positiveBound.x;
 	bool yInside = negativeBound.y <= point.y && point.y <= positiveBound.y;
 	bool zInside = negativeBound.z <= point.z && point.z <= positiveBound.z;
-	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	if (result != (xInside && yInside && zInside))
 	{
 		std::cout << "Shortcut for Point in AABB failed" << std::endl;
 	}
@@ -192,7 +193,7 @@ inline constexpr bool AABB::PointInside(const glm::vec3& point) const
 	return result;
 }
 
-inline constexpr bool AABB::Overlap(const AABB& other) const
+inline bool AABB::Overlap(const AABB& other) const noexcept
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
@@ -201,7 +202,7 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 	bool xInside = negativeBoundOther.x <= positiveBound.x && positiveBoundOther.x >= negativeBound.x;
 	bool yInside = negativeBoundOther.y <= positiveBound.y && positiveBoundOther.y >= negativeBound.y;
 	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
-	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	if (result != (xInside && yInside && zInside))
 	{
 		std::cout << "Shortcut for AABB overlap AABB failed" << std::endl;
 	}
@@ -210,7 +211,7 @@ inline constexpr bool AABB::Overlap(const AABB& other) const
 	return result;
 }
 
-inline constexpr bool AABB::Contains(const AABB& other) const
+inline bool AABB::Contains(const AABB& other) const noexcept
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
@@ -219,7 +220,7 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 	bool xInside = negativeBound.x <= negativeBoundOther.x && positiveBound.x >= positiveBoundOther.x;
 	bool yInside = negativeBound.y <= negativeBoundOther.y && positiveBound.y >= positiveBoundOther.y;
 	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
-	if (!std::is_constant_evaluated() && result != (xInside && yInside && zInside))
+	if (result != (xInside && yInside && zInside))
 	{
 		std::cout << "Shortcut for AABB inside AABB failed" << std::endl;
 	}
@@ -228,136 +229,31 @@ inline constexpr bool AABB::Contains(const AABB& other) const
 	return result;
 }
 
-inline bool AABB::Overlap(const Sphere& other) const
+inline bool AABB::Overlap(const Sphere& other) const noexcept
 {
 	Collision collide{};
 	return this->Overlap(other, collide);
 }
 
-inline constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir) const
+inline bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
 {
 	Collision near{}, far{};
 
 	return this->Intersect(point, dir, near, far);
 }
 
-inline constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& near) const
+inline bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& near) const noexcept
 {
 	Collision far{};
 	return this->Intersect(point, dir, near, far);
 }
 
-// Modified version of the OBB code to be in theory "better", ie faster
-constexpr bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const
-{
-	nearHit.Clear();
-	farHit.Clear();
-	nearHit.distance = -std::numeric_limits<float>::infinity();
-	farHit.distance = std::numeric_limits<float>::infinity();
-
-	glm::vec3 direction = this->center - point;
-
-	for (auto i = 0; i < 3; i++)
-	{
-		float scale = this->halfs[i];
-		float parallel = direction[i];
-		if (glm::abs(dir[i]) < EPSILON)
-		{
-			//if (-parallel - scale > 0 || -parallel + scale > 0)
-			if (abs(parallel) > scale)
-			{
-				return false;
-			}
-		}
-
-		float scaling = dir[i];
-		float param0 = (parallel + scale) / scaling;
-		float param1 = (parallel - scale) / scaling;
-
-		if (param0 > param1)
-		{
-			std::swap(param0, param1);
-		}
-		if (param0 > nearHit.distance)
-		{
-			nearHit.distance = param0;
-			nearHit.normal = glm::vec3(i == 0, i == 1, i == 2) * glm::sign(-parallel);
-		}
-		if (param1 < farHit.distance)
-		{
-			farHit.distance = param1;
-			farHit.normal = glm::vec3(i == 0, i == 1, i == 2) * glm::sign(-parallel);
-		}
-		if (nearHit.distance > farHit.distance)
-		{
-			return false;
-		}
-		if (farHit.distance < 0)
-		{
-			return false;
-		}
-	}
-	nearHit.point = nearHit.distance * dir + point;
-	farHit.point = farHit.distance * dir + point;
-	if (nearHit.distance < 0)
-	{
-		std::swap(nearHit, farHit);
-	}
-	return true;
-}
-
-inline constexpr bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
-{
-	glm::vec3 delta = this->center - point;
-	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
-
-	for (auto i = 0; i < 3; i++)
-	{
-		float scale = this->halfs[i];
-		float parallel = delta[i];
-		if (glm::abs(dir[i]) < EPSILON)
-		{
-			//if (-parallel - scale > 0 || -parallel + scale > 0)
-			if (abs(parallel) > scale)
-			{
-				return false;
-			}
-		}
-
-		float scaling = dir[i];
-		float param0 = (parallel + scale) / scaling;
-		float param1 = (parallel - scale) / scaling;
-
-		if (param0 > param1)
-		{
-			std::swap(param0, param1);
-		}
-		if (param0 > nearHit)
-		{
-			nearHit = param0;
-		}
-		if (param1 < farHit)
-		{
-			farHit = param1;
-		}
-		if (nearHit > farHit)
-		{
-			return false;
-		}
-		if (farHit < 0)
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-constexpr AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right)
+inline AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right) noexcept
 {
 	return AABB(glm::fmin(left, right), glm::fmax(left, right));
 }
 
-constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
+inline AABB AABB::MakeAABB(const std::vector<glm::vec3>& points) noexcept
 {
 	if (points.size() > 0)
 	{
@@ -372,7 +268,7 @@ constexpr AABB AABB::MakeAABB(const std::vector<glm::vec3>& points)
 	return AABB(glm::vec3(-INFINITY), glm::vec3(INFINITY));
 }
 
-constexpr AABB AABB::CombineAABB(const AABB& A, const AABB& B)
+inline AABB AABB::CombineAABB(const AABB& A, const AABB& B) noexcept
 {
 	glm::vec3 lowA = A.center - A.halfs, highA = A.center + A.halfs;
 	glm::vec3 lowB = B.center - B.halfs, highB = B.center + B.halfs;
@@ -380,7 +276,7 @@ constexpr AABB AABB::CombineAABB(const AABB& A, const AABB& B)
 }
 
 template<IsVec3 ...Args>
-inline constexpr AABB AABB::MakeAABB(const Args ...args)
+inline AABB AABB::MakeAABB(const Args ...args) noexcept
 {
 	std::vector<glm::vec3> points = { args... };
 	return AABB::MakeAABB(points);

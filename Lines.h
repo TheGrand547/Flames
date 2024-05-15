@@ -15,8 +15,8 @@ struct LineBase
 	float Distance(const LineBase& line) const noexcept;
 	float Distance(const LineBase& line, glm::vec3& thisPoint, glm::vec3& otherPoint) const noexcept;
 
-	virtual constexpr glm::vec3 PointA() const noexcept = 0;
-	virtual constexpr glm::vec3 PointB() const noexcept = 0;
+	virtual glm::vec3 PointA() const noexcept = 0;
+	virtual glm::vec3 PointB() const noexcept = 0;
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept = 0;
 };
 
@@ -31,15 +31,15 @@ struct Line : public LineBase
 		glm::vec3 dir, direction, delta;
 	};
 	
-	Line() = default;
-	Line(const glm::vec3& point, const glm::vec3& dir);
+	inline Line() noexcept = default;
+	inline Line(const glm::vec3& point, const glm::vec3& dir) noexcept;
 
-	constexpr bool operator==(const Line& other) const = default;
-	constexpr bool operator!=(const Line& other) const = default;
-	bool operator<(const Line& other) const = delete;
-	bool operator<=(const Line& other) const = delete;
-	bool operator>(const Line& other) const = delete;
-	bool operator>=(const Line& other) const = delete;
+	inline bool operator==(const Line& other) const noexcept = default;
+	inline bool operator!=(const Line& other) const noexcept = default;
+	inline bool operator<(const Line& other) const noexcept = delete;
+	inline bool operator<=(const Line& other) const noexcept = delete;
+	inline bool operator>(const Line& other) const noexcept = delete;
+	inline bool operator>=(const Line& other) const noexcept = delete;
 
 	Line operator*(const Line& other) = delete;
 	Line operator/(const Line& other) = delete;
@@ -47,31 +47,28 @@ struct Line : public LineBase
 	Line operator-(const Line& other) = delete;
 
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept override;
-	virtual constexpr glm::vec3 PointA() const noexcept;
-	virtual constexpr glm::vec3 PointB() const noexcept;
+	virtual glm::vec3 PointA() const noexcept;
+	virtual glm::vec3 PointB() const noexcept;
 };
 
-constexpr glm::vec3 Line::PointA() const noexcept
-{
-	return this->initial;
-}
+inline Line::Line(const glm::vec3& point, const glm::vec3& dir) noexcept : point(point), dir(glm::normalize(dir)) {}
 
-constexpr glm::vec3 Line::PointB() const noexcept
-{
-	return this->initial + dir;
-}
 
 struct Ray : public Line
 {
-	Ray() = default;
-	Ray(const glm::vec3& a, const glm::vec3& b);
-	Ray(const Ray& other);
+	inline Ray() noexcept = default;
+	inline Ray(const glm::vec3& a, const glm::vec3& b) noexcept;
+	inline Ray(const Ray& other) noexcept;
 
-	bool operator==(const Ray& other) const = default;
-	bool operator!=(const Ray& other) const = default;
+	inline bool operator==(const Ray& other) const noexcept = default;
+	inline bool operator!=(const Ray& other) const noexcept = default;
 	
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept override;
 };
+
+inline Ray::Ray(const glm::vec3& a, const glm::vec3& b) noexcept : Line(a, b) {}
+
+inline Ray::Ray(const Ray& other) noexcept : Line(other.point, other.dir) {}
 
 struct LineSegment : public LineBase
 {
@@ -83,41 +80,41 @@ struct LineSegment : public LineBase
 	{
 		glm::vec3 pointB, point2, end, B;
 	};
-	constexpr LineSegment(const glm::vec3& a = glm::vec3(0.f), const glm::vec3& b = glm::vec3(1.f)) : A(a), B(b) {}
-	constexpr LineSegment(const LineSegment& other) noexcept : A(other.A), B(other.B) {}
-	constexpr LineSegment(const LineSegment&& other) noexcept : A(other.A), B(other.B) {}
-	constexpr LineSegment& operator=(const LineSegment& other) noexcept;
-	constexpr LineSegment& operator=(const LineSegment&& other) noexcept;
+	inline LineSegment(const glm::vec3& a = glm::vec3(0.f), const glm::vec3& b = glm::vec3(1.f)) noexcept : A(a), B(b) {}
+	inline LineSegment(const LineSegment& other) noexcept : A(other.A), B(other.B) {}
+	inline LineSegment(const LineSegment&& other) noexcept : A(other.A), B(other.B) {}
+	inline LineSegment& operator=(const LineSegment& other) noexcept;
+	inline LineSegment& operator=(const LineSegment&& other) noexcept;
 
-	constexpr bool operator==(const LineSegment& other) const { return this->A == other.A && this->B == other.B; }
-	constexpr bool operator!=(const LineSegment& other) const { return this->A != other.A || this->B != other.B; }
+	inline bool operator==(const LineSegment& other) const noexcept { return this->A == other.A && this->B == other.B; }
+	inline bool operator!=(const LineSegment& other) const noexcept { return this->A != other.A || this->B != other.B; }
 
 	float Length() const noexcept;
 	float Magnitude() const noexcept;
 	float SquaredLength() const noexcept;
 
-	constexpr glm::vec3 MidPoint() const noexcept;
+	inline glm::vec3 MidPoint() const noexcept;
 	
-	inline constexpr glm::vec3 Lerp(float t) const noexcept;
+	inline glm::vec3 Lerp(float t) const noexcept;
 
-	inline constexpr glm::vec3 Direction() const noexcept;
+	inline glm::vec3 Direction() const noexcept;
 	inline glm::vec3 UnitDirection() const noexcept;
 
 	std::vector<LineSegment> Split(const Plane& plane) const;
 
-	virtual constexpr glm::vec3 PointA() const noexcept;
-	virtual constexpr glm::vec3 PointB() const noexcept;
+	virtual glm::vec3 PointA() const noexcept;
+	virtual glm::vec3 PointB() const noexcept;
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept;
 };
 
-constexpr LineSegment& LineSegment::operator=(const LineSegment& other) noexcept
+inline LineSegment& LineSegment::operator=(const LineSegment& other) noexcept
 {
 	this->A = other.A;
 	this->B = other.B;
 	return *this;
 }
 
-constexpr LineSegment& LineSegment::operator=(const LineSegment&& other) noexcept
+inline LineSegment& LineSegment::operator=(const LineSegment&& other) noexcept
 {
 	this->A = other.A;
 	this->B = other.B;
@@ -125,7 +122,7 @@ constexpr LineSegment& LineSegment::operator=(const LineSegment&& other) noexcep
 }
 
 
-inline constexpr glm::vec3 LineSegment::Direction() const noexcept
+inline glm::vec3 LineSegment::Direction() const noexcept
 {
 	return this->B - this->A;
 }
@@ -136,22 +133,22 @@ inline glm::vec3 LineSegment::UnitDirection() const noexcept
 }
 
 
-inline constexpr glm::vec3 LineSegment::Lerp(float t) const noexcept
+inline glm::vec3 LineSegment::Lerp(float t) const noexcept
 {
 	return this->A + (this->B - this->A) * t;
 }
 
-constexpr glm::vec3 LineSegment::PointA() const noexcept
+inline glm::vec3 LineSegment::PointA() const noexcept
 {
 	return this->A;
 }
 
-constexpr glm::vec3 LineSegment::PointB() const noexcept
+inline glm::vec3 LineSegment::PointB() const noexcept
 {
 	return this->B;
 }
 
-constexpr glm::vec3 LineSegment::MidPoint() const noexcept
+inline glm::vec3 LineSegment::MidPoint() const noexcept
 {
 	return (this->A + this->B) / 2.f;
 }

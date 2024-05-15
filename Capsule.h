@@ -15,18 +15,17 @@ protected:
 	LineSegment line;
 	float radius;
 public:
-	constexpr Capsule(const LineSegment& line = LineSegment(glm::vec3(0, 0.5f, 0), glm::vec3(0, -0.5f, 0)), const float& radius = 0.5f) noexcept;
-	constexpr Capsule(const Capsule& other) noexcept;
-	constexpr Capsule(const Capsule&& other) noexcept;
+	inline Capsule(const LineSegment& line = LineSegment(glm::vec3(0, 0.5f, 0), glm::vec3(0, -0.5f, 0)), const float& radius = 0.5f) noexcept;
+	inline Capsule(const Capsule& other) noexcept;
+	inline Capsule(const Capsule&& other) noexcept;
 
-	constexpr void SetCenter(const glm::vec3& center) noexcept;
-	constexpr void Translate(const glm::vec3& delta) noexcept;
-	constexpr void SetRadius(const float& value) noexcept;
+	inline void SetCenter(const glm::vec3& center) noexcept;
+	inline void Translate(const glm::vec3& delta) noexcept;
+	inline void SetRadius(const float& value) noexcept;
 	
-	// Want this to be constexpr, investigate std::is_constant_evaluated()
 	inline void SetLength(const float& length) noexcept;
 
-	AABB GetAABB() const;
+	AABB GetAABB() const noexcept;
 
 	bool Intersect(const Capsule& other) const noexcept;
 	/* 
@@ -45,38 +44,38 @@ public:
 	*/
 	bool Intersect(const Sphere& other, Collision& hit) const noexcept;
 
-	inline constexpr float GetRadius() const noexcept;
-	inline constexpr glm::vec3 GetCenter() const noexcept;
+	inline float GetRadius() const noexcept;
+	inline glm::vec3 GetCenter() const noexcept;
 
-	glm::vec3 ClosestPoint(const glm::vec3& other) const;
+	glm::vec3 ClosestPoint(const glm::vec3& other) const noexcept;
 
 	void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
-		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) const;
+		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) const noexcept;
 
 	static void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, float radius, float distance,
-		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18);
+		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
 };
 
-constexpr Capsule::Capsule(const LineSegment& line, const float& radius) noexcept : line(line), radius(radius) {}
+inline Capsule::Capsule(const LineSegment& line, const float& radius) noexcept : line(line), radius(radius) {}
 
-constexpr Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(other.radius) {}
+inline Capsule::Capsule(const Capsule& other) noexcept : line(other.line), radius(other.radius) {}
 
-constexpr Capsule::Capsule(const Capsule&& other) noexcept : line(other.line), radius(other.radius) {}
+inline Capsule::Capsule(const Capsule&& other) noexcept : line(other.line), radius(other.radius) {}
 
-constexpr void Capsule::SetCenter(const glm::vec3& center) noexcept
+inline void Capsule::SetCenter(const glm::vec3& center) noexcept
 {
 	const glm::vec3 direction = this->line.Direction() / 2.f;
 	this->line.A = center + direction;
 	this->line.B = center - direction;
 }
 
-constexpr void Capsule::Translate(const glm::vec3& delta) noexcept
+inline void Capsule::Translate(const glm::vec3& delta) noexcept
 {
 	this->line.A += delta;
 	this->line.B += delta;
 }
 
-constexpr void Capsule::SetRadius(const float& value) noexcept
+inline void Capsule::SetRadius(const float& value) noexcept
 {
 	this->radius = value;
 }
@@ -90,12 +89,12 @@ inline void Capsule::SetLength(const float& length) noexcept
 	this->line.B = center - dir;
 }
 
-inline constexpr float Capsule::GetRadius() const noexcept
+inline float Capsule::GetRadius() const noexcept
 {
 	return this->radius;
 }
 
-inline constexpr glm::vec3 Capsule::GetCenter() const noexcept
+inline glm::vec3 Capsule::GetCenter() const noexcept
 {
 	return this->line.MidPoint();
 }

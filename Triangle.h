@@ -16,16 +16,16 @@ protected:
 	// Winding order 0 -> 1 -> 2, as expected
 	glm::mat3 vertices;
 public:
-	constexpr Triangle();
-	constexpr Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c);
-	constexpr Triangle(const glm::mat3& points);
+	inline Triangle() noexcept;
+	inline Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) noexcept;
+	inline Triangle(const glm::mat3& points) noexcept;
 
-	constexpr glm::mat3 GetPoints() const noexcept;
-	constexpr std::vector<glm::vec3> GetPointVector() const noexcept;
+	inline glm::mat3 GetPoints() const noexcept;
+	inline std::vector<glm::vec3> GetPointVector() const noexcept;
 
 	inline glm::vec3 GetNormal() const noexcept;
 
-	constexpr AABB GetAABB() const noexcept;
+	inline AABB GetAABB() const noexcept;
 
 	bool SplitByPlane(const Plane& plane) const;
 	bool Collinear(const Plane& plane) const;
@@ -47,25 +47,25 @@ public:
 	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
 };
 
-constexpr Triangle::Triangle() : vertices(1.f)
+inline Triangle::Triangle() noexcept : vertices(1.f)
 {
 
 }
 
-constexpr Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) : vertices(a, b, c)
+inline Triangle::Triangle(const glm::vec3& a, const glm::vec3& b, const glm::vec3& c) noexcept : vertices(a, b, c)
 {
 }
 
-constexpr Triangle::Triangle(const glm::mat3& points) : vertices(points)
+inline Triangle::Triangle(const glm::mat3& points) noexcept : vertices(points)
 {
 }
 
-constexpr glm::mat3 Triangle::GetPoints() const noexcept
+inline glm::mat3 Triangle::GetPoints() const noexcept
 {
 	return this->vertices;
 }
 
-constexpr std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
+inline std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
 {
 	return std::vector<glm::vec3>({ this->vertices[0], this->vertices[1], this->vertices[2] });
 }
@@ -75,7 +75,7 @@ inline glm::vec3 Triangle::GetNormal() const noexcept
 	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[1]));
 }
 
-constexpr AABB Triangle::GetAABB() const noexcept
+inline AABB Triangle::GetAABB() const noexcept
 {
 	return AABB::MakeAABB(this->vertices[0], this->vertices[1], this->vertices[2]);
 }

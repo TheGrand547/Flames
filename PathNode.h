@@ -27,12 +27,12 @@ public:
 		return std::hash<glm::vec3>{}(this->position);
 	}
 	
-	constexpr glm::vec3 GetPosition() const noexcept;
+	inline glm::vec3 GetPosition() const noexcept;
 
-	constexpr bool operator==(const PathNode& other) const noexcept;
+	inline bool operator==(const PathNode& other) const noexcept;
 
 	float distance(const PathNode& other) const noexcept;
-	std::vector<std::weak_ptr<PathNode>> neighbors() const;
+	std::vector<std::weak_ptr<PathNode>> neighbors() const noexcept;
 
 
 	static bool addNeighborUnconditional(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B) noexcept;
@@ -62,12 +62,12 @@ template <ConditionFunction<PathNode> Conditional> bool PathNode::addNeighbor(st
 	return false;
 }
 
-inline constexpr glm::vec3 PathNode::GetPosition() const noexcept
+inline glm::vec3 PathNode::GetPosition() const noexcept
 {
 	return this->position;
 }
 
-constexpr bool PathNode::operator==(const PathNode& other) const noexcept
+inline bool PathNode::operator==(const PathNode& other) const noexcept
 {
 	return this->position == other.position;
 }

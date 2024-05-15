@@ -40,13 +40,17 @@ float LineBase::Distance(const LineBase& other, glm::vec3& thisPoint, glm::vec3&
 
 // ** LINE ** \\
 
-Line::Line(const glm::vec3& point, const glm::vec3& dir) : point(point), dir(glm::normalize(dir)) {}
+glm::vec3 Line::PointA() const noexcept
+{
+	return this->initial;
+}
+
+glm::vec3 Line::PointB() const noexcept
+{
+	return this->initial + dir;
+}
 
 // ** RAY ** \\
-
-Ray::Ray(const glm::vec3& a, const glm::vec3& b) : Line(a, b) {}
-
-Ray::Ray(const Ray& other) : Line(other.point, other.dir) {}
 
 glm::vec3 Ray::PointClosestTo(const glm::vec3& point) const noexcept
 {

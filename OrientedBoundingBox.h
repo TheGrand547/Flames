@@ -23,23 +23,23 @@ private:
 	glm::mat4 matrix;
 	glm::vec3 halfs;
 public:
-	OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1));
-	constexpr OrientedBoundingBox(const OrientedBoundingBox& other) = default;
-	OrientedBoundingBox(const Model& model);
-	constexpr OrientedBoundingBox(const AABB& other);
-	~OrientedBoundingBox() = default;
+	OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1)) noexcept;
+	inline OrientedBoundingBox(const OrientedBoundingBox& other) noexcept = default;
+	OrientedBoundingBox(const Model& model) noexcept;
+	inline OrientedBoundingBox(const AABB& other) noexcept;
+	~OrientedBoundingBox() noexcept = default;
 
-	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) = default;
+	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) noexcept = default;
 
-	inline constexpr AABB GetAABB() const noexcept;
+	inline AABB GetAABB() const noexcept;
 
-	inline constexpr glm::mat4 GetModelMatrix() const noexcept;
-	inline constexpr glm::mat4 GetNormalMatrix() const noexcept;
+	inline glm::mat4 GetModelMatrix() const noexcept;
+	inline glm::mat4 GetNormalMatrix() const noexcept;
 
 	inline glm::vec3 Forward() const noexcept;
 	inline glm::vec3 Up() const noexcept;
 	inline glm::vec3 Cross() const noexcept;
-	inline glm::vec3 operator[](const std::size_t& t) const;
+	inline glm::vec3 operator[](const std::size_t& t) const noexcept;
 	inline glm::vec3 Center() const noexcept;
 
 	inline glm::vec3 GetScale() const noexcept;
@@ -49,86 +49,82 @@ public:
 	// TODO: Rethink the rotate/reorient from mat4 thing, replace with "Apply Transform" 
 	inline void ReCenter(const glm::vec3& center) noexcept;
 
-	inline void ReOrient(const glm::mat4& rotation);
+	inline void ReOrient(const glm::mat4& rotation) noexcept;
 
 	// Takes input in degrees
-	inline void ReOrient(const glm::vec3& euler);
+	inline void ReOrient(const glm::vec3& euler) noexcept;
 
 	inline void ReScale(const glm::vec3& scale) noexcept;
 
-	inline void Rotate(const glm::mat4& rotation);
+	inline void Rotate(const glm::mat4& rotation) noexcept;
 
 	// Takes input in degrees
-	inline void Rotate(const glm::vec3& euler);
+	inline void Rotate(const glm::vec3& euler) noexcept;
 
-	inline void RotateAbout(const glm::mat4& rotation, const glm::vec3& point);
-	inline void RotateAbout(const glm::vec3& euler, const glm::vec3& point);
+	inline void RotateAbout(const glm::mat4& rotation, const glm::vec3& point) noexcept;
+	inline void RotateAbout(const glm::vec3& euler, const glm::vec3& point) noexcept;
 
-	inline constexpr void Scale(const glm::vec3& scale);
-	inline constexpr void Scale(const float& scale);
+	inline void Scale(const glm::vec3& scale) noexcept;
+	inline void Scale(const float& scale) noexcept;
 	inline void Translate(const glm::vec3& distance) noexcept;
 
 	// TODO: Move these to the classes in lines.h
-	// TODO: Figure out why these are all inline
-	// TODO: Pick a lane, constexpr or not
 
 	// Don't do any of the extra math beyond determining if an intersection occurs
-	constexpr bool FastIntersect(const glm::vec3& start, const glm::vec3& dir) const;
+	bool FastIntersect(const glm::vec3& start, const glm::vec3& dir) const noexcept;
 
-	inline constexpr bool Intersect(const glm::vec3& origin, const glm::vec3& dir) const;
+	inline bool Intersect(const glm::vec3& origin, const glm::vec3& dir) const noexcept;
 	
 	// If no intersection is found, distance is undefined
-	inline constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const;
+	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const noexcept;
 	
 	// If no intersection is found, result is undefined
-	inline constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& result) const;
+	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& result) const noexcept;
 	
 	// If no intersection is found, near and far hit are undefined
-	constexpr bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& nearHit, RayCollision& farHit) const;
+	bool Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& nearHit, RayCollision& farHit) const noexcept;
 	
-	inline constexpr bool Overlap(const OrientedBoundingBox& other) const;
-	constexpr bool Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const;
-	bool Overlap(const OrientedBoundingBox& other, SlidingCollision& slide, RotationCollision& rotate) const;
+	inline bool Overlap(const OrientedBoundingBox& other) const noexcept;
+	bool Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const noexcept;
+	bool Overlap(const OrientedBoundingBox& other, SlidingCollision& slide, RotationCollision& rotate) const noexcept;
 	
 	// These both assume 'this' is dynamic, and the other is static, other methods will handle the case of both being dynamic
-	inline bool OverlapAndSlide(const OrientedBoundingBox& other);
-	bool OverlapCompleteResponse(const OrientedBoundingBox& other);
+	inline bool OverlapAndSlide(const OrientedBoundingBox& other) noexcept;
+	bool OverlapCompleteResponse(const OrientedBoundingBox& other) noexcept;
 
 
-	inline bool Overlap(const Sphere& other) const;
-	bool Overlap(const Sphere& other, Collision& collision) const;
+	inline bool Overlap(const Sphere& other) const noexcept;
+	bool Overlap(const Sphere& other, Collision& collision) const noexcept;
 
-	// TODO: Constexpr?
-	bool Overlap(const Capsule& other) const;
-	bool Overlap(const Capsule& other, Collision& collision) const;
+	inline bool Overlap(const Capsule& other) const noexcept;
+	bool Overlap(const Capsule& other, Collision& collision) const noexcept;
 
-	// TODO: constexpr
-	bool Intersection(const Plane& plane) const;
-	inline bool Intersection(const Plane& plane, float& distance) const;
-	inline bool Intersection(const Plane& plane, Collision& out) const;
-	inline bool IntersectionWithResponse(const Plane& plane);
+	bool Intersection(const Plane& plane) const noexcept;
+	inline bool Intersection(const Plane& plane, float& distance) const noexcept;
+	inline bool Intersection(const Plane& plane, Collision& out) const noexcept;
+	inline bool IntersectionWithResponse(const Plane& plane) noexcept;
 
-	inline float ProjectionLength(const glm::vec3& vector) const;
+	inline float ProjectionLength(const glm::vec3& vector) const noexcept;
 
-	glm::vec3 WorldToLocal(const glm::vec3& in) const;
+	glm::vec3 WorldToLocal(const glm::vec3& in) const noexcept;
 
-	std::array<LineSegment, 12> GetLineSegments() const;
-	std::vector<Triangle> GetTriangles() const;
+	std::array<LineSegment, 12> GetLineSegments() const noexcept;
+	std::vector<Triangle> GetTriangles() const noexcept;
 
-	inline Model GetModel() const;
+	inline Model GetModel() const noexcept;
 
 	// Trust the user to not do this erroneously
-	inline constexpr void ApplyCollision(const SlidingCollision& collision);
-	inline constexpr void ApplyCollision(const RotationCollision& collision);
+	inline void ApplyCollision(const SlidingCollision& collision) noexcept;
+	inline void ApplyCollision(const RotationCollision& collision) noexcept;
 };
 
-constexpr OrientedBoundingBox::OrientedBoundingBox(const AABB& other) : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0), 
+inline OrientedBoundingBox::OrientedBoundingBox(const AABB& other) noexcept : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0),
 																				glm::vec4(other.GetCenter(), 1)), halfs(other.Deviation())
 {
 
 }
 
-inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
+inline AABB OrientedBoundingBox::GetAABB() const noexcept
 {
 	glm::vec3 deviation(0.f);
 	for (glm::length_t i = 0; i < 3; i++)
@@ -136,7 +132,7 @@ inline constexpr AABB OrientedBoundingBox::GetAABB() const noexcept
 	return AABB(glm::vec3(this->matrix[3]) - deviation, glm::vec3(this->matrix[3]) + deviation);
 }
 
-inline constexpr glm::mat4 OrientedBoundingBox::GetModelMatrix() const noexcept
+inline glm::mat4 OrientedBoundingBox::GetModelMatrix() const noexcept
 {
 	glm::mat4 model = this->GetNormalMatrix();
 	for (glm::length_t i = 0; i < 3; i++)
@@ -144,7 +140,7 @@ inline constexpr glm::mat4 OrientedBoundingBox::GetModelMatrix() const noexcept
 	return model;
 }
 
-inline constexpr glm::mat4 OrientedBoundingBox::GetNormalMatrix() const noexcept
+inline glm::mat4 OrientedBoundingBox::GetNormalMatrix() const noexcept
 {
 	return this->matrix;
 }
@@ -164,7 +160,7 @@ inline glm::vec3 OrientedBoundingBox::Cross() const noexcept
 	return this->matrix[2];
 }
 
-inline glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const
+inline glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const noexcept
 {
 	assert(t < 3);
 	return this->matrix[static_cast<glm::length_t>(t)];
@@ -186,19 +182,19 @@ inline float OrientedBoundingBox::SignedDistance(const glm::vec3& point) const n
 	return glm::length(glm::max(transformed, glm::vec3(0.f))) + glm::min(glm::compMax(transformed), 0.f);
 }
 
-inline Model OrientedBoundingBox::GetModel() const
+inline Model OrientedBoundingBox::GetModel() const noexcept
 {
 	glm::vec3 angles{ 0.f, 0.f, 0.f };
 	glm::extractEulerAngleXYZ(this->matrix, angles.x, angles.y, angles.z);
 	return Model(this->matrix[3], glm::degrees(angles), this->halfs);
 }
 
-inline constexpr void OrientedBoundingBox::ApplyCollision(const SlidingCollision& collision)
+inline void OrientedBoundingBox::ApplyCollision(const SlidingCollision& collision) noexcept
 {
 	this->matrix[3] += glm::vec4(collision.normal * (collision.distance + 0), 0);
 }
 
-inline constexpr void OrientedBoundingBox::ApplyCollision(const RotationCollision& collision)
+inline void OrientedBoundingBox::ApplyCollision(const RotationCollision& collision) noexcept
 {
 	if (glm::abs(collision.distance) > EPSILON)
 		this->RotateAbout(glm::rotate(glm::mat4(1.f), collision.distance, collision.axis), collision.point);
@@ -209,7 +205,7 @@ inline void OrientedBoundingBox::ReCenter(const glm::vec3& center) noexcept
 	this->matrix[3] = glm::vec4(center, 1);
 }
 
-inline void OrientedBoundingBox::ReOrient(const glm::vec3& euler)
+inline void OrientedBoundingBox::ReOrient(const glm::vec3& euler) noexcept
 {
 	glm::vec4 center = this->matrix[3];
 	this->matrix = glm::mat4(1.f);
@@ -222,7 +218,7 @@ inline void OrientedBoundingBox::ReScale(const glm::vec3& scale) noexcept
 	this->halfs = scale;
 }
 
-inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation)
+inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation) noexcept
 {
 	glm::vec4 center = this->matrix[3];
 	this->matrix = glm::mat4(1.f);
@@ -230,34 +226,34 @@ inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation)
 	this->Rotate(rotation);
 }
 
-inline void OrientedBoundingBox::Rotate(const glm::mat4& rotation)
+inline void OrientedBoundingBox::Rotate(const glm::mat4& rotation) noexcept
 {
 	this->matrix *= rotation;
 }
 
-inline void OrientedBoundingBox::Rotate(const glm::vec3& euler)
+inline void OrientedBoundingBox::Rotate(const glm::vec3& euler) noexcept
 {
 	glm::vec3 temp(glm::radians(euler));
 	this->Rotate(glm::eulerAngleXYZ(temp.x, temp.y, temp.z));
 }
 
-inline void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const glm::vec3& point)
+inline void OrientedBoundingBox::RotateAbout(const glm::mat4& rotation, const glm::vec3& point) noexcept
 {
 	this->matrix = glm::translate(glm::mat4(1), point) * rotation * glm::translate(glm::mat4(1), -point) * this->matrix;
 }
 
-inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point)
+inline void OrientedBoundingBox::RotateAbout(const glm::vec3& euler, const glm::vec3& point) noexcept
 {
 	glm::vec3 temp(glm::radians(euler));
 	this->RotateAbout(glm::eulerAngleXYZ(temp.x, temp.y, temp.z), point);
 }
 
-inline constexpr void OrientedBoundingBox::Scale(const glm::vec3& scale)
+inline void OrientedBoundingBox::Scale(const glm::vec3& scale) noexcept
 {
 	this->halfs *= scale;
 }
 
-inline constexpr void OrientedBoundingBox::Scale(const float& scale)
+inline void OrientedBoundingBox::Scale(const float& scale) noexcept
 {
 	this->halfs *= scale;
 }
@@ -267,58 +263,13 @@ inline void OrientedBoundingBox::Translate(const glm::vec3& distance) noexcept
 	this->matrix[3] += glm::vec4(distance, 0);
 }
 
-constexpr bool OrientedBoundingBox::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const
-{
-	glm::vec3 delta = glm::vec3(this->Center()) - point;
-	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
-	for (auto i = 0; i < 3; i++)
-	{
-		glm::vec3 axis = this->matrix[i];
-		float scale = this->halfs[i];
-		float parallel = glm::dot(axis, delta);
-		if (glm::abs(glm::dot(dir, axis)) < EPSILON)
-		{
-			if (-parallel - scale > 0 || -parallel + scale > 0)
-			{
-				return false;
-			}
-		}
-
-		float scaling = glm::dot(axis, dir);
-		float param0 = (parallel + scale) / scaling;
-		float param1 = (parallel - scale) / scaling;
-
-		if (param0 > param1)
-		{
-			std::swap(param0, param1);
-		}
-		if (param0 > nearHit)
-		{
-			nearHit = param0;
-		}
-		if (param1 < farHit)
-		{
-			farHit = param1;
-		}
-		if (nearHit > farHit)
-		{
-			return false;
-		}
-		if (farHit < 0)
-		{
-			return false;
-		}
-	}
-	return true;
-}
-
-inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir) const
+inline bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
 {
 	float dist;
 	return this->Intersect(point, dir, dist);
 }
 
-inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const
+inline bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, float& distance) const noexcept
 {
 	RayCollision collision{};
 	bool value = this->Intersect(point, dir, collision);
@@ -326,212 +277,25 @@ inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, con
 	return value;
 }
 
-inline constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& first) const
+inline bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& first) const noexcept
 {
 	RayCollision second;
 	return this->Intersect(point, dir, first, second);
 }
 
-// https://www.sciencedirect.com/topics/computer-science/oriented-bounding-box
-constexpr bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir, RayCollision& nearHit, RayCollision& farHit) const
+inline bool OrientedBoundingBox::Overlap(const Capsule& other) const noexcept
 {
-	// TODO: For line segments do the clamp thingy
-	nearHit.Clear();
-	farHit.Clear();
-	nearHit.distance = -std::numeric_limits<float>::infinity();
-	farHit.distance = std::numeric_limits<float>::infinity();
-
-	glm::vec3 delta = this->Center() - point;
-	for (auto i = 0; i < 3; i++)
-	{
-		glm::vec3 axis = this->matrix[i];
-		float scale = this->halfs[i];
-
-		float parallel = glm::dot(axis, delta); // Distance from Point to my center, in the direction of this axis
-		float scaling = glm::dot(axis, dir);    // Length of projection of dir onto this axis
-
-		// Check if the direction is parallel to one of the faces
-		if (glm::abs(scaling) < EPSILON)
-		{
-			if (abs(parallel) > scale)
-			{
-				return false;
-			}
-			else
-			{
-				//continue;
-			}
-		}
-
-		float param0 = (parallel + scale) / scaling;
-		float param1 = (parallel - scale) / scaling;
-
-		if (param0 > param1)
-		{
-			std::swap(param0, param1);
-		}
-		if (param0 > nearHit.distance)
-		{
-			nearHit.distance = param0;
-			nearHit.normal = axis * glm::sign(-parallel);
-		}
-		if (param1 < farHit.distance)
-		{
-			farHit.distance = param1;
-			farHit.normal = axis * glm::sign(parallel);
-		}
-		if (nearHit.distance > farHit.distance)
-		{
-			return false;
-		}
-		if (farHit.distance < 0)
-		{
-			return false;
-		}
-	}
-	nearHit.point = nearHit.distance * dir + point;
-	farHit.point = farHit.distance * dir + point;
-	if (nearHit.distance < 0)
-	{
-		std::swap(nearHit, farHit);
-	}
-	return true;
+	Collision collision{};
+	return this->Overlap(other, collision);
 }
 
-// https://web.stanford.edu/class/cs273/refs/obb.pdf
-inline constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) const
+inline bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other) const noexcept
 {
 	SlidingCollision collide{};
 	return this->Overlap(other, collide);
 }
 
-constexpr bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingCollision& result) const
-{
-	const glm::mat<3, 2, const glm::length_t> indexLookUp{ {2, 1}, {2, 0}, { 1, 0} };
-	std::array<glm::vec3, 15> separatingAxes{};
-	glm::mat3 dotProducts{};
-
-	if (!std::is_constant_evaluated())
-	{
-		dotProducts = glm::transpose(glm::mat3(other.matrix)) * glm::mat3(this->matrix);
-		for (glm::length_t i = 0; i < 3; i++)
-		{
-			dotProducts[i] = glm::abs(dotProducts[i]);
-#ifdef _DEBUG
-			for (glm::length_t j = 0; j < 3; j++)
-			{
-				assert(dotProducts[i][j] == glm::abs(glm::dot(glm::vec3(this->matrix[i]), other[j])));
-			}
-#endif // _DEBUG
-		}
-	}
-	else
-	{
-		for (glm::length_t i = 0; i < 3; i++)
-		{
-			glm::vec3 myAxis = this->matrix[i];
-			for (glm::length_t j = 0; j < 3; j++)
-			{
-				dotProducts[i][j] = glm::abs(glm::dot(myAxis, other[j]));
-			}
-		}
-	}
-
-	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
-	const glm::vec3 delta = this->Center() - other.Center();
-	result.distance = INFINITY;
-	glm::length_t index = 0;
-	for (glm::length_t i = 0; i < separatingAxes.size(); i++)
-	{
-		float deltaProjection = 0, obbProjections = 0;
-		glm::length_t truncatedIndex = i % 5;
-		glm::length_t axialIndex = i / 5;
-		if (truncatedIndex == 0) // Axis from this OBB
-		{
-			// Works because the dot products to be multipled form a column in the dot product matrix
-			obbProjections = this->halfs[axialIndex] + glm::dot(other.halfs, dotProducts[axialIndex]);
-			separatingAxes[i] = (*this)[axialIndex];
-		}
-		else if (truncatedIndex == 1) // Axis from the other OBB
-		{
-			obbProjections = other.halfs[axialIndex] + this->halfs[0] * dotProducts[0][axialIndex] + this->halfs[1] * dotProducts[1][axialIndex]
-				+ this->halfs[2] * dotProducts[2][axialIndex];
-			separatingAxes[i] = other[axialIndex];
-		}
-		else
-		{
-			// Truncated index is [2,4], map to [0, 2]
-			// Axis is this[axialIndex] cross other[truncatedIndex - 2]
-			truncatedIndex -= 2;
-
-			glm::vec3 myAxis = this->matrix[axialIndex];
-			glm::vec3 otherAxis = other.matrix[truncatedIndex];
-			glm::vec3 crossResult = glm::cross(myAxis, glm::vec3(otherAxis));
-
-			float crossLength = 1.f / glm::length(crossResult);
-			separatingAxes[i] = crossResult * crossLength;
-
-
-			glm::length_t firstPairA = indexLookUp[axialIndex][0], firstPairB = indexLookUp[axialIndex][1];
-			glm::length_t secondPairA = indexLookUp[truncatedIndex][0], secondPairB = indexLookUp[truncatedIndex][1];
-
-
-			obbProjections += this->halfs[firstPairA] * dotProducts[firstPairB][truncatedIndex] +
-				this->halfs[firstPairB] * dotProducts[firstPairA][truncatedIndex];
-
-			obbProjections += other.halfs[secondPairA] * dotProducts[axialIndex][secondPairB] +
-				other.halfs[secondPairB] * dotProducts[axialIndex][secondPairA];
-			obbProjections *= crossLength;
-			truncatedIndex += 2;
-		}
-		deltaProjection = glm::abs(glm::dot(separatingAxes[i], delta));
-
-		// In Case of Collision Whackiness break glass
-#ifdef _DEBUG
-		float cardinal = 0.f;
-		glm::vec3 axis = separatingAxes[i];
-		for (glm::length_t i = 0; i < 3; i++)
-		{
-			cardinal += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
-			cardinal += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
-		}
-
-		if (!std::is_constant_evaluated())
-		{
-			if (glm::abs(obbProjections - cardinal) > EPSILON)
-			{
-				std::cout <<"Error in OBB Optimization: " <<  i << ":" << axialIndex << 
-					":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << cardinal << std::endl;
-			}
-		}
-#endif // _DEBUG
-		const float overlap = obbProjections - deltaProjection;
-		// This axis is a separating one 
-		if (deltaProjection > obbProjections)
-		{
-			return false;
-		}
-		// Find the minimum axis projection
-		if (result.distance > overlap)
-		{
-			index = i;
-			result.distance = overlap;
-		}
-	}
-	// Annoying warning from implying index might not satisfy 0 <= index <= 15 - 1, when it can only be one of them
-	// Result.normal is the direction this OBB needs to head to escape collision
-
-#pragma warning( suppress : 28020 )
-	result.normal = separatingAxes[index] * glm::sign(glm::dot(delta, separatingAxes[index]));
-	result.point = this->Center() + result.distance * result.normal;
-	return true;
-}
-
-
-
-// TODO: This isn't inline or constexpr i'm just too lazy to move it
-// TODO: Allow response to be applied later, and in different amounts so you can have real physics tm(ie small object moves/rotates more than big one etc)
-inline bool OrientedBoundingBox::OverlapAndSlide(const OrientedBoundingBox& other)
+inline bool OrientedBoundingBox::OverlapAndSlide(const OrientedBoundingBox& other) noexcept
 {
 	// SLOPPY
 	if (this == &other) 
@@ -546,20 +310,20 @@ inline bool OrientedBoundingBox::OverlapAndSlide(const OrientedBoundingBox& othe
 	return fool;
 }
 
-inline bool OrientedBoundingBox::Overlap(const Sphere& other) const
+inline bool OrientedBoundingBox::Overlap(const Sphere& other) const noexcept
 {
 	Collision local;
 	return this->Overlap(other, local);
 }
 
-inline float OrientedBoundingBox::ProjectionLength(const glm::vec3& vector) const
+inline float OrientedBoundingBox::ProjectionLength(const glm::vec3& vector) const noexcept
 {
 	float result = 0.f;
 	result = glm::dot(glm::abs(vector * glm::mat3(this->matrix)), this->halfs);
 	return result;
 }
 
-inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const
+inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distance) const noexcept
 {
 	Collision collision{};
 	bool result = this->Intersection(plane, collision);
@@ -567,13 +331,13 @@ inline bool OrientedBoundingBox::Intersection(const Plane& plane, float& distanc
 	return result;
 }
 
-inline bool OrientedBoundingBox::Intersection(const Plane& plane) const
+inline bool OrientedBoundingBox::Intersection(const Plane& plane) const noexcept
 {
 	Collision collision{};
 	return this->Intersection(plane, collision);
 }
 
-inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane)
+inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane) noexcept
 {
 	Collision collision{};
 	bool result = this->Intersection(plane, collision);
@@ -584,15 +348,5 @@ inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane)
 	return result;
 }
 
-
 typedef OrientedBoundingBox OBB;
-/*
-// Triangles are laid out like (123) (234) (345) in the list, repeated tris
-OBB MakeOBB(std::vector<glm::vec3> triangles)
-{
-	return OBB
-}
-
-OBB 
-*/
 #endif // ORIENTED_BOUNDING_BOX_H

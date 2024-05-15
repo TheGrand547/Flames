@@ -7,23 +7,23 @@ struct Model
 {
 	glm::vec3 rotation, scale, translation;
 
-	constexpr Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f));
+	inline Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f)) noexcept;
 	~Model() = default;
 
 	Model(const Model& mode) noexcept = default;
 
-	constexpr void Translate(const glm::vec3& distance);
+	void Translate(const glm::vec3& distance) noexcept;
 
-	glm::mat4 GetModelMatrix() const;
-	glm::mat4 GetNormalMatrix() const;
+	glm::mat4 GetModelMatrix() const noexcept;
+	glm::mat4 GetNormalMatrix() const noexcept;
 };
 
-constexpr Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) : translation(translation), rotation(rotation), scale(scale)
+inline Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) noexcept : translation(translation), rotation(rotation), scale(scale)
 {
 
 }
 
-constexpr void Model::Translate(const glm::vec3& distance)
+inline void Model::Translate(const glm::vec3& distance) noexcept
 {
 	this->translation += distance;
 }
