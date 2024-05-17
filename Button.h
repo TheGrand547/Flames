@@ -82,7 +82,7 @@ public:
 		font.RenderToTexture(this->baseTexture, off);
 		font.RenderToTexture(this->alternateTexture, on, glm::vec4(1, 0, 0, 1));
 		glm::vec2 fixed = glm::max(this->baseTexture.GetSize(), this->alternateTexture.GetSize());
-		fixed = glm::max(fixed, { this->baseRect.z, this->baseRect.w });
+		fixed = glm::min(fixed, { this->baseRect.z, this->baseRect.w });
 		this->baseRect.z = fixed.x;
 		this->baseRect.w = fixed.y;
 	}
