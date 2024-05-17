@@ -34,21 +34,25 @@ class Context
 protected:
 	std::vector<ButtonBase*> elements{};
 public:
-	Context() = default;
-	~Context();
+	Context() noexcept = default;
+	~Context() noexcept;
 	void AddButton(ButtonBase* button);
+	void Clear() noexcept;
 	void Update(MouseStatus& status);
 
-	template<class T, typename... Args> void AddButton(Args&&... args)
+	void Draw();
+
+	template<class T, typename... Args> T* AddButton(Args&&... args)
 	requires requires {
 		std::is_base_of<ButtonBase, T>();
 	}
 	{
-		ButtonBase* temp = new T(std::forward<Args>(args)...);
+		T* temp = new T(std::forward<Args>(args)...);
 		if (temp)
 		{
-			this->elements.push_back(temp);
+			this->elements.push_back(static_cast<ButtonBase*>(temp));
 		}
+		return temp;
 	}
 };
 

@@ -102,8 +102,8 @@ public:
 	inline void SetVec3(const std::string& name, const glm::vec3& vec) const;
 	inline void SetVec4(const std::string& name, const glm::vec4& vec) const;
 	inline void SetMat4(const std::string& name, const glm::mat4& mat) const;
-	inline void SetTextureUnit(const std::string& name, const GLuint unit) const;
-	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit) const;
+	inline void SetTextureUnit(const std::string& name, const GLuint unit = 0) const;
+	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit = 0) const;
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
 	// TODO: Maybe a draw function that takes a variable amount of VAO, Buffers, etc and does all that in a "magic" step

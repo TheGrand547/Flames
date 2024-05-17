@@ -10,6 +10,11 @@ struct ScreenRect : public glm::vec4
 	inline ScreenRect(const glm::vec2& topLeft, const glm::vec2& bottomRight) noexcept;
 	inline ScreenRect(const glm::vec2& topLeft, float w, float y) noexcept;
 	inline ScreenRect(float a, float b, float c, float d) noexcept;
+	inline ScreenRect& operator=(const ScreenRect& other) noexcept = default;
+	inline ScreenRect& operator=(const glm::vec4& other) noexcept
+	{
+		this->data = other.data;
+	}
 	inline bool Contains(const glm::vec2& point) const noexcept;
 	inline bool Contains(float x, float y) const noexcept;
 	inline bool Overlaps(const ScreenRect& other) const noexcept;

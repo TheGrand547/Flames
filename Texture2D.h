@@ -26,10 +26,11 @@ public:
 	Texture2D(const std::string& filename);
 	~Texture2D();
 
-	inline GLuint GetGLTexture() const;
+	inline GLuint GetGLTexture() const noexcept;
 
-	inline int GetWidth() const;
-	inline int GetHeight() const;
+	inline int GetWidth() const noexcept;
+	inline int GetHeight() const noexcept;
+	inline glm::ivec2 GetSize() const noexcept;
 
 	void CleanUp();
 
@@ -63,21 +64,25 @@ public:
 																	TextureDataInput dataFormat, std::size_t width = 0, std::size_t height = 0);
 };
 
-inline GLuint Texture2D::GetGLTexture() const
+inline GLuint Texture2D::GetGLTexture() const noexcept
 {
 	return this->texture;
 }
 
-inline int Texture2D::GetWidth() const
+inline int Texture2D::GetWidth() const noexcept
 {
 	return this->width;
 }
 
-inline int Texture2D::GetHeight() const
+inline int Texture2D::GetHeight() const noexcept
 {
 	return this->height;
 }
 
+inline glm::ivec2 Texture2D::GetSize() const noexcept
+{
+	return glm::ivec2(this->width, this->height);
+}
 
 void Texture2D::BindTexture(GLuint slot) const
 {

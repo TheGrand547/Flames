@@ -284,6 +284,8 @@ void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ =
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
+Button help(buttonRect, [](std::size_t i) {std::cout << i << std::endl; });
+
 
 Capsule catapult;
 Model catapultModel;
@@ -756,6 +758,10 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+
+	uiRectTexture.SetTextureUnit("image", help.GetTexture(), 0);
+	uiRectTexture.SetVec4("rectangle", help.GetRect());
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	// Debug Info Display
@@ -1084,6 +1090,8 @@ glm::quat newMan{};
 OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
+
+MouseStatus mouseStatus{};
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
@@ -1451,7 +1459,7 @@ void idle()
 		}
 	}
 	pathTestGuy.box.ReCenter(pathTestGuy.capsule.GetCenter());
-
+	help.MouseUpdate(mouseStatus);
 
 	// BSP Testing visualizations
 	/*
@@ -1643,8 +1651,6 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 
 	return Ray(cameraPosition, faced);
 }
-
-MouseStatus mouseStatus{};
 
 void ButtonExample(std::size_t id)
 {
@@ -2428,6 +2434,7 @@ void init()
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	fonter.RenderToTexture(buttonA, "Soft");
 	fonter.RenderToTexture(buttonB, "Not");
+	help.SetMessages("Work", "UnWork", fonter);
 	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
