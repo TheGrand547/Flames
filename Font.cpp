@@ -34,15 +34,15 @@ namespace Font
 	{
 		basePath = directory;
 	}
-}
 
-constexpr std::size_t atlasWidth = 1000; // Magic number of magic numbers
-constexpr std::size_t atlasHeight = 700; // Magic number of magic numbers
-constexpr int fontBufferStride = 0; // Tightly Packed
-constexpr char firstCharInAtlas = ' ';
-constexpr char lastCharInAtlas = '~';
-constexpr int charsInAtlas = lastCharInAtlas - firstCharInAtlas;
-constexpr int fontIndex0 = 0;
+	constexpr int atlasWidth = 1000; // Magic number of magic numbers
+	constexpr int atlasHeight = 700; // Magic number of magic numbers
+	constexpr int bufferStride = 0; // Tightly Packed
+	constexpr char firstCharInAtlas = ' ';
+	constexpr char lastCharInAtlas = '~';
+	constexpr int charsInAtlas = lastCharInAtlas - firstCharInAtlas;
+	constexpr int index0 = 0;
+}
 
 ASCIIFont::~ASCIIFont()
 {
@@ -77,10 +77,10 @@ glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, 
 
 	for (char letter : message)
 	{
-		if (letter >= firstCharInAtlas && letter <= lastCharInAtlas)
+		if (letter >= Font::firstCharInAtlas && letter <= Font::lastCharInAtlas)
 		{
 			// Align to integer because it looks slightly better probably, I don't know
-			stbtt_GetPackedQuad(this->characters.data(), atlasWidth, atlasHeight, letter - firstCharInAtlas, &x, &y, &quad, 1);
+			stbtt_GetPackedQuad(this->characters.data(), this->atlasWidth, this->atlasHeight, letter - Font::firstCharInAtlas, &x, &y, &quad, 1);
 
 			width  = std::max( width, static_cast<int>(std::ceil(quad.x1)));
 			height = std::max(height, static_cast<int>(std::ceil(quad.y1)));
@@ -162,7 +162,8 @@ void ASCIIFont::RenderToTexture(Texture2D& texture,  const std::string& message,
 }
 
 
-bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding)
+bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX, unsigned int sampleY, int padding, 
+	int atlasWidth, int atlasHeight)
 {
 	Font::SetupShader();
 	font.Clear();
@@ -177,6 +178,8 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 	std::ifstream input{ fontFile, std::ios::binary };
 	if (input.good())
 	{
+		font.atlasWidth = (atlasWidth != 0) ? atlasWidth : Font::atlasWidth;
+		font.atlasHeight = (atlasHeight != 0) ? atlasHeight : Font::atlasHeight;
 		// From stackoverflow, kinda cringe tbh but who cares(me)
 		std::streampos fileSize = std::filesystem::file_size(fontFile);
 		std::vector<unsigned char> rawFontData{};
@@ -184,33 +187,33 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		input.read(std::bit_cast<char*>(rawFontData.data()), fileSize);
 
 		stbtt_fontinfo information{};
-		stbtt_InitFont(&information, rawFontData.data(), fontIndex0);
+		stbtt_InitFont(&information, rawFontData.data(), Font::index0);
 		stbtt_GetFontVMetrics(&information, &font.ascender, &font.descender, &font.lineGap);
 		font.scalingFactor = fontSize / (font.ascender - font.descender);
 		font.lineSkip = (font.ascender - font.descender + font.lineGap) * font.scalingFactor;
 
-		// TODO: Pre-calculate the sizes for the types and y'know
 		int x0, y0, x1, y1;
 		stbtt_GetFontBoundingBox(&information, &x0, &y0, &x1, &y1);
 		float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
 		float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
 		
 		std::vector<unsigned char> scratchSpace{}; // Has to be the same size as the buffer
-		scratchSpace.reserve(atlasWidth * atlasHeight);
+		scratchSpace.reserve(static_cast<std::size_t>(font.atlasWidth) * static_cast<std::size_t>(font.atlasHeight));
 		stbtt_pack_context contextual{};
 		// Why is this nullptr
-		stbtt_PackBegin(&contextual, scratchSpace.data(), atlasWidth, atlasHeight, fontBufferStride, padding, nullptr);
+		stbtt_PackBegin(&contextual, scratchSpace.data(), font.atlasWidth, font.atlasHeight, Font::bufferStride, padding, nullptr);
 		stbtt_PackSetOversampling(&contextual, sampleX, sampleY);
 		stbtt_PackSetSkipMissingCodepoints(&contextual, true);
-		int value = stbtt_PackFontRange(&contextual, rawFontData.data(), fontIndex0, STBTT_POINT_SIZE(fontSize), firstCharInAtlas, charsInAtlas, font.characters.data());
+		int value = stbtt_PackFontRange(&contextual, rawFontData.data(), Font::index0, STBTT_POINT_SIZE(fontSize),
+										Font::firstCharInAtlas, Font::charsInAtlas, font.characters.data());
 		stbtt_PackEnd(&contextual);
 
 		font.texture.CleanUp();
 		GLuint texture;
 		glGenTextures(1, &texture);
 		glBindTexture(GL_TEXTURE_2D, texture);
-		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, atlasWidth, atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, scratchSpace.data());
-		font.texture.ApplyInfo(texture, atlasWidth, atlasHeight, 1);
+		glTexImage2D(GL_TEXTURE_2D, 0, GL_RED, font.atlasWidth, font.atlasHeight, 0, GL_RED, GL_UNSIGNED_BYTE, scratchSpace.data());
+		font.texture.ApplyInfo(texture, font.atlasWidth, font.atlasHeight, 1);
 		font.texture.SetFilters(MinLinear, MagLinear, Repeat, Repeat);
 
 		rawFontData.clear();

@@ -1,8 +1,15 @@
 #include "PathNode.h"
+#include <glm/gtx/hash.hpp>
+
 
 PathNode::PathNode(const glm::vec3& position) : position(position), nodes(), distances()
 {
 
+}
+
+std::size_t PathNode::hash() const noexcept
+{
+    return std::hash<glm::vec3>{}(this->position);
 }
 
 float PathNode::distance(const PathNode& other) const noexcept

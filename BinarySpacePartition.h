@@ -16,7 +16,7 @@ using BSP = BinarySpacePartition;
 protected:
 	Plane canonical;
 	std::vector<Triangle> collinear; // Likely to be small
-	BSP* front = nullptr, *behind = nullptr;
+	std::unique_ptr<BSP> front, behind;
 
 	void AddTriangleInternal(const Triangle& triangle, std::vector<Triangle>& front, std::vector<Triangle>& back);
 public:

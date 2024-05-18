@@ -1,7 +1,6 @@
 #pragma once
 #ifndef PATH_NODE_H
 #define PATH_NODE_H
-#include <glm/gtx/hash.hpp>
 #include <unordered_map>
 #include <vector>
 #include "glmHelp.h"
@@ -22,10 +21,7 @@ protected:
 
 	PathNode(const glm::vec3& position);
 public:
-	std::size_t hash() const noexcept 
-	{ 
-		return std::hash<glm::vec3>{}(this->position);
-	}
+	std::size_t hash() const noexcept;
 	
 	inline glm::vec3 GetPosition() const noexcept;
 

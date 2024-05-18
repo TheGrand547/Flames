@@ -284,7 +284,7 @@ void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ =
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
-Button help(buttonRect, [](std::size_t i) {std::cout << i << std::endl; });
+Button help(buttonRect, [](std::size_t i) {std::cout << frameCounter << std::endl; });
 
 
 Capsule catapult;
@@ -322,7 +322,6 @@ std::vector<PathNodePtr> pathNodes{};
 OBB finders{};
 
 std::vector<Bullet> bullets;
-// TODO: Look into GLM_FORCE_INTRINSICS
 
 std::vector<TextureVertex> bigVertex;
 
@@ -1459,6 +1458,7 @@ void idle()
 		}
 	}
 	pathTestGuy.box.ReCenter(pathTestGuy.capsule.GetCenter());
+	mouseStatus.UpdateEdges();
 	help.MouseUpdate(mouseStatus);
 
 	// BSP Testing visualizations
@@ -1664,7 +1664,8 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 {
 	contextul.AddButton<BasicButton>(buttonRect, ButtonExample);
 	// Set bit (button) in mouseStatus.buttons
-	mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button) | (action == GLFW_PRESS) << button);
+	//mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button)) | ((action == GLFW_PRESS) << button);
+	mouseStatus.SetButton(button, action == GLFW_PRESS);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		rightMouseHeld = (action == GLFW_PRESS);
@@ -1718,7 +1719,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
-	mouseStatus.position = glm::vec2(x, y);
+	mouseStatus.SetPosition(x, y);
 	if (rightMouseHeld)
 	{
 		float xDif = x - mousePreviousX;
@@ -1920,39 +1921,8 @@ namespace std
 }
 float heur(const PathDummy& dum1, const PathDummy& dum2) { return dum1.distance(dum2); }
 
-template<typename T = double>
-inline T constexpr SQRT_TEST(T x)
-{
-	return x >= 0 && x < std::numeric_limits<T>::infinity()
-		? Constexpr::sqrtNewtonRaphson<T>(x, x, static_cast<T>(0))
-		: std::numeric_limits<T>::quiet_NaN();
-}
-
 int main(int argc, char** argv)
 {
-	// Test for the accuracy of constexpr sqrt at runtime, 75% of the time it's dead on to double precision, 25% it's less than 1e13 off
-	std::random_device r;
-	std::default_random_engine randEngine(r());
-	std::uniform_real_distribution distrib(0., 2.);
-	int fails = 0;
-	int timesT = 200000;
-	double maxError = 0;
-	long long maxOf = 0;
-	for (int i = 0; i < timesT; i++)
-	{
-		auto temp = distrib(randEngine);
-		auto A = sqrt(temp);
-		auto B = SQRT_TEST(temp);
-		auto D = glm::abs(glm::floatDistance(A, B));
-		maxOf = (maxOf < D) ? D : maxOf;
-		if (D > 1)
-		{
-			std::cout << D << " : " << std::format(" {} : {} : {}", glm::abs(A - B), A, B) << std::endl;
-			fails++;
-		}
-	}
-	std::cout << std::format("Number of sqrts off by more than 1 ULP at double precision: {}", fails) << std::endl;
-	
 	int error = 0;
 	debugFlags.fill(false);
 

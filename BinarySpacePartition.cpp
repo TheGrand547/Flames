@@ -31,12 +31,8 @@ void BinarySpacePartition::AddTriangleInternal(const Triangle& polygon, std::vec
 void BinarySpacePartition::ClearBSP()
 {
 	this->collinear.clear();
-	if (this->behind)
-		delete this->behind;
-	if (this->front)
-		delete this->front;
-	this->front = nullptr;
-	this->behind = nullptr;
+	this->front.reset();
+	this->behind.reset();
 	this->canonical = Plane(glm::vec3(1, 0, 0), glm::vec3(0));
 }
 
@@ -66,12 +62,12 @@ void BinarySpacePartition::GenerateBSP(std::vector<Triangle>& polygons)
 	}
 	if (front.size() > 0)
 	{
-		if ((this->front = new BSP())) 
+		if ((this->front = std::make_unique<BSP>()))
 			this->front->GenerateBSP(front);
 	}
 	if (behind.size() > 0)
 	{
-		if ((this->behind = new BSP())) 
+		if ((this->behind = std::make_unique<BSP>())) 
 			this->behind->GenerateBSP(behind);
 	}
 }
@@ -118,8 +114,7 @@ void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 	{
 		if (!this->behind) 
 		{
-			this->behind = new BSP();
-			if (this->behind)
+			if ((this->behind = std::make_unique<BSP>()))
 			{
 				std::vector temp{ triangle };
 				this->behind->GenerateBSP(temp);
@@ -134,8 +129,7 @@ void BinarySpacePartition::AddTriangle(const Triangle& triangle)
 	{
 		if (!this->front)
 		{
-			this->front = new BSP();
-			if (this->front)
+			if ((this->front = std::make_unique<BSP>()))
 			{
 				std::vector temp{ triangle };
 				this->front->GenerateBSP(temp);
@@ -183,6 +177,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 	}
 	else
 	{
+		// TODO: find only closest to ray origin
 		// Starts somewhere on this plane
 		for (const Triangle& triangle : this->collinear)
 		{
@@ -215,6 +210,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 	}
 	else
 	{
+		// TODO: find only closest to ray origin
 		for (const Triangle& triangle : this->collinear)
 		{
 			if (triangle.RayCast(ray, near))

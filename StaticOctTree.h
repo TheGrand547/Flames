@@ -29,7 +29,7 @@ protected:
 	class StaticOctTreeNode
 	{
 	protected:
-		std::array<StaticOctTreeNode*, 8> tree;
+		std::array<std::unique_ptr<StaticOctTreeNode>, 8> tree;
 		std::array<AABB, 8> internals;
 
 		std::vector<std::pair<AABB, Item>> objects;
@@ -237,11 +237,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Clear()
 	this->objects.clear();
 	for (std::size_t i = 0; i < 8; i++)
 	{
-		if (this->tree[i])
-		{
-			delete this->tree[i];
-			this->tree[i] = nullptr;
-		}
+		this->tree[i].reset();
 	}
 }
 
@@ -263,7 +259,9 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Dump(std::list<Item>& list) con
 	for (std::size_t i = 0; i < 8; i++)
 	{
 		if (this->tree[i])
+		{
 			this->tree[i]->Dump(list);
+		}
 	}
 }
 
@@ -312,7 +310,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 			{
 				if (!this->tree[i])
 				{
-					this->tree[i] = new StaticOctTreeNode(this->internals[i], depth + 1);
+					this->tree[i] = std::make_unique<StaticOctTreeNode>(this->internals[i], depth + 1);
 				}
 				this->tree[i]->Insert(element, box);
 				return;

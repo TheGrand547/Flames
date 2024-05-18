@@ -24,15 +24,15 @@ class ASCIIFont
 protected:
 	std::array<stbtt_packedchar, static_cast<std::size_t>('~' - ' ')> characters;
 	float pixelHeight, scalingFactor;
-	int ascender, descender, lineGap;
+	int ascender, descender, lineGap, atlasWidth, atlasHeight;
 	float lineSkip;
 
 	Texture2D texture;
 public:
-	inline ASCIIFont();
-	~ASCIIFont();
+	inline ASCIIFont() noexcept;
+	~ASCIIFont() noexcept;
 
-	inline Texture2D& GetTexture();
+	inline Texture2D& GetTexture() noexcept;
 
 	void Clear();
 
@@ -49,15 +49,16 @@ public:
 	// Renders directly to the texture
 	void RenderToTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
 
-	static bool LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1);
+	static bool LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1, 
+		int atlasWidth = 0, int atlasHeight = 0);
 };
 
-inline ASCIIFont::ASCIIFont() : pixelHeight(0), scalingFactor(0), ascender(0), descender(0), lineGap(0), lineSkip(0)
+inline ASCIIFont::ASCIIFont() noexcept : pixelHeight(0), scalingFactor(0), ascender(0), descender(0), lineGap(0), atlasWidth(0), atlasHeight(0), lineSkip(0)
 {
 	this->characters.fill({});
 }
 
-inline Texture2D& ASCIIFont::GetTexture()
+inline Texture2D& ASCIIFont::GetTexture() noexcept
 {
 	return this->texture;
 }

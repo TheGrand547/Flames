@@ -32,27 +32,22 @@ As a proof of concept I will make a main menu with this
 class Context 
 {
 protected:
-	std::vector<ButtonBase*> elements{};
+	std::vector<std::shared_ptr<ButtonBase>> elements{};
 public:
 	Context() noexcept = default;
 	~Context() noexcept;
-	void AddButton(ButtonBase* button);
+	void AddButton(std::shared_ptr<ButtonBase> button);
 	void Clear() noexcept;
 	void Update(MouseStatus& status);
 
 	void Draw();
 
-	template<class T, typename... Args> T* AddButton(Args&&... args)
+	template<class T, typename... Args> std::shared_ptr<T> AddButton(Args&&... args)
 	requires requires {
 		std::is_base_of<ButtonBase, T>();
 	}
 	{
-		T* temp = new T(std::forward<Args>(args)...);
-		if (temp)
-		{
-			this->elements.push_back(static_cast<ButtonBase*>(temp));
-		}
-		return temp;
+		return std::dynamic_pointer_cast<T>(this->elements.emplace_back(std::make_shared<T>(std::forward<Args>(args)...)));
 	}
 };
 
