@@ -9,7 +9,6 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/ulp.hpp>
 #include <glm/gtx/euler_angles.hpp>
-#include <glm/gtx/hash.hpp>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -65,7 +64,6 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 // TODO: Delaunay Trianglulation
 
 
-// TODO: Better indexing so vertiex texture coordinates don't have to be repeated with in the same face
 // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
 static const std::array<GLubyte, 36> cubeIndicies =
 {
@@ -87,8 +85,17 @@ static const std::array<GLubyte, 36> cubeIndicies =
 	7, 4, 6, // +Z Face
 	4, 5, 6,
 };
-// I don't know what's goign on with this but I didn't like the old thing
+/*
+Assume we have the reduced form with only 24 verticies in the order laid out above, we get:
+{
+	0, 1, 2,  1, 3, 2, // -X Face
+	4, 5, 6,  5, 7, 6, // -Y Face
 
+}
+
+*/
+
+// I don't know what's goign on with this but I didn't like the old thing
 std::array<glm::vec3, cubeIndicies.size()> texturedCubeVerts =
 	[](auto verts, auto index) constexpr
 	{
@@ -108,7 +115,6 @@ std::array<GLubyte, 24> cubeOutline =
 	3, 7,  4, 0, 
 };
 
-// EW
 std::array<Vertex, 4> plane{
 	{
 		{ 1, 0,  1},
@@ -543,9 +549,7 @@ void display()
 	//glDepthMask(GL_FALSE)
 	// Albert
 	
-	DisableGLFeatures<FaceCulling>();
-	glPatchParameteri(GL_PATCH_VERTICES, 3);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPatchParameteri(GL_PATCH_VERTICES, 3);
 	texturedVAO.BindArrayBuffer(albertBuffer);
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
@@ -555,9 +559,8 @@ void display()
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
-	//dither.DrawArray<Patches>(albertBuffer);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	EnableGLFeatures<FaceCulling>();
+	//dither.DrawArray<DrawType::Triangle>(36);
+	dither.DrawArray<DrawType::Patches>(albertBuffer);
 
 
 	plainVAO.BindArrayBuffer(plainCube);
@@ -1508,9 +1511,7 @@ void idle()
 	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", false));
 
-
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
-	std::swap(keyState, keyStateBackup);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - now;

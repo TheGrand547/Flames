@@ -20,7 +20,7 @@ static void ClipToPlane(std::vector<Triangle>& in, std::vector<Triangle>& out, c
             isSplitByPlane = local.SplitAndOrientation(plane, orient);
             if ((!isSplitByPlane && orient >= 0))
             {
-                out.push_back(local);
+                out.push_back(std::move(local));
             }
         }
     }
@@ -45,14 +45,14 @@ std::vector<Triangle> Decal::ClipTrianglesToUniform(const std::vector<Triangle>&
             std::vector<Triangle> empty{};
             // Clip the current set of triangles to the plane
             ClipToPlane(currentSet, empty, Planes[i]);
-            // Ensure the newly clipped triangles are set as the next set of triangles to clip
-            std::swap(empty, currentSet);
             if (currentSet.size() == 0)
             {
                 break;
             }
+            // Ensure the newly clipped triangles are set as the next set of triangles to clip
+            std::swap(empty, currentSet);
         }
-        std::copy(currentSet.begin(), currentSet.end(), std::back_inserter(splits));
+        std::move(currentSet.begin(), currentSet.end(), std::back_inserter(splits));
     }
 
     return splits;
@@ -82,6 +82,5 @@ std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, con
         // Ensure the newly clipped triangles are set as the next set of triangles to clip
         currentSet = empty;
     }
-    //std::copy(currentSet.begin(), currentSet.end(), std::back_inserter(output));
     return currentSet;
 }

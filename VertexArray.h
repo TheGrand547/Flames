@@ -177,7 +177,7 @@ template<> inline void VertexArray::ArrayFormat<glm::mat4>(Shader& shader, GLuin
 	GLuint index = shader.Index("Model");
 	for (int i = 0; i < 4; i++)
 	{
-		glVertexAttribFormat(index + i, 4, GL_FLOAT, GL_FALSE, 16 * i);
+		glVertexAttribFormat(index + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4) * i);
 		glVertexAttribBinding(index + i, bindingPoint);
 		glEnableVertexAttribArray(index + i);
 	}
