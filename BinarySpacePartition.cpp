@@ -177,14 +177,20 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 	}
 	else
 	{
-		// TODO: find only closest to ray origin
 		// Starts somewhere on this plane
+		RayCollision local{};
+		local.distance = INFINITY;
 		for (const Triangle& triangle : this->collinear)
 		{
-			if (triangle.RayCast(ray, near))
+			if (triangle.RayCast(ray, near) && near.distance < local.distance)
 			{
-				return true;
+				local = near;
 			}
+		}
+		if (!glm::isinf(local.distance))
+		{
+			near = local;
+			return true;
 		}
 	}
 	// Going to have to check both sides
@@ -194,7 +200,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 	bool behindCollide = (this->behind) ? this->behind->RayCast(ray, behindNear) : false;
 	if (frontCollide && behindCollide)
 	{
-		// Compare them
+		// Pick the closer of the two collisions
 		near = (frontNear.depth < behindNear.depth) ? frontNear : behindNear;
 		return true;
 	}
@@ -210,7 +216,7 @@ bool BinarySpacePartition::RayCast(const Ray& ray, RayCollision& near) const
 	}
 	else
 	{
-		// TODO: find only closest to ray origin
+		// Doesn't hit either of the sets in front or behind this plane, thus if it hits this at all it must be one of the collinear tris
 		for (const Triangle& triangle : this->collinear)
 		{
 			if (triangle.RayCast(ray, near))

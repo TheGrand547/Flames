@@ -456,24 +456,35 @@ void display()
 	uniform.SetVec3("color", colors);
 	uniform.DrawElements<DrawType::LineStrip>(stickIndicies);
 
+	/*
 	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
 	glPatchParameteri(GL_PATCH_VERTICES, 4);
 	texturedVAO.BindArrayBuffer(texturedPlane);
 	ground.SetTextureUnit("heightMap", tessMap, 0);
-	m22.translation = glm::vec3(1, 0, 0);
-	m22.scale = glm::vec3(10);
+	float big = 30;
+	m22.scale = glm::vec3(big);
 	ground.SetMat4("Model", m22.GetModelMatrix());
 	ground.SetInt("redLine", 0);
 	ground.SetInt("amount", tessAmount);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	//ground.DrawArray<Patches>(4);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	ground.SetInt("redLine", 1);
-	//ground.DrawArray<Patches>(4);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	for (int i = -5; i <= 5; i++)
+	{
+		for (int j = -5; j <= 5; j++)
+		{
+			m22.translation = glm::vec3(i, 0, j) * 2.f * big;
+			m22.translation.y = 3;
+			ground.SetMat4("Model", m22.GetModelMatrix());
+			//ground.SetInt("redLine", 0);
+			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			//ground.DrawArray<DrawType::Patches>(4);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			ground.SetInt("redLine", 1);
+			ground.DrawArray<DrawType::Patches>(4);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+		}
+	}
 	EnableGLFeatures<FaceCulling>();
-
+	*/
 	// Triangle splitting test
 	triColor.SetActiveShader();
 	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;

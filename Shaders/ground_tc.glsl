@@ -25,10 +25,10 @@ void main()
 	tePos[gl_InvocationID] = tcPos[gl_InvocationID];
     if (gl_InvocationID == 0)
     {
-		const int minTesselation = 2;
-		const int maxTesselation = 50;
-		const float minDistance = 2;
-		const float maxDistance = 10;
+		const int minTesselation = 1;
+		const int maxTesselation = 10;
+		const float minDistance = 1;
+		const float maxDistance = 80;
 		const float distanceDelta = maxDistance - minDistance;
 	
 		float depth0 = (View * gl_in[0].gl_Position).z;
