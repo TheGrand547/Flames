@@ -1104,8 +1104,6 @@ OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
 
-MouseStatus mouseStatus{};
-
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 void idle()
@@ -1386,8 +1384,10 @@ void idle()
 					Decal::GetDecal(boxed, boxes, bigVertex);
 					decals.BufferData(bigVertex, StaticDraw);
 				}
-				gamin.center = c.point;
+				gamin.center = c.point + c.normal * EPSILON;
+				//std::cout << bullets[i].direction << ":";
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
+				//std::cout << bullets[i].direction << ":" << c.normal << std::endl;
 			}
 		}
 		bullets[i].position = gamin.center;
@@ -1473,8 +1473,8 @@ void idle()
 		}
 	}
 	pathTestGuy.box.ReCenter(pathTestGuy.capsule.GetCenter());
-	mouseStatus.UpdateEdges();
-	help.MouseUpdate(mouseStatus);
+	Mouse::UpdateEdges();
+	help.MouseUpdate();
 
 	// BSP Testing visualizations
 	/*
@@ -1674,10 +1674,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	contextul.AddButton<BasicButton>(buttonRect, ButtonExample);
 	// Set bit (button) in mouseStatus.buttons
 	//mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button)) | ((action == GLFW_PRESS) << button);
-	mouseStatus.SetButton(button, action == GLFW_PRESS);
+	Mouse::SetButton(static_cast<Mouse::Button>(button & 0xFF), action == GLFW_PRESS);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
-		if (mouseStatus.CheckButton(MouseButtonRight))
+		if (Mouse::CheckButton(Mouse::ButtonRight))
 		{
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 		}
@@ -1686,10 +1686,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(mouseStatus.GetPosition()))
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(Mouse::GetPosition()))
 	{
 		glm::mat4 cameraOrientation{};
-		Ray liota = GetMouseProjection(mouseStatus.GetPosition(), cameraOrientation);
+		Ray liota = GetMouseProjection(Mouse::GetPosition(), cameraOrientation);
 		float rayLength = 50.f;
 
 		RayCollision rayd{};
@@ -1705,15 +1705,15 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		// Point displayStart has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//loom.ReOrient(glm::vec3(0, 0, 90.f));
-		loom.ReOrient(cameraOrientation);
-		loom.ReCenter(cameraPosition);
-		loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
-		loom.Rotate(glm::vec3(0, 0, 90.f));
-		loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
+		//loom.ReOrient(cameraOrientation);
+		//loom.ReCenter(cameraPosition);
+		//loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
+		//loom.Rotate(glm::vec3(0, 0, 90.f));
+		//loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
 	}
-	testButton.MouseUpdate(mouseStatus);
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mouseStatus.GetPosition()))
+	testButton.MouseUpdate();
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(Mouse::GetPosition()))
 	{
 		userPortion.z -= 25;
 	}
@@ -1722,9 +1722,9 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
-	const glm::vec2 oldPos = mouseStatus.GetPosition();
-	mouseStatus.SetPosition(x, y);
-	if (mouseStatus.CheckButton(MouseButtonRight))
+	const glm::vec2 oldPos = Mouse::GetPosition();
+	Mouse::SetPosition(x, y);
+	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
 		float xDif = x - oldPos.x;
 		float yDif = y - oldPos.y;
@@ -1743,7 +1743,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	{
 		//buttonToggle = buttonRect.Contains(x, y);
 	}
-	if (mouseStatus.CheckButton(MouseButtonLeft))
+	if (Mouse::CheckButton(Mouse::ButtonLeft))
 	{
 		glm::mat4 __unused{};
 		Ray liota(GetMouseProjection(glm::vec2(x, y), __unused));
@@ -1989,6 +1989,7 @@ int main(int argc, char** argv)
 		glfwSwapBuffers(windowPointer);
 		glfwPollEvents();
 	}
+	DoData();
 	// TODO: cleanup
 	return 0;
 }

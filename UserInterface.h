@@ -38,7 +38,7 @@ public:
 	~Context() noexcept;
 	void AddButton(std::shared_ptr<ButtonBase> button);
 	void Clear() noexcept;
-	void Update(MouseStatus& status);
+	void Update();
 
 	void Draw();
 

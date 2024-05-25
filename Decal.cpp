@@ -26,38 +26,6 @@ static void ClipToPlane(std::vector<Triangle>& in, std::vector<Triangle>& out, c
     }
 }
 
-std::vector<Triangle> Decal::ClipTrianglesToUniform(const std::vector<Triangle>& triangles, const glm::vec3& scale)
-{
-    std::vector<Triangle> splits;
-    const std::array<Plane, 6> Planes = { 
-        Plane(glm::vec3( 1,  0,  0), glm::vec3(-scale.x,        0,        0)),
-        Plane(glm::vec3(-1,  0,  0), glm::vec3( scale.x,        0,        0)),
-        Plane(glm::vec3( 0,  1,  0), glm::vec3(       0, -scale.y,        0)),
-        Plane(glm::vec3( 0, -1,  0), glm::vec3(       0,  scale.y,        0)),
-        Plane(glm::vec3( 0,  0,  1), glm::vec3(       0,        0, -scale.z)),
-        Plane(glm::vec3( 0,  0, -1), glm::vec3(       0,        0,  scale.z)),
-    };
-    for (const Triangle& input: triangles)
-    {
-        std::vector<Triangle> currentSet = {input};
-        for (std::size_t i = 0; i < 6; i++)
-        {
-            std::vector<Triangle> empty{};
-            // Clip the current set of triangles to the plane
-            ClipToPlane(currentSet, empty, Planes[i]);
-            if (currentSet.size() == 0)
-            {
-                break;
-            }
-            // Ensure the newly clipped triangles are set as the next set of triangles to clip
-            std::swap(empty, currentSet);
-        }
-        std::move(currentSet.begin(), currentSet.end(), std::back_inserter(splits));
-    }
-
-    return splits;
-}
-
 std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale)
 {
     const std::array<Plane, 6> Planes = {
@@ -69,9 +37,12 @@ std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, con
         Plane(glm::vec3( 0,  0, -1), glm::vec3(       0,        0,  scale.z)),
     };
     std::vector<Triangle> currentSet = { triangle };
+    // Possibly go back to this thing later
+    //currentSet.reserve(2);
     for (std::size_t i = 0; i < 6; i++)
     {
         std::vector<Triangle> empty{};
+        //empty.reserve(currentSet.size()); // Might be pushing it
         // Clip the current set of triangles to the plane
         ClipToPlane(currentSet, empty, Planes[i]);
         if (empty.size() == 0)

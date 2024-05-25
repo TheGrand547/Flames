@@ -14,13 +14,11 @@ public:
 	template<class T> static void GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out);
 
 	// Clips triangles in the 2d plane to the range [-1, 1] x [-1, 1]
-	static std::vector<Triangle> ClipTrianglesToUniform(const std::vector<Triangle>& triangles, const glm::vec3& scale);
 	static std::vector<Triangle> ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale);
 };
 
 template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const StaticOctTree<OBB>& tree)
 {
-	
 	std::vector<TextureVertex> transformedResults{};
 	Decal::GetDecal(box, tree, transformedResults);
 	Buffer<ArrayBuffer> buffering;
@@ -33,10 +31,10 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 	glm::vec3 halfs = box.GetScale();
 	glm::vec3 center = box.Center();
 	// Maybe the other size too
-	glm::mat3 inverseViw = glm::mat3(box.GetNormalMatrix());
-	glm::mat3 view = glm::transpose(inverseViw);
+	glm::mat3 inverseView = glm::mat3(box.GetNormalMatrix());
+	glm::mat3 view = glm::transpose(inverseView);
 
-	for (auto& maybeHit : tree.Search(box.GetAABB()))
+	for (const auto& maybeHit : tree.Search(box.GetAABB()))
 	{
 		if (maybeHit->Overlap(box))
 		{
@@ -58,7 +56,7 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 					for (glm::length_t i = 0; i < 3; i++)
 					{
 						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.x, halfs.y);
-						innerLocal[i] = (inverseViw * innerLocal[i]) + center;
+						innerLocal[i] = (inverseView * innerLocal[i]) + center;
 						// Texture coordinates will be (x, y)
 						out.emplace_back<TextureVertex>({ innerLocal[i] + normal * 0.001f, older / 2.f + 0.5f });
 					}

@@ -27,11 +27,11 @@ void Context::Clear() noexcept
 	this->elements.clear();
 }
 
-void Context::Update(MouseStatus& status)
+void Context::Update()
 {
 	for (auto& button : this->elements)
 	{
-		button->MouseUpdate(status);
+		button->MouseUpdate();
 	}
 }
 
