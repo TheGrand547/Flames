@@ -1364,6 +1364,7 @@ void idle()
 					OBB boxed;
 
 					// TODO: investigate
+					// TODO: glm::orthonormalize
 					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
 					glm::mat3 dumb(1.f);
 					dumb[0] = glm::normalize(-c.axis);
@@ -1614,10 +1615,6 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 	}
 }
 
-// TODO: struct or something idk
-static bool rightMouseHeld = false, leftMouseHeld = false;
-static float mousePreviousX = 0, mousePreviousY = 0;
-
 Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 {
 	/* STEPS FROM GODOT: https://github.com/godotengine/godot/blob/80de898d721f952dac0b102d48bb73d6b02ee1e8/scene/3d/camera_3d.cpp#L390
@@ -1680,8 +1677,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	mouseStatus.SetButton(button, action == GLFW_PRESS);
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
-		rightMouseHeld = (action == GLFW_PRESS);
-		if (rightMouseHeld)
+		if (mouseStatus.CheckButton(MouseButtonRight))
 		{
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_HIDDEN);
 		}
@@ -1690,15 +1686,10 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 			glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_NORMAL);
 		}
 	}
-	if (button == GLFW_MOUSE_BUTTON_LEFT)
-	{
-		leftMouseHeld = (action == GLFW_PRESS);
-	}
-
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(mousePreviousX, mousePreviousY))
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && !userPortion.Contains(mouseStatus.GetPosition()))
 	{
 		glm::mat4 cameraOrientation{};
-		Ray liota = GetMouseProjection(glm::vec2(mousePreviousX, mousePreviousY), cameraOrientation);
+		Ray liota = GetMouseProjection(mouseStatus.GetPosition(), cameraOrientation);
 		float rayLength = 50.f;
 
 		RayCollision rayd{};
@@ -1722,7 +1713,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
 	}
 	testButton.MouseUpdate(mouseStatus);
-	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mousePreviousX, mousePreviousY))
+	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(mouseStatus.GetPosition()))
 	{
 		userPortion.z -= 25;
 	}
@@ -1731,11 +1722,12 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
+	const glm::vec2 oldPos = mouseStatus.GetPosition();
 	mouseStatus.SetPosition(x, y);
-	if (rightMouseHeld)
+	if (mouseStatus.CheckButton(MouseButtonRight))
 	{
-		float xDif = x - mousePreviousX;
-		float yDif = y - mousePreviousY;
+		float xDif = x - oldPos.x;
+		float yDif = y - oldPos.y;
 		if (abs(xDif) > 20)
 			xDif = 0;
 		if (abs(yDif) > 20)
@@ -1751,7 +1743,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	{
 		//buttonToggle = buttonRect.Contains(x, y);
 	}
-	if (leftMouseHeld)
+	if (mouseStatus.CheckButton(MouseButtonLeft))
 	{
 		glm::mat4 __unused{};
 		Ray liota(GetMouseProjection(glm::vec2(x, y), __unused));
@@ -1778,8 +1770,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			//I still don't understand why it has to be like this
 			glm::vec3 radians = -glm::radians(cameraRotation);
 			glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
-			float xDif = x - mousePreviousX;
-			float yDif = y - mousePreviousY;
+			float xDif = x - oldPos.x;
+			float yDif = y - oldPos.y;
 			// Why 50??
 			float yDelta = (xDif * ANGLE_DELTA) / windowWidth;
 			float zDelta = -(yDif * ANGLE_DELTA) / windowHeight;
@@ -1824,8 +1816,6 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			}*/
 		}
 	}
-	mousePreviousX = x;
-	mousePreviousY = y;
 }
 
 void window_size_callback(GLFWwindow* window, int width, int height)
@@ -2110,6 +2100,7 @@ void init()
 	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(0, 1, 1, 1));
 	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(1, 0.5, 1, 1));
 
+	// TODO: Use glm::noise::perlin
 	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);
 	tessMap.SetFilters(LinearLinear, MagLinear);
 

@@ -5,8 +5,7 @@
 bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
-	// dots*=zeroes;
+	glm::bvec3 zeroes = glm::isCompNull(dots, EPSILON);
 	// if (glm::none(zeroes)) return glm::all(glm::greater(dots, glm::vec3(0))) || glm::none(glm::greater(dots, glm::vec3(0))
 	// else return glm::all(glm::greaterEqual(dots, glm::vec3(0))) || glm::none(glm::greaterEqual(dots, glm::vec3(0))
 	/*
@@ -47,7 +46,7 @@ bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 	000 => false, 0
 	*/
 	glm::vec3 signs = glm::sign(dots);
-	signs *= glm::not_(zeroes);
+	//signs *= glm::not_(zeroes);
 	bool fool = false;
 	auto transfer = glm::greaterThan(signs, glm::vec3(0));
 	if (!glm::any(zeroes))
@@ -77,9 +76,8 @@ bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 bool Triangle::SplitByPlane(const Plane& plane) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
+	glm::bvec3 zeroes = glm::isCompNull(dots, EPSILON);
 	glm::vec3 signs = glm::sign(dots);
-	signs *= glm::not_(zeroes);
 	bool fool = false;
 	auto transfer = glm::greaterThan(signs, glm::vec3(0));
 	if (!glm::any(zeroes))
@@ -96,34 +94,9 @@ bool Triangle::SplitByPlane(const Plane& plane) const
 
 float Triangle::GetSpatialRelation(const Plane& plane) const
 {
-	glm::vec3 dots = plane.Facing(this->vertices);
-	glm::vec3 signs = glm::vec3(glm::sign(dots[0]), glm::sign(dots[1]), glm::sign(dots[2]));
-	glm::bvec3 zeroes = glm::equal(dots, glm::vec3(0), EPSILON);
-	signs *= glm::not_(zeroes);
-	int sign = 0;
-
-	bool flag = true;
-	float critera = NAN; // Get something better
-	for (int i = 0; i < 3; i++)
-	{
-		if (zeroes[i])
-			continue;
-		if (glm::isnan(critera))
-		{
-			critera = signs[i];
-		}
-		else
-		{
-			flag &= (critera == signs[i]);
-		}
-	}
-	// Unrolled
-	/*
-	flag &= (zeroes[0]) ? true : (glm::isnan(critera) ? (critera = signs[0]) != 0.f : (critera == signs[0]));
-	flag &= (zeroes[1]) ? true : (glm::isnan(critera) ? (critera = signs[1]) != 0.f : (critera == signs[1]));
-	flag &= (zeroes[2]) ? true : (glm::isnan(critera) ? (critera = signs[2]) != 0.f : (critera == signs[2]));
-	*/
-	return (glm::isnan(critera)) ? 0.f : critera;
+	float result{};
+	this->SplitAndOrientation(plane, result);
+	return result;
 }
 
 bool Triangle::Collinear(const Plane& plane) const

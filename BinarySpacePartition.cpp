@@ -12,7 +12,7 @@ BinarySpacePartition::~BinarySpacePartition()
 
 void BinarySpacePartition::AddTriangleInternal(const Triangle& polygon, std::vector<Triangle>& front, std::vector<Triangle>& behind)
 {
-	// None of the triangles that are being called with this function 
+	// None of the triangles that are being called with this function will be split by the plane
 	float result = polygon.GetSpatialRelation(this->canonical); // returns -1 if behind, 0 if collinear, 1 if in front
 	if (result < 0)
 	{

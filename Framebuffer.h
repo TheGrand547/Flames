@@ -36,10 +36,10 @@ protected:
 	static inline constexpr bool SingleColor = ColorAttachments == 1;
 	static inline constexpr bool MultiColor  = ColorAttachments > 1;
 
-	std::conditional_t<HasDepth, Texture2D, std::monostate> depth;
-	std::conditional_t<HasStencil, Texture2D, std::monostate> stencil;
-	std::conditional_t<HasCombined, Texture2D, std::monostate> depthStencil;
-	std::conditional_t<HasColor, std::array<Texture2D, ColorAttachments>, std::monostate> colorBuffers{};
+	[[no_unique_address]] std::conditional_t<HasDepth, Texture2D, std::monostate> depth;
+	[[no_unique_address]] std::conditional_t<HasStencil, Texture2D, std::monostate> stencil;
+	[[no_unique_address]] std::conditional_t<HasCombined, Texture2D, std::monostate> depthStencil;
+	[[no_unique_address]] std::conditional_t<HasColor, std::array<Texture2D, ColorAttachments>, std::monostate> colorBuffers{};
 
 	static constexpr std::conditional_t<HasColor, std::array<GLenum, ColorAttachments>, std::monostate> drawBufferMacro =
 		[]() {

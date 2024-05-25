@@ -20,7 +20,7 @@ static void ClipToPlane(std::vector<Triangle>& in, std::vector<Triangle>& out, c
             isSplitByPlane = local.SplitAndOrientation(plane, orient);
             if ((!isSplitByPlane && orient >= 0))
             {
-                out.push_back(std::move(local));
+                out.push_back(local);
             }
         }
     }

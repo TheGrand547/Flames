@@ -2,8 +2,11 @@
 #ifndef PLANE_H
 #define PLANE_H
 #include <glm/glm.hpp>
+#include <glm/vector_relational.hpp>
+#include <glm/gtx/vector_query.hpp>
 #include <glm/ext/scalar_constants.hpp>
 #include "glmHelp.h"
+#include "util.h"
 
 // Set of points(P), defined by a normal(N) and a constant C such that P*N-C = 0
 // Equivalently, for any given point A on the plane, (P-A)*N=0
@@ -92,15 +95,17 @@ inline Plane& Plane::operator=(const Plane& other) noexcept
 	return *this;
 }
 
-// TODO: Investigate zeroing out close to zero values with EPSILON
 inline float Plane::Facing(const glm::vec3& vector) const noexcept
 {
-	return glm::dot(this->normal, vector) - this->constant;
+	float value = glm::dot(this->normal, vector) - this->constant;
+	return (glm::abs(value) < EPSILON) ? 0 : value;
 }
 
 inline glm::vec3 Plane::Facing(const glm::mat3& points) const noexcept
 {
-	return (this->normal * points) - glm::vec3(this->constant);
+	glm::vec3 values = (this->normal * points) - glm::vec3(this->constant);
+	values *= glm::not_(glm::isCompNull(values, EPSILON));
+	return values;
 }
 
 inline float Plane::FacingNormal(const glm::vec3& vector) const noexcept
@@ -125,13 +130,15 @@ inline bool Plane::IntersectsNormal(const glm::vec3& start, const glm::vec3& end
 inline glm::vec3 Plane::PointOfIntersection(const glm::vec3& point, const glm::vec3& direction) const
 {
 	// TODO: glm::gtx::intersection
-	float dot = glm::dot(glm::normalize(direction), glm::normalize(this->normal));
+	glm::vec3 norm = glm::normalize(direction);
+	// TODO: glm::normalizedot
+	float dot = glm::dot(norm, this->normal);
 	if (glm::abs(dot) < glm::epsilon<float>())
 	{
 		return glm::vec3(NAN);
 	}
-	float t = glm::dot(this->GetPoint() - point, glm::normalize(this->normal)) / dot;
-	return point + t * glm::normalize(direction);
+	float t = glm::dot(this->GetPoint() - point, this->normal) / dot;
+	return point + t * norm;
 }
 
 inline bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC)
