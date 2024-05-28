@@ -166,6 +166,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
+    <ClCompile Include="PathFollower.cpp" />
     <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="QuickTimer.cpp" />
@@ -191,6 +192,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="ArrayObject.h" />
+    <ClInclude Include="BasicPhysics.h" />
     <ClInclude Include="BinarySpacePartition.h" />
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Button.h" />
@@ -208,6 +210,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Pathfinding.h" />
+    <ClInclude Include="PathFollower.h" />
     <ClInclude Include="PathNode.h" />
     <ClInclude Include="Plane.h" />
     <ClInclude Include="QuickTimer.h" />

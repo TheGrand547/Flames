@@ -31,6 +31,7 @@
 #include "Model.h"
 #include "OrientedBoundingBox.h"
 #include "Pathfinding.h"
+#include "PathFollower.h"
 #include "PathNode.h"
 #include "Plane.h"
 #include "QuickTimer.h"
@@ -62,6 +63,7 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
 // TODO: Delaunay Trianglulation
+// TODO: EASTL
 
 
 // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
@@ -323,9 +325,9 @@ struct walkerboy
 	glm::vec3 velocity{0};
 	std::vector<PathNodePtr> path;
 } pathTestGuy;
-std::vector<PathNodePtr> pathNodes{};
+PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
-OBB finders{};
+std::vector<PathNodePtr> pathNodes{};
 
 std::vector<Bullet> bullets;
 
@@ -439,9 +441,9 @@ void display()
 
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
-		plainVAO.BindArrayBuffer(guyLines);
+		plainVAO.BindArrayBuffer(guyNodes);
 		glLineWidth(10.f);
-		uniform.DrawArray<DrawType::LineStrip>(guyLines);
+		uniform.DrawArray<DrawType::LineStrip>(guyNodes);
 		EnableDepthBufferWrite();
 	}
 
@@ -578,7 +580,6 @@ void display()
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", smartBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
-	uniform.SetMat4("Model", finders.GetModelMatrix());
 	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
@@ -729,8 +730,8 @@ void display()
 
 
 	meshVAO.BindArrayBuffer(movingCapsule);
-	flatLighting.SetMat4("modelMat", pathTestGuy.box.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", pathTestGuy.box.GetNormalMatrix());
+	flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
 	flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
@@ -1393,86 +1394,7 @@ void idle()
 		bullets[i].position = gamin.center;
 	}
 
-	// Pathfinding demo boy
-	if (pathTestGuy.path.size() == 0)
-	{
-		// REGENERATE PATH
-		pathTestGuy.velocity = glm::vec3(0);
-		glm::vec3 center = pathTestGuy.capsule.GetCenter();
-		PathNodePtr start = nullptr, end = nullptr;
-		float minDist = INFINITY;
-		for (auto& possible : pathNodes)
-		{
-			if (glm::distance(center, possible->GetPosition()) < minDist)
-			{
-				start = possible;
-				minDist = glm::distance(center, possible->GetPosition());
-			}
-		}
-		if (start)
-		{
-			end = pathNodes[std::rand() % pathNodes.size()];
-			pathTestGuy.path = AStarSearch<PathNode>(start, end,
-				[](const PathNode& a, const PathNode& b)
-				{
-					return glm::distance(a.GetPosition(), b.GetPosition());
-				}
-			);
-			std::vector<glm::vec3> positions, lines;
-			for (std::size_t i = 0; i < pathTestGuy.path.size(); i++)
-			{
-				positions.push_back(pathTestGuy.path[i]->GetPosition());
-				lines.push_back(pathTestGuy.path[i]->GetPosition());
-			}
-			guyNodes.BufferData(positions, StaticDraw);
-			guyLines.BufferData(lines, StaticDraw);
-		}
-	}
-	else
-	{
-		auto& target = pathTestGuy.path.back();
-		glm::vec3 pos = target->GetPosition();
-		if (glm::distance(pathTestGuy.capsule.ClosestPoint(pos), pos) < pathTestGuy.capsule.GetRadius() / 2.f)
-		{
-			// Need to move to the next node
-			pathTestGuy.path.pop_back();
-			//pathTestGuy.velocity *= 0.5f;
-		}
-		else
-		{
-			finders.ReCenter(pos);
-			// Accelerate towards it
-			glm::vec3 delta = glm::normalize(pos - pathTestGuy.capsule.GetCenter());
-			glm::vec3 unitVelocity = glm::normalize(pathTestGuy.velocity);
-			float origin = glm::dot(unitVelocity, delta);
-			if (glm::abs(glm::dot(glm::normalize(pathTestGuy.velocity), delta)) < 0.25f)
-			{
-				//pathTestGuy.velocity *= 0.85f;
-			}
-			glm::vec3 direction = glm::normalize(delta - unitVelocity);
-			if (glm::any(glm::isnan(direction))) 
-				direction = delta;
-
-			//if (glm::length(pathTestGuy.velocity) < 0.5f)
-				pathTestGuy.velocity += direction * BoxAcceleration * timeDelta;
-			if (glm::length(pathTestGuy.velocity) > 1.f)
-			{
-				//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
-			}
-			//pathTestGuy.velocity = delta * timeDelta;
-		}
-	}
-	pathTestGuy.capsule.Translate(pathTestGuy.velocity);
-	
-	Collision placeholder;
-	for (auto& possible : boxes.Search(pathTestGuy.capsule.GetAABB()))
-	{
-		if (possible->Overlap(pathTestGuy.capsule, placeholder))
-		{
-			pathTestGuy.capsule.Translate(placeholder.normal * placeholder.depth);
-		}
-	}
-	pathTestGuy.box.ReCenter(pathTestGuy.capsule.GetCenter());
+	followed.Update(timeDelta, pathNodes, boxes, guyNodes);
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
@@ -1989,7 +1911,6 @@ int main(int argc, char** argv)
 		glfwSwapBuffers(windowPointer);
 		glfwPollEvents();
 	}
-	DoData();
 	// TODO: cleanup
 	return 0;
 }
@@ -2352,9 +2273,8 @@ void init()
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
 
 
-	pathTestGuy.box.ReCenter(glm::vec3(0, 0.5f, 0));
-	pathTestGuy.capsule.Translate(glm::vec3(0, 0.5f, 0));
-	finders.Scale(0.35f);
+	//pathTestGuy.box.ReCenter(glm::vec3(0, 0.5f, 0));
+	//pathTestGuy.capsule.Translate(glm::vec3(0, 0.5f, 0));
 	// =============================================================
 
 	{
