@@ -178,6 +178,7 @@
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Texture2D.cpp" />
+    <ClCompile Include="TextureUtil.cpp" />
     <ClCompile Include="Triangle.cpp" />
     <ClCompile Include="UniformBuffer.cpp" />
     <ClCompile Include="UserInterface.cpp" />
@@ -225,6 +226,7 @@
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
+    <ClInclude Include="TextureUtil.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="typedefs.h" />
     <ClInclude Include="UniformBuffer.h" />

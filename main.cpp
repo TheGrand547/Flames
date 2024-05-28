@@ -47,6 +47,7 @@
 #include "Vertex.h"
 #include "VertexArray.h"
 #include "UserInterface.h"
+#include "TextureUtil.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -199,10 +200,11 @@ ColorFrameBuffer scratchSpace;
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 Shader triColor, decalShader;
 Shader pathNodeView, stencilTest;
+Shader nineSlicer;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
-Texture2D buttonA, buttonB;
+Texture2D buttonA, buttonB, nineSlice;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -318,13 +320,6 @@ struct Bullet
 	glm::vec3 position, direction;
 };
 
-struct walkerboy
-{
-	Capsule capsule;
-	OBB box;
-	glm::vec3 velocity{0};
-	std::vector<PathNodePtr> path;
-} pathTestGuy;
 PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 std::vector<PathNodePtr> pathNodes{};
@@ -332,6 +327,21 @@ std::vector<PathNodePtr> pathNodes{};
 std::vector<Bullet> bullets;
 
 std::vector<TextureVertex> bigVertex;
+
+std::array<ScreenRect, 9> ui_tester;
+std::array<glm::vec4, 9> colors = { 
+	{
+		glm::vec4(  1,   1, 0.25, 1),
+		glm::vec4(0.5,   1, 0.25, 1),
+		glm::vec4(  0,   1, 0.25, 1),
+		glm::vec4(  1, 0.5, 0.25, 1),
+		glm::vec4(0.5, 0.5, 0.25, 1),
+		glm::vec4(  0, 0.5, 0.25, 1),
+		glm::vec4(  1,   0, 0.25, 1),
+		glm::vec4(0.5,   0, 0.25, 1),
+		glm::vec4(  0,   0, 0.25, 1),
+	} 
+};
 
 /*
 New shading outputs
@@ -762,6 +772,17 @@ void display()
 	uiRect.SetVec4("rectangle", userPortion);
 	uiRect.SetVec4("color", glm::vec4(0.25, 0.25, 0.25, 0.85));
 	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+
+	nineSlicer.SetActiveShader();
+	nineSlicer.SetTextureUnit("image", nineSlice);
+	for (int i = 0; i < 9; i++)
+	{
+		nineSlicer.SetInt("index", i);
+		nineSlicer.SetVec4("rectangle", ui_tester[i]);
+		nineSlicer.SetVec4("color", ::colors[i]);
+		nineSlicer.DrawArray<DrawType::TriangleStrip>(4);
+	}
+
 
 	uiRectTexture.SetActiveShader();
 	auto& colored = playerTextEntry.GetColor();
@@ -1645,7 +1666,11 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
+	glm::vec2 deviation = glm::abs(glm::vec2(windowWidth, windowHeight) / 2.f - oldPos);
+	ui_tester = NineSliceGenerate(glm::vec2(windowWidth, windowHeight) / 2.f, deviation);
+	
 	Mouse::SetPosition(x, y);
+
 	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
 		float xDif = x - oldPos.x;
@@ -1949,6 +1974,7 @@ void init()
 	flatLighting.CompileSimple("lightflat");
 	frameShader.CompileSimple("framebuffer");
 	instancing.CompileSimple("instance");
+	nineSlicer.CompileSimple("ui_nine");
 	pathNodeView.CompileSimple("path_node");
 	sphereMesh.CompileSimple("mesh");
 	triColor.CompileSimple("tri_color");
@@ -1971,6 +1997,7 @@ void init()
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 
+	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
@@ -2021,6 +2048,9 @@ void init()
 
 	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(0, 1, 1, 1));
 	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(1, 0.5, 1, 1));
+
+	nineSlice.Load("9slice.png");
+	nineSlice.SetFilters(LinearLinear);
 
 	// TODO: Use glm::noise::perlin
 	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);

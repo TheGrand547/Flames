@@ -6,6 +6,7 @@
 
 struct ScreenRect : public glm::vec4
 {
+	inline ScreenRect() noexcept = default;
 	inline ScreenRect(const glm::vec4& vec) noexcept;
 	inline ScreenRect(const glm::vec2& topLeft, const glm::vec2& bottomRight) noexcept;
 	inline ScreenRect(const glm::vec2& topLeft, float w, float y) noexcept;

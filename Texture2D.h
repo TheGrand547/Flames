@@ -32,6 +32,9 @@ public:
 	inline int GetHeight() const noexcept;
 	inline glm::ivec2 GetSize() const noexcept;
 
+	inline glm::vec2 GetTextureCoordinates(const glm::ivec2& pos) const noexcept;
+	inline glm::vec2 GetTextureCoordinates(int x, int y) const noexcept;
+
 	void CleanUp();
 
 	void ApplyInfo(GLuint texture, int width, int height, int channels);
@@ -82,6 +85,16 @@ inline int Texture2D::GetHeight() const noexcept
 inline glm::ivec2 Texture2D::GetSize() const noexcept
 {
 	return glm::ivec2(this->width, this->height);
+}
+
+inline glm::vec2 Texture2D::GetTextureCoordinates(const glm::ivec2& pos) const noexcept
+{
+	return glm::vec2(this->width, this->height) / glm::vec2(pos);
+}
+
+inline glm::vec2 Texture2D::GetTextureCoordinates(int x, int y) const noexcept
+{
+	return this->GetTextureCoordinates(glm::ivec2(x, y));
 }
 
 void Texture2D::BindTexture(GLuint slot) const
