@@ -797,7 +797,7 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", help.GetTexture(), 0);
 	uiRectTexture.SetVec4("rectangle", help.GetRect());
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -2358,6 +2358,51 @@ void init()
 	
 	fonter.RenderToTexture(buttonA, "Soft");
 	fonter.RenderToTexture(buttonB, "Not");
+	
+	Buffer<ArrayBuffer> stored, stored2;
+	auto sizeA = fonter.GetTextTris(stored, glm::vec2(0, 0), "Soft");
+	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Softer");
+
+	ColorFrameBuffer buffered;
+	glm::ivec2 bufSize = glm::max(sizeA, sizeB) + glm::vec2(10);
+	buffered.GetColor().CreateEmpty(bufSize.x, bufSize.y);
+	buffered.Assemble();
+	auto sized = NineSliceGenerate(glm::ivec2(0, 0), bufSize);
+	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
+	screenSpaceBuffer.SetBindingPoint(1);
+	screenSpaceBuffer.BindUniform();
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, static_cast<float>(bufSize.x), static_cast<float>(bufSize.y), 0));
+	glViewport(0, 0, bufSize.x, bufSize.y);
+	EnableGLFeatures<Blending>();
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	for (int j = 0; j < 2; j++)
+	{
+		auto& current = (j == 0) ? stored : stored2;
+		buffered.Bind();
+		buffered.GetColor().FillTexture(glm::vec4(0));
+		nineSlicer.SetActiveShader();
+		nineSlicer.SetTextureUnit("image", nineSlice);
+		for (int i = 0; i < 9; i++)
+		{
+			nineSlicer.SetInt("index", i);
+			nineSlicer.SetVec4("rectangle", sized[i]);
+			nineSlicer.DrawArray<DrawType::TriangleStrip>(4);
+		}
+		uiRectTexture.SetActiveShader();
+		uiRectTexture.SetVec4("rectangle", glm::vec4(0, 0, bufSize));
+		uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);
+		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
+		/*
+		fontShader.SetActiveShader();
+		fontVAO.BindArrayBuffer(current);
+		fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
+		fontShader.DrawArray<DrawType::Triangle>(current);
+		*/
+		buffered.ReadColorIntoTexture((j == 0) ? buttonA : buttonB);
+	}
+	DisableGLFeatures<Blending>();
+	glLineWidth(100);
+
 	help.SetMessages("Work", "UnWork", fonter);
 	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);

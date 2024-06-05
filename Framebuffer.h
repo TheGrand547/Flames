@@ -250,7 +250,7 @@ public:
 	{
 		this->ReadColorIntoTexture(i);
 		Texture2D& source = this->GetColorBuffer(i);
-		texture.CopyFromFramebuffer(glm::ivec2(source.GetWidth(), source.GetHeight()));
+		texture.CopyFromFramebuffer(source.GetSize());
 
 	}
 

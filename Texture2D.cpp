@@ -82,8 +82,11 @@ void Texture2D::CopyFrom(Texture2D&& other)
 
 void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat, const glm::ivec2& start)
 {
+	CheckError();
 	this->CreateEmptyWithFilters(size.x, size.y, internalFormat, glm::vec4(0.5));
+	CheckError();
 	glBindTexture(GL_TEXTURE_2D, this->texture);
+	CheckError();
 	glCopyTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internalFormat), start.x, start.y, size.x, size.y, BORDER_PARAMETER);
 	CheckError();
 	this->width = size.x;
