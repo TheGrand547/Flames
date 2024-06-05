@@ -11,30 +11,28 @@ layout(std140) uniform ScreenSpace
 	mat4 Projection;
 };
 
+vec2 textureLUT[] = {vec2(0, 1), vec2(0, 0), vec2(1, 1), vec2(1, 0)};
+
 void main()
 {
-	int vertexX = 2 - int(index / 3);
-	int vertexY = index % 3;
+	vec2 offset = vec2(index % 3, 2 - int(index / 3));
+	int vertexY = 2 - int(index / 3);
+	int vertexX = index % 3;
 	vec2 pos = rectangle.xy;
 	
 	vec2 size = rectangle.zw;
 	
 	pos += ceil((rectangle.zw - size) / 2);
-	// TODO: figure out why this is so damn complicated
-	
-	fTex = vec2(0, 1);
 	if ((gl_VertexID % 4) % 2 == 1)
 	{
 		pos += vec2(0, size.y);
-		fTex.y -= 1;
 	}
 	if (gl_VertexID % 4 > 1)
 	{
 		pos += vec2(size.x, 0);
-		fTex.x += 1;
 	}
-	fTex += vec2(vertexY, vertexX);
+	
+	fTex = textureLUT[gl_VertexID % 4] + vec2(vertexX, vertexY);
 	fTex /= 3;
-	fTex.y = 1 - fTex.y;
 	gl_Position = Projection * vec4(pos.xy, 0, 1);
 }

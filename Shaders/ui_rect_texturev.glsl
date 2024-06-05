@@ -11,24 +11,23 @@ layout(std140) uniform ScreenSpace
 	mat4 Projection;
 };
 
+vec2 textureLUT[] = {vec2(0, 1), vec2(0, 0), vec2(1, 1), vec2(1, 0)};
+
+// TODO: Move to assuming position and stuff are right or something idk
 void main()
 {
 	vec2 pos = rectangle.xy;
-	
 	vec2 size = min(textureSize(image, 0).xy, rectangle.zw);
-	
 	pos += ceil((rectangle.zw - size) / 2);
 	
-	fTex = vec2(0, 1);
 	if ((gl_VertexID % 4) % 2 == 1)
 	{
 		pos += vec2(0, size.y);
-		fTex.y -= 1;
 	}
 	if (gl_VertexID % 4 > 1)
 	{
 		pos += vec2(size.x, 0);
-		fTex.x += 1;
 	}
+	fTex = textureLUT[gl_VertexID % 4];
 	gl_Position = Projection * vec4(pos.xy, 0, 1);
 }

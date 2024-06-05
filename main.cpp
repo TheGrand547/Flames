@@ -793,11 +793,11 @@ void display()
 
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRectTexture.SetTextureUnit("image", help.GetTexture(), 0);
 	uiRectTexture.SetVec4("rectangle", help.GetRect());
-	uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -1044,9 +1044,7 @@ bool smartBoxCollide()
 
 			smartBoxAlignCorner(*currentBox, minDotI, maxDotI);
 
-			// TODO: look into this
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
-			// TODO: Thing to make sure this isn't applied when the box itself is rotating under its own power
 			//if (true) //(c.depth > 0.002) // Why this number
 			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
@@ -1688,7 +1686,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	}
 	else
 	{
-		//buttonToggle = buttonRect.Contains(x, y);
+		buttonToggle = buttonRect.Contains(x, y);
 	}
 	if (Mouse::CheckButton(Mouse::ButtonLeft))
 	{
@@ -2026,6 +2024,7 @@ void init()
 	// TEXTURE SETUP
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	Texture::SetBasePath("Textures");
+
 	depthMap.Load("depth.png");
 	depthMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	depthMap.SetAnisotropy(16.f);
@@ -2050,7 +2049,7 @@ void init()
 	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(1, 0.5, 1, 1));
 
 	nineSlice.Load("9slice.png");
-	nineSlice.SetFilters(LinearLinear);
+	nineSlice.SetFilters();
 
 	// TODO: Use glm::noise::perlin
 	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);
@@ -2356,6 +2355,7 @@ void init()
 	//Log("Doing it");
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
+	
 	fonter.RenderToTexture(buttonA, "Soft");
 	fonter.RenderToTexture(buttonB, "Not");
 	help.SetMessages("Work", "UnWork", fonter);

@@ -14,16 +14,24 @@ static std::string fontVertex = "#version 440 core\nlayout(location = 0)\nin vec
 static std::string fontFragment = "#version 440 core\nlayout(location = 0) in vec2 fTex;\nout vec4 color;uniform sampler2D fontTexture; \
 uniform vec4 colorIn; void main() { float value = texture(fontTexture, fTex).r; if (value == 0) { discard; } color = colorIn * value;}";
 
+static std::string identityVertex = "#version 440 core\nvec2 positions[] = {vec2(-1.0f, -1.0f), vec2(1.0f, -1.0f),vec2(-1.0f, 1.0f), vec2(1.0f, 1.0f)}; \
+vec2 uvCoords[] = {vec2(0.0f, 0.0f), vec2(1.0f, 0.0f),vec2(0.0f, 1.0f), vec2(1.0f, 1.0f)}; layout(location = 0) out vec2 fTex;uniform mat4 Projection;void main()\
+{	gl_Position = vec4(positions[gl_VertexID % 4], 0, 1);	fTex = uvCoords[gl_VertexID % 4];}";
+static std::string identityFragment = "#version 440 core\nlayout(location = 0) in vec2 fTex;\nlayout(location = 0)out vec4 color;uniform sampler2D identity; \
+void main() { color = texture(identity, fTex);}";
+
 static ColorFrameBuffer defaultRenderBuffer;
 
 namespace Font
 {
 	static Shader shader;
+	static Shader identity;
 	static VAO vao;
 
 	static void SetupShader()
 	{
 		shader.CompileEmbedded(fontVertex.c_str(), fontFragment.c_str());
+		identity.CompileEmbedded(identityVertex.c_str(), identityFragment.c_str());
 		vao.Generate();
 		vao.ArrayFormat<UIVertex>(shader);
 	}
@@ -155,10 +163,40 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 	return framebuffer;
 }
 
-void ASCIIFont::RenderToTexture(Texture2D& texture,  const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
+void ASCIIFont::RenderToTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
 	ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
 	buffer.ReadColorIntoTexture(texture);
+}
+
+void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
+{
+	// TODO: Return and make this work
+	ColorFrameBuffer framebuffer;
+	framebuffer.GetColor().CreateEmpty(texture.GetWidth(), texture.GetHeight());
+	framebuffer.Assemble();
+	framebuffer.Bind();
+	glViewport(0, 0, texture.GetWidth(), texture.GetHeight());
+	Font::identity.SetActiveShader();
+	Font::identity.SetTextureUnit(std::string("identity"), texture, 0);
+	Font::identity.DrawArray<DrawType::TriangleStrip>(4);
+
+	Buffer<ArrayBuffer> triBuffer;
+	glm::ivec2 size = this->GetTextTris(triBuffer, 0, 0, message);
+	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(size.x), static_cast<float>(size.y), 0.f);
+	framebuffer.Bind();
+	EnableGLFeatures<Blending>();
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	Font::shader.SetActiveShader();
+	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
+	Font::shader.SetMat4("Projection", projection);
+	Font::shader.SetVec4("colorIn", textColor);
+	Font::vao.BindArrayBuffer(triBuffer);
+	Font::shader.DrawArray<DrawType::Triangle>(triBuffer);
+	DisableGLFeatures<Blending>();
+	BindDefaultFrameBuffer();
+	//ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
+	framebuffer.ReadColorIntoTexture(texture);
 }
 
 

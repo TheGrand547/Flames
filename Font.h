@@ -48,6 +48,9 @@ public:
 
 	// Renders directly to the texture
 	void RenderToTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
+	
+	// Renders on top of what was already draw to the texture, without resizing
+	void RenderOntoTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;
 
 	static bool LoadFont(ASCIIFont& font, const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1, 
 		int atlasWidth = 0, int atlasHeight = 0);
