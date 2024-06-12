@@ -1,8 +1,9 @@
 #version 440 core
 
+layout(location = 0) in vec4 rectangle;
+
 layout(location = 0) out vec2 fTex;
 
-uniform vec4 rectangle;
 uniform sampler2D image;
 uniform int index;
 
@@ -15,6 +16,7 @@ vec2 textureLUT[] = {vec2(0, 1), vec2(0, 0), vec2(1, 1), vec2(1, 0)};
 
 void main()
 {
+	//int index = gl_InstanceID;
 	vec2 offset = vec2(index % 3, 2 - int(index / 3));
 	int vertexY = 2 - int(index / 3);
 	int vertexX = index % 3;

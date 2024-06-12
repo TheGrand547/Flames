@@ -8,6 +8,8 @@
 #include <vector>
 #include "log.h"
 
+// TODO: make buffer type an enum class and typedef the easy names as actual types
+
 enum BufferAccess
 {
 	StreamDraw  = GL_STREAM_DRAW, 
@@ -346,26 +348,24 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBuffers(T& buffers)
 {
 	static_assert(std::is_same<std::remove_reference<decltype(*std::begin(buffers))>::type, Buffer<Type>>::value);
-	GLuint* intermediate = new GLuint[std::size(buffers)];
-	glGenBuffers(static_cast<GLsizei>(std::size(buffers)), intermediate);
+	std::unique_ptr<GLuint[]> intermediate = std::make_unique<GLuint[]>(std::size(buffers));
+	glGenBuffers(static_cast<GLsizei>(std::size(buffers)), intermediate.get());
 	for (std::size_t i = 0; i < std::size(buffers); i++)
 	{
 		buffers[i].buffer = intermediate[i];
 	}
-	delete[] intermediate;
 }
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBuffers(std::map<T, Buffer<Type>>& buffers)
 {
-	GLuint* intermediate = new GLuint[buffers.size()];
-	glGenBuffers(static_cast<GLsizei>(buffers.size()), intermediate);
+	std::unique_ptr<GLuint[]> intermediate = std::make_unique<GLuint[]>(buffers.size());
+	glGenBuffers(static_cast<GLsizei>(buffers.size()), intermediate.get());
 	auto begin = std::begin(buffers);
 	for (std::size_t i = 0; i < buffers.size(); i++)
 	{
 		begin->buffer = intermediate[i];
 		begin++;
 	}
-	delete[] intermediate;
 }
 
 #endif // BUFFER_H

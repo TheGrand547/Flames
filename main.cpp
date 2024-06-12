@@ -775,6 +775,7 @@ void display()
 
 	nineSlicer.SetActiveShader();
 	nineSlicer.SetTextureUnit("image", nineSlice);
+
 	for (int i = 0; i < 9; i++)
 	{
 		nineSlicer.SetInt("index", i);
@@ -2356,8 +2357,8 @@ void init()
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	
-	fonter.RenderToTexture(buttonA, "Soft");
-	fonter.RenderToTexture(buttonB, "Not");
+	fonter.RenderToTexture(buttonA, "Soft", glm::vec4(0, 0, 0, 1));
+	fonter.RenderToTexture(buttonB, "Not", glm::vec4(0, 0, 0, 1));
 	
 	Buffer<ArrayBuffer> stored, stored2;
 	auto sizeA = fonter.GetTextTris(stored, glm::vec2(0, 0), "Soft");
@@ -2380,14 +2381,17 @@ void init()
 		auto& current = (j == 0) ? stored : stored2;
 		buffered.Bind();
 		buffered.GetColor().FillTexture(glm::vec4(0));
+		Buffer<ArrayBuffer> rects;
+		rects.BufferData(sized, StaticDraw);
 		nineSlicer.SetActiveShader();
 		nineSlicer.SetTextureUnit("image", nineSlice);
+		nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
+		/*
 		for (int i = 0; i < 9; i++)
 		{
-			nineSlicer.SetInt("index", i);
 			nineSlicer.SetVec4("rectangle", sized[i]);
 			nineSlicer.DrawArray<DrawType::TriangleStrip>(4);
-		}
+		}*/
 		uiRectTexture.SetActiveShader();
 		uiRectTexture.SetVec4("rectangle", glm::vec4(0, 0, bufSize));
 		uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);
