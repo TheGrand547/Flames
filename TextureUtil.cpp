@@ -7,7 +7,7 @@
 */
 
 // Takes the desired size
-std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2 size)
+std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2& size)
 {
 	const glm::ivec2 tileSize(20, 20);
 	size = glm::max(size, 2 * tileSize);

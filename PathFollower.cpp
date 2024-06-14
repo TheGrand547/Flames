@@ -12,7 +12,7 @@ PathFollower::~PathFollower() noexcept
 	this->path.clear();
 }
 
-void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathNodes, StaticOctTree<OBB>& boxes, Buffer<ArrayBuffer>& guyNodes) noexcept
+void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathNodes, StaticOctTree<OBB>& boxes, ArrayBuffer& guyNodes) noexcept
 {
 	if (this->path.size() == 0)
 	{

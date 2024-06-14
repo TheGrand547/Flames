@@ -8,8 +8,6 @@
 #include <vector>
 #include "log.h"
 
-// TODO: make buffer type an enum class and typedef the easy names as actual types
-
 enum BufferAccess
 {
 	StreamDraw  = GL_STREAM_DRAW, 
@@ -23,7 +21,7 @@ enum BufferAccess
 	DynamicCopy = GL_DYNAMIC_COPY
 };
 
-enum BufferType
+enum class BufferType : GLenum
 {
 	ArrayBuffer         = GL_ARRAY_BUFFER,
 	AtomicCounter       = GL_ATOMIC_COUNTER_BUFFER,
@@ -213,8 +211,8 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(BufferAccess access,
 template<BufferType Type> inline void Buffer<Type>::Reserve(std::size_t size, BufferAccess usage)
 {
 	this->Generate();
-	glBindBuffer(Type, this->buffer);
-	glBufferData(Type, static_cast<GLsizeiptr>(size), nullptr, static_cast<GLenum>(usage));
+	glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+	glBufferData(static_cast<GLenum>(Type), static_cast<GLsizeiptr>(size), nullptr, static_cast<GLenum>(usage));
 	this->length = size;
 	this->elementCount = 0;
 	this->elementSize = 0;
@@ -234,8 +232,8 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 	}
 	if (this->buffer)
 	{
-		glBindBuffer(Type, this->buffer);
-		glBufferData(Type, static_cast<GLsizeiptr>(data.size() * sizeof(T)), data.data(), static_cast<GLenum>(usage));
+		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+		glBufferData(static_cast<GLenum>(Type), static_cast<GLsizeiptr>(data.size() * sizeof(T)), data.data(), static_cast<GLenum>(usage));
 		this->length = data.size() * sizeof(T);
 		this->elementCount = static_cast<GLsizei>(data.size());
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
@@ -252,8 +250,8 @@ template<BufferType Type> template<class T, std::size_t i> inline void Buffer<Ty
 	}
 	if (this->buffer)
 	{
-		glBindBuffer(Type, this->buffer);
-		glBufferData(Type, static_cast<GLsizeiptr>(i) * sizeof(T), data.data(), static_cast<GLenum>(usage));
+		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+		glBufferData(static_cast<GLenum>(Type), static_cast<GLsizeiptr>(i) * sizeof(T), data.data(), static_cast<GLenum>(usage));
 		this->length = i * sizeof(T);
 		this->elementCount = static_cast<GLsizei>(data.size());
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
@@ -288,8 +286,8 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 {
 	if (this->buffer)
 	{
-		glBindBuffer(Type, this->buffer);
-		glBufferSubData(Type, offset, static_cast<GLsizeiptr>(sizeof(T)), &data);
+		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+		glBufferSubData(static_cast<GLenum>(Type), offset, static_cast<GLsizeiptr>(sizeof(T)), &data);
 	}
 }
 
@@ -318,8 +316,8 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
 			return;
 		}
-		glBindBuffer(Type, this->buffer);
-		glBufferSubData(Type, offset, static_cast<GLsizeiptr>(sizeof(T)) * data.size(), data.data());
+		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+		glBufferSubData(static_cast<GLenum>(Type), offset, static_cast<GLsizeiptr>(sizeof(T)) * data.size(), data.data());
 	}
 	else
 	{
@@ -367,5 +365,19 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::GenerateBu
 		begin++;
 	}
 }
+
+typedef Buffer<BufferType::ArrayBuffer> ArrayBuffer;
+typedef Buffer<BufferType::AtomicCounter> AtomicCounter;
+typedef Buffer<BufferType::CopyRead> CopyReadBuffer;
+typedef Buffer<BufferType::DispatchIndirect> DispatchIndirectBuffer;
+typedef Buffer<BufferType::DrawIndirect> DrawIndirectBuffer;
+typedef Buffer<BufferType::ElementArray> ElementArray;
+typedef Buffer<BufferType::PixelPack> PixelPackBuffer;
+typedef Buffer<BufferType::PixelUnpack> PixelUnpackBuffer;
+typedef Buffer<BufferType::QueryBuffer> QuerryBuffer;
+typedef Buffer<BufferType::ShaderStorage> ShaderStorageBuffer;
+typedef Buffer<BufferType::TextureBuffer> TextureBuffer;
+typedef Buffer<BufferType::TransformFeedback> TransformFeedback;
+typedef Buffer<BufferType::UniformBufferObject> UniformBufferObject;
 
 #endif // BUFFER_H

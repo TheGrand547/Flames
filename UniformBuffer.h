@@ -4,7 +4,7 @@
 #include "Buffer.h"
 #include "Shader.h"
 
-class UniformBuffer : public Buffer<UniformBufferObject>
+class UniformBuffer : public UniformBufferObject
 {
 private:
 	GLuint bufferBinding;

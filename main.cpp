@@ -181,13 +181,13 @@ static const std::array<GLubyte, 25> tesselationCode = {
 ASCIIFont fonter;
 
 // Buffers
-Buffer<ArrayBuffer> albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
-Buffer<ArrayBuffer> cubeMesh, movingCapsule, normalMapBuffer;
-Buffer<ArrayBuffer> pathNodePositions, pathNodeLines, guyLines, guyNodes;
-Buffer<ArrayBuffer> singleTri, splitTri;
-Buffer<ArrayBuffer> decals;
+ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
+ArrayBuffer pathNodePositions, pathNodeLines, guyLines, guyNodes;
+ArrayBuffer singleTri, splitTri;
+ArrayBuffer decals;
 
-Buffer<ElementArray> capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
+ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
 
@@ -209,7 +209,7 @@ CubeMap mapper;
 
 // Vertex Array Objects
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
-
+VAO nineSliced;
 
 // Not explicitly tied to OpenGL Globals
 std::mutex bufferMutex;
@@ -329,6 +329,7 @@ std::vector<Bullet> bullets;
 std::vector<TextureVertex> bigVertex;
 
 std::array<ScreenRect, 9> ui_tester;
+ArrayBuffer ui_tester_buffer;
 std::array<glm::vec4, 9> colors = { 
 	{
 		glm::vec4(  1,   1, 0.25, 1),
@@ -499,7 +500,7 @@ void display()
 	*/
 	// Triangle splitting test
 	triColor.SetActiveShader();
-	Buffer<ArrayBuffer>& triBuf = (featureToggle) ? singleTri : splitTri;
+	ArrayBuffer& triBuf = (featureToggle) ? singleTri : splitTri;
 	plainVAO.BindArrayObject();
 	plainVAO.BindArrayBuffer(triBuf);
 	triColor.DrawArray<DrawType::Triangle>(triBuf);
@@ -775,14 +776,8 @@ void display()
 
 	nineSlicer.SetActiveShader();
 	nineSlicer.SetTextureUnit("image", nineSlice);
-
-	for (int i = 0; i < 9; i++)
-	{
-		nineSlicer.SetInt("index", i);
-		nineSlicer.SetVec4("rectangle", ui_tester[i]);
-		nineSlicer.SetVec4("color", ::colors[i]);
-		nineSlicer.DrawArray<DrawType::TriangleStrip>(4);
-	}
+	nineSliced.BindArrayBuffer(ui_tester_buffer);
+	nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 
 
 	uiRectTexture.SetActiveShader();
@@ -1665,9 +1660,9 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
-	glm::vec2 deviation = glm::abs(glm::vec2(windowWidth, windowHeight) / 2.f - oldPos);
+	glm::ivec2 deviation = glm::ceil(glm::abs(glm::vec2(windowWidth, windowHeight) / 2.f - oldPos));
 	ui_tester = NineSliceGenerate(glm::vec2(windowWidth, windowHeight) / 2.f, deviation);
-	
+	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
 
 	if (Mouse::CheckButton(Mouse::ButtonRight))
@@ -2009,13 +2004,13 @@ void init()
 	instanceVAO.ArrayFormat<glm::mat4>(instancing, 1, 1);
 	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
 
-	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
-	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
-
 	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
 
+	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
 	normalVAO.ArrayFormat<NormalVertex>(flatLighting);
 
+	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
+	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 
 	plainVAO.ArrayFormat<Vertex>(uniform);
@@ -2360,7 +2355,7 @@ void init()
 	fonter.RenderToTexture(buttonA, "Soft", glm::vec4(0, 0, 0, 1));
 	fonter.RenderToTexture(buttonB, "Not", glm::vec4(0, 0, 0, 1));
 	
-	Buffer<ArrayBuffer> stored, stored2;
+	ArrayBuffer stored{}, stored2{};
 	auto sizeA = fonter.GetTextTris(stored, glm::vec2(0, 0), "Soft");
 	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Softer");
 
@@ -2376,22 +2371,18 @@ void init()
 	glViewport(0, 0, bufSize.x, bufSize.y);
 	EnableGLFeatures<Blending>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	ArrayBuffer rects;
+	rects.BufferData(sized, StaticDraw);
+
 	for (int j = 0; j < 2; j++)
 	{
 		auto& current = (j == 0) ? stored : stored2;
 		buffered.Bind();
 		buffered.GetColor().FillTexture(glm::vec4(0));
-		Buffer<ArrayBuffer> rects;
-		rects.BufferData(sized, StaticDraw);
 		nineSlicer.SetActiveShader();
+		nineSliced.BindArrayBuffer(rects);
 		nineSlicer.SetTextureUnit("image", nineSlice);
 		nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
-		/*
-		for (int i = 0; i < 9; i++)
-		{
-			nineSlicer.SetVec4("rectangle", sized[i]);
-			nineSlicer.DrawArray<DrawType::TriangleStrip>(4);
-		}*/
 		uiRectTexture.SetActiveShader();
 		uiRectTexture.SetVec4("rectangle", glm::vec4(0, 0, bufSize));
 		uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);

@@ -71,7 +71,7 @@ void ASCIIFont::Load(const std::string& filename, float fontSize, unsigned int s
 	ASCIIFont::LoadFont(*this, filename, fontSize, sampleX, sampleY, padding);
 }
 
-glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message) const
+glm::vec2 ASCIIFont::GetTextTris(ArrayBuffer& buffer, float x, float y, const std::string& message) const
 {
 	buffer.CleanUp();
 	std::vector<UIVertex> results{};
@@ -125,14 +125,14 @@ glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, 
 	return glm::vec2(width, height);
 }
 
-glm::vec2 ASCIIFont::GetTextTris(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message) const
+glm::vec2 ASCIIFont::GetTextTris(ArrayBuffer& buffer, const glm::vec2& coords, const std::string& message) const
 {
 	return this->GetTextTris(buffer, coords.x, coords.y, message);
 }
 
 void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
-	Buffer<ArrayBuffer> buffer;
+	ArrayBuffer buffer;
 	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
 	glm::vec4 empty{ 0 };
 	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA, backgroundColor);
@@ -181,7 +181,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 	Font::identity.SetTextureUnit(std::string("identity"), texture, 0);
 	Font::identity.DrawArray<DrawType::TriangleStrip>(4);
 
-	Buffer<ArrayBuffer> triBuffer;
+	ArrayBuffer triBuffer;
 	glm::ivec2 size = this->GetTextTris(triBuffer, 0, 0, message);
 	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(size.x), static_cast<float>(size.y), 0.f);
 	framebuffer.Bind();

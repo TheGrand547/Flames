@@ -39,8 +39,8 @@ public:
 	void Load(const std::string& filename, float fontSize, unsigned int sampleX = 1, unsigned int sampleY = 1, int padding = 1);
 
 	// Provide a buffer filled with the position and texture coordinates that with this font's texture can be draw to whatever target
-	glm::vec2 GetTextTris(Buffer<ArrayBuffer>& buffer, float x, float y, const std::string& message) const;
-	glm::vec2 GetTextTris(Buffer<ArrayBuffer>& buffer, const glm::vec2& coords, const std::string& message) const;
+	glm::vec2 GetTextTris(ArrayBuffer& buffer, float x, float y, const std::string& message) const;
+	glm::vec2 GetTextTris(ArrayBuffer& buffer, const glm::vec2& coords, const std::string& message) const;
 
 	// Standard framebuffer is set to active after this is called
 	ColorFrameBuffer Render(const std::string& message, const glm::vec4& textColor = glm::vec4(1), const glm::vec4& backgroundColor = glm::vec4(0)) const;

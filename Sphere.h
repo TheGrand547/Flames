@@ -25,13 +25,13 @@ struct Sphere
 
 	inline AABB GetAABB() const noexcept;
 
-	static void GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+	static void GenerateNormals(ArrayBuffer& verts, ElementArray& indicies,
 		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
-	static void GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+	static void GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
-	static void Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+	static void Generate(ArrayBuffer& verts, ElementArray& indicies,
 		const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
-	static void GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
+	static void GenerateLines(ElementArray& indicies, const std::uint8_t latitudeSlices = 18, const std::uint8_t longitudeSlices = 18) noexcept;
 };
 
 inline Sphere::Sphere(const float& radius, const glm::vec3& center) noexcept : center(center), radius(radius)

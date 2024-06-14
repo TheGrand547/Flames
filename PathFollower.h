@@ -23,7 +23,7 @@ public:
 	inline glm::mat4 GetNormalMatrix() const noexcept { return this->box.GetNormalMatrix(); }
 
 	// TODO: Make it not this dumbass
-	void Update(const float& timestep, std::vector<PathNodePtr>& pathNodes, StaticOctTree<OBB>& boxes, Buffer<ArrayBuffer>& guyNodes) noexcept;
+	void Update(const float& timestep, std::vector<PathNodePtr>& pathNodes, StaticOctTree<OBB>& boxes, ArrayBuffer& guyNodes) noexcept;
 };
 
 #endif // PATH_FOLLOWER_H

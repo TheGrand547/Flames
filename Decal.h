@@ -10,18 +10,18 @@
 class Decal
 {
 public:
-	template<class T> static Buffer<ArrayBuffer> GetDecal(const OBB& box, const StaticOctTree<T>& tree);
+	template<class T> static ArrayBuffer GetDecal(const OBB& box, const StaticOctTree<T>& tree);
 	template<class T> static void GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out);
 
 	// Clips triangles in the 2d plane to the range [-1, 1] x [-1, 1]
 	static std::vector<Triangle> ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale);
 };
 
-template<> inline Buffer<ArrayBuffer> Decal::GetDecal<OBB>(const OBB& box, const StaticOctTree<OBB>& tree)
+template<> inline ArrayBuffer Decal::GetDecal<OBB>(const OBB& box, const StaticOctTree<OBB>& tree)
 {
 	std::vector<TextureVertex> transformedResults{};
 	Decal::GetDecal(box, tree, transformedResults);
-	Buffer<ArrayBuffer> buffering;
+	ArrayBuffer buffering;
 	buffering.BufferData(transformedResults, StaticDraw);
 	return buffering;
 }

@@ -31,7 +31,7 @@ public:
 	// Assumes this->array is already bound
 	inline void BufferBindingPointDivisor(GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 
-	inline void BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
+	inline void BindArrayBuffer(ArrayBuffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
 	template<class V> inline void ArrayFormat(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 
@@ -65,7 +65,7 @@ inline void VertexArray::BufferBindingPointDivisor(GLuint bindingPoint, GLuint b
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 }
 
-inline void VertexArray::BindArrayBuffer(Buffer<ArrayBuffer>& buffer, GLuint bindingPoint, GLintptr offset)
+inline void VertexArray::BindArrayBuffer(ArrayBuffer& buffer, GLuint bindingPoint, GLintptr offset)
 {
 	glBindVertexArray(this->array);
 	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->strides[bindingPoint]);

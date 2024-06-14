@@ -19,7 +19,7 @@ glm::mat4 Sphere::GetNormalMatrix() const noexcept
 	return temp;
 }
 
-void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies, 
+void Sphere::GenerateNormals(ArrayBuffer& verts, ElementArray& indicies,
 									const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
@@ -82,7 +82,7 @@ void Sphere::GenerateNormals(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& i
 	indicies.BufferData(index, StaticDraw);
 }
 
-void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+void Sphere::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
@@ -151,7 +151,7 @@ void Sphere::GenerateMesh(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indi
 	indicies.BufferData(index, StaticDraw);
 }
 
-void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies,
+void Sphere::Generate(ArrayBuffer& verts, ElementArray& indicies,
 	const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
@@ -214,7 +214,7 @@ void Sphere::Generate(Buffer<ArrayBuffer>& verts, Buffer<ElementArray>& indicies
 	indicies.BufferData(index, StaticDraw);
 }
 
-void Sphere::GenerateLines(Buffer<ElementArray>& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
+void Sphere::GenerateLines(ElementArray& indicies, const std::uint8_t latitudeSlices, const std::uint8_t longitudeSlices) noexcept
 {
 	std::vector<unsigned int> index;
 	index.reserve(2 * std::size_t(2 * longitudeSlices - 1) * latitudeSlices);
