@@ -29,6 +29,7 @@
 #include "Lines.h"
 #include "log.h"
 #include "Model.h"
+#include "OBJReader.h"
 #include "OrientedBoundingBox.h"
 #include "Pathfinding.h"
 #include "PathFollower.h"
@@ -633,7 +634,7 @@ void display()
 	sphereMesh.SetTextureUnit("textureIn", texture, 0);
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
-	//sphereMesh.DrawElements<Triangle>(sphereIndicies);
+	sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
 	for (auto& bullet : bullets)
 	{
 		Model localModel;
@@ -2308,6 +2309,8 @@ void init()
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
+
+	//OBJReader::ReadOBJ("Models\\rock.obj", sphereBuffer, sphereIndicies);
 
 	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
 	catapult.SetRadius(0.25f);

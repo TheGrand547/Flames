@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;CLEANER_FUNCTIONS;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -126,12 +126,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <ExceptionHandling>false</ExceptionHandling>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
+      <UndefinePreprocessorDefinitions>OBJL_CONSOLE_OUTPUT</UndefinePreprocessorDefinitions>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -165,6 +166,7 @@
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="OBJReader.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="PathFollower.cpp" />
     <ClCompile Include="PathNode.cpp" />
@@ -209,6 +211,7 @@
     <ClInclude Include="Lines.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="OBJReader.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="PathFollower.h" />

@@ -24,14 +24,12 @@ uniform vec3 viewPos;
 void main()
 {
 	mat3 normalMat = mat3(Model); //mat3(transpose(inverse(Model)));
-	// TODO: Normal
-	fNorm = normalize(normalMat * vec3(0, 1, 0));
 	fPos = vec3(Model * vec4(vPos, 1.0));
 	gl_Position = Projection * View * Model * vec4(vPos, 1.0);
 	fTex = vTex;
 	
 	vec3 tangent = normalize(normalMat * vTan);
-	vec3 normal = fNorm;
+	vec3 normal = normalize(normalMat * vec3(0, 1, 0));
 	tangent = normalize(tangent - normal * dot(normal, tangent));
 	vec3 biTangent = cross(normal, tangent);
 	
