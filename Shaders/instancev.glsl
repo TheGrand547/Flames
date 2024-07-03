@@ -7,15 +7,19 @@ layout(location = 3) in vec3 vBtn;
 layout(location = 4) in mat4 Model;
 
 layout(location = 0) out vec3 fPos;
-layout(location = 1) out vec3 fNorm;
-layout(location = 2) out vec2 fTex;
-layout(location = 3) out mat3 fTBN;
+layout(location = 1) out vec2 fTex;
+layout(location = 2) out vec3 transformedLightPos;
+layout(location = 3) out vec3 transformedViewPos;
+layout(location = 4) out vec3 transformedFPos;
 
 layout(std140) uniform Camera
 {
 	mat4 View;
 	mat4 Projection;
 };
+
+uniform vec3 lightPos;
+uniform vec3 viewPos;
 
 void main()
 {
@@ -26,8 +30,14 @@ void main()
 	gl_Position = Projection * View * Model * vec4(vPos, 1.0);
 	fTex = vTex;
 	
-	vec3 tanget = normalize(normalMat * vTan);
-	vec3 biTangent = normalize(normalMat * vBtn);
+	vec3 tangent = normalize(normalMat * vTan);
+	vec3 normal = fNorm;
+	tangent = normalize(tangent - normal * dot(normal, tangent));
+	vec3 biTangent = cross(normal, tangent);
 	
-	fTBN = mat3(tanget, biTangent, fNorm);
+	mat3 TBN = transpose(mat3(tangent, biTangent, normal));
+	
+	transformedLightPos = TBN * lightPos;
+	transformedViewPos = TBN * viewPos;
+	transformedFPos = TBN * fPos;
 }

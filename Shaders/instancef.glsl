@@ -1,22 +1,21 @@
 #version 440 core
 
 layout(location = 0) in vec3 fPos;
-layout(location = 1) in vec3 fNorm;
-layout(location = 2) in vec2 fTex;
-layout(location = 3) in mat3 fBTN;
+layout(location = 1) in vec2 fTex;
+layout(location = 2) in vec3 transformedLightPos;
+layout(location = 3) in vec3 transformedViewPos;
+layout(location = 4) in vec3 transformedFPos;
 
 layout(location = 0) out vec4 colorOut;
 layout(location = 1) out vec4 normalOut;
 
 uniform vec3 lightColor;
-uniform vec3 lightPos;
-uniform vec3 viewPos;
 uniform sampler2D textureIn;
 uniform sampler2D normalMapIn;
 uniform sampler2D depthMapIn;
 uniform sampler2D ditherMap;
 
-uniform int flops;
+uniform int newToggle;
 
 void main()
 {
@@ -25,34 +24,22 @@ void main()
 	
 	vec3 ambientColor = lightColor * ambient;
 	vec3 viewDirection, norm;
-	if (flops != 0)
+	vec3 lightDir;// = normalize(lightPos - fPos);
+	vec2 samplePoint = fTex;
+	// Have to define lightDir, norm, and viewDirection
+	
+		
+	viewDirection = normalize(transformedViewPos - transformedFPos);
+	if (newToggle > 0)
 	{
-		mat3 invs = inverse(fBTN);
-		
-		viewDirection = normalize((invs * viewPos - invs * fPos));
-		float factor = 0.1f;
-		vec2 texLoc = (viewDirection.xy / viewDirection.z) * texture(depthMapIn, fTex).r * factor;
-		
-		if (flops != 0)
-			texLoc = fTex - texLoc;
-		else
-			texLoc = fTex;
-		//viewDirection = normalize(viewPos - fPos);
-		
-		norm = fNorm;
-		vec3 inNorm = normalize(texture(normalMapIn, texLoc).xyz * 2.0 - 1.0);
-		norm = fBTN * inNorm;
+		float depth = texture(depthMapIn, fTex).r;
+		samplePoint = fTex - viewDirection.xy * (depth * 0.1f);
+		//if (samplePoint.x > 1.0 || samplePoint.x < 0.0 || samplePoint.y > 1.0 || samplePoint.y < 0.0)
+			//discard;
 	}
-	else
-	{
-		norm = fNorm;
-		viewDirection = normalize(viewPos - fPos);
-	}
-	
-	
-	
-	vec3 lightDir = normalize(lightPos - fPos);
-	lightDir = vec3(0, 1, 0);
+	norm = texture(normalMapIn, samplePoint).rgb;
+	norm = 2 * norm - 1;
+	lightDir = normalize(transformedLightPos - transformedFPos);
 	
 	float diffuse = max(dot(norm, lightDir), 0.0);
 	vec3 diffuseColor = diffuse * lightColor;
@@ -62,8 +49,7 @@ void main()
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular;
 
-
-	vec3 color = vec3(texture(textureIn, fTex));
+	vec3 color = vec3(texture(textureIn, samplePoint));
 	
 	vec3 result = color * (ambientColor + diffuseColor + specularOut);
 	

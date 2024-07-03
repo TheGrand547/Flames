@@ -19,6 +19,8 @@ public:
 	PathFollower(const glm::vec3& position, const float& mass = 1.f) noexcept;
 	~PathFollower() noexcept;
 
+	inline glm::vec3 GetPosition() const noexcept { return this->box.Center(); }
+
 	inline glm::mat4 GetModelMatrix()  const noexcept { return this->box.GetNormalMatrix(); }
 	inline glm::mat4 GetNormalMatrix() const noexcept { return this->box.GetNormalMatrix(); }
 

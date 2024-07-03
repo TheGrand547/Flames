@@ -381,13 +381,13 @@ void display()
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	instancing.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+	instancing.SetVec3("lightPos", followed.GetPosition());
 	instancing.SetVec3("viewPos", cameraPosition);
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
 	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
-	instancing.SetInt("flops", true);
+	instancing.SetInt("newToggle", featureToggle);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	// Maybe move this elsewhere
