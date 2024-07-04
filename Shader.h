@@ -102,6 +102,7 @@ public:
 	inline void SetVec3(const std::string& name, const glm::vec3& vec) const;
 	inline void SetVec4(const std::string& name, const glm::vec4& vec) const;
 	inline void SetMat4(const std::string& name, const glm::mat4& mat) const;
+	inline void SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const;
 	inline void SetTextureUnit(const std::string& name, const GLuint unit = 0) const;
 	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit = 0) const;
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
@@ -183,6 +184,11 @@ inline void Shader::SetVec4(const std::string& name, const glm::vec4& vec) const
 inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 {
 	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+}
+
+inline void Shader::SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const
+{
+	glUniformMatrix4fv(this->UniformIndex(name), mats.size(), GL_FALSE, glm::value_ptr(*mats.data()));
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit) const

@@ -7,6 +7,12 @@
 #include <vector>
 #include "log.h"
 
+#ifdef RELEASE
+#define EXIT
+#else // RELEASE
+#define EXIT exit(-1)
+#endif // RELEASE
+
 static std::map<std::string, std::string> shaderIncludeMapping;
 static std::string shaderBasePath = "";
 static bool Recompile = false;
@@ -75,6 +81,7 @@ static GLuint CompileShader(GLenum type, std::string data)
 		infoLog[length] = '\0';
 		glGetShaderInfoLog(vertex, length, NULL, infoLog.get());
 		std::cout << "Compilation of Shader failed\n" << std::string(infoLog.get()) << std::endl;
+		EXIT;
 		return 0; // Error Code
 	}
 	return vertex;
@@ -187,6 +194,7 @@ bool Shader::ProgramStatus()
 		logMsg[logSize] = '\0';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cerr << "Linking of shader failed: " << logMsg.get() << std::endl;
+		EXIT;
 		this->program = 0;
 	}
 	GLint logSize;
@@ -198,6 +206,7 @@ bool Shader::ProgramStatus()
 		logMsg[logSize + 1] = '\n';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cout << "Program Log: " << logMsg.get() << std::endl;
+		EXIT;
 	}
 	this->compiled = result;
 	return result;
@@ -305,6 +314,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
 		std::cerr << "One or more of the shader files missing for '" << name << "'" << std::endl;
+		EXIT;
 		return false;
 	}
 

@@ -202,6 +202,7 @@ Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, groun
 Shader triColor, decalShader;
 Shader pathNodeView, stencilTest;
 Shader nineSlicer;
+Shader skinner;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -211,6 +212,7 @@ CubeMap mapper;
 // Vertex Array Objects
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
 VAO nineSliced;
+VAO instanceVAO2;
 
 // Not explicitly tied to OpenGL Globals
 std::mutex bufferMutex;
@@ -352,6 +354,10 @@ New shading outputs
 
 */
 
+std::array<glm::mat4, 2> skinMats;
+ArrayBuffer skinBuf;
+ElementArray skinArg;
+
 void display()
 {
 	auto displayStart = std::chrono::high_resolution_clock::now();
@@ -469,6 +475,16 @@ void display()
 	uniform.SetMat4("Model", m22.GetModelMatrix());
 	uniform.SetVec3("color", colors);
 	uniform.DrawElements<DrawType::LineStrip>(stickIndicies);
+
+	DisableGLFeatures<FaceCulling>();
+	skinner.SetActiveShader();
+	instanceVAO2.BindArrayObject();
+	instanceVAO2.BindArrayBuffer(texturedPlane, 0);
+	skinner.SetMat4s("mats", std::span{skinMats});
+	skinner.SetTextureUnit("textureIn", wallTexture, 0);
+	skinArg.BindBuffer();
+	skinner.DrawElementsInstanced<DrawType::Triangle>(skinArg, skinBuf);
+	EnableGLFeatures<FaceCulling>();
 
 	/*
 	DisableGLFeatures<FaceCulling>();
@@ -1978,8 +1994,8 @@ void init()
 	uniform.CompileSimple("uniform");
 	widget.CompileSimple("widget");
 	ground.CompileSimple("ground_");
-
 	stencilTest.CompileSimple("stencil_");
+	skinner.CompileSimple("skin");
 
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
@@ -1987,6 +2003,7 @@ void init()
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
 	pathNodeView.UniformBlockBinding("Camera", 0);
+	skinner.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);
 	triColor.UniformBlockBinding("Camera", 0);
@@ -1997,27 +2014,27 @@ void init()
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
 
+	CheckError();
 	// VAO SETUP
 	decalVAO.ArrayFormat<TextureVertex>(decalShader);
 	fontVAO.ArrayFormat<UIVertex>(fontShader);
-	
+	CheckError();
 	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
 	instanceVAO.ArrayFormat<glm::mat4>(instancing, 1, 1);
 	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
-
 	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
-
+	CheckError();
 	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
 	normalVAO.ArrayFormat<NormalVertex>(flatLighting);
-
+	CheckError();
 	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
-
+	CheckError();
 	plainVAO.ArrayFormat<Vertex>(uniform);
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
-
+	CheckError();
 	// TEXTURE SETUP
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	Texture::SetBasePath("Textures");
@@ -2200,7 +2217,7 @@ void init()
 		}
 	}
 	albertBuffer.BufferData(textVert, StaticDraw);
-
+	CheckError();
 	// Decal stuff
 	orbing.ReCenter(glm::vec3(1, 0.25, 3));
 	orbing.ReScale(glm::vec3(0.5f));
@@ -2210,6 +2227,15 @@ void init()
 		decals = Decal::GetDecal(orbing, boxes);
 	}
 
+	// SKINNING
+	skinMats.fill(glm::mat4(1));
+	skinMats[0][3] = glm::vec4(0, 2, 0, 1);
+	skinMats[1][3] = glm::vec4(4, 3, 0, 1);
+	std::array<float, 3> dummy{1.f};
+	skinBuf.BufferData(dummy, StaticDraw);
+	instanceVAO2.ArrayFormat<TextureVertex>(skinner);
+	std::vector<GLuint> grs = { 3, 2, 1, 0, 1, 2 };
+	skinArg.BufferData(grs);
 
 	// =============================================================
 	// Pathfinding stuff

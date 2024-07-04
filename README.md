@@ -7,6 +7,6 @@ Going for a vaguely cartoony aesthetic currently but unsure how it'll develop.
 # Compilation
 Requires GLEW, FreeGLUT, and GLM to compile, only tested on Windows with Visual Studio 2022
 
-C++20 features are used primarily to allow for compile time optimizations using `constexpr` 
+Also uses https://github.com/Bly7/OBJ-Loader/tree/master for OBJ Loading
 
 Using OpenGL Core Profile 4.6
