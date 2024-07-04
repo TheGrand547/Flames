@@ -356,6 +356,7 @@ New shading outputs
 
 std::array<glm::mat4, 2> skinMats;
 ArrayBuffer skinBuf;
+ArrayBuffer skinVertex;
 ElementArray skinArg;
 
 void display()
@@ -479,11 +480,11 @@ void display()
 	DisableGLFeatures<FaceCulling>();
 	skinner.SetActiveShader();
 	instanceVAO2.BindArrayObject();
-	instanceVAO2.BindArrayBuffer(texturedPlane, 0);
+	instanceVAO2.BindArrayBuffer(skinVertex, 0);
 	skinner.SetMat4s("mats", std::span{skinMats});
 	skinner.SetTextureUnit("textureIn", wallTexture, 0);
 	skinArg.BindBuffer();
-	skinner.DrawElementsInstanced<DrawType::Triangle>(skinArg, skinBuf);
+	skinner.DrawElements<DrawType::Triangle>(skinArg);
 	EnableGLFeatures<FaceCulling>();
 
 	/*
@@ -1430,6 +1431,19 @@ void idle()
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
+	skinMats.fill(glm::mat4(1));
+	skinMats[0][3] = glm::vec4(0, 0, 0, 1);
+	skinMats[1][3] = glm::vec4(-4, 2 * glm::cos(frameCounter / 100.f), 3 * glm::sin(frameCounter * 3 / 100.f), 1);
+	glm::mat4 toDie(1);
+	toDie[3] = glm::vec4(1, 0, 0, 1);
+	toDie = glm::inverse(toDie);
+	skinMats[0] = toDie * skinMats[0];
+	toDie = glm::mat4(1);
+	toDie[3] = glm::vec4(-5, 0, 0, 1);
+	toDie = glm::inverse(toDie);
+	skinMats[1] = toDie * skinMats[1];
+
+
 	// BSP Testing visualizations
 	/*
 	glm::mat3 toTrans{ glm::vec3(0), glm::vec3(-.5f, 1, 0), glm::vec3(0.5, 1, 0) };
@@ -2228,13 +2242,29 @@ void init()
 	}
 
 	// SKINNING
-	skinMats.fill(glm::mat4(1));
-	skinMats[0][3] = glm::vec4(0, 2, 0, 1);
-	skinMats[1][3] = glm::vec4(4, 3, 0, 1);
 	std::array<float, 3> dummy{1.f};
 	skinBuf.BufferData(dummy, StaticDraw);
 	instanceVAO2.ArrayFormat<TextureVertex>(skinner);
-	std::vector<GLuint> grs = { 3, 2, 1, 0, 1, 2 };
+	std::vector<GLuint> grs = {
+		0, 1, 2, 1, 2, 3,
+		2, 3, 4, 3, 4, 5,
+		4, 5, 6, 5, 6, 7,
+	};
+	//std::vector<GLuint> grs = { 0, 2, 3, 1, 0, 3 };
+	std::vector<TextureVertex> bosp;
+	std::vector<glm::vec3> pogd = {
+		glm::vec3(1, 0, 1),
+		glm::vec3(1, 0, -1),
+		glm::vec3(-1, 0, 1),
+		glm::vec3(-1, 0, -1),
+		glm::vec3(-3, 0,  1),
+		glm::vec3(-3, 0, -1),
+		glm::vec3(-5, 0, 1),
+		glm::vec3(-5, 0, -1),
+	};
+	for (auto a : pogd) { bosp.push_back({ a, glm::vec2() }); }
+	skinVertex.BufferData(bosp);
+
 	skinArg.BufferData(grs);
 
 	// =============================================================

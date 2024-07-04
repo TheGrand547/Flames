@@ -19,23 +19,19 @@ vec2 weights[] =
 {
 	vec2(1, 0),
 	vec2(1, 0),
-	vec2(0.5, 0.5),
-	vec2(0.5, 0.5),
+	vec2(0.75, 0.25),
 	
-	vec2(0.5, 0.5),
-	vec2(0.5, 0.5),
-	vec2(0.5, 0.5),
-	vec2(0.5, 0.5),
+	vec2(0.75, 0.25),
+	vec2(0.25, 0.75),
 	
-	vec2(0.5, 0.5),
-	vec2(0.5, 0.5),
+	vec2(0.25, 0.75),
 	vec2(0, 1),
 	vec2(0, 1),
 };
 
 void main()
 {
-	int index = (gl_InstanceID * 4 + gl_VertexID) % 12;
+	int index = gl_VertexID % 8;
 
 	const int count = 2;
 	vec4 temp = vec4(0);
@@ -43,6 +39,7 @@ void main()
 	{
 		temp += mats[i] * vec4(vPos, 1) * weights[index][i];
 	}
+	temp += vec4(0, 4, 0, 0);
 	fPos = temp.xyz;
 	gl_Position = Projection * View * temp;
 	
