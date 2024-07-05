@@ -53,7 +53,7 @@ void main()
 	
 	vec3 result = color * (ambientColor + diffuseColor + specularOut);
 	
-	normalOut = vec4(abs(norm), 1);
+	normalOut = vec4(norm / 2.0 + 0.5, 1);
 	
 	// Dither stuff
 	float dither = texture(ditherMap, gl_FragCoord.xy / 16).r;

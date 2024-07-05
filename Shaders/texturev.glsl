@@ -1,14 +1,21 @@
 #version 440 core
 
-in vec3 pos;
-in vec2 tex;
+layout(location = 0) in vec3 vPos;
+layout(location = 1) in vec2 vTex;
 
-out vec2 texCoord;
+layout(location = 0) out vec2 fTex;
 
-uniform mat4 mvp;
+layout(std140) uniform Camera
+{
+	mat4 View;
+	mat4 Projection;
+};
+
+uniform vec3 position;
+uniform mat4 orient;
 
 void main()
 {
-	gl_Position = mvp * vec4(pos, 1.0);
-	texCoord = tex;
+	gl_Position = Projection * View * (vec4(position, 0) + orient * vec4(vPos, 1.0));
+	fTex = vTex;
 }

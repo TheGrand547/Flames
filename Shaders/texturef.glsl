@@ -1,12 +1,12 @@
 #version 440 core
 
-in vec2 texCoord;
+layout(location = 0) in vec2 fTex;
 
-out vec4 fColor;
+layout(location = 0) out vec4 fColor;
 
 uniform sampler2D sampler;
 
 void main()
 {
-	fColor = texture(sampler, texCoord);
+	fColor = texture(sampler, fTex);
 }

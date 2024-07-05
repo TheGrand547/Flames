@@ -203,6 +203,7 @@ Shader triColor, decalShader;
 Shader pathNodeView, stencilTest;
 Shader nineSlicer;
 Shader skinner;
+Shader billboardS;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -359,6 +360,8 @@ ArrayBuffer skinBuf;
 ArrayBuffer skinVertex;
 ElementArray skinArg;
 
+ArrayBuffer billboard;
+
 void display()
 {
 	auto displayStart = std::chrono::high_resolution_clock::now();
@@ -384,7 +387,6 @@ void display()
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
-
 	
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
@@ -485,8 +487,17 @@ void display()
 	skinner.SetTextureUnit("textureIn", wallTexture, 0);
 	skinArg.BindBuffer();
 	skinner.DrawElements<DrawType::Triangle>(skinArg);
-	EnableGLFeatures<FaceCulling>();
+	
 
+
+	billboardS.SetActiveShader();
+	texturedVAO.BindArrayBuffer(billboard);
+	billboardS.SetTextureUnit("sampler", texture, 0);
+	billboardS.SetVec3("position", glm::vec3(3, 0, 0));
+	auto gd = glm::eulerAngleY(-angles2.y);
+	billboardS.SetMat4("orient", gd);
+	billboardS.DrawArray<DrawType::TriangleStrip>(billboard);
+	EnableGLFeatures<FaceCulling>();
 	/*
 	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
@@ -1992,25 +2003,28 @@ void init()
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders");
+	billboardS.CompileSimple("texture");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
 	expand.Compile("framebuffer", "expand");
-	fontShader.CompileSimple("font");
 	flatLighting.CompileSimple("lightflat");
+	fontShader.CompileSimple("font");
 	frameShader.CompileSimple("framebuffer");
+	ground.CompileSimple("ground_");
 	instancing.CompileSimple("instance");
 	nineSlicer.CompileSimple("ui_nine");
 	pathNodeView.CompileSimple("path_node");
+	skinner.CompileSimple("skin");
 	sphereMesh.CompileSimple("mesh");
+	stencilTest.CompileSimple("stencil_");
 	triColor.CompileSimple("tri_color");
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
 	widget.CompileSimple("widget");
-	ground.CompileSimple("ground_");
-	stencilTest.CompileSimple("stencil_");
-	skinner.CompileSimple("skin");
 
+
+	billboardS.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
@@ -2266,6 +2280,15 @@ void init()
 	skinVertex.BufferData(bosp);
 
 	skinArg.BufferData(grs);
+
+	for (auto& point : verts)
+	{
+		point.position = glm::mat3(glm::eulerAngleZ(glm::radians(-90.f))) * point.position;
+		point.position += glm::vec3(0, 1.f, 0);
+	}
+	billboard.BufferData(verts);
+
+
 
 	// =============================================================
 	// Pathfinding stuff
