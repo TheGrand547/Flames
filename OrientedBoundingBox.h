@@ -93,6 +93,9 @@ public:
 	bool OverlapCompleteResponse(const OrientedBoundingBox& other) noexcept;
 
 
+	// TODO: OBB x Triangle interesection 
+	// TODO: Standardize intersection vs Overlap or something idk
+
 	inline bool Overlap(const Sphere& other) const noexcept;
 	bool Overlap(const Sphere& other, Collision& collision) const noexcept;
 

@@ -1,6 +1,9 @@
 #include "PathFollower.h"
 #include "Pathfinding.h"
 
+std::vector<PathNodePtr> PathFollower::PathNodes;
+ArrayBuffer PathFollower::latestPathBuffer;
+
 PathFollower::PathFollower(const glm::vec3& position, const float& mass) noexcept : physics(position, mass)
 {
 	this->box.ReCenter(position);
@@ -12,7 +15,21 @@ PathFollower::~PathFollower() noexcept
 	this->path.clear();
 }
 
-void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathNodes, StaticOctTree<OBB>& boxes, ArrayBuffer& guyNodes) noexcept
+PathFollower& PathFollower::operator=(const PathFollower& other) noexcept
+{
+	if (this != &other)
+	{
+		this->path.clear();
+		this->box = other.box;
+		this->capsule.SetCenter(other.capsule.GetCenter());
+		this->physics = other.physics;
+		this->path.reserve(other.path.size());
+		std::copy(other.path.begin(), other.path.end(), std::back_inserter(this->path));
+	}
+	return *this;
+}
+
+void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& boxes) noexcept
 {
 	if (this->path.size() == 0)
 	{
@@ -20,7 +37,7 @@ void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathN
 		glm::vec3 center = this->capsule.GetCenter();
 		PathNodePtr start = nullptr, end = nullptr;
 		float minDist = INFINITY;
-		for (auto& possible : pathNodes)
+		for (auto& possible : PathNodes)
 		{
 			if (glm::distance(center, possible->GetPosition()) < minDist)
 			{
@@ -30,7 +47,7 @@ void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathN
 		}
 		if (start)
 		{
-			end = pathNodes[std::rand() % pathNodes.size()];
+			end = PathNodes[std::rand() % PathNodes.size()];
 			this->path = AStarSearch<PathNode>(start, end,
 				[](const PathNode& a, const PathNode& b)
 				{
@@ -45,7 +62,7 @@ void PathFollower::Update(const float& timestep, std::vector<PathNodePtr>& pathN
 				positions.push_back(this->path[i]->GetPosition());
 				lines.push_back(this->path[i]->GetPosition());
 			}
-			guyNodes.BufferData(positions, StaticDraw);
+			latestPathBuffer.BufferData(positions, StaticDraw);
 		}
 	}
 	else

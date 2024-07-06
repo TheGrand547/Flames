@@ -184,7 +184,7 @@ ASCIIFont fonter;
 // Buffers
 ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
-ArrayBuffer pathNodePositions, pathNodeLines, guyLines, guyNodes;
+ArrayBuffer pathNodePositions, pathNodeLines, guyLines;
 ArrayBuffer singleTri, splitTri;
 ArrayBuffer decals;
 
@@ -326,7 +326,7 @@ struct Bullet
 
 PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
-std::vector<PathNodePtr> pathNodes{};
+std::vector<PathFollower> followers;
 
 std::vector<Bullet> bullets;
 
@@ -347,6 +347,8 @@ std::array<glm::vec4, 9> colors = {
 		glm::vec4(  0,   0, 0.25, 1),
 	} 
 };
+
+//std::size_t totalCount = 0, repeatCount = 0;
 
 /*
 New shading outputs
@@ -377,12 +379,7 @@ void display()
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	DisableGLFeatures<StencilTesting>();
-	/*
-	EnableGLFeatures<StencilTesting>();
-	glStencilFunc(GL_ALWAYS, 0x00, 0xFF);
-	glStencilMask(0xFF);
-	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
-	*/
+	
 	// Camera matrix
 	glm::vec3 cameraRadians = glm::radians(cameraRotation);
 
@@ -457,17 +454,17 @@ void display()
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.BindArrayObject();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
-		pathNodeVAO.BindArrayBuffer(guyNodes, 1);
+		pathNodeVAO.BindArrayBuffer(PathFollower::latestPathBuffer, 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 
-		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, guyNodes);
+		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, PathFollower::latestPathBuffer);
 
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
-		plainVAO.BindArrayBuffer(guyNodes);
+		plainVAO.BindArrayBuffer(PathFollower::latestPathBuffer);
 		glLineWidth(10.f);
-		uniform.DrawArray<DrawType::LineStrip>(guyNodes);
+		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
 		EnableDepthBufferWrite();
 	}
 
@@ -501,26 +498,19 @@ void display()
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 	glm::vec3 fod = cameraOrientation[0];
-	//for (int i = 0 ; i < 4; i++)
-	for (glm::vec3 billboardPosition: billboards)
+
+	//for (glm::vec3 billboardPosition: billboards)
+	for (auto& following : followers)
 	{
-		billboardShader.SetActiveShader();
-		texturedVAO.BindArrayBuffer(billboardBuffer);
-		billboardShader.SetTextureUnit("sampler", texture, 0);
-		auto billboardDelta = cameraPosition - billboardPosition;
-
-		glm::vec3 fod = cameraOrientation[0];
-
+		glm::vec3 billboardPosition = following.GetPosition();
+		glm::vec3 billboardDelta = cameraPosition - billboardPosition;
 		glm::vec3 up = glm::vec3(0, 1, 0);
-
 		glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
 		glm::vec3 forward = glm::normalize(glm::cross(right, up));
 		glm::mat4 tempMatrix{ glm::mat3(forward, up, right)};
 		tempMatrix = glm::transpose(tempMatrix);
 		tempMatrix[3] = glm::vec4(billboardPosition, 1);
 		tempMatrix[2] *= 0.5f;
-		auto dep = glm::eulerAngleY(-glm::atan2(billboardDelta.z, billboardDelta.x));
-		// To get "ad-hoc" billboarding do dep * yCameraMatrix, rotates with camera rotation but not movement
 		billboardShader.SetMat4("orient", tempMatrix);
 		billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
 	}
@@ -1446,12 +1436,12 @@ void idle()
 		}
 		Capsule example;
 		example.SetTotalLength(2.f);
-		for (int j = 0; j < billboards.size(); j++)
+		for (int j = 0; j < followers.size(); j++)
 		{
-			example.SetCenter(billboards[j] + glm::vec3(0, 1, 0));
+			example.SetCenter(followers[j].GetPosition());
 			if (example.Intersect(gamin))
 			{
-				billboards.erase(billboards.begin() + j);
+				followers.erase(followers.begin() + j);
 				gamin.center = glm::vec3(-100.f);
 				j--;
 				continue;
@@ -1460,7 +1450,11 @@ void idle()
 		bullets[i].position = gamin.center;
 	}
 
-	followed.Update(timeDelta, pathNodes, boxes, guyNodes);
+	followed.Update(timeDelta, boxes);
+	for (auto& follow : followers)
+	{
+		follow.Update(timeDelta, boxes);
+	}
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
@@ -1995,6 +1989,7 @@ int main(int argc, char** argv)
 		glfwPollEvents();
 	}
 	// TODO: cleanup
+
 	return 0;
 }
 
@@ -2208,7 +2203,7 @@ void init()
 		glm::vec3 forawrd = project.Up();
 		if (glm::dot(forawrd, GravityUp) > 0.5f)
 		{
-			pathNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
+			PathFollower::PathNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
 		project.Scale(glm::vec3(1, 0, 1));
@@ -2219,7 +2214,7 @@ void init()
 	}
 	{
 		QuickTimer _tim("Node Culling");
-		std::erase_if(pathNodes,
+		std::erase_if(PathFollower::PathNodes,
 			[&](const PathNodePtr& A)
 			{
 				AABB boxer{};
@@ -2306,34 +2301,30 @@ void init()
 	for (auto& point : verts)
 	{
 		point.position = glm::mat3(glm::eulerAngleZY(glm::radians(90.f), glm::radians(-90.f))) * point.position;
-		point.position += glm::vec3(0, 1.f, 0);
+		//point.position += glm::vec3(0, 1.f, 0);
 	}
 	billboardBuffer.BufferData(verts);
 	for (int i = 0; i < 10; i++)
 	{
 		billboards.emplace_back(2, 2, 5 - 2 * i);
 	}
-
+	for (int i = 0; i < 10; i++)
+	{
+		glm::vec2 base = glm::diskRand(20.f);
+		followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
+	}
 
 	// =============================================================
 	// Pathfinding stuff
-	for (int x = 0; x < 7; x++)
-	{
-		for (int y = 0; y < 7; y++)
-		{
-			//pathNodes.push_back(PathNode::MakeNode(2.f * glm::vec3(x - 4, 0.5, y - 4)));
-		}
-	}
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
-	
 	{
 		QuickTimer _timer("Node Connections");
-		for (std::size_t i = 0; i < pathNodes.size(); i++)
+		for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
 		{
-			for (std::size_t j = i + 1; j < pathNodes.size(); j++)
+			for (std::size_t j = i + 1; j < PathFollower::PathNodes.size(); j++)
 			{
-				PathNode::addNeighbor(pathNodes[i], pathNodes[j],
+				PathNode::addNeighbor(PathFollower::PathNodes[i], PathFollower::PathNodes[j],
 					[&](const PathNodePtr& A, PathNodePtr& B)
 					{
 						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
@@ -2358,10 +2349,10 @@ void init()
 			}
 		}
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
-		std::erase_if(pathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
-		for (std::size_t i = 0; i < pathNodes.size(); i++)
+		std::erase_if(PathFollower::PathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
+		for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
 		{
-			auto& local = pathNodes[i];
+			auto& local = PathFollower::PathNodes[i];
 			auto localBoys = local->neighbors();
 			for (std::size_t j = 0; j < localBoys.size(); j++)
 			{
@@ -2385,7 +2376,7 @@ void init()
 
 
 	
-	for (auto& autod : pathNodes)
+	for (auto& autod : PathFollower::PathNodes)
 	{
 		boxingDay.push_back(autod->GetPosition());
 		for (auto& weak : autod->neighbors())
@@ -2402,9 +2393,6 @@ void init()
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
 
-
-	//pathTestGuy.box.ReCenter(glm::vec3(0, 0.5f, 0));
-	//pathTestGuy.capsule.Translate(glm::vec3(0, 0.5f, 0));
 	// =============================================================
 
 	{
@@ -2467,7 +2455,7 @@ void init()
 	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Softer");
 
 	ColorFrameBuffer buffered;
-	glm::ivec2 bufSize = glm::max(sizeA, sizeB) + glm::vec2(10);
+	glm::ivec2 bufSize = glm::max(sizeA, sizeB) + glm::vec2(20);
 	buffered.GetColor().CreateEmpty(bufSize.x, bufSize.y);
 	buffered.Assemble();
 	auto sized = NineSliceGenerate(glm::ivec2(0, 0), bufSize);

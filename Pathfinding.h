@@ -86,7 +86,6 @@ template<SearchNode Node, typename T>
 		openSet.pop_back();
 		if (closedSet.find(current) != closedSet.end())
 		{
-			std::cout << "Repeat detected" << std::endl;
 			continue;
 		}
 		if (current == target)
