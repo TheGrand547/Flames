@@ -23,7 +23,7 @@ bool Capsule::Intersect(const Capsule& other, Collision& hit) const noexcept
 	float distance = this->line.Distance(other.line, bestA, bestB);
 	hit.normal = glm::normalize(bestB - bestA);
 	hit.distance = this->radius + other.radius - distance; // How far into this capsule the other is
-	hit.point = bestB + other.radius * hit.normal; // The point of other furthest into the 
+	hit.point = bestB + other.radius * hit.normal; // The point of other furthest into this
 	return distance > 0;
 }
 

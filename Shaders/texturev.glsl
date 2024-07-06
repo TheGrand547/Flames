@@ -11,11 +11,10 @@ layout(std140) uniform Camera
 	mat4 Projection;
 };
 
-uniform vec3 position;
 uniform mat4 orient;
 
 void main()
 {
-	gl_Position = Projection * View * (vec4(position, 0) + orient * vec4(vPos, 1.0));
+	gl_Position = Projection * View * orient * vec4(vPos, 1.0);
 	fTex = vTex;
 }

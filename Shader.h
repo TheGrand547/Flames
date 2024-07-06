@@ -188,7 +188,7 @@ inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const
 
 inline void Shader::SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const
 {
-	glUniformMatrix4fv(this->UniformIndex(name), mats.size(), GL_FALSE, glm::value_ptr(*mats.data()));
+	glUniformMatrix4fv(this->UniformIndex(name), static_cast<GLsizei>(mats.size()), GL_FALSE, glm::value_ptr(*mats.data()));
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit) const

@@ -23,7 +23,10 @@ public:
 	inline void Translate(const glm::vec3& delta) noexcept;
 	inline void SetRadius(const float& value) noexcept;
 	
-	inline void SetLength(const float& length) noexcept;
+	inline void SetLineLength(const float& length) noexcept;
+
+	// Reduces the length by twice the radius
+	inline void SetTotalLength(const float& length) noexcept;
 
 	AABB GetAABB() const noexcept;
 
@@ -80,13 +83,17 @@ inline void Capsule::SetRadius(const float& value) noexcept
 	this->radius = value;
 }
 
-// GRRR
-inline void Capsule::SetLength(const float& length) noexcept
+inline void Capsule::SetLineLength(const float& length) noexcept
 {
 	glm::vec3 center = this->GetCenter();
 	glm::vec3 dir = glm::normalize(this->line.Direction()) * length / 2.f;
 	this->line.A = center + dir;
 	this->line.B = center - dir;
+}
+
+inline void Capsule::SetTotalLength(const float& length) noexcept
+{
+	this->SetLineLength(glm::max(0.f, length - 2 * this->radius));
 }
 
 inline float Capsule::GetRadius() const noexcept

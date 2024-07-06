@@ -203,7 +203,7 @@ Shader triColor, decalShader;
 Shader pathNodeView, stencilTest;
 Shader nineSlicer;
 Shader skinner;
-Shader billboardS;
+Shader billboardShader;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -360,11 +360,13 @@ ArrayBuffer skinBuf;
 ArrayBuffer skinVertex;
 ElementArray skinArg;
 
-ArrayBuffer billboard;
+ArrayBuffer billboardBuffer;
+std::vector<glm::vec3> billboards;
+
 
 void display()
 {
-	auto displayStart = std::chrono::high_resolution_clock::now();
+	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//depthed.Bind();
 	glViewport(0, 0, windowWidth, windowHeight);
@@ -382,10 +384,11 @@ void display()
 	glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE);
 	*/
 	// Camera matrix
-	glm::vec3 angles2 = glm::radians(cameraRotation);
+	glm::vec3 cameraRadians = glm::radians(cameraRotation);
 
 	// Adding pi/2 is necessary because the default camera is facing -z
-	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(angles2.x, angles2.y + glm::half_pi<float>(), angles2.z), -cameraPosition);
+	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
+									-cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 	DisableGLFeatures<Blending>();
@@ -486,36 +489,40 @@ void display()
 	skinner.SetMat4s("mats", std::span{skinMats});
 	skinner.SetTextureUnit("textureIn", wallTexture, 0);
 	skinArg.BindBuffer();
-	skinner.DrawElements<DrawType::Triangle>(skinArg);
+	//skinner.DrawElements<DrawType::Triangle>(skinArg);
 	
 
 	EnableGLFeatures<FaceCulling>();
-	billboardS.SetActiveShader();
-	texturedVAO.BindArrayBuffer(billboard);
-	billboardS.SetTextureUnit("sampler", texture, 0);
-	auto gd = glm::eulerAngleY(-angles2.y);
-	billboardS.SetMat4("orient", gd);
+	billboardShader.SetActiveShader();
+	texturedVAO.BindArrayBuffer(billboardBuffer);
+	billboardShader.SetTextureUnit("sampler", texture, 0);
+	auto yCameraMatrix = glm::eulerAngleY(-cameraRadians.y);
+	billboardShader.SetMat4("orient", yCameraMatrix);
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 	glm::vec3 fod = cameraOrientation[0];
-	for (int i = 0 ; i < 4; i++)
+	//for (int i = 0 ; i < 4; i++)
+	for (glm::vec3 billboardPosition: billboards)
 	{
-		auto lsd = glm::vec3(2, 2, 4 - 2 * i);
-		auto dif = cameraPosition - lsd;
+		billboardShader.SetActiveShader();
+		texturedVAO.BindArrayBuffer(billboardBuffer);
+		billboardShader.SetTextureUnit("sampler", texture, 0);
+		auto billboardDelta = cameraPosition - billboardPosition;
 
 		glm::vec3 fod = cameraOrientation[0];
 
-		glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), dif));
-		glm::vec3 forward = glm::normalize(glm::cross(right, glm::vec3(0, 1, 0)));
-		glm::mat4 cor{ glm::mat3(forward, glm::vec3(0, 1.f, 0), right)};
-		cor = glm::transpose(cor);
+		glm::vec3 up = glm::vec3(0, 1, 0);
 
-		auto dep = glm::eulerAngleY(-glm::atan2(dif.z, dif.x));
-		// To get "ad-hoc" billboarding do dep * gd, rotates with camera rotation but not movement
-		billboardS.SetMat4("orient", cor);
-
-		billboardS.SetVec3("position", lsd);
-		billboardS.DrawArray<DrawType::TriangleStrip>(billboard);
+		glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
+		glm::vec3 forward = glm::normalize(glm::cross(right, up));
+		glm::mat4 tempMatrix{ glm::mat3(forward, up, right)};
+		tempMatrix = glm::transpose(tempMatrix);
+		tempMatrix[3] = glm::vec4(billboardPosition, 1);
+		tempMatrix[2] *= 0.5f;
+		auto dep = glm::eulerAngleY(-glm::atan2(billboardDelta.z, billboardDelta.x));
+		// To get "ad-hoc" billboarding do dep * yCameraMatrix, rotates with camera rotation but not movement
+		billboardShader.SetMat4("orient", tempMatrix);
+		billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
 	}
 	/*
 	DisableGLFeatures<FaceCulling>();
@@ -686,7 +693,7 @@ void display()
 	{
 		Model localModel;
 		localModel.translation = bullet.position;
-		localModel.scale = glm::vec3(0.05f);
+		localModel.scale = glm::vec3(BulletRadius);
 		sphereMesh.SetMat4("modelMat", localModel.GetModelMatrix());
 		sphereMesh.SetMat4("normalMat", localModel.GetNormalMatrix());
 		sphereMesh.SetTextureUnit("textureIn", texture, 0);
@@ -710,7 +717,6 @@ void display()
 	// And stencilFunc(op, ref, mask) does the operation on a stencil value K of: (ref & mask) op (K & mask)
 
 	// All shadows/lighting will be in this post-processing step based on stencil value
-	// 
 
 
 	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
@@ -899,11 +905,11 @@ void display()
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
 	auto end = std::chrono::high_resolution_clock::now();
-	displayTime = end - displayStart;
-	displayStart = end;
+	displayTime = end - displayStartTime;
+	displayStartTime = end;
 	glFinish();
 	end = std::chrono::high_resolution_clock::now();
-	renderDelay = end - displayStart;
+	renderDelay = end - displayStartTime;
 }
 
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
@@ -1181,20 +1187,6 @@ void idle()
 	const auto now = std::chrono::high_resolution_clock::now();
 	const auto delta = now - lastTimers;
 
-	OBB goober2(AABB(glm::vec3(0), glm::vec3(1)));
-	goober2.Translate(glm::vec3(2, 0.1, 0));	
-	goober2.ReOrient(glm::radians(glm::vec3(0, frameCounter * 4.f, 0)));
-	glm::mat4 tester = goober2.GetNormalMatrix();
-
-	Plane foobar(glm::vec3(1, 0, 0), glm::vec3(4, 0, 0)); // Facing away from origin
-	//foobar.ToggleTwoSided();
-	//if (!smartBox.IntersectionWithResponse(foobar))
-		//sacounter++;
-		//std::cout << counter << std::endl;
-	//smartBox.RotateAbout(glm::vec3(0.05f, 0.07f, -0.09f), glm::vec3(0, -5, 0));
-	//smartBox.RotateAbout(glm::vec3(0, 0, 0.05f), glm::vec3(0, -2, 0));
-	//smartBox.RotateAbout(glm::vec3(0.05f, 0, 0), glm::vec3(0, -5, 0));
-
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
 	auto idleDelta = idleTime.count() / 1000;
@@ -1449,9 +1441,20 @@ void idle()
 					decals.BufferData(bigVertex, StaticDraw);
 				}
 				gamin.center = c.point + c.normal * EPSILON;
-				//std::cout << bullets[i].direction << ":";
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
-				//std::cout << bullets[i].direction << ":" << c.normal << std::endl;
+			}
+		}
+		Capsule example;
+		example.SetTotalLength(2.f);
+		for (int j = 0; j < billboards.size(); j++)
+		{
+			example.SetCenter(billboards[j] + glm::vec3(0, 1, 0));
+			if (example.Intersect(gamin))
+			{
+				billboards.erase(billboards.begin() + j);
+				gamin.center = glm::vec3(-100.f);
+				j--;
+				continue;
 			}
 		}
 		bullets[i].position = gamin.center;
@@ -1530,7 +1533,7 @@ void idle()
 	/*
 	if (idleTime < std::chrono::milliseconds(10))
 	{
-		while (std::chrono::high_resolution_clock::displayStart() - displayStart <= std::chrono::milliseconds(10));
+		while (std::chrono::high_resolution_clock::displayStartTime() - displayStartTime <= std::chrono::milliseconds(10));
 	}
 	*/
 }
@@ -1700,7 +1703,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 				point = &(*item);
 			}
 		}
-		// Point displayStart has the pointer to the closest element
+		// Point displayStartTime has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//loom.ReOrient(glm::vec3(0, 0, 90.f));
 		//loom.ReOrient(cameraOrientation);
@@ -2022,7 +2025,7 @@ void init()
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders");
-	billboardS.CompileSimple("texture");
+	billboardShader.CompileSimple("texture");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
 	expand.Compile("framebuffer", "expand");
@@ -2043,7 +2046,7 @@ void init()
 	widget.CompileSimple("widget");
 
 
-	billboardS.UniformBlockBinding("Camera", 0);
+	billboardShader.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
@@ -2295,18 +2298,21 @@ void init()
 		glm::vec3(-5, 0, 1),
 		glm::vec3(-5, 0, -1),
 	};
-	for (auto a : pogd) { bosp.push_back({ a, glm::vec2() }); }
+	for (auto& a : pogd) { bosp.push_back({ a, glm::vec2() }); }
 	skinVertex.BufferData(bosp);
 
 	skinArg.BufferData(grs);
 
 	for (auto& point : verts)
 	{
-		point.position = glm::mat3(glm::eulerAngleZ(glm::radians(90.f))) * point.position;
+		point.position = glm::mat3(glm::eulerAngleZY(glm::radians(90.f), glm::radians(-90.f))) * point.position;
 		point.position += glm::vec3(0, 1.f, 0);
 	}
-	billboard.BufferData(verts);
-
+	billboardBuffer.BufferData(verts);
+	for (int i = 0; i < 10; i++)
+	{
+		billboards.emplace_back(2, 2, 5 - 2 * i);
+	}
 
 
 	// =============================================================
@@ -2412,7 +2418,7 @@ void init()
 
 	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
 	catapult.SetRadius(0.25f);
-	catapult.SetLength(0.5f);
+	catapult.SetLineLength(0.5f);
 
 	catapultModel.translation = glm::vec3(0, 0.5f, 0);
 	catapultBox.ReCenter(glm::vec3(0, 0.5, 0));
