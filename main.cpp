@@ -489,15 +489,34 @@ void display()
 	skinner.DrawElements<DrawType::Triangle>(skinArg);
 	
 
-
+	EnableGLFeatures<FaceCulling>();
 	billboardS.SetActiveShader();
 	texturedVAO.BindArrayBuffer(billboard);
 	billboardS.SetTextureUnit("sampler", texture, 0);
-	billboardS.SetVec3("position", glm::vec3(3, 0, 0));
 	auto gd = glm::eulerAngleY(-angles2.y);
 	billboardS.SetMat4("orient", gd);
-	billboardS.DrawArray<DrawType::TriangleStrip>(billboard);
-	EnableGLFeatures<FaceCulling>();
+	glm::vec3 radians = -glm::radians(cameraRotation);
+	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
+	glm::vec3 fod = cameraOrientation[0];
+	for (int i = 0 ; i < 4; i++)
+	{
+		auto lsd = glm::vec3(2, 2, 4 - 2 * i);
+		auto dif = cameraPosition - lsd;
+
+		glm::vec3 fod = cameraOrientation[0];
+
+		glm::vec3 right = glm::normalize(glm::cross(glm::vec3(0, 1, 0), dif));
+		glm::vec3 forward = glm::normalize(glm::cross(right, glm::vec3(0, 1, 0)));
+		glm::mat4 cor{ glm::mat3(forward, glm::vec3(0, 1.f, 0), right)};
+		cor = glm::transpose(cor);
+
+		auto dep = glm::eulerAngleY(-glm::atan2(dif.z, dif.x));
+		// To get "ad-hoc" billboarding do dep * gd, rotates with camera rotation but not movement
+		billboardS.SetMat4("orient", cor);
+
+		billboardS.SetVec3("position", lsd);
+		billboardS.DrawArray<DrawType::TriangleStrip>(billboard);
+	}
 	/*
 	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
@@ -2283,7 +2302,7 @@ void init()
 
 	for (auto& point : verts)
 	{
-		point.position = glm::mat3(glm::eulerAngleZ(glm::radians(-90.f))) * point.position;
+		point.position = glm::mat3(glm::eulerAngleZ(glm::radians(90.f))) * point.position;
 		point.position += glm::vec3(0, 1.f, 0);
 	}
 	billboard.BufferData(verts);
