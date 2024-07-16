@@ -22,6 +22,7 @@
 #include "Button.h"
 #include "CubeMap.h"
 #include "Decal.h"
+#include "DynamicTree.h"
 #include "Font.h"
 #include "Framebuffer.h"
 #include "glmHelp.h"
@@ -363,8 +364,6 @@ ArrayBuffer skinVertex;
 ElementArray skinArg;
 
 ArrayBuffer billboardBuffer;
-std::vector<glm::vec3> billboards;
-
 
 void display()
 {
@@ -497,9 +496,7 @@ void display()
 	billboardShader.SetMat4("orient", yCameraMatrix);
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
-	glm::vec3 fod = cameraOrientation[0];
 
-	//for (glm::vec3 billboardPosition: billboards)
 	for (auto& following : followers)
 	{
 		glm::vec3 billboardPosition = following.GetPosition();
@@ -2304,10 +2301,6 @@ void init()
 		//point.position += glm::vec3(0, 1.f, 0);
 	}
 	billboardBuffer.BufferData(verts);
-	for (int i = 0; i < 10; i++)
-	{
-		billboards.emplace_back(2, 2, 5 - 2 * i);
-	}
 	for (int i = 0; i < 10; i++)
 	{
 		glm::vec2 base = glm::diskRand(20.f);

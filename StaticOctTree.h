@@ -8,17 +8,17 @@
 #include "AABB.h"
 #include "OrientedBoundingBox.h"
 
-#ifndef MAX_OCT_TREE_DEPTH
-#define MAX_OCT_TREE_DEPTH (5)
-#endif // MAX_OCT_TREE_DEPTH
+#ifndef OCT_TREE_MAX_DEPTH
+#define OCT_TREE_MAX_DEPTH (5)
+#endif // OCT_TREE_MAX_DEPTH
 
-#ifndef MIN_OCT_TREE_VOLUME
-#define MIN_OCT_TREE_VOLUME (10.f)
-#endif // MIN_OCT_TREE_VOLUME
+#ifndef OCT_TREE_MIN_VOLUME
+#define OCT_TREE_MIN_VOLUME (10.f)
+#endif // OCT_TREE_MIN_VOLUME
 
-#ifndef DEFAULT_OCT_TREE_DIMENSION
-#define DEFAULT_OCT_TREE_DIMENSION (100.f)
-#endif // DEFAULT_OCT_TREE_DIMENSION
+#ifndef OCT_TREE_DIMENSION
+#define OCT_TREE_DIMENSION (100.f)
+#endif // OCT_TREE_DIMENSION
 
 // HEAVILY inspired by olc's oct tree video and implementation
 template<class T>
@@ -38,8 +38,8 @@ protected:
 
 		void Generate();
 	public:
-		StaticOctTreeNode(const glm::vec3& negativeBound = glm::vec3(-DEFAULT_OCT_TREE_DIMENSION),
-			const glm::vec3& positiveBound = glm::vec3(DEFAULT_OCT_TREE_DIMENSION), int depth = 0);
+		StaticOctTreeNode(const glm::vec3& negativeBound = glm::vec3(-OCT_TREE_DIMENSION),
+			const glm::vec3& positiveBound = glm::vec3(OCT_TREE_DIMENSION), int depth = 0);
 		StaticOctTreeNode(const AABB& bound, int depth = 0);
 		~StaticOctTreeNode();
 
@@ -252,10 +252,7 @@ inline std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::Dump() c
 template<class T>
 inline void StaticOctTree<T>::StaticOctTreeNode::Dump(std::list<Item>& list) const
 {
-	for (const auto& element : this->objects)
-	{
-		list.push_back(element.second);
-	}
+	std::copy(this->objects.front(), this->objects.back(), std::back_inserter(list));
 	for (std::size_t i = 0; i < 8; i++)
 	{
 		if (this->tree[i])
@@ -306,7 +303,7 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Insert(const Item& element, con
 		glm::vec3 deviation = this->internals[i].Deviation();
 		if (this->internals[i].Contains(box))
 		{
-			if (this->depth + 1 < MAX_OCT_TREE_DEPTH)
+			if (this->depth + 1 < OCT_TREE_MAX_DEPTH)
 			{
 				if (!this->tree[i])
 				{

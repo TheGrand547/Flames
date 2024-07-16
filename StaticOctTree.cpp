@@ -107,7 +107,7 @@
 //
 //void StaticOctTree::InsertQuick(const OBB& element, const AABB& box)
 //{
-//	if (this->depth + 1 > MAX_OCT_TREE_DEPTH)
+//	if (this->depth + 1 > OCT_TREE_MAX_DEPTH)
 //	{
 //		this->pointers.push_back(element);
 //	}

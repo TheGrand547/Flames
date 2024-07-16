@@ -206,6 +206,7 @@
     <ClInclude Include="CubeMap.h" />
     <ClInclude Include="Decal.h" />
     <ClInclude Include="DemoGuy.h" />
+    <ClInclude Include="DynamicTree.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
