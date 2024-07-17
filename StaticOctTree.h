@@ -252,7 +252,10 @@ inline std::list<Item<typename T>> StaticOctTree<T>::StaticOctTreeNode::Dump() c
 template<class T>
 inline void StaticOctTree<T>::StaticOctTreeNode::Dump(std::list<Item>& list) const
 {
-	std::copy(this->objects.front(), this->objects.back(), std::back_inserter(list));
+	for (auto& it : this->objects)
+	{
+		list.push_back(it.second);
+	}
 	for (std::size_t i = 0; i < 8; i++)
 	{
 		if (this->tree[i])

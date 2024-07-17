@@ -1986,7 +1986,8 @@ int main(int argc, char** argv)
 		glfwPollEvents();
 	}
 	// TODO: cleanup
-
+	DynamicOctTree<OBB> hellYearh;
+	hellYearh.Search(AABB(glm::vec3(5)));
 	return 0;
 }
 

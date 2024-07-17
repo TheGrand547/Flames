@@ -282,6 +282,27 @@ inline AABB AABB::MakeAABB(const Args ...args) noexcept
 	return AABB::MakeAABB(points);
 }
 
+template<typename T>
+	requires requires(const T& element)
+{
+	{ element.GetAABB() } -> std::convertible_to<AABB>;
+}
+inline AABB GetAABB(const T& type)
+{
+	return T.GetAABB();
+}
+
+template<typename T>
+	requires requires(const T*& element)
+{
+	{ element->GetAABB() } -> std::convertible_to<AABB>;
+}
+inline AABB GetAABB(const T*& type)
+{
+	return T->GetAABB();
+}
+
+
 typedef AABB AxisAlignedBox;
 
 #endif // AXIS_ALIGNED_BOUNDING_BOX_H
