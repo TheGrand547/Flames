@@ -289,7 +289,7 @@ template<typename T>
 }
 inline AABB GetAABB(const T& type)
 {
-	return T.GetAABB();
+	return type.GetAABB();
 }
 
 template<typename T>
@@ -299,7 +299,7 @@ template<typename T>
 }
 inline AABB GetAABB(const T*& type)
 {
-	return T->GetAABB();
+	return type->GetAABB();
 }
 
 

@@ -23,7 +23,7 @@ private:
 	glm::mat4 matrix;
 	glm::vec3 halfs;
 public:
-	OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& deltas = glm::vec3(1, 1, 1)) noexcept;
+	OrientedBoundingBox(const glm::vec3& euler = glm::vec3(0, 0, 0), const glm::vec3& halfs = glm::vec3(1, 1, 1)) noexcept;
 	inline OrientedBoundingBox(const OrientedBoundingBox& other) noexcept = default;
 	OrientedBoundingBox(const Model& model) noexcept;
 	inline OrientedBoundingBox(const AABB& other) noexcept;

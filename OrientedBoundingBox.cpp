@@ -2,7 +2,7 @@
 #include <algorithm>
 #include <bit>
 
-OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& deltas) noexcept : matrix(1.f), halfs(glm::abs(deltas))
+OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& halfs) noexcept : matrix(1.f), halfs(glm::abs(halfs))
 {
 	this->Rotate(euler);
 }

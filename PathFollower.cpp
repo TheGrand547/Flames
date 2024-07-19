@@ -4,7 +4,14 @@
 std::vector<PathNodePtr> PathFollower::PathNodes;
 ArrayBuffer PathFollower::latestPathBuffer;
 
-PathFollower::PathFollower(const glm::vec3& position, const float& mass) noexcept : physics(position, mass)
+PathFollower::PathFollower() noexcept : physics(glm::vec3(0), 1.f), box(glm::vec3(0), glm::vec3(0.5, 2, 0.5))
+{
+	this->box.ReCenter(this->physics.position);
+	this->capsule.SetCenter(this->physics.position);
+}
+
+PathFollower::PathFollower(const glm::vec3& position, const float& mass) noexcept : physics(position, mass), 
+																	box(glm::vec3(0), glm::vec3(0.5, 2, 0.5))
 {
 	this->box.ReCenter(position);
 	this->capsule.SetCenter(position);
@@ -12,6 +19,7 @@ PathFollower::PathFollower(const glm::vec3& position, const float& mass) noexcep
 
 PathFollower::~PathFollower() noexcept
 {
+	std::cout << "Follower Down" << std::endl;
 	this->path.clear();
 }
 

@@ -15,12 +15,14 @@ protected:
 	OBB box;
 	std::vector<PathNodePtr> path;
 public:
-	PathFollower() noexcept = default;
+	PathFollower() noexcept;
 	PathFollower(const glm::vec3& position, const float& mass = 1.f) noexcept;
 	~PathFollower() noexcept;
 
 	PathFollower& operator=(const PathFollower& other) noexcept;
 
+
+	inline AABB GetAABB() const noexcept { return this->box.GetAABB(); }
 	inline glm::vec3 GetPosition() const noexcept { return this->box.Center(); }
 
 	inline glm::mat4 GetModelMatrix()  const noexcept { return this->box.GetNormalMatrix(); }

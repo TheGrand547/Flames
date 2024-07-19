@@ -3,6 +3,7 @@
 #define DYNAMIC_OCT_TREE_H
 #include <list>
 #include "AABB.h"
+#include "QuickTimer.h"
 
 #ifndef DYNAMIC_OCT_TREE_MAX_DEPTH
 #define DYNAMIC_OCT_TREE_MAX_DEPTH (5)
@@ -15,6 +16,13 @@
 #ifndef DYNAMIC_OCT_TREE_MIN_VOLUME
 #define DYNAMIC_OCT_TREE_MIN_VOLUME (10.f)
 #endif // DYNAMIC_OCT_TREE_MIN_VOLUME
+
+template<class MemberType>
+struct Member
+{
+	MemberType* pointer = nullptr;
+	MemberType::iterator iterator;
+};
 
 // Will hold the index in the DynamicOctTree list of each element which is uhhh painfully linear
 template<class T> class InternalOctTree
@@ -79,7 +87,7 @@ public:
 		}
 	}
 
-	typename Container::iterator Insert(const T& obj, const AABB& box) noexcept
+	Member<Container> Insert(const T& obj, const AABB& box) noexcept
 	{
 		for (std::size_t i = 0; i < 8; i++)
 		{
@@ -89,16 +97,16 @@ public:
 			{
 				if (this->depth + 1 < DYNAMIC_OCT_TREE_MAX_DEPTH)
 				{
-					if (!this->tree[i])
+					if (!this->members[i])
 					{
-						this->tree[i] = std::make_unique<InternalOctTree>(this->internals[i], depth + 1);
+						this->members[i] = std::make_unique<InternalOctTree>(this->internals[i], depth + 1);
 					}
-					return this->tree[i]->Insert(obj, box);
+					return this->members[i]->Insert(obj, box);
 				}
 			}
 		}
 		this->objects.emplace_back(box, obj);
-		return std::prev(this->objects.end());
+		return { &this->objects, static_cast<typename Container::iterator>(std::prev(this->objects.end())) };
 	}
 
 	template<typename C>
@@ -158,10 +166,11 @@ public:
 
 template<class T> class DynamicOctTree
 {
-public:
+public: 
 	typedef unsigned int Index;
 	typedef std::list<std::pair<AABB, Index>> MemberType;
-	typedef std::pair<T, MemberType::iterator> MemberPair;
+	typedef Member<MemberType> Member;
+	typedef std::pair<T, Member> MemberPair;
 	typedef std::vector<MemberPair> Structure;
 	typedef Structure::iterator iterator;
 	typedef Structure::const_iterator const_iterator;
@@ -190,6 +199,14 @@ public:
 		}
 	};
 	*/
+
+	void ReSeat(typename Structure::iterator element) noexcept
+	{
+		//std::cout << "Reseating: " << element->first.GetPosition() << std::endl;
+		Index index = element->second.iterator->second;
+		element->second.pointer->erase(element->second.iterator);
+		element->second = this->root.Insert(index, GetAABB(element->first));
+	}
 	
 	template<typename F> 
 		requires requires(F func, T& element)
@@ -198,35 +215,47 @@ public:
 	}
 	void for_each(F operation)
 	{
-		for (MemberPair& element : this->elements)
+		//for (Structure::iterator element : this->elements)
+		int x = 0;
+		//std::cout << this->elements.size() << std::endl;
+		for (typename Structure::iterator element = this->elements.begin(); element != this->elements.end(); element++)
 		{
-			if (operation(element.element))
+			//std::cout << "counting: " << x++ <<'\n';
+			if (operation(element->first))
 			{
-				// reseat element
-				AABB temp = element.second->first;
-				Index index = element.second->second;
-				std::remove(element.second, element.second + 1, [](const T& e) {return true; });
-				this->root.Insert(index, temp);
+				this->ReSeat(element);
 			}
 		}
+		//std::cout << std::endl;
+	}
+
+	void Erase(Structure::iterator element) noexcept
+	{
+		//std::cout << "Eraser!" << std::endl;
+		this->InternalErase(element);
+		//element->second.pointer->erase(element->second.iterator);
 	}
 
 	std::vector<iterator> Search(const AABB& area) noexcept
 	{
 		std::vector<Index> index = this->root.Search(area);
-		std::vector<iterator> value{index.size()};
+		std::vector<iterator> value{};
+		value.reserve(index.size());
 		iterator start = this->elements.begin();
 		for (Index i : index)
 		{
+			//std::cout << "Search index i:" << i << '\n';
 			value.push_back(start + i);
 		}
+		//std::cout << std::endl;
 		return value;
 	}
 
 	std::vector<const_iterator> Search(const AABB& area) const noexcept
 	{
 		std::vector<Index> index = this->root.Search(area);
-		std::vector<const_iterator> value{ index.size() };
+		std::vector<const_iterator> value{};
+		value.reserve(index.size());
 		const_iterator start = this->elements.cbegin();
 		for (Index& i : index)
 		{
@@ -235,7 +264,7 @@ public:
 		return value;
 	}
 
-	// Super expensive, try not to do this if you can avoid it
+	// (Probably) Super expensive, try not to do this if you can avoid it
 	void ReSeat()
 	{
 		QUICKTIMER(std::format("Reseating Tree with {} nodes", this->elements.size()));
@@ -254,7 +283,7 @@ public:
 		this->elements.reserve(size);
 	}
 
-	// Reserves 50% more than you explicitly requires 
+	// Reserves 50% more than you explicitly request for safety from re-allocation 
 	void ReserveSize(const std::size_t size) noexcept
 	{
 		this->ReserveSizeExact((size * 3) >> 2);
@@ -263,12 +292,15 @@ public:
 	iterator Insert(const T& element, const AABB& box) noexcept
 	{
 		std::size_t oldSize = this->elements.capacity();
-		//Object& local = this->elements.emplace_back(element);
+		this->elements.push_back({ element, Member{} });
+		//std::cout << "Before: " << this->elements.back().second.pointer << std::endl;
+		this->InternalInsert(static_cast<Index>(this->elements.size() - 1), box);
 		if (this->elements.capacity() != oldSize)
 		{
 			this->ReSeat();
 		}
-		return this->elements.end();
+		//std::cout << "After: " << this->elements.back().second.pointer << std::endl;
+		return std::prev(this->elements.end());
 	}
 
 	iterator begin() noexcept
@@ -297,9 +329,25 @@ protected:
 	InternalOctTree<Index> root;
 	Structure elements;
 
-	void InternalInsert(Index index, const AABB& box)
+	void InternalInsert(Index index, const AABB& box) noexcept
 	{
-		// TODO: do it
+		//std::cout << "Before2: " << this->elements[index].second.pointer << std::endl;
+		this->elements[index].second = this->root.Insert(index, box);
+		//std::cout << "After23: " << this->elements[index].second.pointer << std::endl;
+	}
+
+	void InternalErase(Structure::iterator iter) noexcept
+	{
+		if (std::next(iter) != this->elements.end())
+		{
+			typename Structure::iterator temp = std::prev(this->elements.end());
+			Index stored = iter->second.iterator->second;
+			std::iter_swap(temp, iter);
+			iter->second.iterator->second = stored;
+			temp->second.pointer->erase(temp->second.iterator);
+			
+		}
+		this->elements.pop_back();
 	}
 };
 

@@ -327,6 +327,8 @@ struct Bullet
 
 PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
+
+DynamicOctTree<PathFollower> followers2;
 std::vector<PathFollower> followers;
 
 std::vector<Bullet> bullets;
@@ -497,9 +499,9 @@ void display()
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 
-	for (auto& following : followers)
+	for (auto& following : followers2)
 	{
-		glm::vec3 billboardPosition = following.GetPosition();
+		glm::vec3 billboardPosition = following.first.GetPosition();
 		glm::vec3 billboardDelta = cameraPosition - billboardPosition;
 		glm::vec3 up = glm::vec3(0, 1, 0);
 		glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
@@ -1387,6 +1389,7 @@ void idle()
 	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
 	Sphere gamin{BulletRadius};
 	Collision c;
+	std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
 	for (std::size_t i = 0; i < bullets.size(); i++)
 	{
 		if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))
@@ -1401,7 +1404,7 @@ void idle()
 			if (boxers->Overlap(gamin, c))
 			{
 				{
-					QuickTimer _timer("New Decal Generation");
+					//QuickTimer _timer("New Decal Generation");
 					OBB boxed;
 
 					// TODO: investigate
@@ -1433,6 +1436,18 @@ void idle()
 		}
 		Capsule example;
 		example.SetTotalLength(2.f);
+		for (auto& hit : followers2.Search(gamin.GetAABB()))
+		{
+			example.SetCenter(hit->first.GetPosition());
+			if (example.Intersect(gamin))
+			{
+				to_remove.push_back(hit);
+				std::cout << "Hit!" << std::endl;
+				gamin.center = glm::vec3(-100.f);
+				continue;
+			}
+		}
+		/*
 		for (int j = 0; j < followers.size(); j++)
 		{
 			example.SetCenter(followers[j].GetPosition());
@@ -1444,14 +1459,26 @@ void idle()
 				continue;
 			}
 		}
+		*/
 		bullets[i].position = gamin.center;
 	}
-
-	followed.Update(timeDelta, boxes);
-	for (auto& follow : followers)
+	for (auto& a : to_remove)
 	{
-		follow.Update(timeDelta, boxes);
+		followers2.Erase(a);
 	}
+	//std::cout << "Done with Erasing" << std::endl;
+	followed.Update(timeDelta, boxes);
+	followers2.for_each([timeDelta](auto& a) 
+		{
+			glm::vec3 old = a.GetPosition();
+			a.Update(timeDelta, boxes); 
+			return old != a.GetPosition();
+		});
+	/*
+	for (auto& follow : followers2)
+	{
+		follow.first.Update(timeDelta, boxes);
+	}*/
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
@@ -1986,8 +2013,6 @@ int main(int argc, char** argv)
 		glfwPollEvents();
 	}
 	// TODO: cleanup
-	DynamicOctTree<OBB> hellYearh;
-	hellYearh.Search(AABB(glm::vec3(5)));
 	return 0;
 }
 
@@ -2302,10 +2327,14 @@ void init()
 		//point.position += glm::vec3(0, 1.f, 0);
 	}
 	billboardBuffer.BufferData(verts);
-	for (int i = 0; i < 10; i++)
+	constexpr int followsize = 10;
+	followers2.ReserveSize(followsize);
+	for (int i = 0; i < followsize; i++)
 	{
 		glm::vec2 base = glm::diskRand(20.f);
-		followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
+		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
+		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
+		followers2.Insert(fus, fus.GetAABB());
 	}
 
 	// =============================================================
