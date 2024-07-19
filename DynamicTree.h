@@ -3,6 +3,7 @@
 #define DYNAMIC_OCT_TREE_H
 #include <list>
 #include "AABB.h"
+#include "Log.h"
 #include "QuickTimer.h"
 
 #ifndef DYNAMIC_OCT_TREE_MAX_DEPTH
@@ -202,7 +203,6 @@ public:
 
 	void ReSeat(typename Structure::iterator element) noexcept
 	{
-		//std::cout << "Reseating: " << element->first.GetPosition() << std::endl;
 		Index index = element->second.iterator->second;
 		element->second.pointer->erase(element->second.iterator);
 		element->second = this->root.Insert(index, GetAABB(element->first));
@@ -215,25 +215,18 @@ public:
 	}
 	void for_each(F operation)
 	{
-		//for (Structure::iterator element : this->elements)
-		int x = 0;
-		//std::cout << this->elements.size() << std::endl;
 		for (typename Structure::iterator element = this->elements.begin(); element != this->elements.end(); element++)
 		{
-			//std::cout << "counting: " << x++ <<'\n';
 			if (operation(element->first))
 			{
 				this->ReSeat(element);
 			}
 		}
-		//std::cout << std::endl;
 	}
 
 	void Erase(Structure::iterator element) noexcept
 	{
-		//std::cout << "Eraser!" << std::endl;
 		this->InternalErase(element);
-		//element->second.pointer->erase(element->second.iterator);
 	}
 
 	std::vector<iterator> Search(const AABB& area) noexcept
@@ -244,10 +237,14 @@ public:
 		iterator start = this->elements.begin();
 		for (Index i : index)
 		{
-			//std::cout << "Search index i:" << i << '\n';
+			// Filthly stop-gap due to stupidity
+			if (i >= this->elements.size())
+			{
+				Log("Undead member in search results.");
+				continue;
+			}
 			value.push_back(start + i);
 		}
-		//std::cout << std::endl;
 		return value;
 	}
 
@@ -293,13 +290,11 @@ public:
 	{
 		std::size_t oldSize = this->elements.capacity();
 		this->elements.push_back({ element, Member{} });
-		//std::cout << "Before: " << this->elements.back().second.pointer << std::endl;
 		this->InternalInsert(static_cast<Index>(this->elements.size() - 1), box);
 		if (this->elements.capacity() != oldSize)
 		{
 			this->ReSeat();
 		}
-		//std::cout << "After: " << this->elements.back().second.pointer << std::endl;
 		return std::prev(this->elements.end());
 	}
 
@@ -331,9 +326,7 @@ protected:
 
 	void InternalInsert(Index index, const AABB& box) noexcept
 	{
-		//std::cout << "Before2: " << this->elements[index].second.pointer << std::endl;
 		this->elements[index].second = this->root.Insert(index, box);
-		//std::cout << "After23: " << this->elements[index].second.pointer << std::endl;
 	}
 
 	void InternalErase(Structure::iterator iter) noexcept
@@ -345,7 +338,10 @@ protected:
 			std::iter_swap(temp, iter);
 			iter->second.iterator->second = stored;
 			temp->second.pointer->erase(temp->second.iterator);
-			
+		}
+		else
+		{
+			iter->second.pointer->erase(iter->second.iterator);
 		}
 		this->elements.pop_back();
 	}

@@ -10,8 +10,9 @@ protected:
 	const std::chrono::steady_clock::time_point start;
 	const std::source_location source;
 	const std::string name;
+	const unsigned int threshold;
 public:
-	QuickTimer(const std::string& named = "", const std::source_location source = std::source_location::current());
+	QuickTimer(const std::string& named = "", const float& threshold = 0.f, const std::source_location source = std::source_location::current());
 	~QuickTimer();
 };
 
