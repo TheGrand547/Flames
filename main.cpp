@@ -240,6 +240,7 @@ static const float Fov = 70.f;
 #define TIGHT_BOXES 1
 #define WIDE_BOXES 2
 #define DEBUG_PATH 3
+#define DYNAMIC_TREE 4
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
@@ -366,6 +367,8 @@ ArrayBuffer skinVertex;
 ElementArray skinArg;
 
 ArrayBuffer billboardBuffer;
+
+std::vector<AABB> showAndTell;
 
 void display()
 {
@@ -561,6 +564,20 @@ void display()
 	decalVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
 	decalShader.DrawArray<DrawType::Triangle>(decals);
+
+
+	if (debugFlags[DYNAMIC_TREE])
+	{
+		uniform.SetActiveShader();
+		glm::vec3 blue(0, 0, 1);
+		plainVAO.BindArrayBuffer(plainCube);
+		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
+		for (auto& box : showAndTell)
+		{
+			uniform.SetMat4("Model", box.GetModel().GetModelMatrix());
+			uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+		}
+	}
 
 	// Debugging boxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -1474,6 +1491,8 @@ void idle()
 			a.Update(timeDelta, boxes); 
 			return old != a.GetPosition();
 		});
+
+	showAndTell = followers2.GetBoxes();
 	/*
 	for (auto& follow : followers2)
 	{
