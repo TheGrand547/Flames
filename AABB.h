@@ -70,12 +70,12 @@ public:
 	template<IsVec3... Args> inline static AABB MakeAABB(const Args... args) noexcept;
 
 
-	bool operator==(const AABB& other) const noexcept
+	inline bool operator==(const AABB& other) const noexcept
 	{
 		return this->center == other.center && this->halfs == other.halfs;
 	}
 
-	bool operator!=(const AABB& other) const noexcept
+	inline bool operator!=(const AABB& other) const noexcept
 	{
 		return !(*this == other);
 	}

@@ -329,8 +329,7 @@ struct Bullet
 PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 
-DynamicOctTree<PathFollower> followers2;
-std::vector<PathFollower> followers;
+DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
 
 std::vector<Bullet> bullets;
 
@@ -502,7 +501,7 @@ void display()
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 
-	for (auto& following : followers2)
+	for (auto& following : followers)
 	{
 		glm::vec3 billboardPosition = following.first.GetPosition();
 		glm::vec3 billboardDelta = cameraPosition - billboardPosition;
@@ -574,7 +573,9 @@ void display()
 		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
 		for (auto& box : showAndTell)
 		{
-			uniform.SetMat4("Model", box.GetModel().GetModelMatrix());
+			auto d = box.GetModel();
+			d.scale *= 0.99f;
+			uniform.SetMat4("Model", d.GetModelMatrix());
 			uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		}
 	}
@@ -1453,7 +1454,7 @@ void idle()
 		}
 		Capsule example;
 		example.SetTotalLength(2.f);
-		for (auto& hit : followers2.Search(gamin.GetAABB()))
+		for (auto& hit : followers.Search(gamin.GetAABB()))
 		{
 			example.SetCenter(hit->first.GetPosition());
 			if (example.Intersect(gamin))
@@ -2347,14 +2348,18 @@ void init()
 	}
 	billboardBuffer.BufferData(verts);
 	constexpr int followsize = 10;
-	followers2.ReserveSize(followsize);
+	followers.ReserveSize(followsize);
 	for (int i = 0; i < followsize; i++)
 	{
 		glm::vec2 base = glm::diskRand(20.f);
 		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
 		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
-		followers2.Insert(fus, fus.GetAABB());
+		followers.Insert(fus, fus.GetAABB());
 	}
+	PathFollower sc(glm::vec3(-100, 2.5, -100));
+	PathFollower sc2(glm::vec3(-10, 2.5, -10));
+	followers.Insert(sc, sc.GetAABB());
+	followers.Insert(sc2, sc2.GetAABB());
 
 	// =============================================================
 	// Pathfinding stuff

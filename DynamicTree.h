@@ -7,7 +7,7 @@
 #include "QuickTimer.h"
 
 #ifndef DYNAMIC_OCT_TREE_MAX_DEPTH
-#define DYNAMIC_OCT_TREE_MAX_DEPTH (5)
+#define DYNAMIC_OCT_TREE_MAX_DEPTH (8)
 #endif //DYNAMIC_OCT_TREE_MAX_DEPTH
 
 #ifndef DYNAMIC_OCT_TREE_DIMENSION
@@ -57,7 +57,7 @@ protected:
 		~InternalOctTree() noexcept
 		{
 			// No need to clear as the list will clean naturally, and smart pointers will also be collected
-			std::cout << "Cleaning Depth: " << this->depth << '\n';
+			std::cout << "Cleaning Depth: " << this->depth << ":" << this->bounds.GetCenter() << '\n';
 		}
 
 		void Clear() noexcept
@@ -78,6 +78,7 @@ protected:
 			for (std::size_t i = 0; i < 8; i++)
 			{
 				this->internals[i] = AABB::MakeAABB(center, center + extents * mults);
+				//std::cout << this->internals[i].GetCenter() << ":" << this->internals[i].Deviation() << "\n";
 				mults.x *= -1.f;
 				if (i % 2 == 1)
 				{
@@ -88,17 +89,16 @@ protected:
 					mults.z *= -1.f;
 				}
 			}
+			//std::cout << std::endl;
 		}
 
 		Member Insert(const Index& obj, const AABB& box) noexcept
 		{
-			for (std::size_t i = 0; i < 8; i++)
+			if (this->depth + 1 < DYNAMIC_OCT_TREE_MAX_DEPTH)
 			{
-				glm::vec3 center = this->internals[i].GetCenter();
-				glm::vec3 deviation = this->internals[i].Deviation();
-				if (this->internals[i].Contains(box))
+				for (std::size_t i = 0; i < 8; i++)
 				{
-					if (this->depth + 1 < DYNAMIC_OCT_TREE_MAX_DEPTH)
+					if (this->internals[i].Contains(box))
 					{
 						if (!this->members[i])
 						{
@@ -180,6 +180,11 @@ protected:
 	};
 
 public: 
+
+	DynamicOctTree() noexcept : root() {}
+	DynamicOctTree(const AABB& bounds) noexcept : root(bounds) {}
+	~DynamicOctTree() noexcept = default;
+
 	typedef unsigned int Index;
 	typedef std::list<std::pair<AABB, Index>> MemberType;
 	typedef std::pair<T, Member> MemberPair;
@@ -187,36 +192,50 @@ public:
 	typedef Structure::iterator iterator;
 	typedef Structure::const_iterator const_iterator;
 
+	// Don't know if this is worth the effort
 	/*
-	struct iterator
+	struct iteratorz
 	{
 	protected:
 		Structure::iterator iter;
 	public:
-		constexpr iterator(const Structure::iterator& iter) noexcept : iter(iter) {}
-		constexpr iterator(const iterator& iter) noexcept : iter(iter.iter) {}
-		constexpr ~iterator() {}
-		constexpr iterator& operator+=(const std::size_t i) noexcept
+		constexpr iteratorz(const Structure::iterator& iter) noexcept : iter(iter) {}
+		constexpr iteratorz(const iteratorz& iter) noexcept : iter(iter.iter) {}
+		constexpr ~iteratorz() noexcept {}
+		constexpr iteratorz& operator+=(const std::size_t i) noexcept
 		{
 			this->iter += i;
 			return *this;
 		}
-		constexpr iterator operator+(const std::size_t i) const noexcept
-		{
-			return iterator(this->iter + i);
-		}
-		constexpr iterator& operator-=(const std::size_t i) noexcept
-		{
 
+		constexpr iteratorz operator+(const std::size_t i) const noexcept
+		{
+			return iteratorz(this->iter + i);
+		}
+
+		constexpr iteratorz& operator-=(const std::size_t i) noexcept
+		{
+			this->iter -= i;
+			return *this;
 		}
 	};
 	*/
 
+	// Invalidates the whole tree
+	void AdjustBounds(const AABB& box) noexcept
+	{
+		this->root.Clear();
+		this->root.bounds = box;
+		this->root.Generate();
+	}
+
 	void ReSeat(typename Structure::iterator element) noexcept
 	{
+#ifdef DEBUG
 		static std::size_t total = 0;
 		static std::size_t small = 0;
 		total++;
+#endif // DEBUG
 		AABB current = GetAABB(element->first);
 
 		// See if the current AABB is wholly contained in the same box as before
@@ -226,14 +245,18 @@ public:
 			// Although this *could* lead to clogging up the top level of the structure but would need
 			// to test that to verify. Could also insert only into that element so hmm, much to think on
 			element->second.iterator->first = current;
-
+#ifdef DEBUG
 			InternalOctTree* temp = element->second.pointer;
+#endif // DEBUG
 
 			// Check if this fucks everything up
 			Index index = element->second.iterator->second;
 			element->second.pointer->objects.erase(element->second.iterator);
 			element->second = element->second.pointer->Insert(index, GetAABB(element->first));
+
+#ifdef DEBUG
 			small += temp == element->second.pointer;
+#endif // DEBUG
 		}
 		else
 		{
@@ -241,10 +264,12 @@ public:
 			element->second.pointer->objects.erase(element->second.iterator);
 			element->second = this->root.Insert(index, GetAABB(element->first));
 		}
-		if (total % 1000 == 0)
+#ifdef DEBUG
+		if (total % 10000 == 0)
 		{
 			std::cout << small << ":" << total << std::endl;
 		}
+#endif // DEBUG
 	}
 	
 	template<typename F> 
