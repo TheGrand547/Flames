@@ -34,3 +34,33 @@ std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2& size
 	}
 	return rects;
 }
+
+
+
+static const std::string identityVertex = "#version 440 core\nout vec2 uv;vec2 positions[] = {\tvec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),\tvec2(-1.0f,  1.0f), vec2( 1.0f,  1.0f)};vec2 uvCoords[] = {\tvec2(0.0f, 0.0f), vec2(1.0f, 0.0f), \tvec2(0.0f, 1.0f), vec2(1.0f, 1.0f)};void main(){\tgl_Position = vec4(positions[gl_VertexID].xy, 0, 1);\tuv = uvCoords[gl_VertexID];}";
+
+static const std::string voronoiFragment =
+"#version 440 core"
+"layout(location = 0) in vec2 uv"
+"layout(std140) uniform Points"
+"{"
+"int length;"
+"vec2 points[32];"
+"};"
+"void main()"
+"{"
+"for (int i = 0; i < Points.length; i++)"
+"{"
+"for (int "
+"}"
+"";
+
+
+Texture2D HeightToNormal()
+{
+
+	return Texture2D();
+}
+
+// Stuff for Voronoi Noise
+

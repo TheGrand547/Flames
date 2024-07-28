@@ -77,6 +77,8 @@ public:
 	template<class T> void BufferData(std::span<const T> data, BufferAccess usage = StaticDraw);
 	template<class T> void BufferData(std::span<T> data, BufferAccess usage = StaticDraw);
 
+	template<class T> void BufferData(const T& data, BufferAccess usage = StaticDraw);
+
 	// Convenience for the easy data structures
 	template<class T, std::size_t i> void BufferData(const std::array<T, i>& data, BufferAccess usage = StaticDraw); 
 	template<class T> void BufferData(const std::vector<T>& data, BufferAccess usage = StaticDraw);
@@ -222,6 +224,25 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(std::size_t size, Bu
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<T> data, BufferAccess usage)
 {
 	this->BufferData(std::span<const T>(data), usage);
+}
+
+template<BufferType Type>
+template<class T>
+inline void Buffer<Type>::BufferData(const T& data, BufferAccess usage)
+{
+	if (!this->buffer)
+	{
+		this->Generate();
+	}
+	if (this->buffer)
+	{
+		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
+		glBufferData(static_cast<GLenum>(Type), sizeof(T), &data, static_cast<GLenum>(usage));
+		this->length = sizeof(T);
+		this->elementCount = 1;
+		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);
+		this->elementSize = sizeof(T);
+	}
 }
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData(std::span<const T> data, BufferAccess usage)

@@ -191,7 +191,7 @@ ArrayBuffer decals;
 
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
-UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
+UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
 Framebuffer<2, DepthAndStencil> depthed;
@@ -205,6 +205,7 @@ Shader pathNodeView, stencilTest;
 Shader nineSlicer;
 Shader skinner;
 Shader billboardShader;
+Shader voronoi;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -838,7 +839,7 @@ void display()
 	nineSlicer.SetActiveShader();
 	nineSlicer.SetTextureUnit("image", nineSlice);
 	nineSliced.BindArrayBuffer(ui_tester_buffer);
-	nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
+	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 
 
 	uiRectTexture.SetActiveShader();
@@ -856,6 +857,13 @@ void display()
 	uiRectTexture.SetVec4("rectangle", help.GetRect());
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
+	DisableGLFeatures<FaceCulling>();
+	DisableGLFeatures<Blending>();
+	voronoi.SetActiveShader();
+	voronoi.SetInt("mode", 0);
+	voronoi.DrawArray<DrawType::TriangleStrip>(4);
+
+	EnableGLFeatures<Blending>();
 	// Debug Info Display
 	fontShader.SetActiveShader();
 	fontVAO.BindArrayBuffer(textBuffer);
@@ -1482,18 +1490,18 @@ void idle()
 	}
 	for (auto& a : to_remove)
 	{
-		followers2.Erase(a);
+		followers.Erase(a);
 	}
 	//std::cout << "Done with Erasing" << std::endl;
 	followed.Update(timeDelta, boxes);
-	followers2.for_each([timeDelta](auto& a) 
+	followers.for_each([timeDelta](auto& a) 
 		{
 			glm::vec3 old = a.GetPosition();
 			a.Update(timeDelta, boxes); 
 			return old != a.GetPosition();
 		});
 
-	showAndTell = followers2.GetBoxes();
+	showAndTell = followers.GetBoxes();
 	/*
 	for (auto& follow : followers2)
 	{
@@ -1628,6 +1636,22 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 
 	if (action == GLFW_PRESS)
 	{
+		if (key == GLFW_KEY_L)
+		{
+			struct
+			{
+				std::array<glm::vec4, 32> points{};
+				int length = 32;
+				int pad, pad2, pad3;
+			} point_temp;
+			for (auto& p : point_temp.points)
+			{
+				p = glm::vec4(glm::linearRand(0.f, 1.f), glm::linearRand(0.f, 1.f), 0, 0);
+			}
+			pointUniformBuffer.BufferData(point_temp, StaticDraw);
+			pointUniformBuffer.SetBindingPoint(2);
+			pointUniformBuffer.BindUniform();
+		}
 		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
@@ -2081,6 +2105,7 @@ void init()
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
+	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
 
 
@@ -2101,6 +2126,8 @@ void init()
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
+
+	voronoi.UniformBlockBinding("Points", 2);
 
 	CheckError();
 	// VAO SETUP
@@ -2360,6 +2387,21 @@ void init()
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
 	followers.Insert(sc, sc.GetAABB());
 	followers.Insert(sc2, sc2.GetAABB());
+
+
+	struct 
+	{
+		std::array<glm::vec4, 32> points{};
+		int length = 32;
+		int pad, pad2, pad3;
+	} point_temp;
+	for (auto& p: point_temp.points)
+	{
+		p = glm::vec4(glm::linearRand(0.f, 1.f), glm::linearRand(0.f, 1.f), 0, 0);
+	}
+	pointUniformBuffer.BufferData(point_temp, StaticDraw);
+	pointUniformBuffer.SetBindingPoint(2);
+	pointUniformBuffer.BindUniform();
 
 	// =============================================================
 	// Pathfinding stuff

@@ -1,6 +1,6 @@
 #version 440 core
 
-in vec2 textureCoords;
+layout(location = 0) in vec2 textureCoords;
 out vec4 fColor;
 
 layout(location = 0) uniform sampler2D normal;

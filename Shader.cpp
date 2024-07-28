@@ -313,7 +313,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
-		std::cerr << "One or more of the shader files missing for '" << name << "'" << std::endl;
+		std::cerr << "One or more of the shader files missing for '" << combined << "'" << std::endl;
 		EXIT;
 		return false;
 	}
@@ -473,7 +473,7 @@ void Shader::CleanUp()
 	}
 }
 
-void Shader::ExportCompiled()
+void Shader::ExportCompiled() const
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;

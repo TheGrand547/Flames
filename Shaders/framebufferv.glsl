@@ -1,6 +1,6 @@
 #version 440 core
 
-out vec2 textureCoords;
+layout(location = 0) out vec2 textureCoords;
 
 vec2 positions[] = {
 	vec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),

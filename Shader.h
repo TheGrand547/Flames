@@ -92,7 +92,7 @@ public:
 	GLuint UniformBlockIndex(const std::string& name) const;
 
 	void CleanUp();
-	void ExportCompiled();
+	void ExportCompiled() const;
 
 	inline GLuint GetProgram() const;
 	inline void SetActiveShader();

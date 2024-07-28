@@ -57,7 +57,6 @@ protected:
 		~InternalOctTree() noexcept
 		{
 			// No need to clear as the list will clean naturally, and smart pointers will also be collected
-			std::cout << "Cleaning Depth: " << this->depth << ":" << this->bounds.GetCenter() << '\n';
 		}
 
 		void Clear() noexcept
@@ -78,7 +77,6 @@ protected:
 			for (std::size_t i = 0; i < 8; i++)
 			{
 				this->internals[i] = AABB::MakeAABB(center, center + extents * mults);
-				//std::cout << this->internals[i].GetCenter() << ":" << this->internals[i].Deviation() << "\n";
 				mults.x *= -1.f;
 				if (i % 2 == 1)
 				{
@@ -89,7 +87,6 @@ protected:
 					mults.z *= -1.f;
 				}
 			}
-			//std::cout << std::endl;
 		}
 
 		Member Insert(const Index& obj, const AABB& box) noexcept
@@ -168,7 +165,8 @@ protected:
 
 		void GetBoxes(std::vector<AABB>& boxes) const noexcept
 		{
-			boxes.push_back(this->bounds);
+			if (this->objects.size() > 0)
+				boxes.push_back(this->bounds);
 			for (const MemberPointer& point: this->members)
 			{
 				if (point)
@@ -178,7 +176,7 @@ protected:
 			}
 		}
 	};
-
+	
 public: 
 
 	DynamicOctTree() noexcept : root() {}
