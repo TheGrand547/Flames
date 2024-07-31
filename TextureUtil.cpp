@@ -1,5 +1,10 @@
 #include "TextureUtil.h"
 #include "glmHelp.h"
+#include "glUtil.h"
+#include "Framebuffer.h"
+#include "Shader.h"
+
+// TODO: Setup shaders for here
 /*
 20x20 tiles(for the moment) 
 
@@ -36,7 +41,6 @@ std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2& size
 }
 
 
-
 static const std::string identityVertex = "#version 440 core\nout vec2 uv;vec2 positions[] = {\tvec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),\tvec2(-1.0f,  1.0f), vec2( 1.0f,  1.0f)};vec2 uvCoords[] = {\tvec2(0.0f, 0.0f), vec2(1.0f, 0.0f), \tvec2(0.0f, 1.0f), vec2(1.0f, 1.0f)};void main(){\tgl_Position = vec4(positions[gl_VertexID].xy, 0, 1);\tuv = uvCoords[gl_VertexID];}";
 
 static const std::string voronoiFragment =
@@ -55,11 +59,43 @@ static const std::string voronoiFragment =
 "}"
 "";
 
+static const std::string heightToNormalFragment = "#version 440 core\n"
+"in vec2 uv;"
+"out vec4 normal;"
+"const ivec3 off = ivec3(-1, 0, 1);"
+"uniform sampler2D heightMap;"
+"void main()"
+"{"
+"	vec2 size = fwidth(uv) / 2;"
+"	vec4 wave = texture(heightMap, uv);"
+"	float s11 = wave.r;"
+"	float s01 = textureOffset(heightMap, uv, off.xy).r;"
+"	float s21 = textureOffset(heightMap, uv, off.zy).r;"
+"	float s10 = textureOffset(heightMap, uv, off.yx).r;"
+"	float s12 = textureOffset(heightMap, uv, off.yz).r;"
 
-Texture2D HeightToNormal()
+"	vec3 va = normalize(vec3(size.xy, s21 - s01));"
+"	vec3 vb = normalize(vec3(size.yx, s12 - s10));"
+"	normal = vec4(cross(va, vb), s11);"
+"}";
+
+
+void HeightToNormal(const Texture2D& input, Texture2D& output)
 {
+	output.CreateEmpty(input.GetSize());
+	ColorFrameBuffer buffer;
+	buffer.GetColor().MakeAliasOf(output);
+	buffer.Assemble();
+	buffer.Bind();
 
-	return Texture2D();
+	Shader temp;
+	temp.CompileEmbedded(identityVertex, heightToNormalFragment);
+
+	DisableGLFeatures<Blending>();
+	temp.SetActiveShader();
+	temp.SetTextureUnit("heightMap", input);
+	temp.DrawArray<DrawType::TriangleStrip>(4);
+	BindDefaultFrameBuffer();
 }
 
 // Stuff for Voronoi Noise

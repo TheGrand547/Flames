@@ -28,7 +28,6 @@ void main()
 	vec2 samplePoint = fTex;
 	// Have to define lightDir, norm, and viewDirection
 	
-		
 	viewDirection = normalize(transformedViewPos - transformedFPos);
 	if (newToggle > 0)
 	{

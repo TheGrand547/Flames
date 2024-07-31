@@ -857,6 +857,10 @@ void display()
 	uiRectTexture.SetVec4("rectangle", help.GetRect());
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
+	uiRectTexture.SetTextureUnit("image", normalMap);
+	uiRectTexture.SetVec4("rectangle", { 0, 0, 1000, 1000 });
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+
 	DisableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
 	voronoi.SetActiveShader();
@@ -2155,8 +2159,8 @@ void init()
 	wallTexture.Load("flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
-	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(0, 1, 1, 1));
-	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, glm::vec4(1, 0.5, 1, 1));
+	buttonB.CreateEmptyWithFilters(100, 100, InternalRGBA, {}, glm::vec4(0, 1, 1, 1));
+	buttonA.CreateEmptyWithFilters(100, 100, InternalRGBA, {}, glm::vec4(1, 0.5, 1, 1));
 
 	nineSlice.Load("9slice.png");
 	nineSlice.SetFilters();
@@ -2383,6 +2387,29 @@ void init()
 	pointUniformBuffer.BufferData(point_temp, StaticDraw);
 	pointUniformBuffer.SetBindingPoint(2);
 	pointUniformBuffer.BindUniform();
+
+	// Shenanigans
+	depthMap.CreateEmpty({ 1024, 1024 }, InternalRed8, { MinLinear, MagLinear, MirroredRepeat, MirroredRepeat });
+	//depthMap.Load("depth.png");
+	ColorFrameBuffer _t;
+	_t.GetColor().MakeAliasOf(depthMap);
+	_t.Assemble();
+	_t.Bind();
+	voronoi.SetActiveShader();
+	voronoi.SetInt("mode", 0);
+	voronoi.DrawArray<DrawType::TriangleStrip>(4);
+	BindDefaultFrameBuffer();
+	depthMap.BindTexture();
+	depthMap.SetAnisotropy(16.f);
+
+	HeightToNormal(depthMap, normalMap);
+	//CheckError();
+	normalMap.BindTexture();
+	//CheckError();
+	normalMap.SetFilters(MinLinear, MagLinear, MirroredRepeat, MirroredRepeat);
+	normalMap.SetAnisotropy(16.f);
+
+
 
 	// =============================================================
 	// Pathfinding stuff

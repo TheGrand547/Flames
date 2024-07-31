@@ -87,7 +87,7 @@ void Texture2D::CopyFrom(Texture2D&& other)
 void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat, const glm::ivec2& start)
 {
 	CheckError();
-	this->CreateEmptyWithFilters(size.x, size.y, internalFormat, glm::vec4(0.5));
+	this->CreateEmptyWithFilters(size.x, size.y, internalFormat, {}, glm::vec4(0.5));
 	CheckError();
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	CheckError();
@@ -204,10 +204,76 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	// TODO: Texture fill type so clear tex image will behave, stencil/depth/depth+stencil get their own and everything else rgba
 }
 
-void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)
+void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, FilterStruct filters, const glm::vec4& color, GLint level)
 {
-	this->CreateEmpty(width, height, type, color, level);
-	this->SetFilters();
+	// TODO: FIX THIS HACK
+	this->CleanUp();
+	glGenTextures(1, &this->texture);
+	glBindTexture(GL_TEXTURE_2D, this->texture);
+	this->SetFilters(filters);
+	GLenum internalFormat = type, pixelType = GL_RGBA;
+	// TODO: Remove these I don't think they're necessary
+	switch (type)
+	{
+	case InternalStencil:
+		glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+		internalFormat = GL_STENCIL_INDEX8;
+		pixelType = GL_STENCIL_INDEX;
+		break;
+	case InternalDepthStencil:
+		pixelType = GL_DEPTH_STENCIL;
+		break;
+	case InternalDepthStencilFloat:
+		internalFormat = GL_DEPTH_STENCIL;
+		pixelType = GL_DEPTH_STENCIL;
+		break;
+	case InternalDepth:
+	case InternalDepth16:
+	case InternalDepth24:
+	case InternalDepthFloat32:
+		pixelType = GL_DEPTH_COMPONENT;
+		internalFormat = GL_DEPTH_COMPONENT32F;
+		break;
+	case InternalFloatRed16:
+	case InternalFloatRedGreen16:
+	case InternalFloatRGB16:
+	case InternalFloatRGBA16:
+	case InternalFloatRed32:
+	case InternalFloatRedGreen32:
+	case InternalFloatRGB32:
+	case InternalFloatRGBA32:
+	case InternalFloatR11G11B10:
+	case InternalFloatShared5RGB9:
+	case InternalFloatBPTCRGB:
+	case InternalUnsignedFloatBPTCRGB:
+		pixelType = GL_RED; // Can't have floating point pixelType
+		break;
+	case InternalRed:
+		pixelType = GL_RED;
+		internalFormat = GL_R8;
+		break;
+	case InternalRedGreen:
+		pixelType = GL_RG;
+		internalFormat = GL_RG8;
+		break;
+	case InternalRGB:
+		pixelType = GL_RGB;
+		internalFormat = GL_RGB8;
+		break;
+	case InternalRGBA:
+		pixelType = GL_RGBA;
+		internalFormat = GL_RGBA8;
+		break;
+	}
+	this->width = static_cast<GLsizei>(width);
+	this->height = static_cast<GLsizei>(height);
+
+	glTextureStorage2D(this->texture, level + 1, internalFormat, this->width, this->height);
+	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
+	this->internalFormat = internalFormat;
+	this->channels = Texture::GetColorChannels(type);
+	if (!(filters.minFilter == MinLinear || filters.minFilter == MinNearest))
+		this->GenerateMipmap();
 }
 
 void Texture2D::FillTexture(const glm::vec4& color, int level) const

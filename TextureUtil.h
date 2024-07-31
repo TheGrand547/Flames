@@ -12,7 +12,7 @@ namespace Texture
 }
 std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2& size);
 
-Texture2D HeightToNormal();
+void HeightToNormal(const Texture2D& input, Texture2D& output);
 
 #endif // TEXTURE_UTIL_H
 
