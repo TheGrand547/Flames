@@ -183,15 +183,15 @@ public:
 		{
 			switch (status)
 			{
-			case GL_FRAMEBUFFER_UNDEFINED: Log(" Default framebuffer unspecified."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: Log(" At least one attachment point is incomplete."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: Log(" No images attached to the framebuffer."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: Log(" Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER'"); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: Log(" Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER'"); break;
-			case GL_FRAMEBUFFER_UNSUPPORTED: Log(" Incompatible internal formats of attachments."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: Log(" RenderBuffer samples do not agree for all attachments"); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Log(" More confusing ones again 'GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS'"); break;
-			default: Log(" Some framebuffer error that isn't one of the given, dunno what to do with that."); break;
+			case GL_FRAMEBUFFER_UNDEFINED: Log("Default framebuffer unspecified."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: Log("At least one attachment point is incomplete."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: Log("No images attached to the framebuffer."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: Log("Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER'"); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: Log("Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER'"); break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: Log("Incompatible internal formats of attachments."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: Log("RenderBuffer samples do not agree for all attachments"); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Log("More confusing ones again 'GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS'"); break;
+			default: Log("Some framebuffer error that isn't one of the given, dunno what to do with that."); break;
 			}
 		}
 		return status == GL_FRAMEBUFFER_COMPLETE;

@@ -1898,19 +1898,23 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
-	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-
-	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	CheckError();
+	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	CheckError();
+
+
 
 	depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
 	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	CheckError();
 
 	depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-
+	CheckError();
 	depthed.Assemble();
 
 	toRemoveError.GetColor();
@@ -1966,29 +1970,6 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 }
 
 void init();
-
-struct PathDummy
-{
-	unsigned char x, y;
-	std::vector<std::weak_ptr<PathDummy>> dummies;
-	std::vector<std::weak_ptr<PathDummy>> neighbors() const { return this->dummies; }
-	constexpr PathDummy(unsigned char x = 0, unsigned char y = 0) : x(x), y(y) {}
-	bool operator==(const PathDummy& other) const { return this->x == other.x && this->y == other.y; }
-	float distance(const PathDummy& other) const { return static_cast<float>(glm::sqrt(glm::pow(this->x - other.x, 2) + glm::pow(this->y - other.y, 2))); }
-	void AddNeighbor(const std::weak_ptr<PathDummy>& other) { this->dummies.push_back(other); }
-};
-
-namespace std
-{
-	template<> struct hash<PathDummy>
-	{
-		size_t operator()(const PathDummy& op) const
-		{
-			return static_cast<size_t>(op.x) << 16 | static_cast<size_t>(op.y) | static_cast<size_t>((op.y << 4) ^ op.y) << 8;
-		}
-	};
-}
-float heur(const PathDummy& dum1, const PathDummy& dum2) { return dum1.distance(dum2); }
 
 int main(int argc, char** argv)
 {
@@ -2536,20 +2517,14 @@ void init()
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	
-	//fonter.RenderToTexture(buttonA, "Soft", glm::vec4(0, 0, 0, 1));
-	//fonter.RenderToTexture(buttonB, "Not", glm::vec4(0, 0, 0, 1));
-	
-	std::cout << buttonA.GetSize() << std::endl;
+	std::array<std::string, 2> buttonText{ "Soft", "Not" };
 
-	ArrayBuffer stored{}, stored2{};
-	auto sizeA = fonter.GetTextTris(stored, glm::vec2(0, 0), "Soft");
-	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Not");
+	Texture2D tempA, tempB;
+	fonter.RenderToTexture(tempA, "Soft", glm::vec4(0, 0, 0, 1));
+	fonter.RenderToTexture(tempB, "Not", glm::vec4(0, 0, 0, 1));
 
 	ColorFrameBuffer buffered;
-	glm::ivec2 bufSize = glm::max(sizeA, sizeB) + glm::vec2(20);
-	std::cout << bufSize << std::endl;
-	buffered.GetColor().CreateEmpty(bufSize.x, bufSize.y);
-	buffered.Assemble();
+	glm::ivec2 bufSize = glm::max(tempA.GetSize(), tempB.GetSize()) + glm::ivec2(20);
 	auto sized = NineSliceGenerate(glm::ivec2(0, 0), bufSize);
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
@@ -2563,26 +2538,19 @@ void init()
 
 	for (int j = 0; j < 2; j++)
 	{
-		auto& current = (j == 0) ? stored : stored2;
-		((j == 0) ? buttonA : buttonB).CreateEmpty(bufSize.x, bufSize.y);
-		buffered.Bind();
-		buffered.GetColor().MakeAliasOf((j == 0) ? buttonA : buttonB);
+		auto& current = (j == 0) ? buttonA : buttonB;
+		current.CreateEmpty(bufSize.x, bufSize.y);
+		buffered.GetColor().MakeAliasOf(current);
 		buffered.Assemble();
+		buffered.Bind();
 		nineSlicer.SetActiveShader();
 		nineSliced.BindArrayBuffer(rects);
 		nineSlicer.SetTextureUnit("image", nineSlice);
 		nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 		uiRectTexture.SetActiveShader();
 		uiRectTexture.SetVec4("rectangle", glm::vec4(0, 0, bufSize));
-		//uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);
-		//uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
-		
-		fontShader.SetActiveShader();
-		fontVAO.BindArrayBuffer(current);
-		fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
-		fontShader.DrawArray<DrawType::Triangle>(current);
-		
-		//buffered.ReadColorIntoTexture((j == 0) ? buttonA : buttonB);
+		uiRectTexture.SetTextureUnit("image", (j == 0) ? tempA : tempB, 0);
+		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
 	}
 	CheckError();
 	DisableGLFeatures<Blending>();

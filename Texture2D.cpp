@@ -62,24 +62,16 @@ void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
 	this->internalFormat = 0;
 }
 
-// TODO: Make this work, texture must be created via glTexStorage2D to work
 void Texture2D::MakeAliasOf(Texture2D& other)
 {
-	Log("This is a bad function you aren't ready for it");
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
-	//glBindTexture(GL_TEXTURE_2D, other.texture);
-	// NumLayers(last parameter) must be 1
-	//std::cout << "Format: " << other.internalFormat << std::endl;
-	//std::cout << this->texture << ":" << other.texture << std::endl;
-	GLint ib;
-	glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &ib);
-	//std::cout << ib << std::endl;
 	glTextureView(this->texture, GL_TEXTURE_2D, other.texture, other.internalFormat, 0, 1, 0, 1);
 	this->width = other.width;
 	this->height = other.height;
 	this->channels = other.channels;
 	this->internalFormat = other.internalFormat;
+	this->isTextureView = true;
 }
 
 void Texture2D::CopyFrom(Texture2D& other)
@@ -146,7 +138,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
-	GLenum internalFormat = type, pixelType = type, pixelDataFormat = GL_UNSIGNED_BYTE;
+	GLenum internalFormat = type, pixelType = GL_RGBA;
 	// TODO: Remove these I don't think they're necessary
 	switch (type)
 	{
@@ -156,18 +148,18 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		pixelType = GL_STENCIL_INDEX;
 		break;
 	case InternalDepthStencil:
-		pixelDataFormat = GL_DEPTH24_STENCIL8;
-		pixelDataFormat = GL_UNSIGNED_INT_24_8_EXT;
+		pixelType = GL_DEPTH_STENCIL;
 		break;
 	case InternalDepthStencilFloat:
-		pixelDataFormat = GL_DEPTH32F_STENCIL8; 
 		internalFormat = GL_DEPTH_STENCIL;
-		pixelType = GL_DEPTH32F_STENCIL8;
+		pixelType = GL_DEPTH_STENCIL;
 		break;
+	case InternalDepth:
 	case InternalDepth16:
 	case InternalDepth24:
 	case InternalDepthFloat32:
 		pixelType = GL_DEPTH_COMPONENT;
+		internalFormat = GL_DEPTH_COMPONENT32F;
 		break;
 	case InternalFloatRed16:
 	case InternalFloatRedGreen16: 
@@ -200,17 +192,16 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		internalFormat = GL_RGBA8;
 		break;
 	}
-	// TODO: store these values or something so things like FillTexture won't throw an annoying error
-	glTextureStorage2D(this->texture, level + 1, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
-	/*
-	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
-		BORDER_PARAMETER, pixelType, pixelDataFormat, nullptr);
-		*/
-	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
-	this->internalFormat = internalFormat;
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);
+
+	glTextureStorage2D(this->texture, level + 1, internalFormat, this->width, this->height);
+	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
+	this->internalFormat = internalFormat;
 	this->channels = Texture::GetColorChannels(type);
+
+
+	// TODO: Texture fill type so clear tex image will behave, stencil/depth/depth+stencil get their own and everything else rgba
 }
 
 void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type, const glm::vec4& color, GLint level)

@@ -18,7 +18,7 @@ constexpr std::string LocationFormat(const std::source_location location = std::
 constexpr std::string LocationFormat(const std::source_location location)
 {
 	constexpr const char* cDecl = "__cdecl";
-	constexpr const char* replaceFiller = "[0][1][2]";
+	constexpr const char* replaceFiller = "[0][1][2] ";
 	constexpr std::size_t length = std::string(cDecl).length() + 1;
 	constexpr std::size_t lineLocation = std::string(replaceFiller).find('2');
 	constexpr std::size_t funcLocation = std::string(replaceFiller).find('1');
@@ -49,7 +49,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 constexpr std::string LocationFormat(const std::source_location location)
 {
 	constexpr const char* cDecl = "__cdecl";
-	constexpr const char* replaceFiller = "[0][1]";
+	constexpr const char* replaceFiller = "[0][1] ";
 	constexpr std::size_t length = std::string(cDecl).length() + 1;
 	constexpr std::size_t lineLocation = std::string(replaceFiller).find('1');
 	constexpr std::size_t funcLocation = std::string(replaceFiller).find('0');
