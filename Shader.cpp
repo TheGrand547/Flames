@@ -77,7 +77,7 @@ static GLuint CompileShader(GLenum type, std::string data)
 		GLint length;
 		glGetShaderiv(vertex, GL_INFO_LOG_LENGTH, &length);
 
-		std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(length + 1);
+		std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(static_cast<size_t>(length) + 1);
 		infoLog[length] = '\0';
 		glGetShaderInfoLog(vertex, length, NULL, infoLog.get());
 		std::cout << "Compilation of Shader failed\n" << std::string(infoLog.get()) << std::endl;
@@ -153,7 +153,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				input.read((char*)&length, sizeof(GLint));
 				input.read((char*)&format, sizeof(GLenum));
 
-				std::unique_ptr<char[]> data = std::make_unique<char[]>(length + 1);
+				std::unique_ptr<char[]> data = std::make_unique<char[]>(static_cast<size_t>(length) + 1);
 				data[length] = '\0';
 				input.read(data.get(), length);
 				this->program = glCreateProgram();
@@ -170,7 +170,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				}
 				GLint logSize;
 				glGetProgramiv(this->program, GL_INFO_LOG_LENGTH, &logSize);
-				std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(logSize + 1);
+				std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
 				logMsg[length] = '\0';
 				glGetProgramInfoLog(this->program, logSize, NULL, logMsg.get());
 				Log("Error reading compiled shader from file '" << name << ".csp'\n" << logMsg.get() << std::endl);
@@ -190,7 +190,7 @@ bool Shader::ProgramStatus()
 	{
 		GLint logSize;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(logSize + 1);
+		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
 		logMsg[logSize] = '\0';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cerr << "Linking of shader failed: " << logMsg.get() << std::endl;
@@ -202,8 +202,8 @@ bool Shader::ProgramStatus()
 	if (logSize)
 	{
 		std::cout << std::bit_cast<unsigned int>(logSize) << std::endl;
-		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(logSize + 1);
-		logMsg[logSize + 1] = '\n';
+		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(static_cast<size_t>(logSize) + 1);
+		logMsg[static_cast<size_t>(logSize) + 1] = '\n';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cout << "Program Log: " << logMsg.get() << std::endl;
 		EXIT;

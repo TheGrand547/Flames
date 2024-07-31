@@ -2388,13 +2388,16 @@ void init()
 	pointUniformBuffer.SetBindingPoint(2);
 	pointUniformBuffer.BindUniform();
 
+	int maxSize = 0;
+	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
 	// Shenanigans
-	depthMap.CreateEmpty({ 1024, 1024 }, InternalRed16, { LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat });
+	depthMap.CreateEmptyWithFilters({ 1024, 1024 }, InternalRed16, { LinearLinear, MagLinear, Repeat, Repeat }, { 0.f, 1.f, 1.f, 1.f });
 	//depthMap.Load("depth.png");
 	ColorFrameBuffer _t;
 	_t.GetColor().MakeAliasOf(depthMap);
 	_t.Assemble();
 	_t.Bind();
+	glViewport(0, 0, 1024, 1024);
 	voronoi.SetActiveShader();
 	voronoi.SetInt("mode", 2);
 	voronoi.DrawArray<DrawType::TriangleStrip>(4);
@@ -2403,10 +2406,8 @@ void init()
 	//depthMap.SetAnisotropy(16.f);
 
 	HeightToNormal(depthMap, normalMap);
-	//CheckError();
 	normalMap.BindTexture();
-	//CheckError();
-	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
+	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	normalMap.SetAnisotropy(16.f);
 
 

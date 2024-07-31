@@ -59,6 +59,7 @@ static const std::string voronoiFragment =
 "}"
 "";
 
+// From here https://stackoverflow.com/questions/5281261/generating-a-normal-map-from-a-height-map
 static const std::string heightToNormalFragment = "#version 450 core\n"
 "in vec2 uv;"
 "out vec4 normal;"
@@ -66,24 +67,15 @@ static const std::string heightToNormalFragment = "#version 450 core\n"
 "uniform sampler2D heightMap;"
 "void main()"
 "{"
-"	const vec2 size = fwidthFine(uv);"
-"	vec4 wave = texture(heightMap, uv);"
-"	float s11 = wave.r;"
+"	const vec2 size = fwidth(uv);"
+"	float s11 = texture(heightMap, uv).r;"
 "	float s01 = textureOffset(heightMap, uv, off.xy).r;"
 "	float s21 = textureOffset(heightMap, uv, off.zy).r;"
 "	float s10 = textureOffset(heightMap, uv, off.yx).r;"
 "	float s12 = textureOffset(heightMap, uv, off.yz).r;"
-	"float samples[9];"
-"for (int i = 0; i < 3; i++) {for (int j = 0; j < 3; j++){samples[i * 3 + j] = textureOffset(heightMap, uv, ivec2(off[i], off[j])).r;}}"
-" float xDif = -(samples[0] + samples[1] + samples[2]) + (samples[6] + samples[7] + samples[8]);"
-" float yDif = -(samples[0] + samples[3] + samples[6]) + (samples[2] + samples[5] + samples[8]);"
-"xDif = min(min(samples[0] - samples[6], samples[1] - samples[7]), samples[2] - samples[8]);"
-"yDif = min(min(samples[0] - samples[2], samples[3] - samples[5]), samples[6] - samples[8]);"
-
-//"	vec3 va = normalize(vec3(size.x, xDif, size.y));      vec3 vb = normalize(vec3(size.y, yDif, -size.x));"
-"	vec3 va = normalize(vec3(size.x, s21 - s01, size.y));      vec3 vb = normalize(vec3(size.y, s12 - s10, -size.x));"
+"	vec3 va = normalize(vec3(size.x, s21 - s01, size.y));"
+"   vec3 vb = normalize(vec3(size.y, s12 - s10, -size.x));"
 "	normal = vec4(normalize(cross(va, vb)) / 2 + 0.5, 1);"
-//"	normal = vec4(normalize(cross(va, vb)), 1);"
 "}";
 
 
