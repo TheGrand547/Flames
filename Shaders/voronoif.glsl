@@ -39,7 +39,7 @@ void main()
 			}
 		}
 	}
-	float curved = pow(1. - minLength, 6.);
+	float curved = pow(1. - minLength, 5.);
 	if (mode == 0)
 	{
 		color = vec4(curved, curved, curved, 1);

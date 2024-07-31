@@ -514,7 +514,7 @@ void display()
 		tempMatrix[3] = glm::vec4(billboardPosition, 1);
 		tempMatrix[2] *= 0.5f;
 		billboardShader.SetMat4("orient", tempMatrix);
-		billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
+		//billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
 	}
 	/*
 	DisableGLFeatures<FaceCulling>();
@@ -858,7 +858,7 @@ void display()
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRectTexture.SetTextureUnit("image", normalMap);
-	uiRectTexture.SetVec4("rectangle", { 0, 0, 1000, 1000 });
+	uiRectTexture.SetVec4("rectangle", { 0, 0, normalMap.GetSize()});
 	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	DisableGLFeatures<FaceCulling>();
@@ -2389,24 +2389,24 @@ void init()
 	pointUniformBuffer.BindUniform();
 
 	// Shenanigans
-	depthMap.CreateEmpty({ 1024, 1024 }, InternalRed8, { MinLinear, MagLinear, MirroredRepeat, MirroredRepeat });
+	depthMap.CreateEmpty({ 1024, 1024 }, InternalRed16, { LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat });
 	//depthMap.Load("depth.png");
 	ColorFrameBuffer _t;
 	_t.GetColor().MakeAliasOf(depthMap);
 	_t.Assemble();
 	_t.Bind();
 	voronoi.SetActiveShader();
-	voronoi.SetInt("mode", 0);
+	voronoi.SetInt("mode", 2);
 	voronoi.DrawArray<DrawType::TriangleStrip>(4);
 	BindDefaultFrameBuffer();
 	depthMap.BindTexture();
-	depthMap.SetAnisotropy(16.f);
+	//depthMap.SetAnisotropy(16.f);
 
 	HeightToNormal(depthMap, normalMap);
 	//CheckError();
 	normalMap.BindTexture();
 	//CheckError();
-	normalMap.SetFilters(MinLinear, MagLinear, MirroredRepeat, MirroredRepeat);
+	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
 
 

@@ -59,30 +59,37 @@ static const std::string voronoiFragment =
 "}"
 "";
 
-static const std::string heightToNormalFragment = "#version 440 core\n"
+static const std::string heightToNormalFragment = "#version 450 core\n"
 "in vec2 uv;"
 "out vec4 normal;"
 "const ivec3 off = ivec3(-1, 0, 1);"
 "uniform sampler2D heightMap;"
 "void main()"
 "{"
-"	vec2 size = fwidth(uv) / 2;"
+"	const vec2 size = fwidthFine(uv);"
 "	vec4 wave = texture(heightMap, uv);"
 "	float s11 = wave.r;"
 "	float s01 = textureOffset(heightMap, uv, off.xy).r;"
 "	float s21 = textureOffset(heightMap, uv, off.zy).r;"
 "	float s10 = textureOffset(heightMap, uv, off.yx).r;"
 "	float s12 = textureOffset(heightMap, uv, off.yz).r;"
+	"float samples[9];"
+"for (int i = 0; i < 3; i++) {for (int j = 0; j < 3; j++){samples[i * 3 + j] = textureOffset(heightMap, uv, ivec2(off[i], off[j])).r;}}"
+" float xDif = -(samples[0] + samples[1] + samples[2]) + (samples[6] + samples[7] + samples[8]);"
+" float yDif = -(samples[0] + samples[3] + samples[6]) + (samples[2] + samples[5] + samples[8]);"
+"xDif = min(min(samples[0] - samples[6], samples[1] - samples[7]), samples[2] - samples[8]);"
+"yDif = min(min(samples[0] - samples[2], samples[3] - samples[5]), samples[6] - samples[8]);"
 
-"	vec3 va = normalize(vec3(size.xy, s21 - s01));"
-"	vec3 vb = normalize(vec3(size.yx, s12 - s10));"
-"	normal = vec4(cross(va, vb), s11);"
+//"	vec3 va = normalize(vec3(size.x, xDif, size.y));      vec3 vb = normalize(vec3(size.y, yDif, -size.x));"
+"	vec3 va = normalize(vec3(size.x, s21 - s01, size.y));      vec3 vb = normalize(vec3(size.y, s12 - s10, -size.x));"
+"	normal = vec4(normalize(cross(va, vb)) / 2 + 0.5, 1);"
+//"	normal = vec4(normalize(cross(va, vb)), 1);"
 "}";
 
 
 void HeightToNormal(const Texture2D& input, Texture2D& output)
 {
-	output.CreateEmpty(input.GetSize());
+	output.CreateEmpty(input.GetSize(), InternalRGBA8);
 	ColorFrameBuffer buffer;
 	buffer.GetColor().MakeAliasOf(output);
 	buffer.Assemble();
