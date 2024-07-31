@@ -19,7 +19,7 @@ PathFollower::PathFollower(const glm::vec3& position, const float& mass) noexcep
 
 PathFollower::~PathFollower() noexcept
 {
-	std::cout << "Follower Down" << std::endl;
+	//std::cout << "Follower Down" << std::endl;
 	this->path.clear();
 }
 

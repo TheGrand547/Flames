@@ -11,12 +11,12 @@ inline constexpr GLenum Texture2D::TextureType()
 	return GL_TEXTURE_2D;
 }
 
-Texture2D::Texture2D() : width(0), height(0), channels(0), texture(0), internalFormat(0)
+Texture2D::Texture2D() : width(0), height(0), channels(0), texture(0), internalFormat(0), isTextureView(false)
 {
 
 }
 
-Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channels(0), texture(0), internalFormat(0)
+Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channels(0), texture(0), internalFormat(0), isTextureView(false)
 {
 	this->Load(filename);
 }
@@ -24,6 +24,18 @@ Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channel
 Texture2D::~Texture2D()
 {
 	this->CleanUp();
+}
+
+Texture2D& Texture2D::operator=(Texture2D&& left) noexcept
+{
+	this->CleanUp();
+	std::swap(this->texture, left.texture);
+	std::swap(this->width, left.width);
+	std::swap(this->height, left.height);
+	std::swap(this->channels, left.channels);
+	std::swap(this->internalFormat, left.internalFormat);
+	std::swap(this->isTextureView, left.isTextureView);
+	return *this;
 }
 
 void Texture2D::CleanUp()
@@ -37,6 +49,7 @@ void Texture2D::CleanUp()
 	this->height = 0;
 	this->channels = 0;
 	this->internalFormat = 0;
+	this->isTextureView = false;
 }
 
 void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
@@ -55,14 +68,14 @@ void Texture2D::MakeAliasOf(Texture2D& other)
 	Log("This is a bad function you aren't ready for it");
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
-	glBindTexture(GL_TEXTURE_2D, other.texture);
+	//glBindTexture(GL_TEXTURE_2D, other.texture);
 	// NumLayers(last parameter) must be 1
 	//std::cout << "Format: " << other.internalFormat << std::endl;
 	//std::cout << this->texture << ":" << other.texture << std::endl;
 	GLint ib;
 	glGetTexParameteriv(GL_TEXTURE_2D, GL_TEXTURE_IMMUTABLE_FORMAT, &ib);
 	//std::cout << ib << std::endl;
-	glTextureView(this->texture, GL_TEXTURE_2D, other.texture, other.internalFormat, 0, 0, 0, 1);
+	glTextureView(this->texture, GL_TEXTURE_2D, other.texture, other.internalFormat, 0, 1, 0, 1);
 	this->width = other.width;
 	this->height = other.height;
 	this->channels = other.channels;
@@ -76,8 +89,7 @@ void Texture2D::CopyFrom(Texture2D& other)
 
 void Texture2D::CopyFrom(Texture2D&& other)
 {
-	this->CleanUp();
-	std::swap(*this, other);
+	*this = std::forward<Texture2D&&>(other);
 }
 
 void Texture2D::CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat, const glm::ivec2& start)
@@ -135,6 +147,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	GLenum internalFormat = type, pixelType = type, pixelDataFormat = GL_UNSIGNED_BYTE;
+	// TODO: Remove these I don't think they're necessary
 	switch (type)
 	{
 	case InternalStencil:
@@ -170,11 +183,30 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	case InternalUnsignedFloatBPTCRGB:
 		pixelType = GL_RED; // Can't have floating point pixelType
 		break;
+	case InternalRed:
+		pixelType = GL_RED;
+		internalFormat = GL_R8;
+		break;
+	case InternalRedGreen:
+		pixelType = GL_RG;
+		internalFormat = GL_RG8;
+		break;
+	case InternalRGB:
+		pixelType = GL_RGB;
+		internalFormat = GL_RGB8;
+		break;
+	case InternalRGBA:
+		pixelType = GL_RGBA;
+		internalFormat = GL_RGBA8;
+		break;
 	}
 	// TODO: store these values or something so things like FillTexture won't throw an annoying error
+	glTextureStorage2D(this->texture, level + 1, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height));
+	/*
 	glTexImage2D(GL_TEXTURE_2D, level, internalFormat, static_cast<GLsizei>(width), static_cast<GLsizei>(height), 
 		BORDER_PARAMETER, pixelType, pixelDataFormat, nullptr);
-	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
+		*/
+	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
 	this->internalFormat = internalFormat;
 	this->width = static_cast<GLsizei>(width);
 	this->height = static_cast<GLsizei>(height);
@@ -187,7 +219,7 @@ void Texture2D::CreateEmptyWithFilters(std::size_t width, std::size_t height, Te
 	this->SetFilters();
 }
 
-void Texture2D::FillTexture(const glm::vec4& color, int level)
+void Texture2D::FillTexture(const glm::vec4& color, int level) const
 {
 	glClearTexImage(this->texture, level, GL_RGBA, GL_FLOAT, glm::value_ptr(color));
 }

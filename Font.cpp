@@ -134,7 +134,6 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 {
 	ArrayBuffer buffer;
 	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
-	glm::vec4 empty{ 0 };
 	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA, backgroundColor);
 	//framebuffer.GetColor().FillTexture(backgroundColor);
 	// Don't want artifacting
@@ -165,15 +164,14 @@ ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& 
 
 void ASCIIFont::RenderToTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
-	ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
-	buffer.ReadColorIntoTexture(texture);
+	texture = std::move(this->Render(message, textColor, backgroundColor).GetColor());
 }
 
 void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
 {
 	// TODO: Return and make this work
 	ColorFrameBuffer framebuffer;
-	framebuffer.GetColor().CreateEmpty(texture.GetWidth(), texture.GetHeight());
+	framebuffer.GetColor().MakeAliasOf(texture);
 	framebuffer.Assemble();
 	framebuffer.Bind();
 	glViewport(0, 0, texture.GetWidth(), texture.GetHeight());
@@ -196,7 +194,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 	DisableGLFeatures<Blending>();
 	BindDefaultFrameBuffer();
 	//ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
-	framebuffer.ReadColorIntoTexture(texture);
+	//framebuffer.ReadColorIntoTexture(texture);
 }
 
 

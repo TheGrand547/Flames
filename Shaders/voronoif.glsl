@@ -73,10 +73,7 @@ void main()
 				}
 			}
 		}
-		//curved = pow(1 - edgeLength, 6);
-		//color = vec4(curved, curved, curved, 1);
+		curved = pow(1 - edgeLength, 6); // This gives the really nice curved edges
+		color = vec4(curved, curved, curved, 1);
 	}
-	//color.x = curved;
-	//color.yz = textureCoords;
-	//color = vec4(textureCoords, 0.5, 1);
 }

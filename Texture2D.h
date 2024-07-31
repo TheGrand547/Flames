@@ -19,12 +19,15 @@ private:
 	// Why is channels stored??
 	GLsizei width, height, channels;
 	GLenum internalFormat;
+	bool isTextureView;
 
 	inline constexpr GLenum TextureType();
 public:
 	Texture2D();
 	Texture2D(const std::string& filename);
 	~Texture2D();
+
+	Texture2D& operator=(Texture2D&& left) noexcept;
 
 	inline GLuint GetGLTexture() const noexcept;
 
@@ -43,7 +46,7 @@ public:
 
 	void CopyFrom(Texture2D& other);
 	void CopyFrom(Texture2D&& other);
-	void CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat = InternalRGBA, const glm::ivec2& start = glm::ivec2(0, 0));
+	void CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat = InternalRGBA8, const glm::ivec2& start = glm::ivec2(0, 0));
 
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
@@ -52,14 +55,14 @@ public:
 	inline void GenerateMipmap() const;
 	inline void SetFilters(TextureMinFilter minFilter = MinNearest, TextureMagFilter magFilter = MagNearest, 
 		TextureWrapping sWrapping = Repeat, TextureWrapping tWrapping = Repeat) const;
-	inline void SetAnisotropy(const float value);
+	inline void SetAnisotropy(const float value) const;
 
 	inline void BindTexture(GLuint slot = 0) const;
-	void Load(const std::string& filename, TextureFormatInternal internal = InternalRGBA);
-	void CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, const glm::vec4& color = glm::vec4(0), GLint level = 0);
-	void CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA, const glm::vec4& color = glm::vec4(0), GLint level = 0);
+	void Load(const std::string& filename, TextureFormatInternal internal = InternalRGBA8);
+	void CreateEmpty(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA8, const glm::vec4& color = glm::vec4(0), GLint level = 0);
+	void CreateEmptyWithFilters(std::size_t width, std::size_t height, TextureFormatInternal type = InternalRGBA8, const glm::vec4& color = glm::vec4(0), GLint level = 0);
 
-	void FillTexture(const glm::vec4& color, int level = 0);
+	void FillTexture(const glm::vec4& color, int level = 0) const;
 
 	template <class T> void Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat, 
 								TextureDataInput dataFormat, std::size_t width, std::size_t height);
@@ -138,11 +141,11 @@ inline void Texture2D::SetFilters(TextureMinFilter minFilter, TextureMagFilter m
 	this->SetWrapBehaviorT(tWrapping);
 }
 
-inline void Texture2D::SetAnisotropy(const float value)
+inline void Texture2D::SetAnisotropy(const float value) const
 {
 	float max;
 	glGetFloatv(GL_MAX_TEXTURE_MAX_ANISOTROPY, &max);
-	glTextureParameterf(this->texture, GL_TEXTURE_MAX_ANISOTROPY, (value > max) ? max : value);
+	glTextureParameterf(this->texture, GL_TEXTURE_MAX_ANISOTROPY, glm::min(max, value));
 }
 
 template<class T> inline void Texture2D::Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat,

@@ -839,7 +839,7 @@ void display()
 	nineSlicer.SetActiveShader();
 	nineSlicer.SetTextureUnit("image", nineSlice);
 	nineSliced.BindArrayBuffer(ui_tester_buffer);
-	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
+	nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 
 
 	uiRectTexture.SetActiveShader();
@@ -861,7 +861,7 @@ void display()
 	DisableGLFeatures<Blending>();
 	voronoi.SetActiveShader();
 	voronoi.SetInt("mode", 0);
-	voronoi.DrawArray<DrawType::TriangleStrip>(4);
+	//voronoi.DrawArray<DrawType::TriangleStrip>(4);
 
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
@@ -1642,7 +1642,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			{
 				std::array<glm::vec4, 32> points{};
 				int length = 32;
-				int pad, pad2, pad3;
+				int pad{}, pad2{}, pad3{};
 			} point_temp;
 			for (auto& p : point_temp.points)
 			{
@@ -2393,7 +2393,7 @@ void init()
 	{
 		std::array<glm::vec4, 32> points{};
 		int length = 32;
-		int pad, pad2, pad3;
+		int pad{}, pad2{}, pad3{};
 	} point_temp;
 	for (auto& p: point_temp.points)
 	{
@@ -2536,15 +2536,18 @@ void init()
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	
-	fonter.RenderToTexture(buttonA, "Soft", glm::vec4(0, 0, 0, 1));
-	fonter.RenderToTexture(buttonB, "Not", glm::vec4(0, 0, 0, 1));
+	//fonter.RenderToTexture(buttonA, "Soft", glm::vec4(0, 0, 0, 1));
+	//fonter.RenderToTexture(buttonB, "Not", glm::vec4(0, 0, 0, 1));
 	
+	std::cout << buttonA.GetSize() << std::endl;
+
 	ArrayBuffer stored{}, stored2{};
 	auto sizeA = fonter.GetTextTris(stored, glm::vec2(0, 0), "Soft");
-	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Softer");
+	auto sizeB = fonter.GetTextTris(stored2, glm::vec2(0, 0), "Not");
 
 	ColorFrameBuffer buffered;
 	glm::ivec2 bufSize = glm::max(sizeA, sizeB) + glm::vec2(20);
+	std::cout << bufSize << std::endl;
 	buffered.GetColor().CreateEmpty(bufSize.x, bufSize.y);
 	buffered.Assemble();
 	auto sized = NineSliceGenerate(glm::ivec2(0, 0), bufSize);
@@ -2561,30 +2564,33 @@ void init()
 	for (int j = 0; j < 2; j++)
 	{
 		auto& current = (j == 0) ? stored : stored2;
+		((j == 0) ? buttonA : buttonB).CreateEmpty(bufSize.x, bufSize.y);
 		buffered.Bind();
-		buffered.GetColor().FillTexture(glm::vec4(0));
+		buffered.GetColor().MakeAliasOf((j == 0) ? buttonA : buttonB);
+		buffered.Assemble();
 		nineSlicer.SetActiveShader();
 		nineSliced.BindArrayBuffer(rects);
 		nineSlicer.SetTextureUnit("image", nineSlice);
 		nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 		uiRectTexture.SetActiveShader();
 		uiRectTexture.SetVec4("rectangle", glm::vec4(0, 0, bufSize));
-		uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);
-		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
-		/*
+		//uiRectTexture.SetTextureUnit("image", (j == 0) ? buttonA : buttonB, 0);
+		//uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
+		
 		fontShader.SetActiveShader();
 		fontVAO.BindArrayBuffer(current);
 		fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 		fontShader.DrawArray<DrawType::Triangle>(current);
-		*/
-		buffered.ReadColorIntoTexture((j == 0) ? buttonA : buttonB);
+		
+		//buffered.ReadColorIntoTexture((j == 0) ? buttonA : buttonB);
 	}
+	CheckError();
 	DisableGLFeatures<Blending>();
 	glLineWidth(100);
 
 	help.SetMessages("Work", "UnWork", fonter);
-	
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	glClearColor(0.f, 0.f, 0.f, 0.f);
+	Log("End of Init");
 }

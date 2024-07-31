@@ -58,10 +58,10 @@ public:
 
 	Framebuffer(Framebuffer<ColorAttachments, buffers>&& other) noexcept
 	{
-		std::swap(this->depth, other.depth);
-		std::swap(this->stencil, other.stencil);
-		std::swap(this->depthStencil, other.depthStencil);
-		std::swap(this->colorBuffers, other.colorBuffers);
+		if constexpr (HasDepth) std::swap(this->depth, other.depth);
+		if constexpr (HasStencil) std::swap(this->stencil, other.stencil);
+		if constexpr (HasCombined) std::swap(this->depthStencil, other.depthStencil);
+		if constexpr (HasColor) this->colorBuffers = std::move(other.colorBuffers);
 		std::swap(this->frameBuffer, other.frameBuffer);
 	}
 
@@ -72,10 +72,10 @@ public:
 
 	Framebuffer<ColorAttachments, buffers>& operator=(Framebuffer<ColorAttachments, buffers>&& other) noexcept
 	{
-		std::swap(this->depth, other.depth);
-		std::swap(this->stencil, other.stencil);
-		std::swap(this->depthStencil, other.depthStencil);
-		std::swap(this->colorBuffers, other.colorBuffers);
+		if constexpr (HasDepth) std::swap(this->depth, other.depth);
+		if constexpr (HasStencil) std::swap(this->stencil, other.stencil);
+		if constexpr (HasCombined) std::swap(this->depthStencil, other.depthStencil);
+		if constexpr (HasColor) this->colorBuffers = std::move(other.colorBuffers);
 		std::swap(this->frameBuffer, other.frameBuffer);
 		return *this;
 	}
@@ -149,6 +149,11 @@ public:
 
 	// TODO: version of assemble where it creates the textures at a specified size and format
 
+	bool Assembled() const noexcept
+	{
+		return this->frameBuffer != 0;
+	}
+
 	bool Assemble()
 	{
 		this->CleanFramebuffer();
@@ -178,15 +183,15 @@ public:
 		{
 			switch (status)
 			{
-			case GL_FRAMEBUFFER_UNDEFINED: Log("Default framebuffer unspecified."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: Log("At least one attachment point is incomplete."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: Log("No images attached to the framebuffer."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: Log("Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER'"); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: Log("Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER'"); break;
-			case GL_FRAMEBUFFER_UNSUPPORTED: Log("Incompatible internal formats of attachments."); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: Log("RenderBuffer samples do not agree for all attachments"); break;
-			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Log("More confusing ones again 'GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS'"); break;
-			default: Log("Some framebuffer error that isn't one of the given, dunno what to do with that."); break;
+			case GL_FRAMEBUFFER_UNDEFINED: Log(" Default framebuffer unspecified."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: Log(" At least one attachment point is incomplete."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: Log(" No images attached to the framebuffer."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: Log(" Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER'"); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: Log(" Confused, have the enum name 'GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER'"); break;
+			case GL_FRAMEBUFFER_UNSUPPORTED: Log(" Incompatible internal formats of attachments."); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: Log(" RenderBuffer samples do not agree for all attachments"); break;
+			case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: Log(" More confusing ones again 'GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS'"); break;
+			default: Log(" Some framebuffer error that isn't one of the given, dunno what to do with that."); break;
 			}
 		}
 		return status == GL_FRAMEBUFFER_COMPLETE;
