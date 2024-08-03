@@ -86,6 +86,7 @@ void HeightToNormal(const Texture2D& input, Texture2D& output)
 	buffer.GetColor().MakeAliasOf(output);
 	buffer.Assemble();
 	buffer.Bind();
+	glViewport(0, 0, input.GetWidth(), input.GetHeight());
 
 	Shader temp;
 	temp.CompileEmbedded(identityVertex, heightToNormalFragment);

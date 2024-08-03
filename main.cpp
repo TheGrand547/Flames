@@ -29,6 +29,7 @@
 #include "glUtil.h"
 #include "Lines.h"
 #include "log.h"
+#include "Input.h"
 #include "Model.h"
 #include "OBJReader.h"
 #include "OrientedBoundingBox.h"
@@ -50,6 +51,7 @@
 #include "VertexArray.h"
 #include "UserInterface.h"
 #include "TextureUtil.h"
+#include "Window.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -185,8 +187,7 @@ ASCIIFont fonter;
 // Buffers
 ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
-ArrayBuffer pathNodePositions, pathNodeLines, guyLines;
-ArrayBuffer singleTri, splitTri;
+ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
 
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
@@ -195,7 +196,6 @@ UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
 
 // Framebuffer
 Framebuffer<2, DepthAndStencil> depthed;
-Framebuffer<1, DepthStencil> toRemoveError;
 ColorFrameBuffer scratchSpace;
 
 // Shaders
@@ -218,23 +218,19 @@ VAO nineSliced;
 VAO instanceVAO2;
 
 // Not explicitly tied to OpenGL Globals
-std::mutex bufferMutex;
 
-OBB smartBox, dumbBox;
-std::vector<Model> planes;
-std::vector<MaxHeapValue<OBB>> plans;
+OBB dumbBox; // rip smartbox
+std::vector<Model> instancedModels;
+std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
-StaticOctTree<OBB> boxes(glm::vec3(20));
+StaticOctTree<OBB> staticBoxes(glm::vec3(20));
 
 static unsigned int frameCounter = 0;
-bool smartBoxColor = false;
 
-glm::vec3 moveSphere(0, 3.5f, 6.5f);
-int kernel = 0;
+glm::vec3 movingSphere(0, 3.5f, 6.5f);
 int lineWidth = 3;
 
-int windowWidth = 1000, windowHeight = 1000;
 float aspectRatio = 1.f;
 static const float Fov = 70.f;
 
@@ -251,11 +247,14 @@ std::array<bool, '9' - '0' + 1> debugFlags{};
 #define ArrowKeyRight 2
 #define ArrowKeyLeft  3
 
+std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
+
+
+
 ColorFrameBuffer playerTextEntry;
 std::stringstream letters("abc");
-bool reRender = true;
+bool reRenderText = true;
 
-std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 constexpr float ANGLE_DELTA = 4;
 
 
@@ -264,10 +263,6 @@ glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 
 float zNear = 0.1f, zFar = 100.f;
-
-// Random Misc temporary testing things
-int axisIndex;
-std::array<LineSegment, 12> axes;
 
 enum GeometryThing : unsigned short
 {
@@ -311,7 +306,7 @@ OBB catapultBox;
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
 
-OBB loom;
+OBB pointingCapsule;
 
 OBB moveable;
 
@@ -321,7 +316,6 @@ bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 
 constexpr float BulletRadius = 0.05f;
-OBB orbing;
 struct Bullet
 {
 	glm::vec3 position, direction;
@@ -334,25 +328,10 @@ DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
 
 std::vector<Bullet> bullets;
 
-std::vector<TextureVertex> bigVertex;
+std::vector<TextureVertex> decalVertex;
 
 std::array<ScreenRect, 9> ui_tester;
 ArrayBuffer ui_tester_buffer;
-std::array<glm::vec4, 9> colors = { 
-	{
-		glm::vec4(  1,   1, 0.25, 1),
-		glm::vec4(0.5,   1, 0.25, 1),
-		glm::vec4(  0,   1, 0.25, 1),
-		glm::vec4(  1, 0.5, 0.25, 1),
-		glm::vec4(0.5, 0.5, 0.25, 1),
-		glm::vec4(  0, 0.5, 0.25, 1),
-		glm::vec4(  1,   0, 0.25, 1),
-		glm::vec4(0.5,   0, 0.25, 1),
-		glm::vec4(  0,   0, 0.25, 1),
-	} 
-};
-
-//std::size_t totalCount = 0, repeatCount = 0;
 
 /*
 New shading outputs
@@ -368,14 +347,15 @@ ElementArray skinArg;
 
 ArrayBuffer billboardBuffer;
 
-std::vector<AABB> showAndTell;
+std::vector<AABB> dynamicTreeBoxes;
+using namespace Input;
 
 void display()
 {
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//depthed.Bind();
-	glViewport(0, 0, windowWidth, windowHeight);
+	glViewport(0, 0, Window::Width, Window::Height);
 	glClearColor(0, 0, 0, 1);
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
@@ -409,14 +389,14 @@ void display()
 	{
 		lastCameraPos = cameraPosition;
 		QUICKTIMER("DepthSorting");
-		for (auto& p : plans)
+		for (auto& p : instancedDrawOrder)
 		{
 			p.value = p.element.SignedDistance(cameraPosition);
 		}
-		std::sort(plans.begin(), plans.end());
+		std::sort(instancedDrawOrder.begin(), instancedDrawOrder.end());
 		std::vector<glm::mat4> combo;
-		combo.reserve(planes.size());
-		for (auto& p : plans)
+		combo.reserve(instancedModels.size());
+		for (auto& p : instancedDrawOrder)
 		{
 			glm::mat4 fumo = p.element.GetModelMatrix();
 			fumo[1] = glm::vec4(p.element[1], 0);
@@ -545,20 +525,6 @@ void display()
 	}
 	EnableGLFeatures<FaceCulling>();
 	*/
-	// Triangle splitting test
-	triColor.SetActiveShader();
-	ArrayBuffer& triBuf = (featureToggle) ? singleTri : splitTri;
-	plainVAO.BindArrayObject();
-	plainVAO.BindArrayBuffer(triBuf);
-	triColor.DrawArray<DrawType::Triangle>(triBuf);
-
-	DisableGLFeatures<FaceCulling>();
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	triColor.DrawArray<DrawType::Triangle>(triBuf);
-	plainVAO.BindArrayBuffer(decals);
-	//triColor.DrawArray<DrawType::Triangle>(decals);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	EnableGLFeatures<FaceCulling>();
 
 	decalShader.SetActiveShader();
 	decalVAO.BindArrayBuffer(decals);
@@ -572,7 +538,7 @@ void display()
 		glm::vec3 blue(0, 0, 1);
 		plainVAO.BindArrayBuffer(plainCube);
 		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
-		for (auto& box : showAndTell)
+		for (auto& box : dynamicTreeBoxes)
 		{
 			auto d = box.GetModel();
 			d.scale *= 0.99f;
@@ -581,29 +547,27 @@ void display()
 		}
 	}
 
-	// Debugging boxes
+	// Debugging staticBoxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
 	{
 		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
 		plainVAO.BindArrayBuffer(plainCube);
 
-		OBB goober(AABB(glm::vec3(0), glm::vec3(1)));
-		goober.Translate(glm::vec3(2, 0.1, 0));
-		goober.Rotate(glm::radians(glm::vec3(frameCounter * -2.f, frameCounter * 4.f, frameCounter)));
-		uniform.SetMat4("Model", goober.GetModelMatrix());
+		OBB placeholder(AABB(glm::vec3(0), glm::vec3(1)));
+		placeholder.Translate(glm::vec3(2, 0.1, 0));
+		placeholder.Rotate(glm::radians(glm::vec3(frameCounter * -2.f, frameCounter * 4.f, frameCounter)));
+		uniform.SetMat4("Model", placeholder.GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
 		float wid = 10;
 		if (debugFlags[TIGHT_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-		uniform.SetMat4("Model", goober.GetAABB().GetModel().GetModelMatrix());
+		uniform.SetMat4("Model", placeholder.GetAABB().GetModel().GetModelMatrix());
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
 
 		if (debugFlags[WIDE_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-		for (const auto& box: boxes)
+		for (const auto& box: staticBoxes)
 		{
-			//glLineWidth((box.color) ? wid * 1.5f : wid);
-			//glPointSize((box.color) ? wid * 1.5f : wid);
 			if (debugFlags[TIGHT_BOXES])
 			{
 				uniform.SetMat4("Model", box.GetModelMatrix());
@@ -629,10 +593,6 @@ void display()
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	moveable.ReScale(glm::vec3(0, 1, 1));
 
-	
-	uniform.SetMat4("Model", orbing.GetModelMatrix());
-	if (featureToggle)
-		uniform.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
 	//glDepthMask(GL_FALSE)
 	// Albert
 	
@@ -641,8 +601,8 @@ void display()
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
 	dither.SetTextureUnit("textureIn", texture, 0);
-	dither.SetMat4("Model", smartBox.GetModelMatrix());
-	dither.SetVec3("color", (!smartBoxColor) ? glm::vec3(0, 1, 0) : glm::vec3(1, 0, 0));
+	dither.SetMat4("Model", dumbBox.GetModelMatrix());
+	dither.SetVec3("color", glm::vec3(0, 1, 0));
 	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
@@ -652,7 +612,7 @@ void display()
 
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
-	uniform.SetMat4("Model", smartBox.GetModelMatrix());
+	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
 	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
@@ -782,7 +742,7 @@ void display()
 	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
 	uiRect.SetActiveShader();
 	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
-	uiRect.SetVec4("rectangle", glm::vec4(0, 0, windowWidth, windowHeight));
+	uiRect.SetVec4("rectangle", glm::vec4(0, 0, Window::Width, Window::Height));
 	//uiRect.DrawArray(TriangleStrip, 4);
 	//uiRect.DrawArray(TriangleStrip, 4);
 
@@ -795,8 +755,8 @@ void display()
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	flatLighting.SetVec3("viewPos", cameraPosition);
-	flatLighting.SetMat4("modelMat", loom.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", loom.GetNormalMatrix());
+	flatLighting.SetMat4("modelMat", pointingCapsule.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", pointingCapsule.GetNormalMatrix());
 	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
 	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
@@ -809,7 +769,7 @@ void display()
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawElements(Triangle, sphereIndicies);
-	sphereModel.translation = moveSphere;
+	sphereModel.translation = movingSphere;
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	flatLighting.DrawElements(Triangle, sphereIndicies);
@@ -823,13 +783,13 @@ void display()
 	uiRect.SetVec4("rectangle", glm::vec4(0, 0, 200, 100));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, 0, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(Window::Width - 200, 0, 200, 100));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(0, windowHeight - 100, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(0, Window::Height - 100, 200, 100));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	
-	uiRect.SetVec4("rectangle", glm::vec4(windowWidth - 200, windowHeight - 100, 200, 100));
+	uiRect.SetVec4("rectangle", glm::vec4(Window::Width - 200, Window::Height - 100, 200, 100));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
 	uiRect.SetVec4("rectangle", userPortion);
@@ -845,7 +805,7 @@ void display()
 	uiRectTexture.SetActiveShader();
 	auto& colored = playerTextEntry.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
-	uiRectTexture.SetVec4("rectangle", glm::vec4((windowWidth - colored.GetWidth()) / 2, (windowHeight - colored.GetHeight()) / 2, 
+	uiRectTexture.SetVec4("rectangle", glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
 		colored.GetWidth(), colored.GetHeight()));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 
@@ -934,261 +894,6 @@ void display()
 static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
 static const glm::vec3 GravityUp{ 0.f, 1.f, 0.f };
 
-struct
-{
-	glm::vec3 acceleration{ 0.f };
-	glm::vec3 velocity{ 0.f };
-	glm::vec3 axisOfGaming{ 0.f };
-	OBB* ptr = nullptr;
-} smartBoxPhysics;
-
-static float maxRotatePerFrame = 0.f;
-
-// Aligns to the corner
-void smartBoxAlignCorner(OBB& other, glm::length_t minDotI, glm::length_t maxDotI)
-{
-	// Only the scale of the other one is needed to determine if this midpoint is inside
-	glm::vec3 dumbScale = other.GetScale();
-	glm::vec3 delta = other.Center() - smartBox.Center();
-
-	// Maintain right handedness
-	int indexA[3] = { 0, 0, 1 };
-	int indexB[3] = { 1, 2, 2 };
-	for (int i = 0; i < 3; i++)
-	{
-		int indexedA = indexA[i];
-		int indexedB = indexB[i];
-
-		glm::vec3 axisA = other[indexedA];
-		glm::vec3 axisB = other[indexedB];
-
-		// Calculate the distance along each of these axes 
-		float projectionA = glm::dot(delta, axisA);
-		float projectionB = glm::dot(delta, axisB);
-
-		// See if the extent in that direction is more than covered by these axes
-		bool testA = glm::abs(projectionA) >= dumbScale[indexedA];
-		bool testB = glm::abs(projectionB) >= dumbScale[indexedB];
-
-		// smartBox collides entirely because of its own sides, therefore it might need to rotate
-		if (testA && testB)
-		{
-			glm::quat current = glm::quat_cast(smartBox.GetNormalMatrix());
-			bool axisTest = glm::abs(projectionA) > glm::abs(projectionB);
-
-			// This is the axis of smartBox that will be rotated towards?
-			glm::vec3 localAxis = (axisTest) ? axisA : axisB;
-			if (glm::sign(glm::dot(localAxis, delta)) > 0)
-			{
-				localAxis *= -1;
-			}
-			glm::vec3 rotationAxis = glm::normalize(glm::cross(smartBox[maxDotI], localAxis));
-
-			glm::quat rotation = glm::angleAxis(glm::acos(glm::dot(smartBox[maxDotI], localAxis)), rotationAxis);
-			glm::quat newer = glm::normalize(rotation * current);
-			glm::quat older = glm::normalize(current);
-
-			float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-			float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-			if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
-			{
-				// Slerp interpolates along the shortest axis on the great circle
-				smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
-			}
-			break;
-		}
-	}
-}
-
-// Aligns to the Face
-void smartBoxAlignFace(OBB& other, glm::vec3 axis, glm::length_t minDotI, glm::length_t maxDotI)
-{
-	glm::mat3 goobers{ smartBox[0], smartBox[1], smartBox[2] };
-	// Leasted aligned keeps its index
-	// Middle is replaced with least cross intersection
-	// Most is replaced with the negative of new middle cross least
-	glm::vec3 least = smartBox[minDotI];                           // goes in smartbox[minDotI]
-	glm::vec3 newMost = axis;                              // goes in smartbox[maxDotI]
-	glm::vec3 newest = glm::normalize(glm::cross(least, newMost)); // goes in the remaining one(smartbox[3 - minDotI - maxDotI])
-
-	//std::cout << minDotI << ":" << maxDotI << std::endl;
-
-	glm::length_t leastD = minDotI;
-	glm::length_t mostD = maxDotI;
-	glm::length_t newD = 3 - leastD - mostD;
-	if (newD != 3)
-	{
-		least *= glm::sign(glm::dot(least, goobers[minDotI]));
-		newMost *= glm::sign(glm::dot(newMost, goobers[maxDotI]));
-		newest *= glm::sign(glm::dot(newest, goobers[newD]));
-
-		glm::mat3 lame{};
-		lame[leastD] = least;
-		lame[mostD] = newMost;
-		lame[newD] = newest;
-		glm::quat older = glm::normalize(glm::quat_cast(smartBox.GetNormalMatrix()));
-		glm::quat newer = glm::normalize(glm::quat_cast(lame));
-		float maxDelta = glm::acos(glm::abs(glm::dot(older, newer)));
-		float clamped = std::clamp(maxDelta, 0.f, glm::min(1.f, maxRotatePerFrame));
-
-		// ?
-		//if (glm::abs(glm::acos(glm::dot(older, newer))) > EPSILON)
-		if (glm::abs(glm::dot(older, newer) - 1) > EPSILON)
-		{
-			// Slerp interpolates along the shortest axis on the great circle
-			smartBox.ReOrient(glm::toMat4(glm::normalize(glm::slerp(older, newer, clamped))));
-		}
-	}
-	else
-	{
-		std::cout << "Something went horribly wrong" << std::endl;
-	}
-}
-
-void smartBoxAligner(OBB& other, glm::vec3 axis)
-{
-	float minDot = INFINITY, maxDot = -INFINITY;
-	glm::length_t minDotI = 0, maxDotI = 0;
-	for (glm::length_t i = 0; i < 3; i++)
-	{
-		float local = glm::abs(glm::dot(smartBox[i], axis));
-		if (local < minDot)
-		{
-			minDot = local;
-			minDotI = i;
-		}
-		if (local > maxDot)
-		{
-			maxDot = local;
-			maxDotI = i;
-		}
-	}
-	smartBoxAlignFace(other, axis, minDotI, maxDotI);
-}
-
-
-bool smartBoxCollide()
-{
-	bool anyCollisions = false;
-	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
-	smartBoxPhysics.ptr = nullptr;
-
-	auto potentialCollisions = boxes.Search(smartBox.GetAABB());
-	int collides = 0;
-	//Before(smartBoxPhysics.axisOfGaming);
-	float dot = INFINITY;
-
-	for (auto& currentBox : potentialCollisions)
-	{
-		SlidingCollision c;
-		if (smartBox.Overlap(*currentBox, c))
-		{
-			float temp = glm::dot(c.axis, GravityUp);
-			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
-			//smartBoxPhysics.velocity -= c.axis * glm::dot(c.axis, smartBoxPhysics.velocity);
-			if (temp > 0 && temp <= dot)
-			{
-				temp = dot;
-				smartBoxPhysics.axisOfGaming = c.axis;
-				smartBoxPhysics.ptr = &*currentBox;
-			}
-
-			float minDot = INFINITY, maxDot = -INFINITY;
-			glm::length_t minDotI = 0, maxDotI = 0;
-			glm::vec3 upper = c.axis;
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				float local = glm::abs(glm::dot(smartBox[i], upper));
-				if (local < minDot)
-				{
-					minDot = local;
-					minDotI = i;
-				}
-				if (local > maxDot)
-				{
-					maxDot = local;
-					maxDotI = i;
-				}
-			}
-
-			smartBoxAlignCorner(*currentBox, minDotI, maxDotI);
-
-			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
-			//if (true) //(c.depth > 0.002) // Why this number
-			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
-			{
-				smartBoxAlignFace(*currentBox, upper, minDotI, maxDotI);
-				smartBox.OverlapAndSlide(*currentBox);
-			}
-			else
-			{ 
-				smartBox.ApplyCollision(c);
-			}
-			float oldLength = glm::length(smartBoxPhysics.velocity);
-			anyCollisions = true;
-		}
-	}
-	
-	// Scale smart box up a bit to determine axis and
-	if (!anyCollisions) 
-	{
-		// This is probably a bad idea
-		
-		glm::vec3 oldCenter = smartBox.Center();
-		smartBox.Translate(GravityAxis * 2.f * EPSILON);
-
-		potentialCollisions = boxes.Search(smartBox.GetAABB());
-		SlidingCollision newest{};
-		OBB* newPtr = nullptr;
-
-		for (auto& currentBox : potentialCollisions)
-		{
-			SlidingCollision c;
-			if (smartBox.Overlap(*currentBox, c))
-			{
-				float temp = glm::dot(c.axis, GravityUp);
-				if (temp > 0 && temp <= dot)
-				{
-					temp = dot;
-					smartBoxPhysics.axisOfGaming = c.axis;
-					smartBoxPhysics.ptr = &*currentBox;
-					newest = c;
-					newPtr = &*currentBox;
-				}
-			}
-		}
-		smartBox.ReCenter(oldCenter);
-		if (newPtr)
-		{
-			OBB& box = *newPtr;
-			float minDot = INFINITY, maxDot = -INFINITY;
-			glm::length_t minDotI = 0, maxDotI = 0;
-			glm::vec3 upper = newest.axis;
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				float local = glm::abs(glm::dot(smartBox[i], upper));
-				if (local < minDot)
-				{
-					minDot = local;
-					minDotI = i;
-				}
-				if (local > maxDot)
-				{
-					maxDot = local;
-					maxDotI = i;
-				}
-			}
-			smartBoxAlignCorner(box, minDotI, maxDotI);
-			smartBoxAlignFace(box, upper, minDotI, maxDotI);
-		}
-	}
-	
-	return anyCollisions;
-}
-
-glm::quat oldMan{};
-glm::quat newMan{};
-
 OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
@@ -1197,14 +902,14 @@ int shift = 2;
 // Like it's a bit pliable
 void idle()
 {
-	static auto lastTimers = std::chrono::high_resolution_clock::now();
+	static auto lastIdleStart = std::chrono::high_resolution_clock::now();
 	static std::deque<float> frames;
 	static std::deque<long long> displayTimes, idleTimes, renderTimes;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	frameCounter++;
-	const auto now = std::chrono::high_resolution_clock::now();
-	const auto delta = now - lastTimers;
+	const auto idleStart = std::chrono::high_resolution_clock::now();
+	const auto delta = idleStart - lastIdleStart;
 
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
@@ -1240,7 +945,6 @@ void idle()
 
 	float speed = 4 * timeDelta;
 	float turnSpeed = 100 * timeDelta;
-	maxRotatePerFrame = glm::radians(90.f) * timeDelta;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
@@ -1255,8 +959,6 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	if (keyState[ArrowKeyRight]) smartBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
-	if (keyState[ArrowKeyLeft])  smartBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 
 	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
@@ -1273,94 +975,40 @@ void idle()
 	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-		OBB goober(playerBounds);
+		OBB playerBox(playerBounds);
 		playerBounds.Center(cameraPosition);
 
-		OBB playerOb(playerBounds);
-		//playerOb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
-		playerOb.Rotate(glm::vec3(0, -cameraRotation.y, 0));
+		OBB playerObb(playerBounds);
+		//playerObb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
+		playerObb.Rotate(glm::vec3(0, -cameraRotation.y, 0));
 
-		goober.Translate(glm::vec3(2, 0, 0));
-		goober.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
-		for (auto& wall : boxes)
+		playerBox.Translate(glm::vec3(2, 0, 0));
+		playerBox.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
+		for (auto& wall : staticBoxes)
 		{
-			if (wall.Overlap(playerOb))
+			if (wall.Overlap(playerObb))
 			{
-				playerOb.OverlapAndSlide(wall);
+				playerObb.OverlapAndSlide(wall);
 				//offset = previous;
 				//break;
 			}
 		}
-		if (goober.Overlap(playerOb))
+		if (playerBox.Overlap(playerObb))
 		{
 			//offset = previous;
 		}
-		cameraPosition = playerOb.Center();
+		cameraPosition = playerObb.Center();
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 
 	// Physics attempt
-	smartBoxPhysics.acceleration = glm::vec3(0.f);
-	const float BoxAcceleration = 0.06f;
-	const float BoxMass = 1;
+	const float CapsuleAcceleration = 0.06f;
+	const float CapsuleMass = 1;
 	const float staticFrictionCoeff = 1.0f;
 	const float slidingFrictionCoeff = 0.57f;
 	const float GravityRate = 0.25f;
-	const float BoxGravityMagnitude = BoxMass * GravityRate;
-	const glm::vec3 boxGravity = GravityAxis * BoxGravityMagnitude;
-	const float cose = glm::abs(glm::dot(smartBoxPhysics.axisOfGaming, GravityUp));
-	const float sine = glm::sqrt(1.f - cose * cose);
-	const glm::vec3 oldNormal = smartBoxPhysics.axisOfGaming;
-
-	glm::vec3 boxForces{ 0.f };
-
-	//if (keyState[ArrowKeyUp])   boxForces += smartBox.Forward() * BoxAcceleration;
-	//if (keyState[ArrowKeyUp])   smartBox.Translate(smartBox.Forward() * speed);
-	//if (keyState[ArrowKeyDown]) boxForces -= smartBox.Forward() * BoxAcceleration;
-	//if (keyState[ArrowKeyDown]) smartBox.Translate(-smartBox.Forward() * speed);
-	if (keyState['V']) smartBox.Translate(GravityAxis * speed);
-	if (keyState['C']) smartBox.Translate(GravityUp * speed);
-	if (keyState['F']) smartBox.Translate(glm::vec3(0, 1, 0));
-	if (keyState['G']) smartBox.Translate(-smartBoxPhysics.axisOfGaming * speed);
-
-	if (frameCounter % 2000 == 0)
-	{
-		std::swap(oldMan, newMan);
-	}
-	unsigned int modded = frameCounter % 2000;
-	//smartBox.ReOrient(glm::toMat4(glm::lerp(oldMan, newMan, modded / 2000.f)));
-	
-	float forwardDirection = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	bool groundFound = smartBoxPhysics.ptr != nullptr;
-	if (!groundFound)
-	{
-		boxForces += boxGravity;
-		boxForces += forwardDirection * forward * BoxAcceleration;
-		//std::cout << "no ground :(" << std::endl;
-	}
-	else
-	{
-		float speedCoefficient = static_cast<float>(glm::sqrt(1 - glm::pow(glm::dot(smartBox.Forward(), smartBoxPhysics.axisOfGaming), 2)));
-		boxForces += smartBox.Forward() * forwardDirection * speedCoefficient * BoxAcceleration;
-	}
-
-	// F = MA, -> A = F / M
-	//std::cout << boxForces << std::endl;
-	smartBoxPhysics.acceleration = boxForces / BoxMass * timeDelta;
-
-	smartBoxPhysics.velocity += smartBoxPhysics.acceleration;
-	if (glm::length(smartBoxPhysics.velocity) > 2.f)
-		smartBoxPhysics.velocity = glm::normalize(smartBoxPhysics.velocity) * 2.f;
-	smartBox.Translate(smartBoxPhysics.velocity);
-	smartBoxPhysics.velocity *= 0.99f;
-
-	smartBoxColor = smartBoxCollide();
-	if (staticFrictionCoeff >= glm::tan(glm::acos(cose)))
-	{
-		//smartBoxPhysics.axisOfGaming = oldNormal;
-	}
-
-	//smartBox.OverlapCompleteResponse(dumbBox);
+	const float BoxGravityMagnitude = CapsuleMass * GravityRate;
+	const glm::vec3 capsuleGravity = GravityAxis * BoxGravityMagnitude;
 
 	// CAPSULE STUFF
 	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
@@ -1369,19 +1017,19 @@ void idle()
 	// Transformations need to be addressed
 	if (!capsuleHit)
 	{
-		capsuleForces += boxGravity;
+		capsuleForces += capsuleGravity;
 	}
-	capsuleForces += catapultBox.Forward() * mult * BoxAcceleration;
+	capsuleForces += catapultBox.Forward() * mult * CapsuleAcceleration;
 	capsuleHit = nullptr;
 	capsuleNormal = glm::vec3(0);
-	capsuleAcceleration = capsuleForces / BoxMass * timeDelta;
+	capsuleAcceleration = capsuleForces / CapsuleMass * timeDelta;
 	capsuleVelocity += capsuleAcceleration;
 	//std::cout << catapult.GetCenter() << std::endl;
 	if (glm::length(capsuleVelocity) > 2.f)
 		capsuleVelocity = glm::normalize(capsuleVelocity) * 2.f;
 	catapult.Translate(capsuleVelocity);
 	capsuleVelocity *= 0.99f; // Maybe "real" friction?
-	for (auto& temps : boxes.Search(catapult.GetAABB()))
+	for (auto& temps : staticBoxes.Search(catapult.GetAABB()))
 	{
 		Collision c;
 		if (temps->Overlap(catapult, c))
@@ -1398,26 +1046,26 @@ void idle()
 	catapultBox.ReCenter(catapult.GetCenter());
 
 
-	Sphere awwYeah(0.5f, moveSphere);
-	for (auto& letsgo : boxes.Search(AABB(awwYeah.center - glm::vec3(awwYeah.radius), awwYeah.center + glm::vec3(awwYeah.radius))))
+	Sphere spherePlaceholder(0.5f, movingSphere);
+	for (auto& letsgo : staticBoxes.Search(spherePlaceholder.GetAABB()))
 	{
 		Collision c;
-		if (letsgo->Overlap(awwYeah, c))
+		if (letsgo->Overlap(spherePlaceholder, c))
 		{
-			awwYeah.center += c.normal * c.depth;
+			spherePlaceholder.center += c.normal * c.depth;
 		}
 	}
-	moveSphere = awwYeah.center;
+	movingSphere = spherePlaceholder.center;
 	
-	if (reRender && letters.str().size() > 0)
+	if (reRenderText && letters.str().size() > 0)
 	{
-		reRender = false;
+		reRenderText = false;
 		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1, 0, 0, 1));
 		std::stringstream().swap(letters);
 	}
 
 	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
-	Sphere gamin{BulletRadius};
+	spherePlaceholder.radius = BulletRadius;
 	Collision c;
 	std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
 	for (std::size_t i = 0; i < bullets.size(); i++)
@@ -1428,10 +1076,10 @@ void idle()
 			i--;
 			continue;
 		}
-		gamin.center = bullets[i].position + bullets[i].direction * BulletSpeed;
-		for (auto& boxers : boxes.Search(gamin.GetAABB()))
+		spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
+		for (auto& boxers : staticBoxes.Search(spherePlaceholder.GetAABB()))
 		{
-			if (boxers->Overlap(gamin, c))
+			if (boxers->Overlap(spherePlaceholder, c))
 			{
 				{
 					//QuickTimer _timer("New Decal Generation");
@@ -1457,8 +1105,8 @@ void idle()
 					boxed.ReOrient(dumber);
 					boxed.ReScale(glm::vec3(gamin.radius * 2.f));
 					boxed.ReCenter(c.point - c.axis * BulletSpeed);
-					Decal::GetDecal(boxed, boxes, bigVertex);
-					decals.BufferData(bigVertex, StaticDraw);
+					Decal::GetDecal(boxed, staticBoxes, decalVertex);
+					decals.BufferData(decalVertex, StaticDraw);
 				}
 				gamin.center = c.point + c.normal * EPSILON;
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
@@ -1490,26 +1138,29 @@ void idle()
 			}
 		}
 		*/
-		bullets[i].position = gamin.center;
+		bullets[i].position = spherePlaceholder.center;
 	}
 	for (auto& a : to_remove)
 	{
 		followers.Erase(a);
 	}
 	//std::cout << "Done with Erasing" << std::endl;
-	followed.Update(timeDelta, boxes);
+	followed.Update(timeDelta, staticBoxes);
 	followers.for_each([timeDelta](auto& a) 
 		{
 			glm::vec3 old = a.GetPosition();
-			a.Update(timeDelta, boxes); 
+			a.Update(timeDelta, staticBoxes); 
 			return old != a.GetPosition();
 		});
 
-	showAndTell = followers.GetBoxes();
+	if (debugFlags[DYNAMIC_TREE])
+	{
+		dynamicTreeBoxes = followers.GetBoxes();
+	}
 	/*
 	for (auto& follow : followers2)
 	{
-		follow.first.Update(timeDelta, boxes);
+		follow.first.Update(timeDelta, staticBoxes);
 	}*/
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
@@ -1526,59 +1177,14 @@ void idle()
 	toDie = glm::inverse(toDie);
 	skinMats[1] = toDie * skinMats[1];
 
-
-	// BSP Testing visualizations
-	/*
-	glm::mat3 toTrans{ glm::vec3(0), glm::vec3(-.5f, 1, 0), glm::vec3(0.5, 1, 0) };
-	glm::mat3 modify = glm::eulerAngleY(glm::radians(frameCounter / 10.f));
-	for (glm::length_t i = 0; i < 3; i++)
-	{
-		toTrans[i] = modify * toTrans[i] + glm::vec3(0.5f, 0.5f, 0);
-	}
-	
-	Triangle splitBoy(toTrans[shift % 3], toTrans[(shift + 1) % 3], toTrans[(shift + 2) % 3]);
-	OBB obbs;
-	obbs.ReCenter(glm::vec3(0, 1, 0));
-	//obbs.Rotate(glm::eulerAngleY(glm::radians(frameCounter / 10.f)));
-	obbs.Rotate(glm::vec3(2, 0.5, 4.f) * (frameCounter / 10.f));
-	obbs.Scale(0.75);
-
-	std::vector<glm::vec3> screm{};
-	auto lame = obbs.GetTriangles();//splitBoy.GetPoints();
-	for (auto& lamer : lame)
-	{
-		for (glm::length_t i = 0; i < 3; i++) 
-			screm.push_back(lamer.GetPoints()[i]);
-	}
-	// Single triangle
-	screm.clear();
-	screm = splitBoy.GetPointVector();
-	singleTri.BufferData(screm, StaticDraw);
-	
-	Plane splitter(glm::vec3(1, 0, 0), glm::vec3(0.5f, 0.5f, 0));
-	std::vector<glm::vec3> scremer{};
-	int __s = 0;
-	//for (auto& trig : lame)
-	{
-		for (auto& tier : splitBoy.Split(splitter))
-		{
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				scremer.push_back(tier.GetPoints()[i]);
-			}
-			//break;
-		}
-	}
-	splitTri.BufferData(scremer, StaticDraw);
-	*/
 	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", false));
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
-	idleTime = endTime - now;
-	lastTimers = now;
+	idleTime = endTime - idleStart;
+	lastIdleStart = idleStart;
 	// Delay to keep 100 ticks per second idle stuff
 	/*
 	if (idleTime < std::chrono::milliseconds(10))
@@ -1586,12 +1192,6 @@ void idle()
 		while (std::chrono::high_resolution_clock::displayStartTime() - displayStartTime <= std::chrono::milliseconds(10));
 	}
 	*/
-}
-
-void smartReset()
-{
-	smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
-	smartBox.ReOrient(glm::vec3(0, 0, 0));
 }
 
 void window_focus_callback(GLFWwindow* window, int focused)
@@ -1604,7 +1204,7 @@ void window_focus_callback(GLFWwindow* window, int focused)
 
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
-	bool state = action == GLFW_PRESS;
+	bool state = (action == GLFW_PRESS);
 
 	unsigned char letter = static_cast<unsigned char>(key & 0xFF);
 
@@ -1661,14 +1261,9 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
-		if (key == 'Q') glfwSetWindowShouldClose(window, GLFW_TRUE);
-		if (key == GLFW_KEY_F) kernel = 1 - kernel;
+		if (key == GLFW_KEY_Q) glfwSetWindowShouldClose(window, GLFW_TRUE);
 		if (key == GLFW_KEY_B) featureToggle = !featureToggle;
-		if (key == GLFW_KEY_ENTER) reRender = true;
-		if (key == 'H')
-		{
-			smartReset();
-		}
+		if (key == GLFW_KEY_ENTER) reRenderText = true;
 		if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
 		{
 			std::size_t value = static_cast<std::size_t>(key - GLFW_KEY_0);
@@ -1697,7 +1292,7 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
 	*/
 	float x = mouse.x, y = mouse.y;
-	glm::vec2 viewPortSize{ windowWidth, windowHeight };
+	glm::vec2 viewPortSize{ Window::Width, Window::Height };
 	glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
 
 	// Lets have depth = 0.01;
@@ -1761,7 +1356,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 
 		RayCollision rayd{};
 		OBB* point = nullptr;
-		for (auto& item : boxes.RayCast(liota))
+		for (auto& item : staticBoxes.RayCast(liota))
 		{
 			if (item->Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
 			{
@@ -1771,12 +1366,12 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		}
 		// Point displayStartTime has the pointer to the closest element
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
-		//loom.ReOrient(glm::vec3(0, 0, 90.f));
-		//loom.ReOrient(cameraOrientation);
-		//loom.ReCenter(cameraPosition);
-		//loom.Translate(loom.Forward() * (0.3f + rayLength / 2.f));
-		//loom.Rotate(glm::vec3(0, 0, 90.f));
-		//loom.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
+		//pointingCapsule.ReOrient(glm::vec3(0, 0, 90.f));
+		//pointingCapsule.ReOrient(cameraOrientation);
+		//pointingCapsule.ReCenter(cameraPosition);
+		//pointingCapsule.Translate(pointingCapsule.Forward() * (0.3f + rayLength / 2.f));
+		//pointingCapsule.Rotate(glm::vec3(0, 0, 90.f));
+		//pointingCapsule.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
 	}
 	testButton.MouseUpdate();
@@ -1790,8 +1385,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
-	glm::ivec2 deviation = glm::ceil(glm::abs(glm::vec2(windowWidth, windowHeight) / 2.f - oldPos));
-	ui_tester = NineSliceGenerate(glm::vec2(windowWidth, windowHeight) / 2.f, deviation);
+	glm::ivec2 deviation = glm::ceil(glm::abs(glm::vec2(Window::Width, Window::Height) / 2.f - oldPos));
+	ui_tester = NineSliceGenerate(glm::vec2(Window::Width, Window::Height) / 2.f, deviation);
 	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
 
@@ -1804,8 +1399,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 		if (abs(yDif) > 20)
 			yDif = 0;
 		// Why 50??
-		float yDelta = 50 * (xDif * ANGLE_DELTA) / windowWidth;
-		float zDelta = 50 * (yDif * ANGLE_DELTA) / windowHeight;
+		float yDelta = 50 * (xDif * ANGLE_DELTA) / Window::Width;
+		float zDelta = 50 * (yDif * ANGLE_DELTA) / Window::Height;
 
 		cameraRotation.y += yDelta;
 		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
@@ -1843,9 +1438,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 			float xDif = x - oldPos.x;
 			float yDif = y - oldPos.y;
-			// Why 50??
-			float yDelta = (xDif * ANGLE_DELTA) / windowWidth;
-			float zDelta = -(yDif * ANGLE_DELTA) / windowHeight;
+			float yDelta = (xDif * ANGLE_DELTA) / Window::Width;
+			float zDelta = -(yDif * ANGLE_DELTA) / Window::Height;
 
 
 			// Temporarily turned backwards
@@ -1878,7 +1472,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			moveable.Translate(delta);
 			/*auto fum = moveable.GetAABB();
 			SlidingCollision slider{};
-			for (auto& foobar : boxes.Search(fum))
+			for (auto& foobar : staticBoxes.Search(fum))
 			{
 				if (foobar->box.Overlap(moveable, slider))
 				{
@@ -1891,8 +1485,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
-	windowWidth = width;
-	windowHeight = height;
+	Window::Width = width;
+	Window::Height = height;
 	aspectRatio = static_cast<float>(width) / height;
 	
 	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
@@ -1902,35 +1496,33 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
-	depthed.GetColorBuffer<0>().CreateEmpty(windowWidth, windowHeight);
+	depthed.GetColorBuffer<0>().CreateEmpty(Window::Width, Window::Height);
 	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	CheckError();
-	depthed.GetColorBuffer<1>().CreateEmpty(windowWidth, windowHeight);
+	depthed.GetColorBuffer<1>().CreateEmpty(Window::Width, Window::Height);
 	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	CheckError();
 
 
 
-	depthed.GetDepth().CreateEmpty(windowWidth, windowHeight, InternalDepth);
+	depthed.GetDepth().CreateEmpty(Window::Width, Window::Height, InternalDepth);
 	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	CheckError();
 
-	depthed.GetStencil().CreateEmpty(windowWidth, windowHeight, InternalStencil);
+	depthed.GetStencil().CreateEmpty(Window::Width, Window::Height, InternalStencil);
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	CheckError();
 	depthed.Assemble();
 
-	toRemoveError.GetColor();
-
-	scratchSpace.GetColorBuffer().CreateEmpty(windowWidth, windowHeight, InternalRGBA);
+	scratchSpace.GetColorBuffer().CreateEmpty(Window::Width, Window::Height, InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
 	scratchSpace.Assemble();
 
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
-	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, static_cast<float>(windowWidth), static_cast<float>(windowHeight), 0));
+	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, static_cast<float>(Window::Width), static_cast<float>(Window::Height), 0));
 }
 
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
@@ -2000,7 +1592,7 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
 
-	windowPointer = glfwCreateWindow(windowWidth, windowHeight, "Wowie a window", nullptr, nullptr);
+	windowPointer = glfwCreateWindow(Window::Width, Window::Height, "Wowie a window", nullptr, nullptr);
 	if (!windowPointer)
 	{
 		Log("Failed to create window");
@@ -2032,7 +1624,7 @@ int main(int argc, char** argv)
 	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
 
 	init();
-	window_size_callback(nullptr, windowWidth, windowHeight);
+	window_size_callback(nullptr, Window::Width, Window::Height);
 
 	while (!glfwWindowShouldClose(windowPointer))
 	{
@@ -2212,47 +1804,47 @@ void init()
 			continue;
 		if (abs(i) == 3)
 		{
-			GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY, planes);
-			GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY, planes);
+			GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY, instancedModels);
+			GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY, instancedModels);
 
-			GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY, planes);
-			GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY, planes);
+			GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY, instancedModels);
+			GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY, instancedModels);
 			for (int x = -2; x <= 2; x++)
 			{
 				if (x == 0)
 					continue;
-				GetHallway(glm::vec3(2 * x, 0, 2 * i), planes, false);
-				GetHallway(glm::vec3(2 * i, 0, 2 * x), planes, true);
+				GetHallway(glm::vec3(2 * x, 0, 2 * i), instancedModels, false);
+				GetHallway(glm::vec3(2 * i, 0, 2 * x), instancedModels, true);
 			}
 			continue;
 		}
-		GetHallway(glm::vec3(0, 0, 2 * i), planes, true);
-		GetHallway(glm::vec3(2 * i, 0, 0), planes, false);
+		GetHallway(glm::vec3(0, 0, 2 * i), instancedModels, true);
+		GetHallway(glm::vec3(2 * i, 0, 0), instancedModels, false);
 	}
 	for (int i = 0; i < 9; i++)
 	{
-		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, planes);
+		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, instancedModels);
 	}
 	// Diagonal Walls
-	planes.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	planes.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	planes.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	planes.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	instancedModels.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	instancedModels.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	instancedModels.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	instancedModels.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
 
-	planes.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
-	planes.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
+	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
+	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
 
 
 	// The ramp
-	planes.emplace_back(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1));
+	instancedModels.emplace_back(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1));
 
 	// The weird wall behind the player I think?
-	planes.emplace_back(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f));
+	instancedModels.emplace_back(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f));
 
 	std::vector<glm::mat4> awfulTemp{};
-	awfulTemp.reserve(planes.size());
-	//planes.emplace_back(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f));
-	for (const auto& ref : planes)
+	awfulTemp.reserve(instancedModels.size());
+	//instancedModels.emplace_back(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f));
+	for (const auto& ref : instancedModels)
 	{
 		OBB project(ref);
 		glm::vec3 forawrd = project.Up();
@@ -2262,9 +1854,9 @@ void init()
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
 		project.Scale(glm::vec3(1, 0, 1));
-		boxes.Insert(project, project.GetAABB());
-		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using planes to draw them this doesn't have to be the projection for some reason
-		plans.emplace_back<MaxHeapValue<OBB>>({project, 0});
+		staticBoxes.Insert(project, project.GetAABB());
+		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
+		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({project, 0});
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	{
@@ -2275,7 +1867,7 @@ void init()
 				AABB boxer{};
 				boxer.SetScale(0.75f);
 				boxer.Center(A->GetPosition());
-				auto temps = boxes.Search(boxer);
+				auto temps = staticBoxes.Search(boxer);
 				if (temps.size() == 0)
 					return false;
 				RayCollision fumop{};
@@ -2319,12 +1911,14 @@ void init()
 	albertBuffer.BufferData(textVert, StaticDraw);
 	CheckError();
 	// Decal stuff
-	orbing.ReCenter(glm::vec3(1, 0.25, 3));
-	orbing.ReScale(glm::vec3(0.5f));
-	orbing.Rotate(glm::eulerAngleYZ(glm::radians(-45.f), glm::radians(-26.f)));
+
+	OBB decalGenerator;
+	decalGenerator.ReCenter(glm::vec3(1, 0.25, 3));
+	decalGenerator.ReScale(glm::vec3(0.5f));
+	decalGenerator.Rotate(glm::eulerAngleYZ(glm::radians(-45.f), glm::radians(-26.f)));
 	{
 		QuickTimer _timer{ "Decal Generation" };
-		decals = Decal::GetDecal(orbing, boxes);
+		decals = Decal::GetDecal(decalGenerator, staticBoxes);
 	}
 
 	// SKINNING
@@ -2430,7 +2024,7 @@ void init()
 						if (delta > 5.f) // TODO: Constant
 							return false;
 						Ray liota(a, b - a);
-						auto temps = boxes.RayCast(liota);
+						auto temps = staticBoxes.RayCast(liota);
 						if (temps.size() == 0)
 							return true;
 						RayCollision fumop{};
@@ -2524,13 +2118,6 @@ void init()
 
 	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
 
-	smartBox.ReScale(glm::vec3(0.5f));
-	smartBox.Scale(1.1f);
-
-	smartReset();
-	smartBox.ReCenter(glm::vec3(1.2f, 0.5f, 0));
-	//smartBox.ReCenter(glm::vec3(12.2f, 1.6f, 0));
-	smartBox.ReOrient(glm::vec3(0, 0, 0));
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
@@ -2538,9 +2125,9 @@ void init()
 	moveable.ReCenter(glm::vec3(0, .25, 0));
 	moveable.Scale(0.25f);
 
-	loom.ReCenter(glm::vec3(0, 5, 0));
-	loom.ReOrient(glm::vec3(0.f, 0, 90.f));
-	//boxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
+	pointingCapsule.ReCenter(glm::vec3(0, 5, 0));
+	pointingCapsule.ReOrient(glm::vec3(0.f, 0, 90.f));
+	//staticBoxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
 	//Log("Doing it");
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);

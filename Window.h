@@ -1,10 +1,11 @@
 #pragma once
 #ifndef WINDOW_H
 #define WINDOW_H
+#include "glm/glm.hpp"
 
-// TODO: Move window stuff here
-class Window
+namespace Window
 {
+	static int Height, Width = 1000;
 };
 
 #endif // WINDOW_H

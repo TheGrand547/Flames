@@ -5,73 +5,9 @@
 #include "Font.h"
 #include "ScreenRect.h"
 #include "Texture2D.h"
+#include "Input.h"
 
 typedef void (*TrivialCallback)(std::size_t id);
-
-struct Mouse
-{
-protected:
-	static unsigned char oldButtons;
-	static unsigned char buttons;
-	static unsigned char risingEdge;
-	static unsigned char fallingEdge;
-	static glm::vec2 position;
-public:
-	enum Button : unsigned char
-	{
-		Button1 = 1 << 0,
-		Button2 = 1 << 1,
-		Button3 = 1 << 2,
-		Button4 = 1 << 3,
-		Button5 = 1 << 4,
-		Button6 = 1 << 5,
-		Button7 = 1 << 6,
-		Button8 = 1 << 7,
-		ButtonLeft = Button1,
-		ButtonRight = Button2,
-		ButtonMiddle = Button3,
-	};
-
-	static inline constexpr bool CheckButton(Mouse::Button button) noexcept
-	{
-		return Mouse::buttons & button;
-	}
-	static inline constexpr bool CheckRising(Mouse::Button button) noexcept
-	{
-		return Mouse::risingEdge & button;
-	}
-	static inline constexpr bool CheckFalling(Mouse::Button button) noexcept
-	{
-		return Mouse::fallingEdge & button;
-	}
-	static inline constexpr glm::vec2 GetPosition() noexcept
-	{
-		return Mouse::position;
-	}
-	static inline constexpr void SetButton(Mouse::Button button, bool flag) noexcept
-	{
-		Mouse::buttons = (Mouse::buttons & ~(1 << static_cast<unsigned char>(button))) | (flag << static_cast<unsigned char>(button));
-	};
-	static inline constexpr void SetButton(int button, bool flag) noexcept
-	{
-		Mouse::buttons = (Mouse::buttons & ~(1 << static_cast<unsigned char>(button))) | (flag << static_cast<unsigned char>(button));
-	};
-	static inline constexpr void SetPosition(const glm::vec2& pos) noexcept
-	{
-		Mouse::position = pos;
-	};
-	static inline constexpr void SetPosition(const float& x, const float& y) noexcept
-	{
-		Mouse::position.x = x;
-		Mouse::position.y = y;
-	};
-	static inline constexpr void UpdateEdges() noexcept
-	{
-		Mouse::risingEdge = Mouse::buttons & (~Mouse::oldButtons);
-		Mouse::fallingEdge = ~Mouse::buttons & (Mouse::oldButtons);
-		Mouse::oldButtons = Mouse::buttons;
-	}
-};
 
 // Abstract interface
 struct ButtonBase
@@ -94,18 +30,18 @@ class Button : public ButtonBase
 protected:
 	bool hovered;
 	Callback callback;
-	Mouse::Button trigger;
+	Input::Mouse::Button trigger;
 	Texture2D alternateTexture;
 public:
 	const std::size_t id;
 
-	inline Button(ScreenRect rect, Callback callback, Mouse::Button trigger = Mouse::ButtonLeft, std::size_t id = 0)
+	inline Button(ScreenRect rect, Callback callback, Input::Mouse::Button trigger = Input::Mouse::ButtonLeft, std::size_t id = 0)
 		: ButtonBase(rect), hovered(false), callback(callback), trigger(trigger), id((id) ? id : std::bit_cast<std::size_t>(this)) {}
 	inline virtual ~Button() noexcept {}
 	inline virtual void MouseUpdate() noexcept override
 	{
-		this->hovered = this->baseRect.Contains(Mouse::GetPosition());
-		if (this->hovered && Mouse::CheckRising(this->trigger))
+		this->hovered = this->baseRect.Contains(Input::Mouse::GetPosition());
+		if (this->hovered && Input::Mouse::CheckRising(this->trigger))
 		{
 			this->callback(this->id);
 		}
