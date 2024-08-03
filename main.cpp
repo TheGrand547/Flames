@@ -1496,27 +1496,25 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
+
+	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
 	depthed.GetColorBuffer<0>().CreateEmpty(Window::Width, Window::Height);
-	depthed.GetColorBuffer<0>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-	CheckError();
+	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
 	depthed.GetColorBuffer<1>().CreateEmpty(Window::Width, Window::Height);
-	depthed.GetColorBuffer<1>().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-	CheckError();
+	depthed.GetColorBuffer<1>().SetFilters(screenFilters);
 
 
 
 	depthed.GetDepth().CreateEmpty(Window::Width, Window::Height, InternalDepth);
-	depthed.GetDepth().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
-	CheckError();
+	depthed.GetDepth().SetFilters(screenFilters);
 
 	depthed.GetStencil().CreateEmpty(Window::Width, Window::Height, InternalStencil);
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-	CheckError();
 	depthed.Assemble();
 
 	scratchSpace.GetColorBuffer().CreateEmpty(Window::Width, Window::Height, InternalRGBA);
-	scratchSpace.GetColorBuffer().SetFilters(MinLinear, MagLinear, BorderClamp, BorderClamp);
+	scratchSpace.GetColorBuffer().SetFilters(screenFilters);
 	scratchSpace.Assemble();
 
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));

@@ -1,7 +1,9 @@
 #pragma once
 #ifndef SCRAP_H
 #define SCRAP_H
+#include <algorithm>
 #include "OrientedBoundingBox.h"
+#include "StaticOctTree.h"
 
 static OBB smartBox;
 static struct
@@ -144,8 +146,9 @@ bool smartBoxCollide()
 	bool anyCollisions = false;
 	smartBoxPhysics.axisOfGaming = glm::vec3{ 0.f };
 	smartBoxPhysics.ptr = nullptr;
+	StaticOctTree<OBB> staticBoxes;
 
-	auto potentialCollisions = boxes.Search(smartBox.GetAABB());
+	auto potentialCollisions = staticBoxes.Search(smartBox.GetAABB());
 	int collides = 0;
 	//Before(smartBoxPhysics.axisOfGaming);
 	float dot = INFINITY;
@@ -155,7 +158,7 @@ bool smartBoxCollide()
 		SlidingCollision c;
 		if (smartBox.Overlap(*currentBox, c))
 		{
-			float temp = glm::dot(c.axis, GravityUp);
+			float temp = glm::dot(c.axis, glm::vec3(0, 1, 0));
 			//smartBoxPhysics.velocity += c.axis * c.depth * 0.95f;
 			//smartBoxPhysics.velocity -= c.axis * glm::dot(c.axis, smartBoxPhysics.velocity);
 			if (temp > 0 && temp <= dot)
@@ -187,7 +190,7 @@ bool smartBoxCollide()
 
 			//if (glm::acos(glm::abs(maxDotI - 1)) > EPSILON)
 			//if (true) //(c.depth > 0.002) // Why this number
-			if (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
+			if (true) // (!(keyState[ArrowKeyRight] || keyState[ArrowKeyLeft]))
 			{
 				smartBoxAlignFace(*currentBox, upper, minDotI, maxDotI);
 				smartBox.OverlapAndSlide(*currentBox);
@@ -207,9 +210,9 @@ bool smartBoxCollide()
 		// This is probably a bad idea
 
 		glm::vec3 oldCenter = smartBox.Center();
-		smartBox.Translate(GravityAxis * 2.f * EPSILON);
+		smartBox.Translate(glm::vec3(0, 1, 0) * 2.f * EPSILON);
 
-		potentialCollisions = boxes.Search(smartBox.GetAABB());
+		potentialCollisions = staticBoxes.Search(smartBox.GetAABB());
 		SlidingCollision newest{};
 		OBB* newPtr = nullptr;
 
@@ -218,7 +221,7 @@ bool smartBoxCollide()
 			SlidingCollision c;
 			if (smartBox.Overlap(*currentBox, c))
 			{
-				float temp = glm::dot(c.axis, GravityUp);
+				float temp = glm::dot(c.axis, glm::vec3(0, 1, 0));
 				if (temp > 0 && temp <= dot)
 				{
 					temp = dot;
