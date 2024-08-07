@@ -40,8 +40,10 @@ std::array<ScreenRect, 9> NineSliceGenerate(glm::ivec2 topLeft, glm::ivec2& size
 	return rects;
 }
 
-
 static const std::string identityVertex = "#version 440 core\nout vec2 uv;vec2 positions[] = {\tvec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),\tvec2(-1.0f,  1.0f), vec2( 1.0f,  1.0f)};vec2 uvCoords[] = {\tvec2(0.0f, 0.0f), vec2(1.0f, 0.0f), \tvec2(0.0f, 1.0f), vec2(1.0f, 1.0f)};void main(){\tgl_Position = vec4(positions[gl_VertexID].xy, 0, 1);\tuv = uvCoords[gl_VertexID];}";
+
+// From here https://github.com/chrischristakis/Winston-Shield/blob/master/shaders/bubble.fs
+static const std::string linearDepth = "float LinearizeDepth(float depth) {float zNdc = 2 * depth - 1;float zEye = (2 * far * near) / ((far + near) - zNdc * (far - near));float linearDepth = (zEye - near) / (far - near);return linearDepth;}";
 
 static const std::string voronoiFragment =
 "#version 440 core"
@@ -86,7 +88,7 @@ void HeightToNormal(const Texture2D& input, Texture2D& output)
 	buffer.GetColor().MakeAliasOf(output);
 	buffer.Assemble();
 	buffer.Bind();
-	glViewport(0, 0, input.GetWidth(), input.GetHeight());
+	input.SetViewport();
 
 	Shader temp;
 	temp.CompileEmbedded(identityVertex, heightToNormalFragment);

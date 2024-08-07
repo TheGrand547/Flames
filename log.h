@@ -2,6 +2,7 @@
 #ifndef FLAMES_LOG_H
 #define FLMAES_LOG_H
 #include <iostream>
+#include <glew.h>
 #include <source_location>
 #include <string>
 
@@ -73,6 +74,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 #endif // OMIT_FILENAMES
 
 void CheckError(const std::source_location location = std::source_location::current());
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
 #ifdef _DEBUG
 

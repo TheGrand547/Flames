@@ -174,7 +174,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 	framebuffer.GetColor().MakeAliasOf(texture);
 	framebuffer.Assemble();
 	framebuffer.Bind();
-	glViewport(0, 0, texture.GetWidth(), texture.GetHeight());
+	texture.SetViewport();
 	Font::identity.SetActiveShader();
 	Font::identity.SetTextureUnit(std::string("identity"), texture, 0);
 	Font::identity.DrawArray<DrawType::TriangleStrip>(4);

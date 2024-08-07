@@ -231,9 +231,6 @@ static unsigned int frameCounter = 0;
 glm::vec3 movingSphere(0, 3.5f, 6.5f);
 int lineWidth = 3;
 
-float aspectRatio = 1.f;
-static const float Fov = 70.f;
-
 #define TIGHT_BOXES 1
 #define WIDE_BOXES 2
 #define DEBUG_PATH 3
@@ -355,7 +352,7 @@ void display()
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//depthed.Bind();
-	glViewport(0, 0, Window::Width, Window::Height);
+	Window::Viewport();
 	glClearColor(0, 0, 0, 1);
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
@@ -607,7 +604,7 @@ void display()
 	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
 	dither.SetVec3("viewPos", cameraPosition);
 	//dither.DrawArray<DrawType::Triangle>(36);
-	dither.DrawArray<DrawType::Patches>(albertBuffer);
+	//dither.DrawArray<DrawType::Patches>(albertBuffer);
 
 
 	plainVAO.BindArrayBuffer(plainCube);
@@ -1103,41 +1100,28 @@ void idle()
 					glm::mat4 dumber{ dumb };
 					dumber[3] = glm::vec4(0, 0, 0, 1);
 					boxed.ReOrient(dumber);
-					boxed.ReScale(glm::vec3(gamin.radius * 2.f));
+					boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
 					boxed.ReCenter(c.point - c.axis * BulletSpeed);
 					Decal::GetDecal(boxed, staticBoxes, decalVertex);
 					decals.BufferData(decalVertex, StaticDraw);
 				}
-				gamin.center = c.point + c.normal * EPSILON;
+				spherePlaceholder.center = c.point + c.normal * EPSILON;
 				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
 			}
 		}
 		Capsule example;
 		example.SetTotalLength(2.f);
-		for (auto& hit : followers.Search(gamin.GetAABB()))
+		for (auto& hit : followers.Search(spherePlaceholder.GetAABB()))
 		{
 			example.SetCenter(hit->first.GetPosition());
-			if (example.Intersect(gamin))
+			if (example.Intersect(spherePlaceholder))
 			{
 				to_remove.push_back(hit);
 				std::cout << "Hit!" << std::endl;
-				gamin.center = glm::vec3(-100.f);
+				spherePlaceholder.center = glm::vec3(-100.f);
 				continue;
 			}
 		}
-		/*
-		for (int j = 0; j < followers.size(); j++)
-		{
-			example.SetCenter(followers[j].GetPosition());
-			if (example.Intersect(gamin))
-			{
-				followers.erase(followers.begin() + j);
-				gamin.center = glm::vec3(-100.f);
-				j--;
-				continue;
-			}
-		}
-		*/
 		bullets[i].position = spherePlaceholder.center;
 	}
 	for (auto& a : to_remove)
@@ -1292,12 +1276,12 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	newVec = (dot(basis[0], p) + originX, dot(basis[1], p) + originY, dot(basis[2], p) + originZ)
 	*/
 	float x = mouse.x, y = mouse.y;
-	glm::vec2 viewPortSize{ Window::Width, Window::Height };
+	glm::vec2 viewPortSize = Window::GetSizeF();
 	glm::vec2 sizes((x / viewPortSize.x) * 2.0f - 1.0f, (1.0f - (y / viewPortSize.y)) * 2.0f - 1.0f);
 
 	// Lets have depth = 0.01;
 	float depth = 0.01f;
-	glm::mat4 projection = glm::perspective(glm::radians(Fov), aspectRatio, depth, zFar);
+	glm::mat4 projection = Window::GetPerspective(depth, zFar); //glm::perspective(glm::radians(Window::FOV), Window::AspectRatio, depth, zFar);
 	sizes *= GetProjectionHalfs(projection);
 	glm::vec3 project(sizes.x, sizes.y, -depth);
 
@@ -1385,8 +1369,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
-	glm::ivec2 deviation = glm::ceil(glm::abs(glm::vec2(Window::Width, Window::Height) / 2.f - oldPos));
-	ui_tester = NineSliceGenerate(glm::vec2(Window::Width, Window::Height) / 2.f, deviation);
+	glm::ivec2 deviation = glm::ceil(glm::abs(Window::GetSizeF() / 2.f - oldPos));
+	ui_tester = NineSliceGenerate(Window::GetSizeF() / 2.f, deviation);
 	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
 
@@ -1485,82 +1469,40 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 
 void window_size_callback(GLFWwindow* window, int width, int height)
 {
-	Window::Width = width;
-	Window::Height = height;
-	aspectRatio = static_cast<float>(width) / height;
+	Window::Update(width, height);
 	
 	cameraUniformBuffer.Generate(DynamicDraw, 2 * sizeof(glm::mat4));
 	cameraUniformBuffer.SetBindingPoint(0);
 	cameraUniformBuffer.BindUniform();
 
-	glm::mat4 projection = glm::perspective(glm::radians(Fov * aspectRatio), aspectRatio, zNear, zFar);
+	glm::mat4 projection = Window::GetPerspective(zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
 
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
-	depthed.GetColorBuffer<0>().CreateEmpty(Window::Width, Window::Height);
+	depthed.GetColorBuffer<0>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
-	depthed.GetColorBuffer<1>().CreateEmpty(Window::Width, Window::Height);
+	depthed.GetColorBuffer<1>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<1>().SetFilters(screenFilters);
 
 
 
-	depthed.GetDepth().CreateEmpty(Window::Width, Window::Height, InternalDepth);
+	depthed.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
 	depthed.GetDepth().SetFilters(screenFilters);
 
-	depthed.GetStencil().CreateEmpty(Window::Width, Window::Height, InternalStencil);
+	depthed.GetStencil().CreateEmpty(Window::GetSize(), InternalStencil);
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	depthed.Assemble();
 
-	scratchSpace.GetColorBuffer().CreateEmpty(Window::Width, Window::Height, InternalRGBA);
+	scratchSpace.GetColorBuffer().CreateEmpty(Window::GetSize(), InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(screenFilters);
 	scratchSpace.Assemble();
 
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
-	screenSpaceBuffer.BufferSubData(glm::ortho<float>(0, static_cast<float>(Window::Width), static_cast<float>(Window::Height), 0));
-}
-
-void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam)
-{
-	// FROM https://gist.github.com/liam-middlebrook/c52b069e4be2d87a6d2f
-	const char* _source;
-	const char* _type;
-	const char* _severity;
-
-	switch (source) {
-	case GL_DEBUG_SOURCE_API: _source = "API"; break;
-	case GL_DEBUG_SOURCE_WINDOW_SYSTEM: _source = "WINDOW SYSTEM"; break;
-	case GL_DEBUG_SOURCE_SHADER_COMPILER: _source = "SHADER COMPILER"; break;
-	case GL_DEBUG_SOURCE_THIRD_PARTY: _source = "THIRD PARTY"; break;
-	case GL_DEBUG_SOURCE_APPLICATION: _source = "APPLICATION"; break;
-	case GL_DEBUG_SOURCE_OTHER: _source = "UNKNOWN"; break;
-	default: _source = "UNKNOWN"; break;
-	}
-
-	switch (type) {
-	case GL_DEBUG_TYPE_ERROR: _type = "ERROR"; break;
-	case GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR:_type = "DEPRECATED BEHAVIOR"; break;
-	case GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR:_type = "UDEFINED BEHAVIOR"; break;
-	case GL_DEBUG_TYPE_PORTABILITY:_type = "PORTABILITY"; break;
-	case GL_DEBUG_TYPE_PERFORMANCE:_type = "PERFORMANCE"; break;
-	case GL_DEBUG_TYPE_OTHER:_type = "OTHER"; break;
-	case GL_DEBUG_TYPE_MARKER:_type = "MARKER"; break;
-	default:_type = "UNKNOWN"; break;
-	}
-
-	switch (severity) {
-	case GL_DEBUG_SEVERITY_HIGH:_severity = "HIGH"; break;
-	case GL_DEBUG_SEVERITY_MEDIUM:_severity = "MEDIUM"; break;
-	case GL_DEBUG_SEVERITY_LOW:_severity = "LOW"; break;
-	case GL_DEBUG_SEVERITY_NOTIFICATION:_severity = "NOTIFICATION"; break;
-	default:_severity = "UNKNOWN"; break;
-	}
-
-	printf("%d: %s of %s severity, raised from %s: %s\n",
-		id, _type, _severity, _source, message);
+	screenSpaceBuffer.BufferSubData(Window::GetOrthogonal());
 }
 
 void init();
@@ -1589,7 +1531,6 @@ int main(int argc, char** argv)
 
 	glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
-
 	windowPointer = glfwCreateWindow(Window::Width, Window::Height, "Wowie a window", nullptr, nullptr);
 	if (!windowPointer)
 	{
@@ -1602,7 +1543,7 @@ int main(int argc, char** argv)
 	int left, top, right, bottom;
 	glfwGetWindowFrameSize(windowPointer, &left, &top, &right, &bottom);
 
-
+	// Adjust the window so it is completely on screen
 	glfwSetWindowPos(windowPointer, 0, top);
 
 	glewExperimental = GL_TRUE;
@@ -1989,7 +1930,7 @@ void init()
 	_t.GetColor().MakeAliasOf(depthMap);
 	_t.Assemble();
 	_t.Bind();
-	glViewport(0, 0, 1024, 1024);
+	depthMap.SetViewport();
 	voronoi.SetActiveShader();
 	voronoi.SetInt("mode", 2);
 	voronoi.DrawArray<DrawType::TriangleStrip>(4);

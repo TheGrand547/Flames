@@ -69,6 +69,10 @@ namespace Input
 			Mouse::oldButtons = Mouse::buttons;
 		}
 	};
+	struct Keyboard
+	{
+
+	};
 };
 
 

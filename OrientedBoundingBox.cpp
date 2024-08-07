@@ -495,7 +495,7 @@ std::vector<Triangle> OrientedBoundingBox::GetTriangles() const noexcept
 				points[i] += (*this)[j] * this->halfs[j] * multiples[i][j];
 			}
 		}
-		if (this->halfs[1] != 0.f && this->halfs[2] != 0.f) // Forward/Backward planes needed
+		if (this->halfs[1] != 0.f && this->halfs[2] != 0.f) // Forward/Backward instancedModels needed
 		{
 			// 4,5,6,7 (+x)
 			triangles.emplace_back(points[4], points[6], points[5]);
@@ -504,7 +504,7 @@ std::vector<Triangle> OrientedBoundingBox::GetTriangles() const noexcept
 			triangles.emplace_back(points[2], points[0], points[1]);
 			triangles.emplace_back(points[2], points[1], points[3]);
 		}
-		if (this->halfs[0] != 0.f && this->halfs[2] != 0.f) // Up/Down planes needed
+		if (this->halfs[0] != 0.f && this->halfs[2] != 0.f) // Up/Down instancedModels needed
 		{
 			// 2,3,6,7 (+y)
 			triangles.emplace_back(points[2], points[3], points[6]);
@@ -513,7 +513,7 @@ std::vector<Triangle> OrientedBoundingBox::GetTriangles() const noexcept
 			triangles.emplace_back(points[1], points[0], points[4]);
 			triangles.emplace_back(points[1], points[4], points[5]);
 		}
-		if (this->halfs[0] != 0.f && this->halfs[1] != 0.f) // Left/Right planes needed
+		if (this->halfs[0] != 0.f && this->halfs[1] != 0.f) // Left/Right instancedModels needed
 		{
 			// 1,3,5,7 (+z)
 			triangles.emplace_back(points[3], points[1], points[5]);

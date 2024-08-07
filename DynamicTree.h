@@ -163,15 +163,15 @@ protected:
 			}
 		}
 
-		void GetBoxes(std::vector<AABB>& boxes) const noexcept
+		void GetBoxes(std::vector<AABB>& staticBoxes) const noexcept
 		{
 			if (this->objects.size() > 0)
-				boxes.push_back(this->bounds);
+				staticBoxes.push_back(this->bounds);
 			for (const MemberPointer& point: this->members)
 			{
 				if (point)
 				{
-					point->GetBoxes(boxes);
+					point->GetBoxes(staticBoxes);
 				}
 			}
 		}
@@ -382,9 +382,9 @@ public:
 	
 	std::vector<AABB> GetBoxes() const noexcept
 	{
-		std::vector<AABB> boxes;
-		this->root.GetBoxes(boxes);
-		return boxes;
+		std::vector<AABB> staticBoxes;
+		this->root.GetBoxes(staticBoxes);
+		return staticBoxes;
 	}
 
 protected:

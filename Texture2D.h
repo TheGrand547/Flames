@@ -56,6 +56,7 @@ public:
 	void CopyFrom(Texture2D&& other);
 	void CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat = InternalRGBA8, const glm::ivec2& start = glm::ivec2(0, 0));
 
+	inline void SetViewport() const;
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
 	inline void SetWrapBehaviorS(TextureWrapping value) const;
@@ -121,6 +122,11 @@ void Texture2D::BindTexture(GLuint slot) const
 inline void Texture2D::GenerateMipmap() const
 {
 	glGenerateTextureMipmap(this->texture);
+}
+
+inline void Texture2D::SetViewport() const
+{
+	glViewport(0, 0, this->width, this->height);
 }
 
 inline void Texture2D::SetMagFilter(TextureMagFilter value) const

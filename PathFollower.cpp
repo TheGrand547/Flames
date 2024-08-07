@@ -37,7 +37,7 @@ PathFollower& PathFollower::operator=(const PathFollower& other) noexcept
 	return *this;
 }
 
-void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& boxes) noexcept
+void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& staticBoxes) noexcept
 {
 	if (this->path.size() == 0)
 	{
@@ -109,7 +109,7 @@ void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& boxes) noex
 	this->capsule.SetCenter(this->physics.position);
 
 	Collision placeholder;
-	for (auto& possible : boxes.Search(this->capsule.GetAABB()))
+	for (auto& possible : staticBoxes.Search(this->capsule.GetAABB()))
 	{
 		if (possible->Overlap(this->capsule, placeholder))
 		{
