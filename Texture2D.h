@@ -56,6 +56,10 @@ public:
 	void CopyFrom(Texture2D&& other);
 	void CopyFromFramebuffer(const glm::ivec2& size, TextureFormatInternal internalFormat = InternalRGBA8, const glm::ivec2& start = glm::ivec2(0, 0));
 
+	inline void SetDepthSample() const noexcept;
+	inline void SetStencilSample() const noexcept;
+
+
 	inline void SetViewport() const;
 	inline void SetMagFilter(TextureMagFilter value) const;
 	inline void SetMinFilter(TextureMinFilter value) const;
@@ -117,6 +121,18 @@ inline glm::vec2 Texture2D::GetTextureCoordinates(int x, int y) const noexcept
 void Texture2D::BindTexture(GLuint slot) const
 {
 	glBindTextureUnit(slot, this->texture);
+}
+
+inline void Texture2D::SetStencilSample() const noexcept
+{
+	this->BindTexture();
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+}
+
+inline void Texture2D::SetDepthSample() const noexcept
+{
+	this->BindTexture();
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
 }
 
 inline void Texture2D::GenerateMipmap() const

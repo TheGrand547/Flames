@@ -80,6 +80,11 @@ public:
 		return *this;
 	}
 
+	inline GLuint GetFrameBuffer() const noexcept
+	{
+		return this->frameBuffer;
+	}
+
 	void CleanFramebuffer()
 	{
 		if (this->frameBuffer)

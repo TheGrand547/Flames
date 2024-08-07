@@ -198,6 +198,8 @@ UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
 Framebuffer<2, DepthAndStencil> depthed;
 ColorFrameBuffer scratchSpace;
 
+Framebuffer<1, DepthStencil> experiment;
+
 // Shaders
 Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
 Shader triColor, decalShader;
@@ -206,6 +208,7 @@ Shader nineSlicer;
 Shader skinner;
 Shader billboardShader;
 Shader voronoi;
+Shader lighting;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -672,7 +675,7 @@ void display()
 	sphereModel.translation = glm::vec3(0, 0, 0);
 	Model lightModel;
 	lightModel.translation = glm::vec3(4, 0, 0);
-	lightModel.scale = glm::vec3(2.2, 2.2, 1.1);
+	lightModel.scale = glm::vec3(2);//glm::vec3(2.2, 2.2, 1.1);
 
 	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
@@ -680,11 +683,13 @@ void display()
 	// TODO: Make something to clarify the weirdness of the stencil function
 	// Stuff like the stencilOp being in order: Stencil Fail(depth ignored), Stencil Pass(Depth Fail), Stencil Pass(Depth Pass)
 	// And stencilFunc(op, ref, mask) does the operation on a stencil value K of: (ref & mask) op (K & mask)
+	
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Read from Default
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, experiment.GetFrameBuffer());
+	glBlitFramebuffer(0, 0, Window::Width, Window::Height, 0, 0, Window::Width, Window::Height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	experiment.Bind();
 
 	// All shadows/lighting will be in this post-processing step based on stencil value
-
-
-	// Useful only when view is *inside* the volume, should be reversed otherwise <- You are stupid
 
 	//////  Shadow volume
 	glDepthMask(GL_FALSE); // Disable writing to the depth buffer
@@ -713,11 +718,18 @@ void display()
 	// Drawing of the appropriate volumes
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
-	stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
+	//stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
 
 	plainVAO.BindArrayBuffer(plainCube);
-	stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
-	stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
+	int mask = 0b00000011;
+	for (int i = 0; i < 4; i++)
+	{
+		glStencilMask(mask);
+		lightModel.Translate(glm::vec3(0, 1, 0));
+		stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
+		stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
+		mask <<= 2;
+	}
 
 	// Clean up
 	EnableGLFeatures<FaceCulling>();
@@ -725,9 +737,11 @@ void display()
 	glFrontFace(GL_CCW);
 	//glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
 	//////  Shadow volume End
+	BindDefaultFrameBuffer();
+
 
 	//GL_ARB_shader_stencil_export
-
+	// TODO: Figure this out
 	EnableGLFeatures<Blending>();
 	//DisableGLFeatures<DepthTesting>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -843,6 +857,12 @@ void display()
 
 	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 	
+	EnableGLFeatures<Blending>();
+	lighting.SetActiveShader();
+	experiment.GetDepthStencil().SetDepthSample();
+	lighting.SetTextureUnit("stencil", experiment.GetDepthStencil());
+	lighting.DrawArray<DrawType::TriangleStrip>(4);
+	DisableGLFeatures<Blending>();
 	/*
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
@@ -1281,7 +1301,7 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 
 	// Lets have depth = 0.01;
 	float depth = 0.01f;
-	glm::mat4 projection = Window::GetPerspective(depth, zFar); //glm::perspective(glm::radians(Window::FOV), Window::AspectRatio, depth, zFar);
+	glm::mat4 projection = Window::GetPerspective(depth, zFar);
 	sizes *= GetProjectionHalfs(projection);
 	glm::vec3 project(sizes.x, sizes.y, -depth);
 
@@ -1478,14 +1498,18 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = Window::GetPerspective(zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
-
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
+	experiment.GetColor().CreateEmpty(Window::GetSize());
+	experiment.GetColor().SetFilters(screenFilters);
+	experiment.GetDepthStencil().CreateEmpty(Window::GetSize(), InternalDepthStencil);
+	experiment.GetDepthStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
+	experiment.Assemble();
+
+
 	depthed.GetColorBuffer<0>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
 	depthed.GetColorBuffer<1>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<1>().SetFilters(screenFilters);
-
-
 
 	depthed.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
 	depthed.GetDepth().SetFilters(screenFilters);
@@ -1612,6 +1636,7 @@ void init()
 	frameShader.CompileSimple("framebuffer");
 	ground.CompileSimple("ground_");
 	instancing.CompileSimple("instance");
+	lighting.Compile("framebuffer", "funky_test");
 	nineSlicer.CompileSimple("ui_nine");
 	pathNodeView.CompileSimple("path_node");
 	skinner.CompileSimple("skin");

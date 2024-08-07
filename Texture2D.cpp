@@ -148,11 +148,12 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 		pixelType = GL_STENCIL_INDEX;
 		break;
 	case InternalDepthStencil:
-		pixelType = GL_DEPTH_STENCIL;
+		internalFormat = GL_DEPTH24_STENCIL8;
+		pixelType = GL_DEPTH24_STENCIL8;
 		break;
 	case InternalDepthStencilFloat:
-		internalFormat = GL_DEPTH_STENCIL;
-		pixelType = GL_DEPTH_STENCIL;
+		internalFormat = GL_DEPTH32F_STENCIL8;
+		pixelType = GL_DEPTH32F_STENCIL8;
 		break;
 	case InternalDepth:
 	case InternalDepth16:
