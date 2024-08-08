@@ -212,7 +212,7 @@ Shader lighting;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
-Texture2D buttonA, buttonB, nineSlice;
+Texture2D buttonA, buttonB, nineSlice, mapping;
 CubeMap mapper;
 
 // Vertex Array Objects
@@ -256,7 +256,6 @@ std::stringstream letters("abc");
 bool reRenderText = true;
 
 constexpr float ANGLE_DELTA = 4;
-
 
 // Camera
 glm::vec3 cameraPosition(0, 1.5f, 0);
@@ -409,7 +408,6 @@ void display()
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
 	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
-
 	if (debugFlags[DEBUG_PATH])
 	{
 		EnableGLFeatures<Blending>();
@@ -526,6 +524,7 @@ void display()
 	EnableGLFeatures<FaceCulling>();
 	*/
 
+	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
 	decalShader.SetActiveShader();
 	decalVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
@@ -675,7 +674,7 @@ void display()
 	sphereModel.translation = glm::vec3(0, 0, 0);
 	Model lightModel;
 	lightModel.translation = glm::vec3(4, 0, 0);
-	lightModel.scale = glm::vec3(2);//glm::vec3(2.2, 2.2, 1.1);
+	lightModel.scale = glm::vec3(2.2f);//glm::vec3(2.2, 2.2, 1.1);
 
 	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
@@ -686,8 +685,10 @@ void display()
 	
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Read from Default
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, experiment.GetFrameBuffer());
-	glBlitFramebuffer(0, 0, Window::Width, Window::Height, 0, 0, Window::Width, Window::Height, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	glBlitFramebuffer(0, 0, Window::Width, Window::Height, 0, 0, Window::Width / 2, Window::Height / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
 	experiment.Bind();
+	glClearStencil(0x00);
+	glClear(GL_STENCIL_BUFFER_BIT);
 
 	// All shadows/lighting will be in this post-processing step based on stencil value
 
@@ -702,7 +703,7 @@ void display()
 
 	// To make the inverse kind of volume (shadow/light), simply change the handedness of the system AND BE SURE TO CHANGE IT BACK
 	//glFrontFace((featureToggle) ? GL_CCW : GL_CW);
-	glFrontFace(GL_CCW);
+	//glFrontFace(GL_CCW);
 	// Stencil Test Always Passes
 	glStencilFunc(GL_ALWAYS, 0, 0xFF);
 	
@@ -713,24 +714,23 @@ void display()
 	// than the volume are not incorrectly shaded by volumes that don't touch it
 	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
-	// Somehow write the normal to the nearest light source? This feels like it should be simple but idk how to do it
-
 	// Drawing of the appropriate volumes
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	//stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
 
 	plainVAO.BindArrayBuffer(plainCube);
-	int mask = 0b00000011;
-	for (int i = 0; i < 4; i++)
+	//for (int i = 0; i < 4; i++)
+	int count = 0;
+	for (auto& following : followers)
 	{
-		glStencilMask(mask);
-		lightModel.Translate(glm::vec3(0, 1, 0));
+		lightModel.translation = following.first.GetPosition();
+		lightModel.scale = glm::vec3(2.3 + float(count++));
+		//lightModel.Translate(glm::vec3(2 + i * glm::cos(frameCounter / 100.f), 0, 0));
 		stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
 		stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
-		mask <<= 2;
 	}
-
+	
 	// Clean up
 	EnableGLFeatures<FaceCulling>();
 	//DisableGLFeatures<StencilTesting>();
@@ -859,8 +859,9 @@ void display()
 	
 	EnableGLFeatures<Blending>();
 	lighting.SetActiveShader();
-	experiment.GetDepthStencil().SetDepthSample();
+	experiment.GetDepthStencil().SetStencilSample();
 	lighting.SetTextureUnit("stencil", experiment.GetDepthStencil());
+	lighting.SetTextureUnit("rainbow", mapping, 1);
 	lighting.DrawArray<DrawType::TriangleStrip>(4);
 	DisableGLFeatures<Blending>();
 	/*
@@ -1498,13 +1499,14 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = Window::GetPerspective(zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
+	CheckError();
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
-	experiment.GetColor().CreateEmpty(Window::GetSize());
+	experiment.GetColor().CreateEmpty(Window::GetSize() / 2);
 	experiment.GetColor().SetFilters(screenFilters);
-	experiment.GetDepthStencil().CreateEmpty(Window::GetSize(), InternalDepthStencil);
+	experiment.GetDepthStencil().CreateEmpty(Window::GetSize() / 2, InternalDepthStencil);
 	experiment.GetDepthStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	experiment.Assemble();
-
+	CheckError();
 
 	depthed.GetColorBuffer<0>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
@@ -1705,6 +1707,9 @@ void init()
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
+	mapping.Load("gradient.png");
+	mapping.SetFilters();
+	
 	normalMap.Load("normal.png");
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
@@ -1961,7 +1966,7 @@ void init()
 	voronoi.DrawArray<DrawType::TriangleStrip>(4);
 	BindDefaultFrameBuffer();
 	depthMap.BindTexture();
-	//depthMap.SetAnisotropy(16.f);
+	depthMap.SetAnisotropy(16.f);
 
 	HeightToNormal(depthMap, normalMap);
 	normalMap.BindTexture();

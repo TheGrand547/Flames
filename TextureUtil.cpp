@@ -62,14 +62,14 @@ static const std::string voronoiFragment =
 "";
 
 // From here https://stackoverflow.com/questions/5281261/generating-a-normal-map-from-a-height-map
-static const std::string heightToNormalFragment = "#version 450 core\n"
+static const std::string heightToNormalFragment = "#version 460 core\n"
 "in vec2 uv;"
 "out vec4 normal;"
 "const ivec3 off = ivec3(-1, 0, 1);"
 "uniform sampler2D heightMap;"
 "void main()"
 "{"
-"	const vec2 size = fwidth(uv);"
+"	const vec2 size = fwidthFine(uv);"
 "	float s11 = texture(heightMap, uv).r;"
 "	float s01 = textureOffset(heightMap, uv, off.xy).r;"
 "	float s21 = textureOffset(heightMap, uv, off.zy).r;"
@@ -83,7 +83,7 @@ static const std::string heightToNormalFragment = "#version 450 core\n"
 
 void HeightToNormal(const Texture2D& input, Texture2D& output)
 {
-	output.CreateEmpty(input.GetSize(), InternalRGBA8);
+	output.CreateEmpty(input.GetSize(), InternalRGBA16);
 	ColorFrameBuffer buffer;
 	buffer.GetColor().MakeAliasOf(output);
 	buffer.Assemble();

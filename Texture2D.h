@@ -132,7 +132,7 @@ inline void Texture2D::SetStencilSample() const noexcept
 inline void Texture2D::SetDepthSample() const noexcept
 {
 	this->BindTexture();
-	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_STENCIL_INDEX);
+	glTexParameteri(GL_TEXTURE_2D, GL_DEPTH_STENCIL_TEXTURE_MODE, GL_DEPTH_COMPONENT);
 }
 
 inline void Texture2D::GenerateMipmap() const

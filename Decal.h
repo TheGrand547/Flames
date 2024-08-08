@@ -58,7 +58,7 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.x, halfs.y);
 						innerLocal[i] = (inverseView * innerLocal[i]) + center;
 						// Texture coordinates will be (x, y)
-						out.emplace_back<TextureVertex>({ innerLocal[i] + normal * 0.001f, older / 2.f + 0.5f });
+						out.emplace_back<TextureVertex>({ innerLocal[i], older / 2.f + 0.5f });
 					}
 				}
 			}

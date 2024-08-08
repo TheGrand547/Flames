@@ -48,7 +48,8 @@ void main()
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); // TODO: Specular setting
 	vec3 specularOut = lightColor * specular;
 
-	vec3 color = vec3(texture(textureIn, samplePoint));
+	vec3 color = texture(textureIn, samplePoint).rgb;
+	color = vec3(1, 1, 1);
 	
 	vec3 result = color * (ambientColor + diffuseColor + specularOut);
 	

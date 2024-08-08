@@ -140,6 +140,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	GLenum internalFormat = type, pixelType = GL_RGBA;
 	// TODO: Remove these I don't think they're necessary
+	// Everything is wrong
 	switch (type)
 	{
 	case InternalStencil:
