@@ -387,6 +387,11 @@ public:
 		return staticBoxes;
 	}
 
+	inline std::size_t size() const noexcept
+	{
+		return this->elements.size();
+	}
+
 protected:
 	// Index
 	InternalOctTree root;

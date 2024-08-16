@@ -34,6 +34,7 @@ public:
 	inline void BindArrayBuffer(ArrayBuffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
 	template<class V> inline void ArrayFormat(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
+	template<class V> inline void ArrayFormatM(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0, std::string name = "Model");
 
 	template<class V> inline void ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint = 0, 
 		GLuint bindingDivisor = 0, GLuint relativeOffset = 0);
@@ -170,11 +171,12 @@ template<> inline void VertexArray::ArrayFormat<MeshVertex>(Shader& shader, GLui
 	this->strides[bindingPoint] = sizeof(MeshVertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<glm::mat4>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+// TODO: FIX HACK
+template<> inline void VertexArray::ArrayFormatM<glm::mat4>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor, std::string name)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	GLuint index = shader.Index("Model");
+	GLuint index = shader.Index(name);
 	for (int i = 0; i < 4; i++)
 	{
 		glVertexAttribFormat(index + i, 4, GL_FLOAT, GL_FALSE, sizeof(glm::vec4) * i);

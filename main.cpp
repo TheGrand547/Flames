@@ -69,7 +69,16 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 // TODO: imGUI
 // TODO: Delaunay Trianglulation
 // TODO: EASTL
+// TODO: Entity Component System with sparse lists
 
+// Stencil based limited vision range
+// RTWP first person vaguely rpg
+// Most actions take time beyond just the input, not (just) a delay
+// Can be buffered
+// UI element showing distance to cursor at all times to better judge movement
+// 128 gameplay ticks a second allowing for 1/16th speed play(wowie slow motion)
+// Animations and such are locked to this "grid"
+// TODO: Stencil buffer for vision cones and things
 
 // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
 static const std::array<GLubyte, 36> cubeIndicies =
@@ -217,8 +226,8 @@ CubeMap mapper;
 
 // Vertex Array Objects
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
-VAO nineSliced;
-VAO instanceVAO2;
+VAO nineSliced, billboardVAO;
+VAO skinInstance;
 
 // Not explicitly tied to OpenGL Globals
 
@@ -326,28 +335,26 @@ PathFollower followed{glm::vec3(0, 0.5f, 0) };
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
 
 std::vector<Bullet> bullets;
+ArrayBuffer bulletMatrix;
 
 std::vector<TextureVertex> decalVertex;
 
 std::array<ScreenRect, 9> ui_tester;
 ArrayBuffer ui_tester_buffer;
 
-/*
-New shading outputs
--A stencil lights factor(mix(current, light, factor))
--
-
-*/
-
 std::array<glm::mat4, 2> skinMats;
 ArrayBuffer skinBuf;
 ArrayBuffer skinVertex;
 ElementArray skinArg;
 
+std::vector<glm::mat4> bigData;
 ArrayBuffer billboardBuffer;
+ArrayBuffer billboardMatrix;
 
 std::vector<AABB> dynamicTreeBoxes;
 using namespace Input;
+
+bool shouldClose = false;
 
 void display()
 {
@@ -463,8 +470,8 @@ void display()
 
 	DisableGLFeatures<FaceCulling>();
 	skinner.SetActiveShader();
-	instanceVAO2.BindArrayObject();
-	instanceVAO2.BindArrayBuffer(skinVertex, 0);
+	skinInstance.BindArrayObject();
+	skinInstance.BindArrayBuffer(skinVertex, 0);
 	skinner.SetMat4s("mats", std::span{skinMats});
 	skinner.SetTextureUnit("textureIn", wallTexture, 0);
 	skinArg.BindBuffer();
@@ -473,13 +480,17 @@ void display()
 
 	EnableGLFeatures<FaceCulling>();
 	billboardShader.SetActiveShader();
-	texturedVAO.BindArrayBuffer(billboardBuffer);
+	billboardVAO.BindArrayObject();
+	billboardVAO.BindArrayBuffer(billboardBuffer, 0);
+	billboardVAO.BindArrayBuffer(billboardMatrix, 1);
 	billboardShader.SetTextureUnit("sampler", texture, 0);
 	auto yCameraMatrix = glm::eulerAngleY(-cameraRadians.y);
-	billboardShader.SetMat4("orient", yCameraMatrix);
+	//billboardShader.SetMat4("orient", yCameraMatrix);
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
-
+	billboardMatrix.BufferData(bigData);
+	billboardShader.DrawArrayInstanced<DrawType::TriangleStrip>(billboardBuffer, billboardMatrix);
+	/*
 	for (auto& following : followers)
 	{
 		glm::vec3 billboardPosition = following.first.GetPosition();
@@ -493,7 +504,7 @@ void display()
 		tempMatrix[2] *= 0.5f;
 		billboardShader.SetMat4("orient", tempMatrix);
 		//billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
-	}
+	}*/
 	/*
 	DisableGLFeatures<FaceCulling>();
 	ground.SetActiveShader();
@@ -683,6 +694,7 @@ void display()
 	// Stuff like the stencilOp being in order: Stencil Fail(depth ignored), Stencil Pass(Depth Fail), Stencil Pass(Depth Pass)
 	// And stencilFunc(op, ref, mask) does the operation on a stencil value K of: (ref & mask) op (K & mask)
 	
+	/*
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0); // Read from Default
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, experiment.GetFrameBuffer());
 	glBlitFramebuffer(0, 0, Window::Width, Window::Height, 0, 0, Window::Width / 2, Window::Height / 2, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
@@ -725,7 +737,7 @@ void display()
 	for (auto& following : followers)
 	{
 		lightModel.translation = following.first.GetPosition();
-		lightModel.scale = glm::vec3(2.3 + float(count++));
+		lightModel.scale = glm::vec3(2.3f + float(count++));
 		//lightModel.Translate(glm::vec3(2 + i * glm::cos(frameCounter / 100.f), 0, 0));
 		stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
 		stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
@@ -738,7 +750,7 @@ void display()
 	//glDepthMask(GL_TRUE); // Allow for the depth buffer to be written to
 	//////  Shadow volume End
 	BindDefaultFrameBuffer();
-
+	*/
 
 	//GL_ARB_shader_stencil_export
 	// TODO: Figure this out
@@ -862,7 +874,7 @@ void display()
 	experiment.GetDepthStencil().SetStencilSample();
 	lighting.SetTextureUnit("stencil", experiment.GetDepthStencil());
 	lighting.SetTextureUnit("rainbow", mapping, 1);
-	lighting.DrawArray<DrawType::TriangleStrip>(4);
+	//lighting.DrawArray<DrawType::TriangleStrip>(4);
 	DisableGLFeatures<Blending>();
 	/*
 	frameShader.SetActiveShader();
@@ -916,6 +928,9 @@ OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
 
+using TimePoint = std::chrono::steady_clock::time_point;
+using TimeDelta = std::chrono::nanoseconds;
+
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 void idle()
@@ -926,8 +941,8 @@ void idle()
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	frameCounter++;
-	const auto idleStart = std::chrono::high_resolution_clock::now();
-	const auto delta = idleStart - lastIdleStart;
+	const TimePoint idleStart = std::chrono::high_resolution_clock::now();
+	const TimeDelta delta = idleStart - lastIdleStart;
 
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 	
@@ -1082,81 +1097,7 @@ void idle()
 		std::stringstream().swap(letters);
 	}
 
-	const float BulletSpeed = 5.f * timeDelta; //  5 units per second
-	spherePlaceholder.radius = BulletRadius;
-	Collision c;
-	std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
-	for (std::size_t i = 0; i < bullets.size(); i++)
-	{
-		if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))
-		{
-			bullets.erase(bullets.begin() + i);
-			i--;
-			continue;
-		}
-		spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
-		for (auto& boxers : staticBoxes.Search(spherePlaceholder.GetAABB()))
-		{
-			if (boxers->Overlap(spherePlaceholder, c))
-			{
-				{
-					//QuickTimer _timer("New Decal Generation");
-					OBB boxed;
-
-					// TODO: investigate
-					// TODO: glm::orthonormalize
-					//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
-					glm::mat3 dumb(1.f);
-					dumb[0] = glm::normalize(-c.axis);
-					if (glm::abs(glm::dot(c.axis, GravityUp)) < 0.85)
-					{
-						dumb[2] = glm::normalize(glm::cross(dumb[0], GravityUp));
-					}
-					else
-					{
-						dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(1, 0, 0)));
-					}
-					dumb[2] = glm::normalize(glm::cross(dumb[0], bullets[i].direction));
-					dumb[1] = glm::normalize(glm::cross(dumb[2], dumb[0]));
-					glm::mat4 dumber{ dumb };
-					dumber[3] = glm::vec4(0, 0, 0, 1);
-					boxed.ReOrient(dumber);
-					boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
-					boxed.ReCenter(c.point - c.axis * BulletSpeed);
-					Decal::GetDecal(boxed, staticBoxes, decalVertex);
-					decals.BufferData(decalVertex, StaticDraw);
-				}
-				spherePlaceholder.center = c.point + c.normal * EPSILON;
-				bullets[i].direction = glm::reflect(bullets[i].direction, c.normal);
-			}
-		}
-		Capsule example;
-		example.SetTotalLength(2.f);
-		for (auto& hit : followers.Search(spherePlaceholder.GetAABB()))
-		{
-			example.SetCenter(hit->first.GetPosition());
-			if (example.Intersect(spherePlaceholder))
-			{
-				to_remove.push_back(hit);
-				std::cout << "Hit!" << std::endl;
-				spherePlaceholder.center = glm::vec3(-100.f);
-				continue;
-			}
-		}
-		bullets[i].position = spherePlaceholder.center;
-	}
-	for (auto& a : to_remove)
-	{
-		followers.Erase(a);
-	}
-	//std::cout << "Done with Erasing" << std::endl;
 	followed.Update(timeDelta, staticBoxes);
-	followers.for_each([timeDelta](auto& a) 
-		{
-			glm::vec3 old = a.GetPosition();
-			a.Update(timeDelta, staticBoxes); 
-			return old != a.GetPosition();
-		});
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
@@ -1197,6 +1138,121 @@ void idle()
 		while (std::chrono::high_resolution_clock::displayStartTime() - displayStartTime <= std::chrono::milliseconds(10));
 	}
 	*/
+}
+
+
+// *Must* be in a separate thread
+void gameTick()
+{
+	using namespace std::chrono_literals;
+	constexpr std::chrono::duration<long double> tickInterval = 0.0078125s;// std::chrono::duration<long double>(1.0 / 128.0);
+	std::cout << std::chrono::duration<float, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
+	TimePoint lastStart = std::chrono::steady_clock::now();
+	do
+	{
+		const TimePoint tickStart = std::chrono::steady_clock::now();
+		const TimeDelta interval = tickStart - lastStart;
+		const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(interval).count();
+
+		{
+			Sphere spherePlaceholder;
+			Collision collision;
+			const float BulletSpeed = 5.f * timeDelta; //  5 units per second
+			// TODO: Same for bullets
+			std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
+			for (std::size_t i = 0; i < bullets.size(); i++)
+			{
+				if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))
+				{
+					bullets.erase(bullets.begin() + i);
+					i--;
+					continue;
+				}
+				spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
+				for (auto& boxers : staticBoxes.Search(spherePlaceholder.GetAABB()))
+				{
+					if (boxers->Overlap(spherePlaceholder, collision))
+					{
+						{
+							//QuickTimer _timer("New Decal Generation");
+							OBB boxed;
+
+							// TODO: investigate
+							// TODO: glm::orthonormalize
+							//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
+							glm::mat3 dumb(1.f);
+							dumb[0] = glm::normalize(-collision.axis);
+							if (glm::abs(glm::dot(collision.axis, GravityUp)) < 0.85)
+							{
+								dumb[2] = glm::normalize(glm::cross(dumb[0], GravityUp));
+							}
+							else
+							{
+								dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(1, 0, 0)));
+							}
+							dumb[2] = glm::normalize(glm::cross(dumb[0], bullets[i].direction));
+							dumb[1] = glm::normalize(glm::cross(dumb[2], dumb[0]));
+							glm::mat4 dumber{ dumb };
+							dumber[3] = glm::vec4(0, 0, 0, 1);
+							boxed.ReOrient(dumber);
+							boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
+							boxed.ReCenter(collision.point - collision.axis * BulletSpeed);
+							Decal::GetDecal(boxed, staticBoxes, decalVertex);
+							decals.BufferData(decalVertex, StaticDraw);
+						}
+						spherePlaceholder.center = collision.point + collision.normal * EPSILON;
+						bullets[i].direction = glm::reflect(bullets[i].direction, collision.normal);
+					}
+				}
+				Capsule example;
+				example.SetTotalLength(2.f);
+				for (auto& hit : followers.Search(spherePlaceholder.GetAABB()))
+				{
+					example.SetCenter(hit->first.GetPosition());
+					if (example.Intersect(spherePlaceholder))
+					{
+						to_remove.push_back(hit);
+						std::cout << "Hit!" << std::endl;
+						spherePlaceholder.center = glm::vec3(-100.f);
+						continue;
+					}
+				}
+				bullets[i].position = spherePlaceholder.center;
+			}
+			for (auto& a : to_remove)
+			{
+				followers.Erase(a);
+			}
+			std::vector<glm::mat4> billboards{};
+			billboards.reserve(followers.size());
+			followers.for_each([timeDelta, &billboards](auto& a)
+				{
+					glm::vec3 old = a.GetPosition();
+					a.Update(timeDelta, staticBoxes);
+					glm::vec3 billboardPosition = a.GetPosition();
+					glm::vec3 billboardDelta = cameraPosition - billboardPosition;
+					glm::vec3 up = glm::vec3(0, 1, 0);
+					glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
+					glm::vec3 forward = glm::normalize(glm::cross(right, up));
+					glm::mat4 tempMatrix{ glm::mat3(forward, up, right) };
+					tempMatrix = glm::transpose(tempMatrix);
+					tempMatrix[3] = glm::vec4(billboardPosition, 1);
+					tempMatrix[2] *= 0.5f;
+					billboards.push_back(tempMatrix);
+					return old != a.GetPosition();
+				});
+			bigData.swap(billboards);
+		}
+		auto balb = std::chrono::steady_clock::now();
+		
+		//while (std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - tickStart) < tickInterval);
+		
+		// TODO: These *should* work, but don't for some inexplicable reason
+		//std::this_thread::sleep_for(tickInterval - (balb - tickStart));
+		//std::this_thread::sleep_until(tickStart + tickInterval);
+		lastStart = tickStart;
+		std::cout << 1000 / std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - tickStart).count() << std::endl;
+	} while (!shouldClose);
 }
 
 void window_focus_callback(GLFWwindow* window, int focused)
@@ -1266,7 +1322,11 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
-		if (key == GLFW_KEY_Q) glfwSetWindowShouldClose(window, GLFW_TRUE);
+		if (key == GLFW_KEY_Q) 
+		{
+			shouldClose = true;
+			glfwSetWindowShouldClose(window, GLFW_TRUE);
+		}
 		if (key == GLFW_KEY_B) featureToggle = !featureToggle;
 		if (key == GLFW_KEY_ENTER) reRenderText = true;
 		if (key >= GLFW_KEY_0 && key <= GLFW_KEY_9)
@@ -1591,6 +1651,8 @@ int main(int argc, char** argv)
 	init();
 	window_size_callback(nullptr, Window::Width, Window::Height);
 
+	std::thread ticking{ gameTick };
+	ticking.detach();
 	while (!glfwWindowShouldClose(windowPointer))
 	{
 		idle();
@@ -1674,21 +1736,21 @@ void init()
 
 	CheckError();
 	// VAO SETUP
+	billboardVAO.ArrayFormat<TextureVertex>(billboardShader);
+	billboardVAO.ArrayFormatM<glm::mat4>(billboardShader, 1, 1, "Orient");
+
 	decalVAO.ArrayFormat<TextureVertex>(decalShader);
 	fontVAO.ArrayFormat<UIVertex>(fontShader);
-	CheckError();
 	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
-	instanceVAO.ArrayFormat<glm::mat4>(instancing, 1, 1);
+	instanceVAO.ArrayFormatM<glm::mat4>(instancing, 1, 1);
 	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
 	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
-	CheckError();
+
 	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
 	normalVAO.ArrayFormat<NormalVertex>(flatLighting);
-	CheckError();
 	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
-	CheckError();
 	plainVAO.ArrayFormat<Vertex>(uniform);
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
@@ -1893,7 +1955,7 @@ void init()
 	// SKINNING
 	std::array<float, 3> dummy{1.f};
 	skinBuf.BufferData(dummy, StaticDraw);
-	instanceVAO2.ArrayFormat<TextureVertex>(skinner);
+	skinInstance.ArrayFormat<TextureVertex>(skinner);
 	std::vector<GLuint> grs = {
 		0, 1, 2, 1, 2, 3,
 		2, 3, 4, 3, 4, 5,
@@ -1972,6 +2034,7 @@ void init()
 	normalMap.BindTexture();
 	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	normalMap.SetAnisotropy(16.f);
+
 
 
 
