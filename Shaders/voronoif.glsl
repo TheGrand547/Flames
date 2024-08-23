@@ -74,6 +74,7 @@ void main()
 			}
 		}
 		curved = pow(1 - edgeLength, 6); // This gives the really nice curved edges
+		curved = 1 - edgeLength;
 		color = vec4(curved, curved, curved, 1);
 	}
 }

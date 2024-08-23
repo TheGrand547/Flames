@@ -4,6 +4,7 @@
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/noise.hpp>
 #include <glm/gtc/quaternion.hpp>
 #include <glm/gtc/random.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -410,7 +411,7 @@ void display()
 		}
 		instanceBuffer.BufferData(combo, StaticDraw);
 	}
-
+	instanceVAO.Bind();
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
@@ -420,7 +421,7 @@ void display()
 		EnableGLFeatures<Blending>();
 		DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
-		pathNodeVAO.BindArrayObject();
+		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
@@ -441,7 +442,7 @@ void display()
 		EnableGLFeatures<Blending>();
 		DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
-		pathNodeVAO.BindArrayObject();
+		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(PathFollower::latestPathBuffer, 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
@@ -451,6 +452,7 @@ void display()
 
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
+		plainVAO.Bind();
 		plainVAO.BindArrayBuffer(PathFollower::latestPathBuffer);
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
@@ -460,6 +462,7 @@ void display()
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
+	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(stickBuffer);
 
 	glm::vec3 colors = glm::vec3(1, 0, 0);
@@ -470,7 +473,7 @@ void display()
 
 	DisableGLFeatures<FaceCulling>();
 	skinner.SetActiveShader();
-	skinInstance.BindArrayObject();
+	skinInstance.Bind();
 	skinInstance.BindArrayBuffer(skinVertex, 0);
 	skinner.SetMat4s("mats", std::span{skinMats});
 	skinner.SetTextureUnit("textureIn", wallTexture, 0);
@@ -480,7 +483,7 @@ void display()
 
 	EnableGLFeatures<FaceCulling>();
 	billboardShader.SetActiveShader();
-	billboardVAO.BindArrayObject();
+	billboardVAO.Bind();
 	billboardVAO.BindArrayBuffer(billboardBuffer, 0);
 	billboardVAO.BindArrayBuffer(billboardMatrix, 1);
 	billboardShader.SetTextureUnit("sampler", texture, 0);
@@ -537,6 +540,7 @@ void display()
 
 	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
 	decalShader.SetActiveShader();
+	decalVAO.Bind();
 	decalVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
 	decalShader.DrawArray<DrawType::Triangle>(decals);
@@ -546,6 +550,7 @@ void display()
 	{
 		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
+		plainVAO.Bind();
 		plainVAO.BindArrayBuffer(plainCube);
 		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
 		for (auto& box : dynamicTreeBoxes)
@@ -562,6 +567,7 @@ void display()
 	{
 		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
+		plainVAO.Bind();
 		plainVAO.BindArrayBuffer(plainCube);
 
 		OBB placeholder(AABB(glm::vec3(0), glm::vec3(1)));
@@ -596,6 +602,7 @@ void display()
 
 	// Cubert
 	uniform.SetActiveShader();
+	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	
@@ -607,6 +614,7 @@ void display()
 	// Albert
 	
 	//glPatchParameteri(GL_PATCH_VERTICES, 3);
+	texturedVAO.Bind();
 	texturedVAO.BindArrayBuffer(albertBuffer);
 	dither.SetActiveShader();
 	dither.SetTextureUnit("ditherMap", wallTexture, 1);
@@ -620,6 +628,7 @@ void display()
 	//dither.DrawArray<DrawType::Patches>(albertBuffer);
 
 
+	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
@@ -640,6 +649,7 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	flatLighting.SetActiveShader();
 
+	normalVAO.Bind();
 	normalVAO.BindArrayBuffer(sphereBuffer);
 
 	Model sphereModel(glm::vec3(6.5f, 5.5f, 0.f));
@@ -660,6 +670,7 @@ void display()
 	// Doing this while letting the normal be the color will create a cool effect
 	
 	sphereMesh.SetActiveShader();
+	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	sphereMesh.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	sphereMesh.SetMat4("normalMat", sphereModel.GetNormalMatrix());
@@ -774,6 +785,7 @@ void display()
 	glDepthMask(GL_TRUE);
 
 	flatLighting.SetActiveShader();
+	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(capsuleBuffer);
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
@@ -785,6 +797,7 @@ void display()
 	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
 
 
+	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(movingCapsule);
 	flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
 	flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
@@ -821,6 +834,7 @@ void display()
 
 	nineSlicer.SetActiveShader();
 	nineSlicer.SetTextureUnit("image", nineSlice);
+	nineSliced.Bind();
 	nineSliced.BindArrayBuffer(ui_tester_buffer);
 	nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 
@@ -853,6 +867,7 @@ void display()
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
 	fontShader.SetActiveShader();
+	fontVAO.Bind();
 	fontVAO.BindArrayBuffer(textBuffer);
 	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
 	fontShader.DrawArray<DrawType::Triangle>(textBuffer);
@@ -930,6 +945,8 @@ int shift = 2;
 
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
+static std::size_t gameTicks = 0;
+
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
@@ -1123,10 +1140,11 @@ void idle()
 	toDie = glm::inverse(toDie);
 	skinMats[1] = toDie * skinMats[1];
 
-	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTest Bool: {}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", false));
+	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTicks/Second: {:7.2f}",
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", gameTicks / glfwGetTime()));
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
+	decals.BufferData(decalVertex, StaticDraw);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
@@ -1140,7 +1158,6 @@ void idle()
 	*/
 }
 
-
 // *Must* be in a separate thread
 void gameTick()
 {
@@ -1152,22 +1169,21 @@ void gameTick()
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
-		const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(interval).count();
-
+		const float timeDelta = static_cast<float>(std::chrono::duration<long double, std::chrono::seconds::period>(interval).count());
+		gameTicks++;
 		{
-			Sphere spherePlaceholder;
+			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
-			const float BulletSpeed = 5.f * timeDelta; //  5 units per second
+			const float BulletSpeed = static_cast<float>(5. * (std::pow(2., -7.))); //  5 units per second
 			// TODO: Same for bullets
 			std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
+			std::erase_if(bullets, [](const Bullet& bullet)
+				{
+					return glm::any(glm::greaterThan(glm::abs(bullet.position), glm::vec3(20)));
+				}
+			);
 			for (std::size_t i = 0; i < bullets.size(); i++)
 			{
-				if (glm::any(glm::greaterThan(glm::abs(bullets[i].position), glm::vec3(20))))
-				{
-					bullets.erase(bullets.begin() + i);
-					i--;
-					continue;
-				}
 				spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
 				for (auto& boxers : staticBoxes.Search(spherePlaceholder.GetAABB()))
 				{
@@ -1198,7 +1214,6 @@ void gameTick()
 							boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
 							boxed.ReCenter(collision.point - collision.axis * BulletSpeed);
 							Decal::GetDecal(boxed, staticBoxes, decalVertex);
-							decals.BufferData(decalVertex, StaticDraw);
 						}
 						spherePlaceholder.center = collision.point + collision.normal * EPSILON;
 						bullets[i].direction = glm::reflect(bullets[i].direction, collision.normal);
@@ -1244,14 +1259,21 @@ void gameTick()
 			bigData.swap(billboards);
 		}
 		auto balb = std::chrono::steady_clock::now();
-		
+		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
+		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };
+		while (std::chrono::steady_clock::now() < desired) 
+		{
+			std::this_thread::yield();
+		}
 		//while (std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - tickStart) < tickInterval);
 		
 		// TODO: These *should* work, but don't for some inexplicable reason
 		//std::this_thread::sleep_for(tickInterval - (balb - tickStart));
-		//std::this_thread::sleep_until(tickStart + tickInterval);
+		//std::this_thread::sleep_until<std::chrono::steady_clock>(tickStart + tickInterval);
+		//std::this_thread::sleep_until<std::chrono::steady_clock>(desired);
 		lastStart = tickStart;
-		std::cout << 1000 / std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - tickStart).count() << std::endl;
+		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - balb).count() << std::endl;
+		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	} while (!shouldClose);
 }
 
@@ -1653,6 +1675,7 @@ int main(int argc, char** argv)
 
 	std::thread ticking{ gameTick };
 	ticking.detach();
+	glfwSetTime(0);
 	while (!glfwWindowShouldClose(windowPointer))
 	{
 		idle();
@@ -1866,6 +1889,18 @@ void init()
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
 
 
+	
+	for (int x = -5; x < 6; x++) 
+	{
+		for (int y = -5; y < 6; y++)
+		{
+			float noise = glm::simplex(glm::vec3(x, 0.f, y));
+			//GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
+		}
+	}
+	
+
+
 	// The ramp
 	instancedModels.emplace_back(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1));
 
@@ -2016,7 +2051,7 @@ void init()
 	int maxSize = 0;
 	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
 	// Shenanigans
-	depthMap.CreateEmptyWithFilters({ 1024, 1024 }, InternalRed16, { LinearLinear, MagLinear, Repeat, Repeat }, { 0.f, 1.f, 1.f, 1.f });
+	depthMap.CreateEmptyWithFilters({ 1024, 1024 }, InternalRed16, { MinNearest, MagNearest, Repeat, Repeat }, { 0.f, 1.f, 1.f, 1.f });
 	//depthMap.Load("depth.png");
 	ColorFrameBuffer _t;
 	_t.GetColor().MakeAliasOf(depthMap);
@@ -2191,6 +2226,7 @@ void init()
 		buffered.Assemble();
 		buffered.Bind();
 		nineSlicer.SetActiveShader();
+		nineSliced.Bind();
 		nineSliced.BindArrayBuffer(rects);
 		nineSlicer.SetTextureUnit("image", nineSlice);
 		nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);

@@ -25,7 +25,7 @@ public:
 	inline GLuint GetArray() const noexcept;
 
 	void CleanUp();
-	inline void BindArrayObject();
+	inline void Bind() const noexcept;
 	inline void Generate();
 	
 	// Assumes this->array is already bound
@@ -50,7 +50,7 @@ inline GLuint VertexArray::GetArray() const noexcept
 	return this->array;
 }
 
-inline void VertexArray::BindArrayObject()
+inline void VertexArray::Bind() const noexcept
 {
 	glBindVertexArray(this->array);
 }
@@ -68,7 +68,6 @@ inline void VertexArray::BufferBindingPointDivisor(GLuint bindingPoint, GLuint b
 
 inline void VertexArray::BindArrayBuffer(ArrayBuffer& buffer, GLuint bindingPoint, GLintptr offset)
 {
-	glBindVertexArray(this->array);
 	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->strides[bindingPoint]);
 }
 

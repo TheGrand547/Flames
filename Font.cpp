@@ -149,6 +149,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
 	Font::shader.SetVec4("colorIn", textColor);
+	Font::vao.Bind();
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawArray<DrawType::Triangle>(buffer);
 	DisableGLFeatures<Blending>();
@@ -189,6 +190,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
 	Font::shader.SetMat4("Projection", projection);
 	Font::shader.SetVec4("colorIn", textColor);
+	Font::vao.Bind();
 	Font::vao.BindArrayBuffer(triBuffer);
 	Font::shader.DrawArray<DrawType::Triangle>(triBuffer);
 	DisableGLFeatures<Blending>();
