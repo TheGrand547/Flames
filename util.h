@@ -10,6 +10,10 @@
 // Has to be zero for some reason
 #define BORDER_PARAMETER 0
 
+namespace Tick
+{
+	constexpr float TimeDelta = 0x1.p-7f;
+}
 
 inline glm::vec3 SlideAlongPlane(const glm::vec3& plane, const glm::vec3& direction) noexcept
 {

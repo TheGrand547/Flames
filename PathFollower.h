@@ -28,12 +28,17 @@ public:
 	inline glm::mat4 GetModelMatrix()  const noexcept { return this->box.GetNormalMatrix(); }
 	inline glm::mat4 GetNormalMatrix() const noexcept { return this->box.GetNormalMatrix(); }
 
-	// TODO: Make it not this dumbass
-	void Update(const float& timestep, StaticOctTree<OBB>& staticBoxes) noexcept;
+	void Update() noexcept;
+
+	void PathUpdate() noexcept;
+	void Collision() noexcept;
 
 	// Bandaid till proper pathfinding/collision hierarchy is written
 	static std::vector<PathNodePtr> PathNodes;
 	static ArrayBuffer latestPathBuffer;
+
+	// TODO: fix what is Probably the worst hack job I've yet done
+	static StaticOctTree<OBB>& staticBoxes;
 };
 
 #endif // PATH_FOLLOWER_H

@@ -37,7 +37,7 @@ PathFollower& PathFollower::operator=(const PathFollower& other) noexcept
 	return *this;
 }
 
-void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& staticBoxes) noexcept
+void PathFollower::Update() noexcept
 {
 	if (this->path.size() == 0)
 	{
@@ -62,6 +62,7 @@ void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& staticBoxes
 					return glm::distance(a.GetPosition(), b.GetPosition());
 				}
 			);
+			// TODO: Figure out what the hell is happening
 			std::vector<glm::vec3> positions, lines;
 			positions.reserve(this->path.size());
 			lines.reserve(this->path.size());
@@ -75,40 +76,16 @@ void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& staticBoxes
 	}
 	else
 	{
-		auto& target = this->path.back();
-		glm::vec3 pos = target->GetPosition();
-		if (glm::distance(this->capsule.ClosestPoint(pos), pos) < this->capsule.GetRadius() / 2.f)
-		{
-			// Need to move to the next node
-			this->path.pop_back();
-			//pathTestGuy.velocity *= 0.5f;
-		}
-		else
-		{
-			// Accelerate towards it
-			glm::vec3 delta = glm::normalize(pos - this->capsule.GetCenter());
-			glm::vec3 unitVelocity = glm::normalize(this->physics.velocity);
-			float origin = glm::dot(unitVelocity, delta);
-			if (glm::abs(glm::dot(glm::normalize(this->physics.velocity), delta)) < 0.25f)
-			{
-				//pathTestGuy.velocity *= 0.85f;
-			}
-			glm::vec3 direction = glm::normalize(delta - unitVelocity);
-			if (glm::any(glm::isnan(direction)))
-				direction = delta;
-
-			//if (glm::length(pathTestGuy.velocity) < 0.5f)
-			this->physics.ApplyForces(direction, timestep);
-			//if (glm::length(pathTestGuy.velocity) > 1.f)
-			{
-				//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
-			}
-			//pathTestGuy.velocity = delta * timeDelta;
-		}
+		this->PathUpdate();
 	}
+	this->Collision();
+}
+
+void PathFollower::Collision() noexcept
+{
 	this->capsule.SetCenter(this->physics.position);
 
-	Collision placeholder;
+	::Collision placeholder;
 	for (auto& possible : staticBoxes.Search(this->capsule.GetAABB()))
 	{
 		if (possible->Overlap(this->capsule, placeholder))
@@ -117,4 +94,41 @@ void PathFollower::Update(const float& timestep, StaticOctTree<OBB>& staticBoxes
 		}
 	}
 	this->box.ReCenter(this->capsule.GetCenter());
+}
+
+void PathFollower::PathUpdate() noexcept
+{
+	if (this->path.size() == 0)
+		return;
+
+	auto& target = this->path.back();
+	glm::vec3 pos = target->GetPosition();
+	if (glm::distance(this->capsule.ClosestPoint(pos), pos) < this->capsule.GetRadius() / 2.f)
+	{
+		// Need to move to the next node
+		this->path.pop_back();
+		//pathTestGuy.velocity *= 0.5f;
+	}
+	else
+	{
+		// Accelerate towards it
+		glm::vec3 delta = glm::normalize(pos - this->capsule.GetCenter());
+		glm::vec3 unitVelocity = glm::normalize(this->physics.velocity);
+		float origin = glm::dot(unitVelocity, delta);
+		if (glm::abs(glm::dot(glm::normalize(this->physics.velocity), delta)) < 0.25f)
+		{
+			//pathTestGuy.velocity *= 0.85f;
+		}
+		glm::vec3 direction = glm::normalize(delta - unitVelocity);
+		if (glm::any(glm::isnan(direction)))
+			direction = delta;
+
+		//if (glm::length(pathTestGuy.velocity) < 0.5f)
+		this->physics.ApplyForces(direction, Tick::TimeDelta);
+		//if (glm::length(pathTestGuy.velocity) > 1.f)
+		{
+			//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
+		}
+		//pathTestGuy.velocity = delta * timeDelta;
+	}
 }

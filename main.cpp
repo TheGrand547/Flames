@@ -238,6 +238,8 @@ std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
 StaticOctTree<OBB> staticBoxes(glm::vec3(20));
+StaticOctTree<OBB>& PathFollower::staticBoxes = staticBoxes;
+
 
 static unsigned int frameCounter = 0;
 
@@ -1114,7 +1116,7 @@ void idle()
 		std::stringstream().swap(letters);
 	}
 
-	followed.Update(timeDelta, staticBoxes);
+	followed.Update();
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
@@ -1243,7 +1245,7 @@ void gameTick()
 			followers.for_each([timeDelta, &billboards](auto& a)
 				{
 					glm::vec3 old = a.GetPosition();
-					a.Update(timeDelta, staticBoxes);
+					a.Update();
 					glm::vec3 billboardPosition = a.GetPosition();
 					glm::vec3 billboardDelta = cameraPosition - billboardPosition;
 					glm::vec3 up = glm::vec3(0, 1, 0);
@@ -2026,12 +2028,12 @@ void init()
 		glm::vec2 base = glm::diskRand(20.f);
 		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
 		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
-		followers.Insert(fus, fus.GetAABB());
+		//followers.Insert(fus, fus.GetAABB());
 	}
 	PathFollower sc(glm::vec3(-100, 2.5, -100));
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
-	followers.Insert(sc, sc.GetAABB());
-	followers.Insert(sc2, sc2.GetAABB());
+	//followers.Insert(sc, sc.GetAABB());
+	//followers.Insert(sc2, sc2.GetAABB());
 
 
 	struct 

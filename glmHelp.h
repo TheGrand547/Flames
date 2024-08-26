@@ -25,4 +25,6 @@
 
 template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::vec3>;
 
+glm::mat3 setForward(const glm::vec3& vec, const glm::vec3& up = glm::vec3(0, 1, 0)) noexcept;
+
 #endif // GLM_HELP_H
