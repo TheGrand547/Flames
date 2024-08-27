@@ -33,6 +33,20 @@ enum class States
 	Error
 };
 
+constexpr std::string GetPrintable(const States state) noexcept
+{
+	switch (state)
+	{
+	case States::Track: return "States::Track";
+	case States::Transit: return "States::Transit";
+	case States::SlowDown: return "States::SlowDown";
+	case States::Stare: return "States::Stare";
+	case States::Shoot: return "States::Shoot";
+	case States::Error: return "States::Error";
+	default: return "ERROR";
+	}
+}
+
 class DemoGuy : public PathFollower
 {
 protected:
@@ -47,6 +61,7 @@ public:
 	Model GetModel() const noexcept;
 	Model GetFacingModel() const noexcept;
 
+	inline glm::vec3 GetFacing() const noexcept { return this->lastFacing; }
 	glm::mat4 GetMod() const noexcept;
 
 	// Advance one tick

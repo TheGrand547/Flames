@@ -112,16 +112,19 @@ void PathFollower::PathUpdate() noexcept
 	else
 	{
 		// Accelerate towards it
-		glm::vec3 delta = glm::normalize(pos - this->capsule.GetCenter());
+		glm::vec3 targetVelocity = glm::normalize(pos - this->capsule.GetCenter());
 		glm::vec3 unitVelocity = glm::normalize(this->physics.velocity);
-		float origin = glm::dot(unitVelocity, delta);
-		if (glm::abs(glm::dot(glm::normalize(this->physics.velocity), delta)) < 0.25f)
+		float origin = glm::dot(unitVelocity, targetVelocity);
+		if (glm::abs(glm::dot(glm::normalize(this->physics.velocity), targetVelocity)) < 0.25f)
 		{
 			//pathTestGuy.velocity *= 0.85f;
 		}
-		glm::vec3 direction = glm::normalize(delta - unitVelocity);
+		// TODO: Make this better so they actually accelerate up to speed instead of capping at some stupid amount
+		glm::vec3 direction = glm::normalize(targetVelocity - unitVelocity);
 		if (glm::any(glm::isnan(direction)))
-			direction = delta;
+		{
+			direction = targetVelocity;
+		}
 
 		//if (glm::length(pathTestGuy.velocity) < 0.5f)
 		this->physics.ApplyForces(direction, Tick::TimeDelta);
@@ -131,4 +134,7 @@ void PathFollower::PathUpdate() noexcept
 		}
 		//pathTestGuy.velocity = delta * timeDelta;
 	}
+	this->capsule.SetCenter(this->physics.position);
+	this->box.ReCenter(this->physics.position);
+	// TODO: ensure descendents do the movement
 }

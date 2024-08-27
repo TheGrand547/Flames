@@ -53,6 +53,7 @@
 #include "UserInterface.h"
 #include "TextureUtil.h"
 #include "Window.h"
+#include "DemoGuy.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -199,6 +200,7 @@ ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, 
 ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
 ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
+ArrayBuffer debugPointing;
 
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
@@ -358,6 +360,8 @@ std::vector<AABB> dynamicTreeBoxes;
 using namespace Input;
 
 bool shouldClose = false;
+
+DemoGuy sigmaTest{ glm::vec3(2) };
 
 void display()
 {
@@ -606,8 +610,16 @@ void display()
 	uniform.SetActiveShader();
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(plainCube);
-	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
+	//uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	
+	//uniform.SetMat4("Model", sigmaTest.GetMod());
+	//uniform.DrawElements<DrawType::Triangle>(solidCubeIndex);
+
+	plainVAO.BindArrayBuffer(debugPointing);
+	uniform.SetMat4("Model", sigmaTest.GetMod());
+	uniform.DrawArray<DrawType::Triangle>(debugPointing);
+
+
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
 	moveable.ReScale(glm::vec3(0, 1, 1));
@@ -1116,7 +1128,7 @@ void idle()
 		std::stringstream().swap(letters);
 	}
 
-	followed.Update();
+	//followed.Update();
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
@@ -1129,6 +1141,12 @@ void idle()
 	}*/
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
+
+
+	std::array<glm::vec3, 2> demoRay{sigmaTest.GetPosition(), sigmaTest.GetPosition()};
+	demoRay[1] += sigmaTest.GetFacing(); 
+	rayBuffer.BufferData(demoRay);
+
 
 	skinMats.fill(glm::mat4(1));
 	skinMats[0][3] = glm::vec4(0, 0, 0, 1);
@@ -1164,7 +1182,7 @@ void idle()
 void gameTick()
 {
 	using namespace std::chrono_literals;
-	constexpr std::chrono::duration<long double> tickInterval = 0.0078125s;// std::chrono::duration<long double>(1.0 / 128.0);
+	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;// std::chrono::duration<long double>(1.0 / 128.0);
 	std::cout << std::chrono::duration<float, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	TimePoint lastStart = std::chrono::steady_clock::now();
 	do
@@ -1174,9 +1192,10 @@ void gameTick()
 		const float timeDelta = static_cast<float>(std::chrono::duration<long double, std::chrono::seconds::period>(interval).count());
 		gameTicks++;
 		{
+			sigmaTest.Update(cameraPosition);
 			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
-			const float BulletSpeed = static_cast<float>(5. * (std::pow(2., -7.))); //  5 units per second
+			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
 			// TODO: Same for bullets
 			std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
 			std::erase_if(bullets, [](const Bullet& bullet)
@@ -1824,6 +1843,9 @@ void init()
 
 	stickBuffer.BufferData(stick);
 	solidCubeIndex.BufferData(cubeIndicies);
+
+	std::array<glm::vec3, 3> pointingV{ glm::vec3(-0.5f, 0, -0.5f), glm::vec3(0.5f, 0, 0), glm::vec3(-0.5f, 0, 0.5f) };
+	debugPointing.BufferData(pointingV);
 
 	std::array<TextureVertex, 4> verts{};
 
