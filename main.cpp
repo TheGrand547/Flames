@@ -361,7 +361,11 @@ using namespace Input;
 
 bool shouldClose = false;
 
-DemoGuy sigmaTest{ glm::vec3(2) };
+DemoGuy sigmaTest{ glm::vec3(0.5) };
+std::vector<glm::vec3> pathway;
+glm::vec3 lastPoster;
+
+glm::vec3 sigmaTarget;
 
 void display()
 {
@@ -1142,10 +1146,22 @@ void idle()
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
+	if (lastPoster == glm::vec3(0))
+	{
+		lastPoster = sigmaTest.GetPosition();
+	}
+	if (frameCounter % 10 == 0)
+	{
+		pathway.push_back(lastPoster);
+		pathway.push_back(sigmaTest.GetPosition());
+		lastPoster = pathway.back();
+	}
 
-	std::array<glm::vec3, 2> demoRay{sigmaTest.GetPosition(), sigmaTest.GetPosition()};
-	demoRay[1] += sigmaTest.GetFacing(); 
-	rayBuffer.BufferData(demoRay);
+	pathway.push_back(sigmaTest.GetPosition());
+	pathway.push_back(sigmaTest.GetPosition() + sigmaTest.GetFacing());
+	rayBuffer.BufferData(pathway);
+	pathway.pop_back();
+	pathway.pop_back();
 
 
 	skinMats.fill(glm::mat4(1));
@@ -1189,10 +1205,9 @@ void gameTick()
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
-		const float timeDelta = static_cast<float>(std::chrono::duration<long double, std::chrono::seconds::period>(interval).count());
 		gameTicks++;
 		{
-			sigmaTest.Update(cameraPosition);
+			sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
 			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
@@ -1261,7 +1276,7 @@ void gameTick()
 			}
 			std::vector<glm::mat4> billboards{};
 			billboards.reserve(followers.size());
-			followers.for_each([timeDelta, &billboards](auto& a)
+			followers.for_each([&billboards](auto& a)
 				{
 					glm::vec3 old = a.GetPosition();
 					a.Update();
@@ -1360,6 +1375,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			pointUniformBuffer.SetBindingPoint(2);
 			pointUniformBuffer.BindUniform();
 		}
+		if (key == GLFW_KEY_P) sigmaTarget = cameraPosition;
 		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;

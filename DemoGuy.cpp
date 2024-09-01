@@ -4,7 +4,7 @@
 #include "Pathfinding.h"
 
 
-DemoGuy::DemoGuy(glm::vec3 pos) noexcept : PathFollower(pos, 10.f), transform(pos, 1.f), stateCounter(0), lastFacing(1, 0, 0), currentState(States::Stare)
+DemoGuy::DemoGuy(glm::vec3 pos) noexcept : PathFollower(pos, 1.f), transform(pos, 1.f), stateCounter(0), lastFacing(1, 0, 0), currentState(States::Stare)
 {
 }
 
@@ -46,7 +46,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		//Log("TODO: Track mode");
 		glm::vec3 myPos = this->PathFollower::physics.position;
 		glm::vec3 delta = glm::normalize(position - myPos);
-		if (glm::abs(glm::dot(delta, this->lastFacing)) < glm::radians(35.f))
+		//if (glm::abs(glm::dot(delta, this->lastFacing)) < glm::radians(35.f))
 		{
 			Log("SPOTTED");
 			nextState = States::Transit;
@@ -75,7 +75,6 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 	{
 		this->PathUpdate();
 		// BAD, grr
-		//this->transform = this->PathFollower::physics;
 		if (this->PathFollower::path.size() != 0)
 		{
 			this->lastFacing = glm::normalize(this->PathFollower::path.back()->GetPosition() - this->PathFollower::physics.position);
@@ -89,9 +88,11 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 	}
 	case States::SlowDown:
 	{
+		this->stateCounter++;
 		this->PathFollower::physics.ApplyForces(-glm::normalize(this->PathFollower::physics.velocity), Tick::TimeDelta);
 		if (glm::length(this->transform.velocity) < EPSILON)
 		{
+			Log("Slowdown Frames: " << this->stateCounter);
 			nextState = (rand() % 2 == 0) ? States::Stare : States::Stare;
 		}
 		break;
@@ -143,7 +144,10 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 			break;
 		}
 		case States::SlowDown:
+		{
+			this->stateCounter = 0;
 			break;
+		}
 		case States::Shoot:
 			break;
 		case States::Stare:

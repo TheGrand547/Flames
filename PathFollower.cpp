@@ -105,29 +105,31 @@ void PathFollower::PathUpdate() noexcept
 	glm::vec3 pos = target->GetPosition();
 	if (glm::distance(this->capsule.ClosestPoint(pos), pos) < this->capsule.GetRadius() / 2.f)
 	{
+		Log(glm::length(this->physics.velocity));
 		// Need to move to the next node
 		this->path.pop_back();
-		//pathTestGuy.velocity *= 0.5f;
 	}
 	else
 	{
 		// Accelerate towards it
 		glm::vec3 targetVelocity = glm::normalize(pos - this->capsule.GetCenter());
 		glm::vec3 unitVelocity = glm::normalize(this->physics.velocity);
-		float origin = glm::dot(unitVelocity, targetVelocity);
-		if (glm::abs(glm::dot(glm::normalize(this->physics.velocity), targetVelocity)) < 0.25f)
-		{
-			//pathTestGuy.velocity *= 0.85f;
-		}
+		
 		// TODO: Make this better so they actually accelerate up to speed instead of capping at some stupid amount
 		glm::vec3 direction = glm::normalize(targetVelocity - unitVelocity);
+		if (glm::dot(targetVelocity, unitVelocity) > 0.999f)
+		{
+		//	direction = targetVelocity; // direction* (1 - glm::dot(targetVelocity, unitVelocity)) * 2.f + targetVelocity;
+		}
 		if (glm::any(glm::isnan(direction)))
 		{
+			Log("Error Condition thingy");
 			direction = targetVelocity;
 		}
+		//direction = targetVelocity;
 
 		//if (glm::length(pathTestGuy.velocity) < 0.5f)
-		this->physics.ApplyForces(direction, Tick::TimeDelta);
+		this->physics.ApplyForces(direction * 20.f, Tick::TimeDelta);
 		//if (glm::length(pathTestGuy.velocity) > 1.f)
 		{
 			//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
