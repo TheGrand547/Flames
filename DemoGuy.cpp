@@ -46,7 +46,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		//Log("TODO: Track mode");
 		glm::vec3 myPos = this->PathFollower::physics.position;
 		glm::vec3 delta = glm::normalize(position - myPos);
-		//if (glm::abs(glm::dot(delta, this->lastFacing)) < glm::radians(35.f))
+		if (glm::abs(glm::acos(glm::dot(delta, this->lastFacing))) < glm::radians(35.f))
 		{
 			Log("SPOTTED");
 			nextState = States::Transit;
@@ -154,7 +154,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		{
 			// Wait between .5 and 1.5 seconds
 			this->stateCounter = 64 + rand() % 128;
-			this->lastFacing = glm::sphericalRand(1.f);
+			this->lastFacing = circleRand(1.f);
 			Log("New direction: " << this->lastFacing);
 			break;
 		}

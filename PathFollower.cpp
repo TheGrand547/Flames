@@ -103,6 +103,7 @@ void PathFollower::PathUpdate() noexcept
 
 	auto& target = this->path.back();
 	glm::vec3 pos = target->GetPosition();
+	// TODO: Store this with a little offset to not look so rigidly uniform in movement
 	if (glm::distance(this->capsule.ClosestPoint(pos), pos) < this->capsule.GetRadius() / 2.f)
 	{
 		Log(glm::length(this->physics.velocity));
@@ -115,28 +116,16 @@ void PathFollower::PathUpdate() noexcept
 		glm::vec3 targetVelocity = glm::normalize(pos - this->capsule.GetCenter());
 		glm::vec3 unitVelocity = glm::normalize(this->physics.velocity);
 		
-		// TODO: Make this better so they actually accelerate up to speed instead of capping at some stupid amount
 		glm::vec3 direction = glm::normalize(targetVelocity - unitVelocity);
-		if (glm::dot(targetVelocity, unitVelocity) > 0.999f)
-		{
-		//	direction = targetVelocity; // direction* (1 - glm::dot(targetVelocity, unitVelocity)) * 2.f + targetVelocity;
-		}
 		if (glm::any(glm::isnan(direction)))
 		{
 			Log("Error Condition thingy");
 			direction = targetVelocity;
 		}
-		//direction = targetVelocity;
 
-		//if (glm::length(pathTestGuy.velocity) < 0.5f)
 		this->physics.ApplyForces(direction * 20.f, Tick::TimeDelta);
-		//if (glm::length(pathTestGuy.velocity) > 1.f)
-		{
-			//pathTestGuy.velocity = glm::normalize(pathTestGuy.velocity) * 1.f;
-		}
-		//pathTestGuy.velocity = delta * timeDelta;
 	}
 	this->capsule.SetCenter(this->physics.position);
 	this->box.ReCenter(this->physics.position);
-	// TODO: ensure descendents do the movement
+	// TODO: ensure descendents do the collision
 }

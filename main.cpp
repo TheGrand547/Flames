@@ -1207,7 +1207,7 @@ void gameTick()
 		const TimeDelta interval = tickStart - lastStart;
 		gameTicks++;
 		{
-			sigmaTest.Update(sigmaTarget);
+			sigmaTest.Update(cameraPosition);
 			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
 			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second

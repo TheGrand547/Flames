@@ -27,4 +27,7 @@ template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::
 
 glm::mat3 SetForward(const glm::vec3& vec, const glm::vec3& up = glm::vec3(0, 1, 0)) noexcept;
 
+glm::vec3 circleRand(const float& radius = 1.f) noexcept;
+glm::vec3 circleRand(const glm::vec3& up, const float& radius = 1.f) noexcept;
+
 #endif // GLM_HELP_H
