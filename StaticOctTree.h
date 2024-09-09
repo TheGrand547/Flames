@@ -20,6 +20,7 @@
 #define OCT_TREE_DIMENSION (100.f)
 #endif // OCT_TREE_DIMENSION
 
+// TODO: Maybe completely obsolete because of the dynamic one but I'm not sure
 // HEAVILY inspired by olc's oct tree video and implementation
 template<class T>
 class StaticOctTree

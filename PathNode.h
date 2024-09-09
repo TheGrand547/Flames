@@ -24,6 +24,7 @@ public:
 	std::size_t hash() const noexcept;
 	
 	inline glm::vec3 GetPosition() const noexcept;
+	inline glm::vec3 GetPos() const noexcept;
 
 	inline bool operator==(const PathNode& other) const noexcept;
 
@@ -58,7 +59,13 @@ template <ConditionFunction<PathNode> Conditional> bool PathNode::addNeighbor(st
 	return false;
 }
 
+// TODO: Fix this being stupid and bad
 inline glm::vec3 PathNode::GetPosition() const noexcept
+{
+	return this->position;
+}
+
+inline glm::vec3 PathNode::GetPos() const noexcept
 {
 	return this->position;
 }

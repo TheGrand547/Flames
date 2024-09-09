@@ -265,7 +265,7 @@ public:
 #ifdef DEBUG
 		if (total % 10000 == 0)
 		{
-			std::cout << small << ":" << total << std::endl;
+			std::cout << "Ratio of partial to full insertions: " << small << ":" << total << std::endl;
 		}
 #endif // DEBUG
 	}

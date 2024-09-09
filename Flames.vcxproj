@@ -213,6 +213,7 @@
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />
     <ClInclude Include="Input.h" />
+    <ClInclude Include="kdTree.h" />
     <ClInclude Include="Lines.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="Model.h" />

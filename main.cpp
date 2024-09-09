@@ -54,6 +54,7 @@
 #include "TextureUtil.h"
 #include "Window.h"
 #include "DemoGuy.h"
+#include "kdTree.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -239,8 +240,11 @@ std::vector<Model> instancedModels;
 std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
+// TODO: Fix this hack
 StaticOctTree<OBB> staticBoxes(glm::vec3(20));
 StaticOctTree<OBB>& PathFollower::staticBoxes = staticBoxes;
+
+kdTree<PathNodePtr> pointTree;
 
 
 static unsigned int frameCounter = 0;
@@ -623,6 +627,13 @@ void display()
 	uniform.SetMat4("Model", sigmaTest.GetMod());
 	uniform.DrawArray<DrawType::Triangle>(debugPointing);
 
+	plainVAO.BindArrayBuffer(plainCube);
+	auto dsf = sigmaTest.GetMod();
+	dsf[0] *= 0.5f;
+	dsf[1] *= 0.25f;
+	dsf[2] *= 0.1f;
+	uniform.SetMat4("Model", dsf);
+	uniform.DrawElementsMemory<DrawType::Lines>(cubeOutline);
 
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
@@ -965,6 +976,12 @@ using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
 
+struct te
+{
+	glm::vec3 position;
+	std::weak_ptr<PathNode> ptr;
+};
+
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
@@ -1207,7 +1224,7 @@ void gameTick()
 		const TimeDelta interval = tickStart - lastStart;
 		gameTicks++;
 		{
-			sigmaTest.Update(cameraPosition);
+			sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
 			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
@@ -2173,6 +2190,8 @@ void init()
 		}
 	}
 
+	pointTree.Generate(PathFollower::PathNodes);
+	pointTree.Print();
 
 	
 	for (auto& autod : PathFollower::PathNodes)

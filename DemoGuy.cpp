@@ -3,6 +3,21 @@
 #include <glm/gtc/random.hpp>
 #include "Pathfinding.h"
 
+constexpr float slowTurnSpeed = 30.f;
+constexpr float fastTurnSpeed = 60.f;
+
+
+static const glm::mat3 slowTurnPos = glm::eulerAngleY(glm::radians(slowTurnSpeed / 128));
+static const glm::mat3 slowTurnNeg = glm::eulerAngleY(-glm::radians(slowTurnSpeed / 128));
+static const glm::mat3 fastTurnPos = glm::eulerAngleY(glm::radians(fastTurnSpeed / 128));
+static const glm::mat3 fastTurnNeg = glm::eulerAngleY(-glm::radians(fastTurnSpeed / 128));
+
+static constexpr float turnPeriodSeconds = 4.f;
+static constexpr int turnPeriod = turnPeriodSeconds * 128;
+static constexpr int turnPeriodHalf = turnPeriod / 2;
+static constexpr int turnPeriodQuarter = turnPeriod / 4;
+static constexpr int turnPeriodThreeFourths = 3 * turnPeriod / 4;
+
 
 DemoGuy::DemoGuy(glm::vec3 pos) noexcept : PathFollower(pos, 1.f), transform(pos, 1.f), stateCounter(0), lastFacing(1, 0, 0), currentState(States::Stare)
 {
@@ -43,7 +58,6 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 	{
 	case States::Track:
 	{
-		//Log("TODO: Track mode");
 		glm::vec3 myPos = this->PathFollower::physics.position;
 		glm::vec3 delta = glm::normalize(position - myPos);
 		if (glm::abs(glm::acos(glm::dot(delta, this->lastFacing))) < glm::radians(35.f))
@@ -51,8 +65,12 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 			Log("SPOTTED");
 			nextState = States::Transit;
 		}
-		
-		//nextState = States::Stare;
+		else
+		{
+			this->stateCounter++;
+			std::uint16_t modulo = this->stateCounter % turnPeriod;
+			this->lastFacing = ((modulo < turnPeriodQuarter || modulo > turnPeriodThreeFourths) ? slowTurnPos : slowTurnNeg )* this->lastFacing;
+		}
 		break;
 	}
 	case States::Stare:
@@ -60,8 +78,6 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		if (this->stateCounter-- == 0)
 		{
 			nextState = States::Track;
-			// Previous line is correct behavior, below is just demo
-			//nextState = States::Stare;
 		}
 		break;
 	}
@@ -108,11 +124,14 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 
 	if (nextState != States::Error)
 	{
-		LogF("Heading to '%s' from '%s'\n", GetPrintable(nextState).c_str(), GetPrintable(this->currentState).c_str());
+		LogF("Heading from '%s' to '%s'\n", GetPrintable(this->currentState).c_str(), GetPrintable(nextState).c_str());
 		switch (nextState)
 		{
 		case States::Track:
+		{
+			this->stateCounter = turnPeriodHalf;
 			break;
+		}
 		case States::Transit:
 		{
 				// TODO: FIX BRUTAL HACK
