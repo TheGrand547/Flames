@@ -2190,8 +2190,10 @@ void init()
 		}
 	}
 
-	pointTree.Generate(PathFollower::PathNodes);
+	pointTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
 	pointTree.Print();
+	std::cout << pointTree.nearestNeighbor(glm::vec3(10, 3, 10))->GetPos() << std::endl;
+	std::cout << PathFollower::PathNodes.size() << ":" << pointTree.size() << std::endl;
 
 	
 	for (auto& autod : PathFollower::PathNodes)
