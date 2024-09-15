@@ -3,6 +3,7 @@
 
 std::vector<PathNodePtr> PathFollower::PathNodes;
 ArrayBuffer PathFollower::latestPathBuffer;
+kdTree<PathNodePtr> PathFollower::pathNodeTree;
 
 PathFollower::PathFollower() noexcept : physics(glm::vec3(0), 1.f), box(glm::vec3(0), glm::vec3(0.5, 2, 0.5))
 {

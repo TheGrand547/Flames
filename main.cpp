@@ -244,9 +244,6 @@ glm::vec3 lastCameraPos;
 StaticOctTree<OBB> staticBoxes(glm::vec3(20));
 StaticOctTree<OBB>& PathFollower::staticBoxes = staticBoxes;
 
-kdTree<PathNodePtr> pointTree;
-
-
 static unsigned int frameCounter = 0;
 
 glm::vec3 movingSphere(0, 3.5f, 6.5f);
@@ -624,7 +621,9 @@ void display()
 	//uniform.DrawElements<DrawType::Triangle>(solidCubeIndex);
 
 	plainVAO.BindArrayBuffer(debugPointing);
-	uniform.SetMat4("Model", sigmaTest.GetMod());
+	glm::mat4 tested = sigmaTest.GetMod();
+	//tested[3] = glm::vec4(minorTest, 1);
+	uniform.SetMat4("Model", tested);
 	uniform.DrawArray<DrawType::Triangle>(debugPointing);
 
 	plainVAO.BindArrayBuffer(plainCube);
@@ -1392,7 +1391,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			pointUniformBuffer.SetBindingPoint(2);
 			pointUniformBuffer.BindUniform();
 		}
-		if (key == GLFW_KEY_P) sigmaTarget = cameraPosition;
+		if (key == GLFW_KEY_P) 
+		{
+			sigmaTarget = cameraPosition;
+		}
 		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
@@ -2190,10 +2192,8 @@ void init()
 		}
 	}
 
-	pointTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
-	pointTree.Print();
-	std::cout << pointTree.nearestNeighbor(glm::vec3(10, 3, 10))->GetPos() << std::endl;
-	std::cout << PathFollower::PathNodes.size() << ":" << pointTree.size() << std::endl;
+	PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
+	std::cout << PathFollower::PathNodes.size() << ":" << PathFollower::pathNodeTree.size() << std::endl;
 
 	
 	for (auto& autod : PathFollower::PathNodes)

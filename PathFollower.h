@@ -3,6 +3,7 @@
 #define PATH_FOLLOWER_H
 #include "BasicPhysics.h"
 #include "Capsule.h"
+#include "kdTree.h"
 #include "OrientedBoundingBox.h"
 #include "PathNode.h"
 #include "StaticOctTree.h"
@@ -39,6 +40,7 @@ public:
 
 	// TODO: fix what is Probably the worst hack job I've yet done
 	static StaticOctTree<OBB>& staticBoxes;
+	static kdTree<PathNodePtr> pathNodeTree;
 };
 
 #endif // PATH_FOLLOWER_H

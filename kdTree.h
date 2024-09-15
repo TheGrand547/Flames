@@ -22,28 +22,16 @@ template<class T>
 class kdTree
 {
 protected:
-	static constexpr std::size_t leftChild(const std::size_t i) noexcept
-	{
-		return (i * 2) + 1;
-	}
-
-	static constexpr std::size_t rightChild(const std::size_t i) noexcept
-	{
-		return (i * 2) + 2;
-	}
-	
-	//std::vector<glm::vec3> positions;
-	//std::vector<T> elements;
-	
 	T element;
 	glm::vec3 pivot;
 	Axes axis;
 
 	std::unique_ptr<kdTree> left = nullptr, right = nullptr;
+	std::size_t count;
 
 	//void PropogateSubtree(std::span<T> elements, std::size_t start, Axes axis = Axes::X) noexcept
 
-	kdTree(T element, Axes axis) noexcept : element(element), pivot(element->GetPos()), axis(axis) {}
+	kdTree(T element, Axes axis) noexcept : element(element), pivot(element->GetPos()), axis(axis), count(1) {}
 
 	// TODO: ITERATOR
 	/*
@@ -61,9 +49,78 @@ protected:
 		}
 	};
 	*/
+	void nearestNeightborInternal(const glm::vec3& point, float& smallestDist, T*& currentBest) noexcept
+	{
+		if (!this->left && !this->right && glm::distance(point, this->pivot) < smallestDist)
+		{
+			currentBest = &this->element;
+			smallestDist = glm::distance(point, this->pivot);
+			return;
+		}
+		bool leftComparison = glm::lessThanEqual(point, this->pivot)[static_cast<unsigned char>(this->axis)];
+		bool rightComparison = glm::lessThanEqual(this->pivot, point)[static_cast<unsigned char>(this->axis)];
+		if (leftComparison && this->left)
+		{
+			this->left->nearestNeightborInternal(point, smallestDist, currentBest);
+		}
+		if (rightComparison && this->right)
+		{
+			this->right->nearestNeightborInternal(point, smallestDist, currentBest);
+		}
+		if (glm::distance(point, this->pivot) < smallestDist)
+		{
+			currentBest = &this->element;
+			smallestDist = glm::distance(point, this->pivot);
+		}
+		if (!(leftComparison && rightComparison))
+		{
+			float distance = glm::abs(point[static_cast<unsigned char>(this->axis)] - this->pivot[static_cast<unsigned char>(this->axis)]);
+			// If it's smaller then that's bad
+			if (distance < smallestDist)
+			{
+				if (leftComparison && this->right)
+				{
+					this->right->nearestNeightborInternal(point, smallestDist, currentBest);
+				}
+				if (rightComparison && this->left)
+				{
+					this->left->nearestNeightborInternal(point, smallestDist, currentBest);
+				}
+			}
+		}
+	}
+
+	void leftInsert(T&& element) noexcept
+	{
+		if (this->left)
+		{
+			this->left->insert(std::forward(element));
+			this->count++;
+		}
+		else
+		{
+			this->left = std::make_unique<kdTree<T>>(element, next(this->axis));
+			this->count += this->left->count;
+		}
+	}
+
+	void rightInsert(T&& element) noexcept
+	{
+		if (this->right)
+		{
+			this->right->insert(std::forward(element));
+			this->count++;
+		}
+		else
+		{
+			this->right = std::make_unique<kdTree<T>>(element, next(this->axis));
+			this->count += this->right->count;
+		}
+	}
+
 public:
-	kdTree() noexcept : element(), pivot(666), axis(Axes::X) {}
-	kdTree(std::span<T> elements, Axes axis) noexcept : element(), pivot(0), axis(axis)
+	kdTree() noexcept : element(), pivot(666), axis(Axes::X), count(0) {}
+	kdTree(std::span<T> elements, Axes axis) noexcept : element(), pivot(0), axis(axis), count(1)
 	{
 		if (elements.size() > 1)
 		{
@@ -95,14 +152,21 @@ public:
 
 			std::span<T> left = elements.subspan(0, size / 2);
 			std::span<T> right = elements.subspan(size / 2 + 1, size - (size / 2 + 1));
-			if (!left.empty()) this->left = std::make_unique<kdTree<T>>(left, next(this->axis));
-			if (!right.empty()) this->right = std::make_unique<kdTree<T>>(right, next(this->axis));
+			this->count = size;
+			if (!left.empty()) 
+			{
+				this->left = std::make_unique<kdTree<T>>(left, next(this->axis));
+			}
+			if (!right.empty()) 
+			{
+				this->right = std::make_unique<kdTree<T>>(right, next(this->axis));
+			}
+
 		}
 		else if (elements.size() == 1)
 		{
 			this->pivot = elements.front()->GetPos();
 			this->element = elements.front();
-		
 		}
 	}
 
@@ -116,23 +180,13 @@ public:
 		this->pivot = other.pivot;
 		this->left = std::move(other.left);
 		this->right = std::move(other.right);
+		this->count = other.count;
 		return *this;
 	}
 
 	// Invalidates internal state
 	static kdTree<T> Generate(std::vector<T>& elements) noexcept
 	{
-		// Unfortunate but has to be done
-		//std::size_t size = std::exp2(std::ceil(std::log2(elements.size())));
-
-		// Stupid but it seems to work
-		//std::vector<T> works{ size };
-		//std::vector<glm::vec3> works2{ size, glm::vec3(NAN)};
-		//this->elements.swap(works);
-		//this->positions.swap(works2);
-		//this->PropogateSubtree(std::span{ elements }, 0);
-
-		//elements.clear();
 		return kdTree(std::span{ elements }, Axes::X);
 	}
 
@@ -143,64 +197,48 @@ public:
 		if (this->left) this->left->Print(indent + 1);
 		if (this->right) this->right->Print(indent + 1);
 	}
-
+	
 	std::size_t size() const noexcept
 	{
-		std::size_t size = 1;
-		if (this->left) size += this->left->size();
-		if (this->right) size += this->right->size();
-		return size;
+		return this->count;
 	}
-
-
-	void nearestNeightbor2(const glm::vec3& point, float& smallestDist, T*& currentBest) noexcept
-	{
-		if (!this->left && !this->right && glm::distance(point, this->pivot) < smallestDist)
-		{
-			currentBest = &this->element;
-			smallestDist = glm::distance(point, this->pivot);
-			return;
-		}
-		bool leftComparison  = glm::lessThanEqual(point, this->pivot)[static_cast<unsigned char>(this->axis)];
-		bool rightComparison = glm::lessThanEqual(this->pivot, point)[static_cast<unsigned char>(this->axis)];
-		if (leftComparison && this->left)
-		{
-			this->left->nearestNeightbor2(point, smallestDist, currentBest);
-		}
-		if (rightComparison && this->right)
-		{
-			this->right->nearestNeightbor2(point, smallestDist, currentBest);
-		}
-		if (glm::distance(point, this->pivot) < smallestDist)
-		{
-			currentBest = &this->element;
-			smallestDist = glm::distance(point, this->pivot);
-		}
-		if (!(leftComparison && rightComparison))
-		{
-			float distance = glm::abs(point[static_cast<unsigned char>(this->axis)] - this->pivot[static_cast<unsigned char>(this->axis)]);
-			// If it's smaller then that's bad
-			if (distance < smallestDist)
-			{
-				if (leftComparison && this->right)
-				{
-					this->right->nearestNeightbor2(point, smallestDist, currentBest);
-				}
-				if (rightComparison && this->left)
-				{
-					this->left->nearestNeightbor2(point, smallestDist, currentBest);
-				}
-			}
-		}
-	}
-
 
 	T& nearestNeighbor(const glm::vec3& point) noexcept
 	{
 		T* currentBest = &this->element;
 		float currentDistance = INFINITY;
-		this->nearestNeightbor2(point, currentDistance, currentBest);
+		this->nearestNeightborInternal(point, currentDistance, currentBest);
 		return *currentBest;
+	}
+
+	void insert(T&& element) noexcept
+	{
+		glm::vec3 point = element->GetPos();
+		bool leftComparison = glm::lessThanEqual(point, this->pivot)[static_cast<unsigned char>(this->axis)];
+		bool rightComparison = glm::lessThanEqual(this->pivot, point)[static_cast<unsigned char>(this->axis)];
+		if (leftComparison && rightComparison)
+		{
+			if (this->left && this->right)
+			{
+				((this->left->size() < this->right->size()) ? this->left : this->right)->insert(std::forward(element));
+			}
+			else if (this->left)
+			{
+				this->rightInsert(std::forward(element));
+			}
+			else
+			{
+				this->leftInsert(std::forward(element));
+			}
+		}
+		else if (rightComparison)
+		{
+			this->rightInsert(std::forward(element));
+		}
+		else // Left Comparison must be true or both comparisons will be invalid, and in that case just default to left
+		{
+			this->leftInsert(std::forward(element));
+		}
 	}
 };
 

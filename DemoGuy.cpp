@@ -134,23 +134,32 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		}
 		case States::Transit:
 		{
-				// TODO: FIX BRUTAL HACK
 			PathNodePtr start = nullptr, end = nullptr;
 			glm::vec3 center = this->capsule.GetCenter();
+			start = pathNodeTree.nearestNeighbor(center);
+			end = pathNodeTree.nearestNeighbor(position);
+			// TODO: If this doesn't crash for long enough remove it
+#ifdef DEBUG
 			float minDist = INFINITY, minDist2 = INFINITY;
+			PathNodePtr start2 = nullptr, end2 = nullptr;
 			for (auto& possible : PathNodes)
 			{
 				if (glm::distance(center, possible->GetPosition()) < minDist)
 				{
-					start = possible;
+					start2 = possible;
 					minDist = glm::distance(center, possible->GetPosition());
 				}
 				if (glm::distance(position, possible->GetPosition()) < minDist2)
 				{
-					end = possible;
+					end2 = possible;
 					minDist2 = glm::distance(position, possible->GetPosition());
 				}
 			}
+			if (start != start2 || end != end2)
+			{
+				Log("Failure to line up.");
+			}
+#endif // DEBUG
 			if (start && end)
 			{
 				this->path = AStarSearch<PathNode>(start, end,
