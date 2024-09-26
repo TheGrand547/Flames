@@ -120,7 +120,8 @@ void PathFollower::PathUpdate() noexcept
 		glm::vec3 direction = glm::normalize(targetVelocity - unitVelocity);
 		if (glm::any(glm::isnan(direction)))
 		{
-			Log("Error Condition thingy");
+			// What?
+			//Log("Error Condition thingy");
 			direction = targetVelocity;
 		}
 

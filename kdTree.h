@@ -49,45 +49,85 @@ protected:
 		}
 	};
 	*/
-	void nearestNeightborInternal(const glm::vec3& point, float& smallestDist, T*& currentBest) noexcept
+	void nearestNeightborInternal(const glm::vec3& point, float& smallestDistance, T*& currentBest, float minimumRadius) noexcept
 	{
-		if (!this->left && !this->right && glm::distance(point, this->pivot) < smallestDist)
+		float myDistance = glm::distance2(point, this->pivot);
+		// This is a leaf node
+		if (!this->left && !this->right)
 		{
-			currentBest = &this->element;
-			smallestDist = glm::distance(point, this->pivot);
+			if (minimumRadius < myDistance && myDistance < smallestDistance)
+			{
+				currentBest = &this->element;
+				smallestDistance = myDistance;
+			}
 			return;
 		}
-		bool leftComparison = glm::lessThanEqual(point, this->pivot)[static_cast<unsigned char>(this->axis)];
-		bool rightComparison = glm::lessThanEqual(this->pivot, point)[static_cast<unsigned char>(this->axis)];
+		float myComponent    = this->pivot[static_cast<unsigned char>(this->axis)];
+		float pointComponent = point[static_cast<unsigned char>(this->axis)];
+
+		bool leftComparison  = glm::lessThanEqual(pointComponent, myComponent);
+		bool rightComparison = glm::lessThanEqual(   myComponent, pointComponent);
+
+		bool notBoth = !(leftComparison && rightComparison);
+
+		// Ensure children get ignored if the parent is closer
+		if (minimumRadius < myDistance && myDistance < smallestDistance)
+		{
+			currentBest = &this->element;
+			smallestDistance = myDistance;
+		}
+
+		// Check the part of the tree that the point would be in, if it was being inserted
 		if (leftComparison && this->left)
 		{
-			this->left->nearestNeightborInternal(point, smallestDist, currentBest);
+			this->left->nearestNeightborInternal(point, smallestDistance, currentBest, minimumRadius);
 		}
 		if (rightComparison && this->right)
 		{
-			this->right->nearestNeightborInternal(point, smallestDist, currentBest);
+			this->right->nearestNeightborInternal(point, smallestDistance, currentBest, minimumRadius);
 		}
-		if (glm::distance(point, this->pivot) < smallestDist)
+		// If both branches were checked already don't waste time re-checking them
+		if (notBoth)
 		{
-			currentBest = &this->element;
-			smallestDist = glm::distance(point, this->pivot);
-		}
-		if (!(leftComparison && rightComparison))
-		{
-			float distance = glm::abs(point[static_cast<unsigned char>(this->axis)] - this->pivot[static_cast<unsigned char>(this->axis)]);
+			// Operating on squared distances
+			float distance = glm::pow(glm::abs(pointComponent - myComponent), 2);
 			// If it's smaller then that's bad
-			if (distance < smallestDist)
+			if (minimumRadius < distance && distance < smallestDistance)
 			{
+				// If we checked the left branch before then we must check the right branch
 				if (leftComparison && this->right)
 				{
-					this->right->nearestNeightborInternal(point, smallestDist, currentBest);
+					this->right->nearestNeightborInternal(point, smallestDistance, currentBest, minimumRadius);
 				}
+				// Similarly here
 				if (rightComparison && this->left)
 				{
-					this->left->nearestNeightborInternal(point, smallestDist, currentBest);
+					this->left->nearestNeightborInternal(point, smallestDistance, currentBest, minimumRadius);
 				}
 			}
 		}
+	}
+
+	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius)
+	{
+		float myDistance = glm::distance2(point, this->pivot);
+		if (innerRadius < myDistance && myDistance < outerRadius)
+		{
+			elements.push_back(this->element);
+		}
+		float axisDistance = glm::abs(point[static_cast<unsigned char>(this->axis)] - this->pivot[static_cast<unsigned char>(this->axis)]);
+
+
+		float myComponent    = this->pivot[static_cast<unsigned char>(this->axis)];
+		float pointComponent = point[static_cast<unsigned char>(this->axis)];
+
+		bool leftComparison = glm::lessThanEqual(pointComponent, myComponent);
+		bool rightComparison = glm::lessThanEqual(myComponent, pointComponent);
+
+		// Too close or too far
+		if (outerRadius < axisDistance || axisDistance < innerRadius)
+			return;
+
 	}
 
 	void leftInsert(T&& element) noexcept
@@ -203,12 +243,30 @@ public:
 		return this->count;
 	}
 
+	// TODO: Determine if given the implied use case of shared_ptr the extra indirection is unhelpful
 	T& nearestNeighbor(const glm::vec3& point) noexcept
 	{
 		T* currentBest = &this->element;
 		float currentDistance = INFINITY;
-		this->nearestNeightborInternal(point, currentDistance, currentBest);
+		this->nearestNeightborInternal(point, currentDistance, currentBest, -INFINITY);
 		return *currentBest;
+	}
+
+	T* nearestNeighbor(const glm::vec3& point, float minimumDistance) noexcept
+	{
+		T* currentBest = &this->element;
+		float currentDistance = INFINITY;
+		this->nearestNeightborInternal(point, currentDistance, currentBest, glm::abs(minimumDistance) * minimumDistance);
+		if (currentDistance < minimumDistance)
+			currentBest = nullptr;
+		return currentBest;
+	}
+
+	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
+	{
+		std::vector<T> results;
+		this->neighborsInRangeInternal(center, results, outerRadius, innerRadius);
+		return results;
 	}
 
 	void insert(T&& element) noexcept

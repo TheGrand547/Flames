@@ -158,6 +158,8 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 			if (start != start2 || end != end2)
 			{
 				Log("Failure to line up.");
+				std::cout << glm::distance(start->GetPos(), center) << ":" << minDist << '\n';
+				std::cout << glm::distance(end->GetPos(), center) << ":" << minDist2 << '\n';
 			}
 #endif // DEBUG
 			if (start && end)
