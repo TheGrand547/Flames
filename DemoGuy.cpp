@@ -13,7 +13,7 @@ static const glm::mat3 fastTurnPos = glm::eulerAngleY(glm::radians(fastTurnSpeed
 static const glm::mat3 fastTurnNeg = glm::eulerAngleY(-glm::radians(fastTurnSpeed / 128));
 
 static constexpr float turnPeriodSeconds = 4.f;
-static constexpr int turnPeriod = turnPeriodSeconds * 128;
+static constexpr int turnPeriod = static_cast<int>(turnPeriodSeconds * 128);
 static constexpr int turnPeriodHalf = turnPeriod / 2;
 static constexpr int turnPeriodQuarter = turnPeriod / 4;
 static constexpr int turnPeriodThreeFourths = 3 * turnPeriod / 4;

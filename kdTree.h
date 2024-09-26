@@ -65,8 +65,8 @@ protected:
 		float myComponent    = this->pivot[static_cast<unsigned char>(this->axis)];
 		float pointComponent = point[static_cast<unsigned char>(this->axis)];
 
-		bool leftComparison  = glm::lessThanEqual(pointComponent, myComponent);
-		bool rightComparison = glm::lessThanEqual(   myComponent, pointComponent);
+		bool leftComparison  = pointComponent <= myComponent;
+		bool rightComparison =    myComponent <= pointComponent;
 
 		bool notBoth = !(leftComparison && rightComparison);
 
@@ -90,7 +90,8 @@ protected:
 		if (notBoth)
 		{
 			// Operating on squared distances
-			float distance = glm::pow(glm::abs(pointComponent - myComponent), 2);
+			float distance = glm::abs(pointComponent - myComponent);
+			distance *= distance;
 			// If it's smaller then that's bad
 			if (minimumRadius < distance && distance < smallestDistance)
 			{
@@ -110,24 +111,40 @@ protected:
 
 	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius)
 	{
-		float myDistance = glm::distance2(point, this->pivot);
+		float myDistance = glm::distance2(center, this->pivot);
 		if (innerRadius < myDistance && myDistance < outerRadius)
 		{
 			elements.push_back(this->element);
 		}
-		float axisDistance = glm::abs(point[static_cast<unsigned char>(this->axis)] - this->pivot[static_cast<unsigned char>(this->axis)]);
-
 
 		float myComponent    = this->pivot[static_cast<unsigned char>(this->axis)];
-		float pointComponent = point[static_cast<unsigned char>(this->axis)];
+		float pointComponent = center[static_cast<unsigned char>(this->axis)];
 
-		bool leftComparison = glm::lessThanEqual(pointComponent, myComponent);
-		bool rightComparison = glm::lessThanEqual(myComponent, pointComponent);
+		bool leftComparison  = pointComponent <= myComponent;
+		bool rightComparison =    myComponent <= pointComponent;
+
+		float axisDistance = glm::abs(myComponent - pointComponent);
+
+		if (leftComparison && this->left)
+		{
+			this->left->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+		}
+		if (rightComparison && this->right)
+		{
+			this->right->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+		}
 
 		// Too close or too far
 		if (outerRadius < axisDistance || axisDistance < innerRadius)
 			return;
-
+		if (rightComparison && this->left)
+		{
+			this->right->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+		}
+		if (leftComparison && this->right)
+		{
+			this->left->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+		}
 	}
 
 	void leftInsert(T&& element) noexcept
@@ -256,7 +273,7 @@ public:
 	{
 		T* currentBest = &this->element;
 		float currentDistance = INFINITY;
-		this->nearestNeightborInternal(point, currentDistance, currentBest, glm::abs(minimumDistance) * minimumDistance);
+		this->nearestNeightborInternal(point, currentDistance, currentBest, glm::abs(minimumDistance * minimumDistance));
 		if (currentDistance < minimumDistance)
 			currentBest = nullptr;
 		return currentBest;
@@ -265,7 +282,7 @@ public:
 	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
 	{
 		std::vector<T> results;
-		this->neighborsInRangeInternal(center, results, outerRadius, innerRadius);
+		this->neighborsInRangeInternal(center, results, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius * innerRadius));
 		return results;
 	}
 
