@@ -368,6 +368,8 @@ glm::vec3 lastPoster;
 
 glm::vec3 sigmaTarget;
 
+int kdTree<PathNodePtr>::counter = 0;
+
 void display()
 {
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
@@ -1310,6 +1312,33 @@ void gameTick()
 				});
 			bigData.swap(billboards);
 		}
+		glm::vec3 searchPoint = cameraPosition;
+		float searchRadius = 5.5f;
+		std::vector<PathNodePtr> lame = PathFollower::pathNodeTree.neighborsInRange(searchPoint, searchRadius);
+		std::vector<PathNodePtr> searchTest;
+		for (auto& node : PathFollower::PathNodes)
+		{
+			if (glm::distance(searchPoint, node->GetPos()) < searchRadius)
+			{
+				searchTest.push_back(node);
+			}
+		}
+		if (searchTest.size() != lame.size())
+		{
+			std::cout << "Failed to match the brute force method" << searchTest.size() << ":" << lame.size() << std::endl;
+		}
+		for (const PathNodePtr& e : lame)
+		{
+			if (std::find(searchTest.begin(), searchTest.end(), e) == searchTest.end())
+			{
+				std::cout << "Was Missing: " << e->GetPos() << std::endl;
+			}
+		}
+
+
+
+
+
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
 		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };

@@ -109,8 +109,12 @@ protected:
 		}
 	}
 
+	static int counter;
+
 	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius)
 	{
+		//std::cout << counter++ << std::endl;
+		counter++;
 		float myDistance = glm::distance2(center, this->pivot);
 		if (innerRadius < myDistance && myDistance < outerRadius)
 		{
@@ -124,6 +128,7 @@ protected:
 		bool rightComparison =    myComponent <= pointComponent;
 
 		float axisDistance = glm::abs(myComponent - pointComponent);
+		axisDistance *= axisDistance;
 
 		if (leftComparison && this->left)
 		{
@@ -137,13 +142,15 @@ protected:
 		// Too close or too far
 		if (outerRadius < axisDistance || axisDistance < innerRadius)
 			return;
+		if (leftComparison && rightComparison)
+			return;
 		if (rightComparison && this->left)
 		{
-			this->right->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+			this->left->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
 		}
 		if (leftComparison && this->right)
 		{
-			this->left->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
+			this->right->neighborsInRangeInternal(center, elements, outerRadius, innerRadius);
 		}
 	}
 
@@ -281,8 +288,10 @@ public:
 
 	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
 	{
+		kdTree<T>::counter = 0;
 		std::vector<T> results;
-		this->neighborsInRangeInternal(center, results, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius * innerRadius));
+		this->neighborsInRangeInternal(center, results, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius) * innerRadius);
+		//std::cout << counter << ":" << this->size() << "\n";
 		return results;
 	}
 
