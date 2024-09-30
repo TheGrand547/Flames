@@ -80,11 +80,11 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsiz
 
 #define LogF(...) {printf("%s", LocationFormat().c_str()); printf(__VA_ARGS__);}
 #define LogSourceF(x, ...) {printf("%s", LocationFormat(x).c_str()); printf(__VA_ARGS__);}
-#define Log(...) {std::cout << LocationFormat() << __VA_ARGS__ << std::endl;}
-#define LogSource(x, ...) {std::cout << LocationFormat(x) << __VA_ARGS__ << std::endl;}
+#define Log(...) {std::cout << LocationFormat() << __VA_ARGS__ << '\n';}
+#define LogSource(x, ...) {std::cout << LocationFormat(x) << __VA_ARGS__ << '\n';}
 
-#define Before(...) std::cout << "Before: " << __VA_ARGS__ << std::endl;
-#define After(...) std::cout << "After: " << __VA_ARGS__ << std::endl;
+#define Before(...) std::cout << "Before: " << __VA_ARGS__ << '\n';
+#define After(...) std::cout << "After: " << __VA_ARGS__ << '\n';
 #else // _DEBUG
 
 #define Log(...) CheckError()

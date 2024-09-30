@@ -31,6 +31,7 @@ public:
 	float distance(const PathNode& other) const noexcept;
 	std::vector<std::weak_ptr<PathNode>> neighbors() const noexcept;
 
+	bool contains(const std::shared_ptr<PathNode>& node) const noexcept;
 
 	static bool addNeighborUnconditional(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B) noexcept;
 	template <ConditionFunction<PathNode> Conditional> static bool addNeighbor(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B, Conditional condition);

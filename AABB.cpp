@@ -91,8 +91,41 @@ bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& ne
 	return true;
 }
 
+// https://tavianator.com/2022/ray_box_boundary.html#signs maybe?
 bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
 {
+	/*
+	//https://iquilezles.org/articles/intersectors/
+	glm::vec3 m = 1.0f / dir; 
+	glm::vec3 n = m * (point - this->center);   
+	glm::vec3 k = glm::abs(m) * this->halfs;
+	glm::vec3 t1 = -n - k;
+	glm::vec3 t2 = -n + k;
+	float tN = glm::max(glm::max(t1.x, t1.y), t1.z);
+	float tF = glm::min(glm::min(t2.x, t2.y), t2.z);
+	if (tN > tF || tF < 0.0) return false;
+	return true;
+	*/
+	
+	float tmin = 0.0, tmax = INFINITY;
+	glm::vec3 dir_inv = 1.f / dir;
+	glm::vec3 corners[2]{ this->center - halfs, this->center + halfs };
+
+	for (int d = 0; d < 3; ++d) {
+		bool sign = signbit(dir_inv[d]);
+		float bmin = corners[sign][d];
+		float bmax = corners[!sign][d];
+
+		float dmin = (bmin - point[d]) * dir_inv[d];
+		float dmax = (bmax - point[d]) * dir_inv[d];
+
+		tmin = glm::max(dmin, tmin);
+		tmax = glm::min(dmax, tmax);
+	}
+
+	return tmin < tmax;
+	
+	/*
 	glm::vec3 delta = this->center - point;
 	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
 
@@ -102,7 +135,6 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noe
 		float parallel = delta[i];
 		if (glm::abs(dir[i]) < EPSILON)
 		{
-			//if (-parallel - scale > 0 || -parallel + scale > 0)
 			if (abs(parallel) > scale)
 			{
 				return false;
@@ -135,4 +167,5 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noe
 		}
 	}
 	return true;
+	*/
 }

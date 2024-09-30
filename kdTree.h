@@ -286,11 +286,17 @@ public:
 		return currentBest;
 	}
 
+	void neighborsInRange(std::vector<T>& output, const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
+	{
+		output.clear();
+		this->neighborsInRangeInternal(center, output, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius) * innerRadius);
+	}
+
 	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
 	{
 		kdTree<T>::counter = 0;
 		std::vector<T> results;
-		this->neighborsInRangeInternal(center, results, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius) * innerRadius);
+		this->neighborsInRange(results, center, outerRadius, innerRadius);
 		//std::cout << counter << ":" << this->size() << "\n";
 		return results;
 	}

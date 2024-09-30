@@ -1325,12 +1325,18 @@ void gameTick()
 		}
 		if (searchTest.size() != lame.size())
 		{
-			std::cout << "Failed to match the brute force method" << searchTest.size() << ":" << lame.size() << std::endl;
+			std::cout << "Failed to match the brute force method: " << searchTest.size() << ":" << lame.size() << std::endl;
 		}
 		for (const PathNodePtr& e : lame)
 		{
+			if (!e)
+			{
+				std::cout << "null pointer in lame search\n";
+				continue;
+			}
 			if (std::find(searchTest.begin(), searchTest.end(), e) == searchTest.end())
 			{
+				std::cout << e.get() << std::endl;
 				std::cout << "Was Missing: " << e->GetPos() << std::endl;
 			}
 		}
@@ -1977,13 +1983,14 @@ void init()
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
 
 
-	
-	for (int x = -5; x < 6; x++) 
+	constexpr int tileSize = 10;
+	constexpr int minusTileSize = -(tileSize - 1);
+	for (int x = minusTileSize; x < tileSize; x++)
 	{
-		for (int y = -5; y < 6; y++)
+		for (int y = minusTileSize; y < tileSize; y++)
 		{
 			float noise = glm::simplex(glm::vec3(x, 0.f, y));
-			//GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
+			GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
 		}
 	}
 	
@@ -2160,41 +2167,108 @@ void init()
 
 
 
-
+	{
+		QUICKTIMER("KdTree Generation");
+		PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
+	}
 	// =============================================================
 	// Pathfinding stuff
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
+
+	std::cout << PathFollower::PathNodes.size() << std::endl;
 	{
 		QuickTimer _timer("Node Connections");
-		for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
+
+
+		// TODO: Investigate with larger sizes
+		
+		// TODO: hash pair collide thingy so nodes don't have to recalculate the raycast
 		{
-			for (std::size_t j = i + 1; j < PathFollower::PathNodes.size(); j++)
+			QUICKTIMER("Thing A");
+			std::size_t countes = 0;
+			TimePoint b = std::chrono::steady_clock::now();
+			std::vector<PathNodePtr> storage{ 10 };
+			for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
 			{
-				PathNode::addNeighbor(PathFollower::PathNodes[i], PathFollower::PathNodes[j],
-					[&](const PathNodePtr& A, PathNodePtr& B)
-					{
-						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
-						float delta = glm::length(a - b);
-						if (delta > 5.f) // TODO: Constant
-							return false;
-						Ray liota(a, b - a);
-						auto temps = staticBoxes.RayCast(liota);
-						if (temps.size() == 0)
-							return true;
-						RayCollision fumop{};
-						for (auto& temp : temps)
+				PathNodePtr& local = PathFollower::PathNodes[i];
+				{
+					//QUICKTIMER("Sloow");
+					//auto loopy = PathFollower::pathNodeTree.neighborsInRange(local->GetPos(), 5.f);
+					PathFollower::pathNodeTree.neighborsInRange(storage, local->GetPos(), 5.f);
+				}
+				//std::cout << loopy.size() << "\n";
+				//std::cout << loopy.size() << std::endl;
+				
+				for (auto& ref : storage)
+				{
+					//PathNode::addNeighborUnconditional(local, ref);
+					if (ref == local) continue;
+					if (ref->contains(local) || local->contains(ref)) continue;
+					PathNode::addNeighbor(local, ref,
+						[&](const PathNodePtr& A, const PathNodePtr& B)
 						{
-							if (temp->Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+							glm::vec3 a = A->GetPosition(), b = B->GetPosition();
+							float delta = glm::length(a - b);
+							Ray liota(a, b - a);
+							countes++;
+							auto temps = staticBoxes.RayCast(liota);
+							if (temps.size() == 0)
+								return true;
+							RayCollision fumop{};
+							for (auto& temp : temps)
 							{
-								return false;
+								if (temp->Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+								{
+									return false;
+								}
 							}
+							return true;
 						}
-						return true;
-					}
-				);
+					);
+					
+				}
 			}
+			std::cout << "Count: " << countes << std::endl;
+			std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - b).count() << std::endl;
 		}
+		
+		{
+			QUICKTIMER("Thing B");
+			std::size_t countes = 0;
+			for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
+			{
+				for (std::size_t j = i + 1; j < PathFollower::PathNodes.size(); j++)
+				{
+					PathNode::addNeighbor(PathFollower::PathNodes[i], PathFollower::PathNodes[j],
+						[&](const PathNodePtr& A, const PathNodePtr& B)
+						{
+							glm::vec3 a = A->GetPosition(), b = B->GetPosition();
+							float delta = glm::length(a - b);
+							//countes++;
+							if (delta > 5.f) // TODO: Constant
+								return false;
+							Ray liota(a, b - a);
+							countes++;
+							auto temps = staticBoxes.RayCast(liota);
+							if (temps.size() == 0)
+								return true;
+							RayCollision fumop{};
+							for (auto& temp : temps)
+							{
+								if (temp->Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
+								{
+									return false;
+								}
+							}
+							return true;
+						}
+					);
+				}
+			}
+			std::cout << "Count: " << countes << std::endl;
+		}
+		
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
 		std::erase_if(PathFollower::PathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 		for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)

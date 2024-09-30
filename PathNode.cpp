@@ -27,6 +27,11 @@ std::vector<std::weak_ptr<PathNode>> PathNode::neighbors() const noexcept
     return this->nodes;
 }
 
+bool PathNode::contains(const std::shared_ptr<PathNode>& node) const noexcept
+{
+    return this->distances.contains(node);
+}
+
 bool PathNode::addNeighborUnconditional(std::shared_ptr<PathNode>& A, std::shared_ptr<PathNode>& B) noexcept
 {
     bool AHasB = A->distances.contains(B);
