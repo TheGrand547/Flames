@@ -94,19 +94,7 @@ bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& ne
 // https://tavianator.com/2022/ray_box_boundary.html#signs maybe?
 bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
 {
-	/*
-	//https://iquilezles.org/articles/intersectors/
-	glm::vec3 m = 1.0f / dir; 
-	glm::vec3 n = m * (point - this->center);   
-	glm::vec3 k = glm::abs(m) * this->halfs;
-	glm::vec3 t1 = -n - k;
-	glm::vec3 t2 = -n + k;
-	float tN = glm::max(glm::max(t1.x, t1.y), t1.z);
-	float tF = glm::min(glm::min(t2.x, t2.y), t2.z);
-	if (tN > tF || tF < 0.0) return false;
-	return true;
-	*/
-	
+	static std::size_t failed = 0, succeed = 0;
 	float tmin = 0.0, tmax = INFINITY;
 	glm::vec3 dir_inv = 1.f / dir;
 	glm::vec3 corners[2]{ this->center - halfs, this->center + halfs };
@@ -122,13 +110,13 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noe
 		tmin = glm::max(dmin, tmin);
 		tmax = glm::min(dmax, tmax);
 	}
+	//return tmin < tmax;
+	bool res = tmin <= tmax;
 
-	return tmin < tmax;
-	
-	/*
+
 	glm::vec3 delta = this->center - point;
 	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
-
+	bool result2 = false;
 	for (auto i = 0; i < 3; i++)
 	{
 		float scale = this->halfs[i];
@@ -136,8 +124,11 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noe
 		if (glm::abs(dir[i]) < EPSILON)
 		{
 			if (abs(parallel) > scale)
+			//if (-parallel - scale > 0 || -parallel + scale > 0)
 			{
-				return false;
+				//result2 = true;
+				//break;
+				//return false;
 			}
 		}
 
@@ -159,13 +150,31 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noe
 		}
 		if (nearHit > farHit)
 		{
-			return false;
+			//result2 = true;
+			//break;
+			//return false;
 		}
 		if (farHit < 0)
 		{
-			return false;
+			//result2 = true;
+			//break;
+			//return false;
 		}
 	}
-	return true;
-	*/
+	result2 = farHit > 0 && nearHit < farHit;
+	//return true;
+	if (res != result2)
+	{
+		std::cout << tmin << ":" << tmax << "\t" << nearHit << ":" << farHit << '\n';
+		failed++;
+	}
+	else
+	{
+		succeed++;
+	}
+	if (failed % 1000 == 1 || succeed % 1000 == 0)
+	{
+		std::cout << failed << ":" << succeed << "\n";
+	}
+	return res;
 }
