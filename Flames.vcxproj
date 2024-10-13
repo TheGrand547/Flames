@@ -164,6 +164,7 @@
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="Input.cpp" />
+    <ClCompile Include="Level.cpp" />
     <ClCompile Include="Lines.cpp" />
     <ClCompile Include="log.cpp" />
     <ClCompile Include="main.cpp" />
@@ -214,6 +215,7 @@
     <ClInclude Include="glUtil.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="kdTree.h" />
+    <ClInclude Include="Level.h" />
     <ClInclude Include="Lines.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="Model.h" />

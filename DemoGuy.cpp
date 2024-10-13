@@ -2,6 +2,8 @@
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
 #include "Pathfinding.h"
+#include "Level.h"
+
 
 constexpr float slowTurnSpeed = 30.f;
 constexpr float fastTurnSpeed = 60.f;
@@ -136,13 +138,13 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		{
 			PathNodePtr start = nullptr, end = nullptr;
 			glm::vec3 center = this->capsule.GetCenter();
-			start = pathNodeTree.nearestNeighbor(center);
-			end = pathNodeTree.nearestNeighbor(position);
+			start = Level::Tree.nearestNeighbor(center);
+			end = Level::Tree.nearestNeighbor(position);
 			// TODO: If this doesn't crash for long enough remove it
 #ifdef DEBUG
 			float minDist = INFINITY, minDist2 = INFINITY;
 			PathNodePtr start2 = nullptr, end2 = nullptr;
-			for (auto& possible : PathNodes)
+			for (auto& possible : Level::AllNodes)
 			{
 				if (glm::distance(center, possible->GetPosition()) < minDist)
 				{

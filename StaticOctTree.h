@@ -8,17 +8,9 @@
 #include "AABB.h"
 #include "OrientedBoundingBox.h"
 
-#ifndef OCT_TREE_MAX_DEPTH
-#define OCT_TREE_MAX_DEPTH (5)
-#endif // OCT_TREE_MAX_DEPTH
-
-#ifndef OCT_TREE_MIN_VOLUME
-#define OCT_TREE_MIN_VOLUME (10.f)
-#endif // OCT_TREE_MIN_VOLUME
-
-#ifndef OCT_TREE_DIMENSION
-#define OCT_TREE_DIMENSION (100.f)
-#endif // OCT_TREE_DIMENSION
+constexpr int OCT_TREE_MAX_DEPTH = 8;
+constexpr auto OCT_TREE_MIN_VOLUME = (10.f);
+constexpr auto OCT_TREE_DIMENSION = (100.f);
 
 // TODO: Maybe completely obsolete because of the dynamic one but I'm not sure
 // HEAVILY inspired by olc's oct tree video and implementation
@@ -34,7 +26,7 @@ protected:
 		std::array<AABB, 8> internals;
 
 		std::vector<std::pair<AABB, Item>> objects;
-		const AABB bounds;
+		AABB bounds;
 		const int depth;
 
 		void Generate();
@@ -45,6 +37,7 @@ protected:
 		~StaticOctTreeNode();
 
 		void Clear();
+		void Resize(const AABB& bound) noexcept;
 
 		std::list<Item> Dump() const;
 		void Dump(std::list<Item>& items) const;
@@ -81,6 +74,8 @@ public:
 	constexpr std::size_t size() const { return this->items.size(); }
 
 	void Clear();
+	void Resize(const glm::vec3& bounds) noexcept;
+	void Resize(const AABB& bounds) noexcept;
 	void Insert(const T& element, const AABB& box);
 };
 
@@ -174,6 +169,20 @@ inline void StaticOctTree<T>::Clear()
 }
 
 template<class T>
+inline void StaticOctTree<T>::Resize(const glm::vec3& bounds) noexcept
+{
+	this->items.clear();
+	this->root.Resize(AABB(-glm::abs(bounds), glm::abs(bounds)));
+}
+
+template<class T>
+inline void StaticOctTree<T>::Resize(const AABB& bounds) noexcept
+{
+	this->items.clear();
+	this->root.Resize(bounds);
+}
+
+template<class T>
 inline void StaticOctTree<T>::Insert(const T& element, const AABB& box)
 {
 	this->items.push_back(element);
@@ -240,6 +249,14 @@ inline void StaticOctTree<T>::StaticOctTreeNode::Clear()
 	{
 		this->tree[i].reset();
 	}
+}
+
+template<class T>
+inline void StaticOctTree<T>::StaticOctTreeNode::Resize(const AABB& bound) noexcept
+{
+	this->Clear();
+	this->bounds = bound;
+	this->Generate();
 }
 
 template<class T>

@@ -35,12 +35,7 @@ public:
 	void Collision() noexcept;
 
 	// Bandaid till proper pathfinding/collision hierarchy is written
-	static std::vector<PathNodePtr> PathNodes;
 	static ArrayBuffer latestPathBuffer;
-
-	// TODO: fix what is Probably the worst hack job I've yet done
-	static StaticOctTree<OBB>& staticBoxes;
-	static kdTree<PathNodePtr> pathNodeTree;
 };
 
 #endif // PATH_FOLLOWER_H

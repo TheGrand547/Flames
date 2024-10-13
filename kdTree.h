@@ -2,6 +2,8 @@
 #ifndef K_D_TREE_H
 #define K_D_TREE_H
 #include <algorithm>
+#include <span>
+#include <vector>
 #include "glmHelp.h"
 
 // Axes are swapped because the Y axis filter is going to have a lot less splitting, leading to deeper trees
@@ -25,6 +27,7 @@ protected:
 	T element;
 	glm::vec3 pivot;
 	Axes axis;
+	bool valid = true;
 
 	std::unique_ptr<kdTree> left = nullptr, right = nullptr;
 	std::size_t count;
@@ -234,7 +237,18 @@ public:
 		}
 	}
 
+	void Clear() noexcept
+	{
+		if (this->right) this->right.reset();
+		if (this->left) this->left.reset();
+		this->valid = false;
+	}
 
+	bool Valid() const noexcept
+	{
+		return this->valid;
+	}
+	
 	//typedef iterator _iterator<T>;
 	//typedef const_iterator _iterator<T>;
 
@@ -245,6 +259,8 @@ public:
 		this->left = std::move(other.left);
 		this->right = std::move(other.right);
 		this->count = other.count;
+		this->valid = true;
+		other.valid = false;
 		return *this;
 	}
 
@@ -256,10 +272,18 @@ public:
 
 	void Print(std::size_t indent = 0) const
 	{
-		std::cout << std::setw(indent * 4) << ' ';
-		std::cout << this->pivot << '\n';
-		if (this->left) this->left->Print(indent + 1);
-		if (this->right) this->right->Print(indent + 1);
+		//std::cout << std::setw(indent * 4) << ' ';
+		if (this->left && this->right)
+		{
+			std::cout << std::setw(indent * 4) << ' ';
+			std::cout << this->left->size() << ":" << this->right->size() << '\n';
+			this->left->Print(indent + 1);
+			this->right->Print(indent + 1);
+
+		}
+		//std::cout << this->pivot << '\n';
+		//if (this->left) this->left->Print(indent + 1);
+		//if (this->right) this->right->Print(indent + 1);
 	}
 	
 	std::size_t size() const noexcept
@@ -304,8 +328,11 @@ public:
 	void insert(T&& element) noexcept
 	{
 		glm::vec3 point = element->GetPos();
-		bool leftComparison = glm::lessThanEqual(point, this->pivot)[static_cast<unsigned char>(this->axis)];
-		bool rightComparison = glm::lessThanEqual(this->pivot, point)[static_cast<unsigned char>(this->axis)];
+		float myComponent = this->pivot[static_cast<unsigned char>(this->axis)];
+		float pointComponent = point[static_cast<unsigned char>(this->axis)];
+
+		bool leftComparison = pointComponent <= myComponent;
+		bool rightComparison = myComponent <= pointComponent;
 		if (leftComparison && rightComparison)
 		{
 			if (this->left && this->right)

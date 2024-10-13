@@ -1,9 +1,8 @@
 #include "PathFollower.h"
 #include "Pathfinding.h"
+#include "Level.h"
 
-std::vector<PathNodePtr> PathFollower::PathNodes;
 ArrayBuffer PathFollower::latestPathBuffer;
-kdTree<PathNodePtr> PathFollower::pathNodeTree;
 
 PathFollower::PathFollower() noexcept : physics(glm::vec3(0), 1.f), box(glm::vec3(0), glm::vec3(0.5, 2, 0.5))
 {
@@ -46,7 +45,7 @@ void PathFollower::Update() noexcept
 		glm::vec3 center = this->capsule.GetCenter();
 		PathNodePtr start = nullptr, end = nullptr;
 		float minDist = INFINITY;
-		for (auto& possible : PathNodes)
+		for (auto& possible : Level::AllNodes)
 		{
 			if (glm::distance(center, possible->GetPosition()) < minDist)
 			{
@@ -56,7 +55,7 @@ void PathFollower::Update() noexcept
 		}
 		if (start)
 		{
-			end = PathNodes[std::rand() % PathNodes.size()];
+			end = Level::AllNodes[std::rand() % Level::AllNodes.size()];
 			this->path = AStarSearch<PathNode>(start, end,
 				[](const PathNode& a, const PathNode& b)
 				{
@@ -87,7 +86,7 @@ void PathFollower::Collision() noexcept
 	this->capsule.SetCenter(this->physics.position);
 
 	::Collision placeholder;
-	for (auto& possible : staticBoxes.Search(this->capsule.GetAABB()))
+	for (auto& possible : Level::Geometry.Search(this->capsule.GetAABB()))
 	{
 		if (possible->Overlap(this->capsule, placeholder))
 		{

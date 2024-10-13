@@ -55,6 +55,7 @@
 #include "Window.h"
 #include "DemoGuy.h"
 #include "kdTree.h"
+#include "Level.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -240,27 +241,23 @@ std::vector<Model> instancedModels;
 std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
-// TODO: Fix this hack
-StaticOctTree<OBB> staticBoxes(glm::vec3(20));
-StaticOctTree<OBB>& PathFollower::staticBoxes = staticBoxes;
-
 static unsigned int frameCounter = 0;
 
 glm::vec3 movingSphere(0, 3.5f, 6.5f);
 int lineWidth = 3;
 
-#define TIGHT_BOXES 1
-#define WIDE_BOXES 2
-#define DEBUG_PATH 3
-#define DYNAMIC_TREE 4
+constexpr auto TIGHT_BOXES = 1;
+constexpr auto WIDE_BOXES = 2;
+constexpr auto DEBUG_PATH = 3;
+constexpr auto DYNAMIC_TREE = 4;
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
 // Input Shenanigans
-#define ArrowKeyUp    0
-#define ArrowKeyDown  1
-#define ArrowKeyRight 2
-#define ArrowKeyLeft  3
+constexpr auto ArrowKeyUp = 0;
+constexpr auto ArrowKeyDown = 1;
+constexpr auto ArrowKeyRight = 2;
+constexpr auto ArrowKeyLeft = 3;
 
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 
@@ -595,7 +592,7 @@ void display()
 		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
 
 		if (debugFlags[WIDE_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-		for (const auto& box: staticBoxes)
+		for (const auto& box: Level::Geometry)
 		{
 			if (debugFlags[TIGHT_BOXES])
 			{
@@ -866,7 +863,7 @@ void display()
 	nineSlicer.SetTextureUnit("image", nineSlice);
 	nineSliced.Bind();
 	nineSliced.BindArrayBuffer(ui_tester_buffer);
-	nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
+	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 
 
 	uiRectTexture.SetActiveShader();
@@ -1070,7 +1067,7 @@ void idle()
 
 		playerBox.Translate(glm::vec3(2, 0, 0));
 		playerBox.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
-		for (auto& wall : staticBoxes)
+		for (auto& wall : Level::Geometry)
 		{
 			if (wall.Overlap(playerObb))
 			{
@@ -1115,7 +1112,7 @@ void idle()
 		capsuleVelocity = glm::normalize(capsuleVelocity) * 2.f;
 	catapult.Translate(capsuleVelocity);
 	capsuleVelocity *= 0.99f; // Maybe "real" friction?
-	for (auto& temps : staticBoxes.Search(catapult.GetAABB()))
+	for (auto& temps : Level::Geometry.Search(catapult.GetAABB()))
 	{
 		Collision c;
 		if (temps->Overlap(catapult, c))
@@ -1133,7 +1130,7 @@ void idle()
 
 
 	Sphere spherePlaceholder(0.5f, movingSphere);
-	for (auto& letsgo : staticBoxes.Search(spherePlaceholder.GetAABB()))
+	for (auto& letsgo : Level::Geometry.Search(spherePlaceholder.GetAABB()))
 	{
 		Collision c;
 		if (letsgo->Overlap(spherePlaceholder, c))
@@ -1159,7 +1156,7 @@ void idle()
 	/*
 	for (auto& follow : followers2)
 	{
-		follow.first.Update(timeDelta, staticBoxes);
+		follow.first.Update(timeDelta, Level::Geometry);
 	}*/
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
@@ -1239,7 +1236,7 @@ void gameTick()
 			for (std::size_t i = 0; i < bullets.size(); i++)
 			{
 				spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
-				for (auto& boxers : staticBoxes.Search(spherePlaceholder.GetAABB()))
+				for (auto& boxers : Level::Geometry.Search(spherePlaceholder.GetAABB()))
 				{
 					if (boxers->Overlap(spherePlaceholder, collision))
 					{
@@ -1267,7 +1264,7 @@ void gameTick()
 							boxed.ReOrient(dumber);
 							boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
 							boxed.ReCenter(collision.point - collision.axis * BulletSpeed);
-							Decal::GetDecal(boxed, staticBoxes, decalVertex);
+							Decal::GetDecal(boxed, Level::Geometry, decalVertex);
 						}
 						spherePlaceholder.center = collision.point + collision.normal * EPSILON;
 						bullets[i].direction = glm::reflect(bullets[i].direction, collision.normal);
@@ -1314,9 +1311,9 @@ void gameTick()
 		}
 		glm::vec3 searchPoint = cameraPosition;
 		float searchRadius = 5.5f;
-		std::vector<PathNodePtr> lame = PathFollower::pathNodeTree.neighborsInRange(searchPoint, searchRadius);
+		std::vector<PathNodePtr> lame = Level::Tree.neighborsInRange(searchPoint, searchRadius);
 		std::vector<PathNodePtr> searchTest;
-		for (auto& node : PathFollower::PathNodes)
+		for (auto& node : Level::AllNodes)
 		{
 			if (glm::distance(searchPoint, node->GetPos()) < searchRadius)
 			{
@@ -1534,7 +1531,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 
 		RayCollision rayd{};
 		OBB* point = nullptr;
-		for (auto& item : staticBoxes.RayCast(liota))
+		for (auto& item : Level::Geometry.RayCast(liota))
 		{
 			if (item->Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
 			{
@@ -1650,7 +1647,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			moveable.Translate(delta);
 			/*auto fum = moveable.GetAABB();
 			SlidingCollision slider{};
-			for (auto& foobar : staticBoxes.Search(fum))
+			for (auto& foobar : Level::Geometry.Search(fum))
 			{
 				if (foobar->box.Overlap(moveable, slider))
 				{
@@ -1798,6 +1795,8 @@ void init()
 	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
 	toDisable = 1; // Disable Shader Recompiled due to state change(when you apply a line draw function to something that is expected for tris)
 	//glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, )
+
+	Level::Geometry.Resize(glm::vec3(20));
 
 	// TODO: This noise stuff idk man
 	//Shader::IncludeInShaderFilesystem("FooBarGamer.gsl", "uniformv.glsl");
@@ -1983,7 +1982,7 @@ void init()
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
 
 
-	constexpr int tileSize = 10;
+	constexpr int tileSize = 4;
 	constexpr int minusTileSize = -(tileSize - 1);
 	for (int x = minusTileSize; x < tileSize; x++)
 	{
@@ -2011,24 +2010,24 @@ void init()
 		glm::vec3 forawrd = project.Up();
 		if (glm::dot(forawrd, GravityUp) > 0.5f)
 		{
-			PathFollower::PathNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
+			Level::AllNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
 		project.Scale(glm::vec3(1, 0, 1));
-		staticBoxes.Insert(project, project.GetAABB());
+		Level::Geometry.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
 		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({project, 0});
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	{
 		QuickTimer _tim("Node Culling");
-		std::erase_if(PathFollower::PathNodes,
+		std::erase_if(Level::AllNodes,
 			[&](const PathNodePtr& A)
 			{
 				AABB boxer{};
 				boxer.SetScale(0.75f);
 				boxer.Center(A->GetPosition());
-				auto temps = staticBoxes.Search(boxer);
+				auto temps = Level::Geometry.Search(boxer);
 				if (temps.size() == 0)
 					return false;
 				RayCollision fumop{};
@@ -2079,7 +2078,7 @@ void init()
 	decalGenerator.Rotate(glm::eulerAngleYZ(glm::radians(-45.f), glm::radians(-26.f)));
 	{
 		QuickTimer _timer{ "Decal Generation" };
-		decals = Decal::GetDecal(decalGenerator, staticBoxes);
+		decals = Decal::GetDecal(decalGenerator, Level::Geometry);
 	}
 
 	// SKINNING
@@ -2169,33 +2168,34 @@ void init()
 
 	{
 		QUICKTIMER("KdTree Generation");
-		PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
+		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
 	}
 	// =============================================================
 	// Pathfinding stuff
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
 
-	std::cout << PathFollower::PathNodes.size() << std::endl;
+	std::cout << Level::AllNodes.size() << std::endl;
 	{
 		QuickTimer _timer("Node Connections");
 
 
-		// TODO: Investigate with larger sizes
+		// TODO: Investigate with better optimized kdtree stuff
 		
 		// TODO: hash pair collide thingy so nodes don't have to recalculate the raycast
+		/*
 		{
 			QUICKTIMER("Thing A");
 			std::size_t countes = 0;
 			TimePoint b = std::chrono::steady_clock::now();
 			std::vector<PathNodePtr> storage{ 10 };
-			for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
+			for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 			{
-				PathNodePtr& local = PathFollower::PathNodes[i];
+				PathNodePtr& local = Level::AllNodes[i];
 				{
 					//QUICKTIMER("Sloow");
-					//auto loopy = PathFollower::pathNodeTree.neighborsInRange(local->GetPos(), 5.f);
-					PathFollower::pathNodeTree.neighborsInRange(storage, local->GetPos(), 5.f);
+					//auto loopy = PathFollower::Tree.neighborsInRange(local->GetPos(), 5.f);
+					Level::Tree.neighborsInRange(storage, local->GetPos(), 5.f);
 				}
 				//std::cout << loopy.size() << "\n";
 				//std::cout << loopy.size() << std::endl;
@@ -2212,7 +2212,7 @@ void init()
 							float delta = glm::length(a - b);
 							Ray liota(a, b - a);
 							countes++;
-							auto temps = staticBoxes.RayCast(liota);
+							auto temps = Level::Geometry.RayCast(liota);
 							if (temps.size() == 0)
 								return true;
 							RayCollision fumop{};
@@ -2230,27 +2230,25 @@ void init()
 				}
 			}
 			std::cout << "Count: " << countes << std::endl;
-			std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - b).count() << std::endl;
-		}
+		}*/
 		
 		{
-			QUICKTIMER("Thing B");
-			std::size_t countes = 0;
-			for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
+			//QUICKTIMER("Thing B");
+			//std::size_t countes = 0;
+			for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 			{
-				for (std::size_t j = i + 1; j < PathFollower::PathNodes.size(); j++)
+				for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
 				{
-					PathNode::addNeighbor(PathFollower::PathNodes[i], PathFollower::PathNodes[j],
+					PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
 						[&](const PathNodePtr& A, const PathNodePtr& B)
 						{
 							glm::vec3 a = A->GetPosition(), b = B->GetPosition();
 							float delta = glm::length(a - b);
-							//countes++;
 							if (delta > 5.f) // TODO: Constant
 								return false;
 							Ray liota(a, b - a);
-							countes++;
-							auto temps = staticBoxes.RayCast(liota);
+							//countes++;
+							auto temps = Level::Geometry.RayCast(liota);
 							if (temps.size() == 0)
 								return true;
 							RayCollision fumop{};
@@ -2266,14 +2264,14 @@ void init()
 					);
 				}
 			}
-			std::cout << "Count: " << countes << std::endl;
+			//std::cout << "Count: " << countes << std::endl;
 		}
 		
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
-		std::erase_if(PathFollower::PathNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
-		for (std::size_t i = 0; i < PathFollower::PathNodes.size(); i++)
+		std::erase_if(Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
+		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 		{
-			auto& local = PathFollower::PathNodes[i];
+			auto& local = Level::AllNodes[i];
 			auto localBoys = local->neighbors();
 			for (std::size_t j = 0; j < localBoys.size(); j++)
 			{
@@ -2295,11 +2293,35 @@ void init()
 		}
 	}
 
-	PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(PathFollower::PathNodes);
-	std::cout << PathFollower::PathNodes.size() << ":" << PathFollower::pathNodeTree.size() << std::endl;
+	//PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
+	std::cout << Level::AllNodes.size() << ":" << Level::AllNodes.size() << std::endl;
 
+
+	{
+		QUICKTIMER("kdTree");
+		const auto& first = Level::AllNodes.front();
+		PathNodePtr pint = nullptr;
+		float dist = INFINITY;
+		Level::Tree.nearestNeighbor(first->GetPos());
+	}
+	{
+		QUICKTIMER("Linear");
+		const auto& first = Level::AllNodes.front();
+		PathNodePtr pint = nullptr;
+		float dist = INFINITY;
+		for (const auto& b : Level::AllNodes)
+		{
+			if (b == first)
+				continue;
+			if (glm::distance(first->GetPos(), b->GetPos()) < dist)
+			{
+				dist = glm::distance(first->GetPos(), b->GetPos());
+				pint = b;
+			}
+		}
+	}
 	
-	for (auto& autod : PathFollower::PathNodes)
+	for (auto& autod : Level::AllNodes)
 	{
 		boxingDay.push_back(autod->GetPosition());
 		for (auto& weak : autod->neighbors())
@@ -2358,7 +2380,7 @@ void init()
 
 	pointingCapsule.ReCenter(glm::vec3(0, 5, 0));
 	pointingCapsule.ReOrient(glm::vec3(0.f, 0, 90.f));
-	//staticBoxes.Insert({ dumbBox, false }, dumbBox.GetAABB());
+	//Level::Geometry.Insert({ dumbBox, false }, dumbBox.GetAABB());
 	//Log("Doing it");
 	//windowResize(1000, 1000);
 	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
