@@ -261,6 +261,12 @@ constexpr auto ArrowKeyLeft = 3;
 
 std::array<bool, UCHAR_MAX> keyState{}, keyStateBackup{};
 
+// TODO: Breaking people out of an prison station that had been abandoned due to upcoming supernova or something
+// Only automated guards remain and you have three characters you switch between at will, which also act as your lives
+// Guard manipulation is a core aspect, they are unkillable but can be disabled before being turned back on by smaller things
+// Vaguely turn based, you decide what your guy does for the next [5,10,15] seconds then it plays out
+// Enemy behavior is entirely predictable for the duration of a turn
+// Sonar scanning of environment(imperfect information) required beyond a very limited vision range
 
 
 ColorFrameBuffer playerTextEntry;
@@ -277,12 +283,12 @@ float zNear = 0.1f, zFar = 100.f;
 
 enum GeometryThing : unsigned short
 {
-	PlusX  = 1 << 1,
-	MinusX = 1 << 2,
-	PlusZ  = 1 << 3,
-	MinusZ = 1 << 4,
-	PlusY  = 1 << 5,
-	MinusY = 1 << 6,
+	PlusX  = 1 << 0,
+	MinusX = 1 << 1,
+	PlusZ  = 1 << 2,
+	MinusZ = 1 << 3,
+	PlusY  = 1 << 4,
+	MinusY = 1 << 5,
 	WallX  = PlusX | MinusX,
 	WallZ  = PlusZ | MinusZ,
 	HallwayZ = PlusX | MinusX | PlusY,
@@ -292,12 +298,12 @@ enum GeometryThing : unsigned short
 
 void GetPlaneSegment(const glm::vec3& base, GeometryThing flags, std::vector<Model>& results)
 {
-	if (flags & PlusX)  results.emplace_back(base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f));
-	if (flags & MinusX) results.emplace_back(base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f));
-	if (flags & PlusZ)  results.emplace_back(base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0));
-	if (flags & MinusZ) results.emplace_back(base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0));
-	if (flags & PlusY)  results.emplace_back(base);
-	if (flags & MinusY) results.emplace_back(base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0));
+	if (flags & PlusX)  results.emplace_back(base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f), glm::vec3(1, 1, 1));
+	if (flags & MinusX) results.emplace_back(base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f), glm::vec3(1, 1, 1));
+	if (flags & PlusZ)  results.emplace_back(base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0), glm::vec3(1, 1, 1));
+	if (flags & MinusZ) results.emplace_back(base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0), glm::vec3(1, 1, 1));
+	if (flags & PlusY)  results.emplace_back(base + glm::vec3( 0, 0,  0), glm::vec3(  0, 0,     0), glm::vec3(1, 1, 1));
+	if (flags & MinusY) results.emplace_back(base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0), glm::vec3(1, 1, 1));
 }
 
 void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ = true)
@@ -309,6 +315,8 @@ bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 Button help(buttonRect, [](std::size_t i) {std::cout << frameCounter << std::endl; });
 
+
+Sphere visionSphere{ 2 };
 
 Capsule catapult;
 Model catapultModel;
@@ -377,7 +385,9 @@ void display()
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
 	EnableDepthBufferWrite();
+	glClearDepth(0);
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
+	glClearDepth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	DisableGLFeatures<StencilTesting>();
 	
@@ -389,6 +399,31 @@ void display()
 									-cameraPosition);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
+	// Demo Sphere drawing
+
+	flatLighting.SetActiveShader();
+	glDisable(GL_CULL_FACE);
+	//glCullFace(GL_FRONT);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	glDepthFunc(GL_GEQUAL);
+	meshVAO.Bind();
+	meshVAO.BindArrayBuffer(sphereBuffer);
+	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius) };
+	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
+	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
+	flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	flatLighting.DrawElements<DrawType::Lines>(sphereIndicies);
+	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	visionModel.translation = cameraPosition;
+	visionModel.scale = glm::vec3(5);
+	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
+	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
+	flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	glEnable(GL_CULL_FACE);
+	glDepthFunc(GL_LEQUAL);
+	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
@@ -426,6 +461,8 @@ void display()
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
 	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
 	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
+	glDisable(GL_STENCIL_TEST);
+	
 	if (debugFlags[DEBUG_PATH])
 	{
 		EnableGLFeatures<Blending>();
@@ -1656,6 +1693,27 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			}*/
 		}
 	}
+	// Vision Cone thingy
+	glm::mat4 cameraOrientation{};
+	Ray liota = GetMouseProjection(Mouse::GetPosition(), cameraOrientation);
+	float rayLength = 50.f;
+
+	RayCollision rayd{};
+	OBB* point = nullptr;
+	glm::vec3 hitPoint = glm::vec3(0);
+	for (auto& item : Level::Geometry.RayCast(liota))
+	{
+		if (item->Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
+		{
+			rayLength = rayd.depth;
+			point = &(*item);
+			hitPoint = rayd.point;
+		}
+	}
+	if (point)
+	{
+		visionSphere.center = hitPoint;
+	}
 }
 
 void window_size_callback(GLFWwindow* window, int width, int height)
@@ -1989,7 +2047,7 @@ void init()
 		for (int y = minusTileSize; y < tileSize; y++)
 		{
 			float noise = glm::simplex(glm::vec3(x, 0.f, y));
-			GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
+			//GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
 		}
 	}
 	
@@ -2013,7 +2071,7 @@ void init()
 			Level::AllNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
-		project.Scale(glm::vec3(1, 0, 1));
+		//project.Scale(glm::vec3(1, 0, 1));
 		Level::Geometry.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
 		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({project, 0});
