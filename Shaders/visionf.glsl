@@ -23,6 +23,6 @@ void main()
 	fColor = vec4(distance, 0, 0, 1);
 	
 	
-	float modified = gl_FragCoord.z + distance * radius;
-    gl_FragDepth  = (modified / gl_FragCoord.w) * 0.5 + 0.5;
+	float modified = gl_FragCoord.z - distance * radius;
+    gl_FragDepth  = (gl_DepthRange.diff * (modified * gl_FragCoord.w) + gl_DepthRange.near + gl_DepthRange.far) / 2.0;
 }
