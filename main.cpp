@@ -223,6 +223,7 @@ Shader skinner;
 Shader billboardShader;
 Shader voronoi;
 Shader lighting;
+Shader vision;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -401,20 +402,35 @@ void display()
 	
 	// Demo Sphere drawing
 
-	flatLighting.SetActiveShader();
+	// Possibly replace by rendering a quad in view space that gets the depth penetration of that given pixel in world space
+	// of the sphere it would represent
+	//flatLighting.SetActiveShader();
 	glDisable(GL_CULL_FACE);
 	//glCullFace(GL_FRONT);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	glDepthFunc(GL_GEQUAL);
+	
+	vision.SetActiveShader();
+	vision.SetVec3("position", visionSphere.center);
+	vision.SetFloat("radius", visionSphere.radius);
+	vision.DrawArray<DrawType::TriangleStrip>(4);
+	
+
+	flatLighting.SetActiveShader();
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius) };
+		//+ 0.25 * glm::pow(static_cast<float>(glm::sin(glm::pi<float>() * glm::radians(frameCounter * 0.125f))), 3.f)) };
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
-	flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	//glDisable(GL_DEPTH_TEST);
+	//glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	flatLighting.DrawElements<DrawType::Lines>(sphereIndicies);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	//glEnable(GL_DEPTH_TEST);
+	//glDepthMask(GL_TRUE);
 	visionModel.translation = cameraPosition;
 	visionModel.scale = glm::vec3(5);
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
@@ -505,7 +521,15 @@ void display()
 		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
 		EnableDepthBufferWrite();
 	}
-
+	
+	//glDisable(GL_DEPTH_TEST);
+	//glDepthFunc(GL_ALWAYS);
+	//vision.SetActiveShader();
+	//vision.SetVec3("position", glm::vec3(1, 5, -2));
+	//vision.SetFloat("radius", 1.5f);
+	//vision.DrawArray<DrawType::TriangleStrip>(4);
+	//glDepthFunc(GL_LEQUAL);
+	//glEnaaaadble(GL_DEPTH_TEST);
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -1881,6 +1905,7 @@ void init()
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
+	vision.CompileSimple("vision");
 	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
 
@@ -1897,6 +1922,7 @@ void init()
 	stencilTest.UniformBlockBinding("Camera", 0);
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
+	vision.UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
