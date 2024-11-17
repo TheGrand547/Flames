@@ -386,7 +386,7 @@ void display()
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
 	EnableDepthBufferWrite();
-	glClearDepth(0);
+	//glClearDepth(0);
 	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
 	glClearDepth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -407,19 +407,21 @@ void display()
 	//flatLighting.SetActiveShader();
 	glDisable(GL_CULL_FACE);
 	//glCullFace(GL_FRONT);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	glDepthFunc(GL_GEQUAL);
-	
+	//glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+	//glDepthFunc(GL_GEQUAL);
+	visionSphere.center = glm::vec3(0, 3, 0);
+	visionSphere.radius = 1;
+
 	vision.SetActiveShader();
 	vision.SetVec3("position", visionSphere.center);
 	vision.SetFloat("radius", visionSphere.radius);
-	vision.DrawArray<DrawType::TriangleStrip>(4);
+	//vision.DrawArray<DrawType::TriangleStrip>(4);
 	
 
 	flatLighting.SetActiveShader();
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
-	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius) };
+	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius)};
 		//+ 0.25 * glm::pow(static_cast<float>(glm::sin(glm::pi<float>() * glm::radians(frameCounter * 0.125f))), 3.f)) };
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
@@ -435,10 +437,12 @@ void display()
 	visionModel.scale = glm::vec3(5);
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
-	flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
+	// TODO: Calculate the value of the default field of view range and fill the depth buffer with that to save a *ton* of overdraw
 	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+	//ClearFramebuffer<DepthBuffer>();
 
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
@@ -524,12 +528,14 @@ void display()
 	
 	//glDisable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_ALWAYS);
-	//vision.SetActiveShader();
-	//vision.SetVec3("position", glm::vec3(1, 5, -2));
-	//vision.SetFloat("radius", 1.5f);
-	//vision.DrawArray<DrawType::TriangleStrip>(4);
+	vision.SetActiveShader();
+	vision.SetVec3("position", visionSphere.center);
+	vision.SetFloat("radius", visionSphere.radius * (1.f +EPSILON));
+	vision.SetInt("featureToggle", featureToggle);
+	vision.SetTextureUnit("demo", ditherTexture, 0);
+	vision.DrawArray<DrawType::TriangleStrip>(4);
 	//glDepthFunc(GL_LEQUAL);
-	//glEnaaaadble(GL_DEPTH_TEST);
+	//glEnable(GL_DEPTH_TEST);
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
