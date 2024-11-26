@@ -376,6 +376,8 @@ glm::vec3 sigmaTarget;
 
 int kdTree<PathNodePtr>::counter = 0;
 
+BasicPhysics player;
+
 void display()
 {
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
@@ -532,7 +534,7 @@ void display()
 	vision.SetVec3("position", visionSphere.center);
 	vision.SetFloat("radius", visionSphere.radius * (1.f +EPSILON));
 	vision.SetInt("featureToggle", featureToggle);
-	vision.SetTextureUnit("demo", ditherTexture, 0);
+	vision.SetTextureUnit("demo", depthMap, 0);
 	vision.DrawArray<DrawType::TriangleStrip>(4);
 	//glDepthFunc(GL_LEQUAL);
 	//glEnable(GL_DEPTH_TEST);
@@ -1404,10 +1406,9 @@ void gameTick()
 				std::cout << "Was Missing: " << e->GetPos() << std::endl;
 			}
 		}
-
-
-
-
+		player.position = cameraPosition;
+		cameraPosition = player.ApplyForces({}, Tick::TimeDelta);
+		player.velocity *= 0.99;
 
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
@@ -1615,6 +1616,8 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		//pointingCapsule.Rotate(glm::vec3(0, 0, 90.f));
 		//pointingCapsule.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
+
+		player.ApplyForces(liota.delta * 5.f, 1.f); // Impulse force
 	}
 	testButton.MouseUpdate();
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(Mouse::GetPosition()))

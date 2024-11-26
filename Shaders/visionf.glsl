@@ -47,16 +47,24 @@ void visionCone()
 	vec4 clipPos = Projection * vec4(finalPos, 1.0);
 	float ndcDepth = clipPos.z / clipPos.w;
 	gl_FragDepth = ((gl_DepthRange.diff * ndcDepth) + gl_DepthRange.near + gl_DepthRange.far) / 2.0;
-	fColor = vec4((finalNorm.y));
 	
+	if (featureToggle > 0)
+	{
+		fColor = vec4(abs(transpose(View) * vec4(-finalNorm, 0)).xyz, 1);
+	}
+	else
+	{
+		fColor = vec4(abs(finalNorm), 1);
+	}
+	/*
 	vec2 uvs = vec2(0.5);
 	vec3 norms = -finalNorm;
 	norms = (transpose(View) * vec4(norms, 0)).xyz;
 	
 	uvs.x += atan(norms.z, norms.x) * 0.5 * PI;
 	uvs.y += asin(norms.y) * PI;
-	fColor.xyz = texture(demo, uvs).xyz;
-	
+	fColor.xyz = vec3(pow(texture(demo, uvs).r, 10));
+	*/
 	fColor.w = 1;
 }
 
