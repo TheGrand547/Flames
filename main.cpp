@@ -378,6 +378,11 @@ int kdTree<PathNodePtr>::counter = 0;
 
 BasicPhysics player;
 
+using TimePoint = std::chrono::steady_clock::time_point;
+using TimeDelta = std::chrono::nanoseconds;
+static std::size_t gameTicks = 0;
+
+
 void display()
 {
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
@@ -424,7 +429,9 @@ void display()
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius)};
-		//+ 0.25 * glm::pow(static_cast<float>(glm::sin(glm::pi<float>() * glm::radians(frameCounter * 0.125f))), 3.f)) };
+
+	visionModel.rotation = 9.f * glm::vec3(gameTicks / 120.f, gameTicks / 420.f, gameTicks / 80.f);
+
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
 	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
@@ -535,7 +542,7 @@ void display()
 	vision.SetFloat("radius", visionSphere.radius * (1.f +EPSILON));
 	vision.SetInt("featureToggle", featureToggle);
 	vision.SetTextureUnit("demo", depthMap, 0);
-	vision.DrawArray<DrawType::TriangleStrip>(4);
+	//vision.DrawArray<DrawType::TriangleStrip>(4);
 	//glDepthFunc(GL_LEQUAL);
 	//glEnable(GL_DEPTH_TEST);
 
@@ -1038,10 +1045,6 @@ static const glm::vec3 GravityUp{ 0.f, 1.f, 0.f };
 OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
-
-using TimePoint = std::chrono::steady_clock::time_point;
-using TimeDelta = std::chrono::nanoseconds;
-static std::size_t gameTicks = 0;
 
 struct te
 {
