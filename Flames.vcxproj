@@ -197,6 +197,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="Animationr.h" />
     <ClInclude Include="ArrayObject.h" />
     <ClInclude Include="BasicPhysics.h" />
     <ClInclude Include="BinarySpacePartition.h" />
@@ -213,6 +214,7 @@
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />
+    <ClInclude Include="Interpolation.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="kdTree.h" />
     <ClInclude Include="Level.h" />

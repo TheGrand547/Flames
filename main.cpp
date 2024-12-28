@@ -204,6 +204,9 @@ ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
 ArrayBuffer debugPointing;
 
+ArrayBuffer guyBuffer, guyBuffer2;
+ElementArray guyIndex, guyIndex2;
+
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
@@ -381,6 +384,8 @@ BasicPhysics player;
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
+
+glm::vec3 weaponOffset{ 0 };
 
 
 void display()
@@ -707,7 +712,20 @@ void display()
 	dsf[1] *= 0.25f;
 	dsf[2] *= 0.1f;
 	uniform.SetMat4("Model", dsf);
-	uniform.DrawElementsMemory<DrawType::Lines>(cubeOutline);
+	//uniform.DrawElementsMemory<DrawType::Lines>(cubeOutline);
+	flatLighting.SetActiveShader();
+	meshVAO.Bind();
+	meshVAO.BindArrayBuffer(guyBuffer);
+
+	Model defaults{ glm::vec3(0, 2, 0) };
+	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
+	flatLighting.SetMat4("normMat", defaults.GetNormalMatrix());
+	flatLighting.DrawElements<DrawType::Triangle>(guyIndex);
+	defaults.translation += weaponOffset;
+	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
+	meshVAO.BindArrayBuffer(guyBuffer2);
+	flatLighting.DrawElements<DrawType::Triangle>(guyIndex2);
+
 
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
@@ -1285,7 +1303,7 @@ void idle()
 void gameTick()
 {
 	using namespace std::chrono_literals;
-	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;// std::chrono::duration<long double>(1.0 / 128.0);
+	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;
 	std::cout << std::chrono::duration<float, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	TimePoint lastStart = std::chrono::steady_clock::now();
 	do
@@ -1412,6 +1430,12 @@ void gameTick()
 		player.position = cameraPosition;
 		cameraPosition = player.ApplyForces({}, Tick::TimeDelta);
 		player.velocity *= 0.99;
+
+		// Gun animation
+		auto relative = gameTicks % 128;
+		float small = relative / 127.f;
+		float progress = 1.f - glm::pow(1 - small, 5);
+		weaponOffset = glm::lerp(glm::vec3(0), glm::vec3(0.125, 0, 0), progress);
 
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
@@ -1620,7 +1644,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		//pointingCapsule.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
 		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
 
-		player.ApplyForces(liota.delta * 5.f, 1.f); // Impulse force
+		//player.ApplyForces(liota.delta * 5.f, 1.f); // Impulse force
 	}
 	testButton.MouseUpdate();
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(Mouse::GetPosition()))
@@ -2443,7 +2467,8 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	//OBJReader::ReadOBJ("Models\\rock.obj", sphereBuffer, sphereIndicies);
+	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer, guyIndex);
+	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer2, guyIndex2, 1);
 
 	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
 	catapult.SetRadius(0.25f);

@@ -7,7 +7,7 @@
 
 struct OBJReader
 {
-	static void ReadOBJ(const std::string& filename, ArrayBuffer& elements, ElementArray& index);
+	static void ReadOBJ(const std::string& filename, ArrayBuffer& elements, ElementArray& index, const std::size_t& id = 0);
 };
 
 #endif // OBJ_READER_H
