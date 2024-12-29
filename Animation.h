@@ -3,6 +3,7 @@
 #define ANIMATION_H
 #include "glmHelp.h"
 #include "Interpolation.h"
+#include <tuple>
 
 // HACK
 template<typename F> F EaseOut(F functor) noexcept
@@ -17,6 +18,8 @@ template<typename T> concept Interpolation = requires(T func, const double& delt
 
 typedef double (*EasingFunction)(const double&);
 
+// TODO: The smarter way of doing it, where every "get" is assumed to be the next tick so less has to be stored and dealt with
+
 template<class Type>
 class SimpleAnimation
 {
@@ -25,21 +28,31 @@ protected:
 	EasingFunction easeIn, easeOut;
 	// Probably overkill lol
 	std::size_t startTick, inDuration, outDuration;
+	bool finished;
 public:
-
 	void Start(const std::size_t& currentTick) noexcept
 	{
 		this->startTick = currentTick;
+		this->finished = false;
 	}
 
-	inline Type Get(const std::size_t& currentTick) const noexcept
+	inline Type Get(const std::size_t& currentTick) noexcept
 	{
+		if (this->finished)
+		{
+			return this->start;
+		}
 		if (currentTick >= (this->startTick + this->inDuration))
 		{
+			std::size_t difference = currentTick - (this->startTick + this->inDuration);
+			if (difference >= this->outDuration)
+			{
+				this->finished = true;
+			}
 			double delta = static_cast<double>(currentTick - (this->startTick + this->inDuration)) / this->outDuration;
 			if constexpr (std::is_same_v<Type, glm::quat>)
 			{
-				return glm::slerp(this->end, this->start, this->easeOut(delta));
+				return glm::slerp(this->end, this->start, static_cast<float>(this->easeOut(delta)));
 			}
 			else
 			{
@@ -49,9 +62,9 @@ public:
 		else
 		{
 			double delta = static_cast<double>(currentTick - this->startTick) / this->inDuration;
-			if constexpr (std::is_same_v < Type, glm::quat>)
+			if constexpr (std::is_same_v<Type, glm::quat>)
 			{
-				return glm::slerp(this->start, this->end, this->easeIn(delta));
+				return glm::slerp(this->start, this->end, static_cast<float>(this->easeIn(delta)));
 			}
 			else
 			{
@@ -60,42 +73,87 @@ public:
 		}
 	}
 
-	const std::size_t Duration() const noexcept
+	inline std::size_t Duration() const noexcept
 	{
 		return this->inDuration + this->outDuration;
 	}
 
+	inline bool IsFinished() const noexcept
+	{
+		return this->finished;
+	}
+
 	SimpleAnimation(const Type& start, const Type& end, std::size_t inDuration = 128, EasingFunction easeIn = Easing::Linear,
 							std::size_t outDuration = 0, EasingFunction easeOut = Easing::Linear) noexcept : start(start), end(end),
-		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration) { }
+		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
 
 	SimpleAnimation(const Type& start, std::size_t inDuration, EasingFunction easeIn,
 		const Type& end, std::size_t outDuration, EasingFunction easeOut) noexcept : start(start), end(end),
-		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration) {
-	}
+		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
 };
 
-template<class T, typename F, std::size_t N>
+template<std::size_t N, class T>
 	requires requires
 {
-	Interpolation<F>;
 	N > 1;
 }
 class Animation
 {
 public:
-	Animation(const std::array<T, N>& keyFrames, std::array<T, N - 1>) : keyFrames(keyFrames) {}
+	/*
+	struct Element
+	{
+		T KeyFrame;
+		std::size_t Duration;
+		EasingFunction Easing;
+	};*/
+	typedef std::tuple<T, std::size_t, EasingFunction> Element;
+
+	template<typename Failure>
+	Animation(const T& base, const std::array<Failure, N - 1>& transitions) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
+	{
+		keyFrames[0] = base;
+		for (std::size_t i = 1; i < N; i++)
+		{
+			keyFrames[i] = std::get<0>(transitions[i - 1]);
+			stages[i - 1] = std::make_pair(std::get<1>(transitions[i - 1]), std::get<2>(transitions[i - 1]));
+		}
+	}
 
 	void Start(const std::size_t& currentTick) noexcept
 	{
-		this->startFrame = currentTick;
+		this->startTick = currentTick;
 		this->stageIndex = 0;
+		this->finished = false;
+	}
+
+	T Get(const std::size_t& currentTick) noexcept
+	{
+		if (this->finished || this->stageIndex >= (N - 1))
+		{
+			this->finished = true;
+			return this->keyFrames[N - 1];
+		}
+		auto& current = this->stages[this->stageIndex];
+		double delta = static_cast<double>(currentTick - this->startTick) / current.first;
+		if (currentTick - this->startTick >= current.first)
+		{
+			this->startTick = currentTick;
+			return this->keyFrames[this->stageIndex++];
+		}
+		return glm::lerp(this->keyFrames[this->stageIndex], this->keyFrames[this->stageIndex + 1], static_cast<float>(current.second(delta)));
+	}
+
+	inline bool IsFinished() const noexcept
+	{
+		return this->finished;
 	}
 
 protected:
 	std::array<T, N> keyFrames;
-	std::array<std::pair<F, std::size_t>, N - 1> stages;
-	std::size_t startFrame, stageIndex;
+	std::array<std::pair<std::size_t, EasingFunction>, N - 1> stages;
+	std::size_t startTick, stageIndex;
+	bool finished;
 };
 
 #endif // ANIMATION_H

@@ -386,10 +386,17 @@ using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
 
-glm::vec3 weaponOffset{ 0 };
+glm::vec3 weaponOffset{ 0 }, gooberOffset(0);
 
 SimpleAnimation foobar{ glm::vec3(-0.025, 0, 0), 32, Easing::Quintic,
 						glm::vec3(-0.25, 0, 0)      , 80, Easing::Linear };
+
+Animation<3, glm::vec3> flubber( glm::vec3(0, 0, 0), 
+	std::array{
+		std::make_tuple(glm::vec3(0, 5, 0), 256ull, Easing::Quintic),
+		std::make_tuple(glm::vec3(0, 10, 0), 256ull, Easing::Quadratic)
+	}
+);
 
 void display()
 {
@@ -721,6 +728,7 @@ void display()
 	meshVAO.BindArrayBuffer(guyBuffer);
 
 	Model defaults{ glm::vec3(0, 2, 0) };
+	defaults.translation += gooberOffset;
 	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
 	flatLighting.SetMat4("normMat", defaults.GetNormalMatrix());
 	flatLighting.DrawElements<DrawType::Triangle>(guyIndex);
@@ -1434,11 +1442,18 @@ void gameTick()
 		player.velocity *= 0.99;
 
 		// Gun animation
-		if (gameTicks % foobar.Duration() == 0)
+		//if (gameTicks % foobar.Duration() == 0)
+		if (foobar.IsFinished())
 		{
 			foobar.Start(gameTicks);
 		}
 		weaponOffset = foobar.Get(gameTicks);
+		
+		if (flubber.IsFinished())
+		{
+			flubber.Start(gameTicks);
+		}
+		gooberOffset = flubber.Get(gameTicks);
 
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
