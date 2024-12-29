@@ -19,6 +19,7 @@
 #include <time.h>
 #include <unordered_map>
 #include "AABB.h"
+#include "Animation.h"
 #include "Buffer.h"
 #include "Button.h"
 #include "CubeMap.h"
@@ -387,6 +388,8 @@ static std::size_t gameTicks = 0;
 
 glm::vec3 weaponOffset{ 0 };
 
+SimpleAnimation foobar{ glm::vec3(-0.025, 0, 0), 32, Easing::Quintic,
+						glm::vec3(-0.25, 0, 0)      , 80, Easing::Linear };
 
 void display()
 {
@@ -443,7 +446,7 @@ void display()
 	//glDisable(GL_DEPTH_TEST);
 	//glDepthMask(GL_FALSE);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	flatLighting.DrawElements<DrawType::Lines>(sphereIndicies);
+	//flatLighting.DrawElements<DrawType::Lines>(sphereIndicies);
 	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
 	//glEnable(GL_DEPTH_TEST);
 	//glDepthMask(GL_TRUE);
@@ -1310,7 +1313,6 @@ void gameTick()
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
-		gameTicks++;
 		{
 			sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
@@ -1432,10 +1434,11 @@ void gameTick()
 		player.velocity *= 0.99;
 
 		// Gun animation
-		auto relative = gameTicks % 128;
-		float small = relative / 127.f;
-		float progress = 1.f - glm::pow(1 - small, 5);
-		weaponOffset = glm::lerp(glm::vec3(0), glm::vec3(0.125, 0, 0), progress);
+		if (gameTicks % foobar.Duration() == 0)
+		{
+			foobar.Start(gameTicks);
+		}
+		weaponOffset = foobar.Get(gameTicks);
 
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
@@ -1451,6 +1454,7 @@ void gameTick()
 		//std::this_thread::sleep_until<std::chrono::steady_clock>(tickStart + tickInterval);
 		//std::this_thread::sleep_until<std::chrono::steady_clock>(desired);
 		lastStart = tickStart;
+		gameTicks++;
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - balb).count() << std::endl;
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	} while (!shouldClose);

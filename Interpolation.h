@@ -12,31 +12,67 @@ enum class Interploation
 };
 */
 
-namespace Interpolation
+namespace Easing
 {
-	template<typename T> inline T Linear(const T& start, const T& end, const double& delta) noexcept
+	inline double Linear(const double& delta) noexcept
 	{
-		return glm::lerp(start, end, delta);
+		return delta;
 	}
 
-	template<typename T> inline T Quadratic(const T& start, const T& end, const double& delta) noexcept
+	inline double Quadratic(const double& delta) noexcept
 	{
-		return glm::lerp(start, end, delta * delta);
+		return delta * delta;
 	}
 
-	template<typename T> inline T Cubic(const T& start, const T& end, const double& delta) noexcept
+	inline double Cubic(const double& delta) noexcept
 	{
-		return glm::lerp(start, end, delta * delta * delta);
+		return glm::pow(delta, 3);
 	}
 
-	template<typename T> inline T Quartic(const T& start, const T& end, const double& delta) noexcept
+	inline double Quartic(const double& delta) noexcept
 	{
-		return glm::lerp(start, end, glm::pow(delta, 4));
+		return glm::pow(delta, 4);
 	}
 
-	template<typename T> inline T Quintic(const T& start, const T& end, const double& delta) noexcept
+	inline double Quintic(const double& delta) noexcept
 	{
-		return glm::lerp(start, end, glm::pow(delta, 5));
+		return glm::pow(delta, 5);
+	}
+
+	template<double X> inline double Power(const double& delta) noexcept
+	{
+		return glm::pow(delta, X);
+	}
+
+	template<double X> inline double EaseOutPower(const double& delta) noexcept
+	{
+		return 1. - glm::pow(1. - delta, X);
+	}
+
+
+	inline double EaseOutLinear(const double& delta) noexcept
+	{
+		return 1. - delta;
+	}
+
+	inline double EaseOutQuadratic(const double& delta) noexcept
+	{
+		return EaseOutPower<2.>(delta);
+	}
+
+	inline double EaseOutCubic(const double& delta) noexcept
+	{
+		return EaseOutPower<3.>(delta);
+	}
+
+	inline double EaseOutQuartic(const double& delta) noexcept
+	{
+		return EaseOutPower<4.>(delta);
+	}
+
+	inline double EaseOutQuintic(const double& delta) noexcept
+	{
+		return EaseOutPower<5.>(delta);
 	}
 }
 #endif // INTERPOLATION_H
