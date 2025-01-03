@@ -391,10 +391,12 @@ glm::vec3 weaponOffset{ 0 }, gooberOffset(0);
 SimpleAnimation foobar{ glm::vec3(-0.025, 0, 0), 32, Easing::Quintic,
 						glm::vec3(-0.25, 0, 0)      , 80, Easing::Linear };
 
-Animation<3, glm::vec3> flubber( glm::vec3(0, 0, 0), 
-	std::array{
-		std::make_tuple(glm::vec3(0, 5, 0), 256ull, Easing::Quintic),
-		std::make_tuple(glm::vec3(0, 10, 0), 256ull, Easing::Quadratic)
+Animation flubber = make_animation( Transform(),
+	{
+		{glm::vec3(0, 5, 0), 25, Easing::Quintic},
+		{glm::vec3(-10, 10, 0), 443, Easing::EaseOutQuadratic },
+		{glm::vec3(0, 10,10), 345, Easing::EaseOutCubic },
+		{glm::vec3(0, 10, -10), 223, Easing::Quadratic }
 	}
 );
 
@@ -1310,6 +1312,7 @@ void idle()
 	*/
 }
 
+glm::vec3 oldPos;
 // *Must* be in a separate thread
 void gameTick()
 {
@@ -1447,13 +1450,19 @@ void gameTick()
 		{
 			foobar.Start(gameTicks);
 		}
-		weaponOffset = foobar.Get(gameTicks);
+		weaponOffset = foobar.Get(gameTicks).position;
 		
 		if (flubber.IsFinished())
 		{
 			flubber.Start(gameTicks);
 		}
-		gooberOffset = flubber.Get(gameTicks);
+		oldPos = gooberOffset;
+		gooberOffset = flubber.Get(gameTicks).position;
+		float deltar = glm::distance(oldPos, gooberOffset);
+		if (deltar > 1)
+		{
+			Log("Big Jump of " << deltar);
+		}
 
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;

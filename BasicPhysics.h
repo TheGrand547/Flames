@@ -5,7 +5,7 @@
 
 struct BasicPhysics
 {
-	glm::vec3 position, velocity;
+	glm::vec3 position{}, velocity{};
 protected:
 	float invMass = 1;
 public:

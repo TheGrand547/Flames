@@ -3,7 +3,9 @@
 #define ANIMATION_H
 #include "glmHelp.h"
 #include "Interpolation.h"
+#include "Transform.h"
 #include <tuple>
+#include <span>
 
 // HACK
 template<typename F> F EaseOut(F functor) noexcept
@@ -11,21 +13,34 @@ template<typename F> F EaseOut(F functor) noexcept
 	return [](const double& delta) {return 1. - functor(1. - delta); };
 }
 
-template<typename T> concept Interpolation = requires(T func, const double& delta)
+
+template<typename T> concept Interpolator = requires(T func, const double& delta)
 {
 	{ func(delta) } -> std::convertible_to<double>;
 };
 
 typedef double (*EasingFunction)(const double&);
 
+struct AnimationElement
+{
+	Transform KeyFrame;
+	std::size_t Duration;
+	EasingFunction Easing;
+};
+
 // TODO: The smarter way of doing it, where every "get" is assumed to be the next tick so less has to be stored and dealt with
 
-template<class Type>
+template<typename InFunc = EasingFunction, typename OutFunc = EasingFunction>
+	requires requires
+{
+	Interpolator<InFunc> and Interpolator<OutFunc>;
+}
 class SimpleAnimation
 {
 protected:
-	Type start, end;
-	EasingFunction easeIn, easeOut;
+	Transform start, end;
+	InFunc easeIn;
+	OutFunc easeOut;
 	// Probably overkill lol
 	std::size_t startTick, inDuration, outDuration;
 	bool finished;
@@ -36,7 +51,7 @@ public:
 		this->finished = false;
 	}
 
-	inline Type Get(const std::size_t& currentTick) noexcept
+	inline Transform Get(const std::size_t& currentTick) noexcept
 	{
 		if (this->finished)
 		{
@@ -50,26 +65,12 @@ public:
 				this->finished = true;
 			}
 			double delta = static_cast<double>(currentTick - (this->startTick + this->inDuration)) / this->outDuration;
-			if constexpr (std::is_same_v<Type, glm::quat>)
-			{
-				return glm::slerp(this->end, this->start, static_cast<float>(this->easeOut(delta)));
-			}
-			else
-			{
-				return glm::lerp(this->end, this->start, static_cast<float>(this->easeOut(delta)));
-			}
+			return Interpolation::lerp(this->end, this->start, this->easeOut(delta));
 		}
 		else
 		{
 			double delta = static_cast<double>(currentTick - this->startTick) / this->inDuration;
-			if constexpr (std::is_same_v<Type, glm::quat>)
-			{
-				return glm::slerp(this->start, this->end, static_cast<float>(this->easeIn(delta)));
-			}
-			else
-			{
-				return glm::lerp(this->start, this->end, static_cast<float>(this->easeIn(delta)));
-			}
+			return Interpolation::lerp(this->start, this->end, this->easeIn(delta));
 		}
 	}
 
@@ -83,16 +84,16 @@ public:
 		return this->finished;
 	}
 
-	SimpleAnimation(const Type& start, const Type& end, std::size_t inDuration = 128, EasingFunction easeIn = Easing::Linear,
-							std::size_t outDuration = 0, EasingFunction easeOut = Easing::Linear) noexcept : start(start), end(end),
+	SimpleAnimation(const Transform& start, const Transform& end, std::size_t inDuration = 128, InFunc easeIn = Easing::Linear,
+							std::size_t outDuration = 0, OutFunc easeOut = Easing::Linear) noexcept : start(start), end(end),
 		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
 
-	SimpleAnimation(const Type& start, std::size_t inDuration, EasingFunction easeIn,
-		const Type& end, std::size_t outDuration, EasingFunction easeOut) noexcept : start(start), end(end),
+	SimpleAnimation(const Transform& start, std::size_t inDuration, InFunc easeIn,
+		const Transform& end, std::size_t outDuration, OutFunc easeOut) noexcept : start(start), end(end),
 		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
 };
 
-template<std::size_t N, class T>
+template<std::size_t N>
 	requires requires
 {
 	N > 1;
@@ -100,23 +101,26 @@ template<std::size_t N, class T>
 class Animation
 {
 public:
-	/*
-	struct Element
-	{
-		T KeyFrame;
-		std::size_t Duration;
-		EasingFunction Easing;
-	};*/
-	typedef std::tuple<T, std::size_t, EasingFunction> Element;
-
-	template<typename Failure>
-	Animation(const T& base, const std::array<Failure, N - 1>& transitions) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
+	
+	Animation(const Transform& base, AnimationElement const (&transitions)[N - 1]) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
 	{
 		keyFrames[0] = base;
+		auto start = transitions;
 		for (std::size_t i = 1; i < N; i++)
 		{
-			keyFrames[i] = std::get<0>(transitions[i - 1]);
-			stages[i - 1] = std::make_pair(std::get<1>(transitions[i - 1]), std::get<2>(transitions[i - 1]));
+			keyFrames[i] = start[i - 1].KeyFrame;
+			stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
+		}
+	}
+	
+	Animation(const Transform& base, const std::initializer_list<AnimationElement>& transitions) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
+	{
+		keyFrames[0] = base;
+		auto start = transitions.begin();
+		for (std::size_t i = 1; i < N; i++)
+		{
+			keyFrames[i] = start[i - 1].KeyFrame;
+			stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
 		}
 	}
 
@@ -127,7 +131,7 @@ public:
 		this->finished = false;
 	}
 
-	T Get(const std::size_t& currentTick) noexcept
+	Transform Get(const std::size_t& currentTick) noexcept
 	{
 		if (this->finished || this->stageIndex >= (N - 1))
 		{
@@ -141,7 +145,7 @@ public:
 			this->startTick = currentTick;
 			return this->keyFrames[this->stageIndex++];
 		}
-		return glm::lerp(this->keyFrames[this->stageIndex], this->keyFrames[this->stageIndex + 1], static_cast<float>(current.second(delta)));
+		return Interpolation::lerp(this->keyFrames[this->stageIndex], this->keyFrames[this->stageIndex + 1], current.second(delta));
 	}
 
 	inline bool IsFinished() const noexcept
@@ -150,10 +154,15 @@ public:
 	}
 
 protected:
-	std::array<T, N> keyFrames;
+	std::array<Transform, N> keyFrames;
 	std::array<std::pair<std::size_t, EasingFunction>, N - 1> stages;
 	std::size_t startTick, stageIndex;
 	bool finished;
 };
+
+template<std::size_t N> Animation<N + 1> make_animation(const Transform& base, AnimationElement const (&transitions)[N])
+{
+	return Animation<N + 1>(base, transitions);
+}
 
 #endif // ANIMATION_H

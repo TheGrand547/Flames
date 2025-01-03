@@ -2,6 +2,8 @@
 #ifndef INTERPOLATION_H
 #define INTERPOLATION_H
 #include "glmHelp.h"
+#include <glm/gtx/compatibility.hpp>
+#include "Transform.h"
 
 // TODO: The rest of these things
 /*
@@ -75,4 +77,14 @@ namespace Easing
 		return EaseOutPower<5.>(delta);
 	}
 }
+
+namespace Interpolation
+{
+	inline Transform lerp(const Transform& start, const Transform& end, const double& delta) noexcept
+	{
+		return Transform(glm::lerp(start.position, end.position, static_cast<float>(delta)),
+			glm::slerp(start.rotation, start.rotation, static_cast<float>(delta)));
+	}
+}
+
 #endif // INTERPOLATION_H

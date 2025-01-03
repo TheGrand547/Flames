@@ -241,6 +241,7 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TextureUtil.h" />
+    <ClInclude Include="Transform.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="typedefs.h" />
     <ClInclude Include="UniformBuffer.h" />
