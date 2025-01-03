@@ -143,7 +143,7 @@ public:
 		if (currentTick - this->startTick >= current.first)
 		{
 			this->startTick = currentTick;
-			return this->keyFrames[this->stageIndex++];
+			return this->keyFrames[++this->stageIndex];
 		}
 		return Interpolation::lerp(this->keyFrames[this->stageIndex], this->keyFrames[this->stageIndex + 1], current.second(delta));
 	}

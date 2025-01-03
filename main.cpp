@@ -393,10 +393,11 @@ SimpleAnimation foobar{ glm::vec3(-0.025, 0, 0), 32, Easing::Quintic,
 
 Animation flubber = make_animation( Transform(),
 	{
-		{glm::vec3(0, 5, 0), 25, Easing::Quintic},
+		{glm::vec3(0, 5, 0), 120, Easing::Quintic},
 		{glm::vec3(-10, 10, 0), 443, Easing::EaseOutQuadratic },
 		{glm::vec3(0, 10,10), 345, Easing::EaseOutCubic },
-		{glm::vec3(0, 10, -10), 223, Easing::Quadratic }
+		{glm::vec3(0, 10, -10), 223, Easing::Quadratic },
+		{glm::vec3(), 120, Easing::EaseOutQuadratic}
 	}
 );
 
