@@ -387,17 +387,16 @@ using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
 
 glm::vec3 weaponOffset{ 0 }, gooberOffset(0);
+glm::vec3 gooberAngles{};
 
-SimpleAnimation foobar{ glm::vec3(-0.025, 0, 0), 32, Easing::Quintic,
-						glm::vec3(-0.25, 0, 0)      , 80, Easing::Linear };
+SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
+						{glm::vec3(-0.25, 0, 0)}, 80, Easing::Linear };
 
 Animation flubber = make_animation( Transform(),
 	{
-		{glm::vec3(0, 5, 0), 120, Easing::Quintic},
-		{glm::vec3(-10, 10, 0), 443, Easing::EaseOutQuadratic },
-		{glm::vec3(0, 10,10), 345, Easing::EaseOutCubic },
-		{glm::vec3(0, 10, -10), 223, Easing::Quadratic },
-		{glm::vec3(), 120, Easing::EaseOutQuadratic}
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, (50.f), 0.f)))}, 120, Easing::EaseOutCubic},
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(10.f, 0, 32.f)))}, 120, Easing::EaseOutQuadratic},
+		{{glm::vec3(), glm::quat()}, 120, Easing::EaseOutQuartic},
 	}
 );
 
@@ -730,7 +729,7 @@ void display()
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(guyBuffer);
 
-	Model defaults{ glm::vec3(0, 2, 0) };
+	Model defaults{ glm::vec3(0, 2, 0) , glm::degrees(gooberAngles)};
 	defaults.translation += gooberOffset;
 	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
 	flatLighting.SetMat4("normMat", defaults.GetNormalMatrix());
@@ -1458,7 +1457,11 @@ void gameTick()
 			flubber.Start(gameTicks);
 		}
 		oldPos = gooberOffset;
-		gooberOffset = flubber.Get(gameTicks).position;
+		auto _temp = flubber.Get(gameTicks);
+		gooberOffset = _temp.position;
+		float xx, yy, zz;
+		glm::extractEulerAngleYXZ(glm::mat4_cast(_temp.rotation), yy, xx, zz);
+		gooberAngles = glm::vec3(xx, yy, zz);
 		float deltar = glm::distance(oldPos, gooberOffset);
 		if (deltar > 1)
 		{

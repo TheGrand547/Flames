@@ -83,7 +83,7 @@ namespace Interpolation
 	inline Transform lerp(const Transform& start, const Transform& end, const double& delta) noexcept
 	{
 		return Transform(glm::lerp(start.position, end.position, static_cast<float>(delta)),
-			glm::slerp(start.rotation, start.rotation, static_cast<float>(delta)));
+			glm::slerp(start.rotation, end.rotation, static_cast<float>(delta)));
 	}
 }
 

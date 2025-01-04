@@ -108,8 +108,9 @@ public:
 		auto start = transitions;
 		for (std::size_t i = 1; i < N; i++)
 		{
-			keyFrames[i] = start[i - 1].KeyFrame;
-			stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
+			this->keyFrames[i] = start[i - 1].KeyFrame;
+			this->stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
+			std::cout << start[i - 1].KeyFrame.rotation << "\n";
 		}
 	}
 	
