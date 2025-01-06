@@ -110,7 +110,6 @@ public:
 		{
 			this->keyFrames[i] = start[i - 1].KeyFrame;
 			this->stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
-			std::cout << start[i - 1].KeyFrame.rotation << "\n";
 		}
 	}
 	

@@ -1,13 +1,16 @@
 #pragma once
 #ifndef MODEL_H
 #define MODEL_H
-#include <glm/glm.hpp>
+#include "glmHelp.h"
 
 struct Model
 {
-	glm::vec3 rotation, scale, translation;
+	glm::vec3 scale, translation;
+	glm::quat rotation;
 
-	inline Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f, 1.f, 1.f)) noexcept;
+	// Euler angles are always assumed to be in DEGREES
+	inline Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f)) noexcept;
+	inline Model(glm::vec3 translation, glm::quat rotation, glm::vec3 scale = glm::vec3(1.f)) noexcept;
 	~Model() = default;
 
 	Model(const Model& mode) noexcept = default;
@@ -18,7 +21,13 @@ struct Model
 	glm::mat4 GetNormalMatrix() const noexcept;
 };
 
-inline Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) noexcept : translation(translation), rotation(rotation), scale(scale)
+inline Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) noexcept : translation(translation), 
+				rotation(glm::radians(rotation)), scale(scale)
+{
+
+}
+
+inline Model::Model(glm::vec3 translation, glm::quat rotation, glm::vec3 scale) noexcept : translation(translation), rotation(rotation), scale(scale)
 {
 
 }

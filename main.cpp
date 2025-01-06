@@ -387,7 +387,7 @@ using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
 
 glm::vec3 weaponOffset{ 0 }, gooberOffset(0);
-glm::vec3 gooberAngles{};
+glm::quat gooberAngles{};
 
 SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
 						{glm::vec3(-0.25, 0, 0)}, 80, Easing::Linear };
@@ -395,6 +395,8 @@ SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
 Animation flubber = make_animation( Transform(),
 	{
 		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, (50.f), 0.f)))}, 120, Easing::EaseOutCubic},
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, (50.f), 0.f)))}, 120, Easing::EaseOutCubic},
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(10.f, 0, 32.f)))}, 120, Easing::EaseOutQuadratic},
 		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(10.f, 0, 32.f)))}, 120, Easing::EaseOutQuadratic},
 		{{glm::vec3(), glm::quat()}, 120, Easing::EaseOutQuartic},
 	}
@@ -729,7 +731,7 @@ void display()
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(guyBuffer);
 
-	Model defaults{ glm::vec3(0, 2, 0) , glm::degrees(gooberAngles)};
+	Model defaults{ glm::vec3(0, 2, 0) , gooberAngles};
 	defaults.translation += gooberOffset;
 	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
 	flatLighting.SetMat4("normMat", defaults.GetNormalMatrix());
@@ -1367,7 +1369,7 @@ void gameTick()
 							boxed.ReOrient(dumber);
 							boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
 							boxed.ReCenter(collision.point - collision.axis * BulletSpeed);
-							Decal::GetDecal(boxed, Level::Geometry, decalVertex);
+							//Decal::GetDecal(boxed, Level::Geometry, decalVertex);
 						}
 						spherePlaceholder.center = collision.point + collision.normal * EPSILON;
 						bullets[i].direction = glm::reflect(bullets[i].direction, collision.normal);
@@ -1446,11 +1448,6 @@ void gameTick()
 
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
-		if (foobar.IsFinished())
-		{
-			foobar.Start(gameTicks);
-		}
-		weaponOffset = foobar.Get(gameTicks).position;
 		
 		if (flubber.IsFinished())
 		{
@@ -1459,10 +1456,17 @@ void gameTick()
 		oldPos = gooberOffset;
 		auto _temp = flubber.Get(gameTicks);
 		gooberOffset = _temp.position;
-		float xx, yy, zz;
-		glm::extractEulerAngleYXZ(glm::mat4_cast(_temp.rotation), yy, xx, zz);
-		gooberAngles = glm::vec3(xx, yy, zz);
+		gooberAngles = _temp.rotation;
 		float deltar = glm::distance(oldPos, gooberOffset);
+
+		if (foobar.IsFinished())
+		{
+			glm::vec3 forward = glm::mat4_cast(_temp.rotation) * glm::vec4(1.f, 0.f, 0.f, 1.f);
+			foobar.Start(gameTicks);
+			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset +  glm::vec3(0, 2, 0), glm::normalize(forward)});
+		}
+		weaponOffset = foobar.Get(gameTicks).position;
+
 		if (deltar > 1)
 		{
 			Log("Big Jump of " << deltar);
@@ -2125,10 +2129,10 @@ void init()
 		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, instancedModels);
 	}
 	// Diagonal Walls
-	instancedModels.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(0,  45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	instancedModels.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(0, -45,  90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	instancedModels.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(0,  45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
-	instancedModels.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(0, -45, -90.f), glm::vec3(1, 1, static_cast<float>(sqrt(2))));
+	instancedModels.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(90,  -45,  0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(-90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(-90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
 
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));

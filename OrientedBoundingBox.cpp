@@ -7,8 +7,10 @@ OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3
 	this->Rotate(euler);
 }
 
-OrientedBoundingBox::OrientedBoundingBox(const Model& model) noexcept : OrientedBoundingBox(model.rotation, model.scale)
+OrientedBoundingBox::OrientedBoundingBox(const Model& model) noexcept : matrix(glm::mat4_cast(model.rotation)), halfs(glm::abs(model.scale))
 {
+	for (glm::length_t i = 0; i < 3; i++)
+		this->matrix[i] = glm::normalize(this->matrix[i]);
 	this->matrix[3] = glm::vec4(model.translation, 1);
 }
 
