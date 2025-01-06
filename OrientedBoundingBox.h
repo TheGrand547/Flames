@@ -122,7 +122,7 @@ public:
 };
 
 inline OrientedBoundingBox::OrientedBoundingBox(const AABB& other) noexcept : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0),
-																				glm::vec4(other.GetCenter(), 1)), halfs(other.Deviation())
+																				glm::vec4(other.GetCenter(), 1)), halfs(glm::abs(other.Deviation()))
 {
 
 }

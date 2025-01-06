@@ -224,7 +224,11 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 			glm::vec3 otherAxis = other.matrix[truncatedIndex];
 			glm::vec3 crossResult = glm::cross(myAxis, glm::vec3(otherAxis));
 
-			float crossLength = 1.f / glm::length(crossResult);
+			float crossLength = glm::length(crossResult);
+			// Kind of a hack, but ensures that this axis is skipped if the relevant axes are parallel
+			[[unlikely]] if (crossLength < EPSILON)
+				continue;
+			crossLength = 1.f / crossLength;
 			separatingAxes[i] = crossResult * crossLength;
 
 
@@ -256,6 +260,12 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 		{
 			std::cout << "Error in OBB Optimization: " << i << ":" << axialIndex <<
 				":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << cardinal << std::endl;
+			if (truncatedIndex >= 2)
+			{
+				std::cout << "This:Other:Cross\n" << this->matrix[i / 5] << ":" << other.matrix[truncatedIndex - 2] 
+					<< ":" << glm::normalize(glm::cross(glm::vec3(this->matrix[i / 5]), glm::vec3(other.matrix[truncatedIndex - 2]))) << "\n";
+				
+			}
 		}
 #endif // _DEBUG
 		const float overlap = obbProjections - deltaProjection;

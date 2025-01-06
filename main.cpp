@@ -1168,10 +1168,10 @@ void idle()
 
 		OBB playerObb(playerBounds);
 		//playerObb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
-		playerObb.Rotate(glm::vec3(0, -cameraRotation.y, 0));
+		//playerObb.Rotate(glm::vec3(0, -cameraRotation.y, cameraRotation.z));
 
 		playerBox.Translate(glm::vec3(2, 0, 0));
-		playerBox.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
+		//playerBox.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
 		for (auto& wall : Level::Geometry)
 		{
 			if (wall.Overlap(playerObb))
@@ -1931,8 +1931,29 @@ int main(int argc, char** argv)
 
 void Dumber(std::size_t id) {}
 
+void testOBB()
+{
+	std::cout << "OBB Testing\n";
+	std::srand(NULL);
+	for (int i = 0; i < 1000; i++)
+	{
+		glm::vec3 forw = glm::ballRand(1.f), size = glm::ballRand(0.5f);
+		OBB tester(glm::degrees(forw), size);
+		tester.Translate(glm::ballRand(0.35f));
+		for (int x = 0; x < 50; x++)
+		{
+			glm::vec3 forw2 = glm::ballRand(1.f), size2 = glm::ballRand(0.5f);
+			OBB tester2(glm::degrees(forw2), size2);
+			tester2.Translate(glm::ballRand(0.75f));
+			tester.Overlap(tester2);
+		}
+	}
+	std::cout << "OBB Testing Over\n";
+}
+
 void init()
 {
+	//testOBB();
 	std::srand(NULL);
 	// OpenGL Feature Enabling
 	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
