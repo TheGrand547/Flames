@@ -25,6 +25,6 @@ void OBJReader::ReadOBJ(const std::string& filename, ArrayBuffer& elements, Elem
 	}
 	else
 	{
-		LogF("Unable to load model at index %uz", id);
+		Log("Unable to load model at index " << id);
 	}
 }

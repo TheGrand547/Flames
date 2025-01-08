@@ -228,6 +228,7 @@ Shader billboardShader;
 Shader voronoi;
 Shader lighting;
 Shader vision;
+Shader ship;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -402,6 +403,8 @@ Animation flubber = make_animation( Transform(),
 	}
 );
 
+glm::vec3 lightColor;
+
 void display()
 {
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
@@ -450,7 +453,7 @@ void display()
 	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius)};
 
 	visionModel.rotation = 9.f * glm::vec3(gameTicks / 120.f, gameTicks / 420.f, gameTicks / 80.f);
-
+	flatLighting.SetVec3("lightColor", glm::vec3(1.f));
 	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
 	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
@@ -727,19 +730,27 @@ void display()
 	dsf[2] *= 0.1f;
 	uniform.SetMat4("Model", dsf);
 	//uniform.DrawElementsMemory<DrawType::Lines>(cubeOutline);
-	flatLighting.SetActiveShader();
+
+	ship.SetActiveShader();
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(guyBuffer);
 
-	Model defaults{ glm::vec3(0, 2, 0) , gooberAngles};
+	// TODO: Change light color over time to add visual variety
+	Model defaults{ glm::vec3(0, 3, 0) , gooberAngles};
 	defaults.translation += gooberOffset;
-	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
-	flatLighting.SetMat4("normMat", defaults.GetNormalMatrix());
-	flatLighting.DrawElements<DrawType::Triangle>(guyIndex);
-	defaults.translation += weaponOffset;
-	flatLighting.SetMat4("modelMat", defaults.GetModelMatrix());
+	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
+	ship.SetVec3("lightColor", lightColor);
+	ship.SetMat4("modelMat", defaults.GetModelMatrix());
+	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
+	ship.SetTextureUnit("hatching", texture);
+	
+	ship.DrawElements<DrawType::Triangle>(guyIndex);
+
+	Model defaulter{ weaponOffset };
+
+	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
 	meshVAO.BindArrayBuffer(guyBuffer2);
-	flatLighting.DrawElements<DrawType::Triangle>(guyIndex2);
+	ship.DrawElements<DrawType::Triangle>(guyIndex2);
 
 
 	glDepthMask(GL_TRUE);
@@ -1446,6 +1457,11 @@ void gameTick()
 		cameraPosition = player.ApplyForces({}, Tick::TimeDelta);
 		player.velocity *= 0.99;
 
+		if (gameTicks % 256 == 0)
+		{
+			lightColor = glm::abs(glm::ballRand(1.f));
+		}
+
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
 		
@@ -1463,7 +1479,7 @@ void gameTick()
 		{
 			glm::vec3 forward = glm::mat4_cast(_temp.rotation) * glm::vec4(1.f, 0.f, 0.f, 1.f);
 			foobar.Start(gameTicks);
-			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset +  glm::vec3(0, 2, 0), glm::normalize(forward)});
+			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset +  glm::vec3(0, 3, 0), glm::normalize(forward)});
 		}
 		weaponOffset = foobar.Get(gameTicks).position;
 
@@ -1991,6 +2007,7 @@ void init()
 	lighting.Compile("framebuffer", "funky_test");
 	nineSlicer.CompileSimple("ui_nine");
 	pathNodeView.CompileSimple("path_node");
+	ship.CompileSimple("mesh_final");
 	skinner.CompileSimple("skin");
 	sphereMesh.CompileSimple("mesh");
 	stencilTest.CompileSimple("stencil_");
@@ -2010,6 +2027,7 @@ void init()
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
 	pathNodeView.UniformBlockBinding("Camera", 0);
+	ship.UniformBlockBinding("Camera", 0);
 	skinner.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);

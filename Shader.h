@@ -97,6 +97,7 @@ public:
 	inline GLuint GetProgram() const;
 	inline void SetActiveShader();
 	inline void SetInt(const std::string& name, const int i) const;
+	inline void SetUnsignedInt(const std::string& name, const unsigned int i) const;
 	inline void SetFloat(const std::string& name, const float i) const;
 	inline void SetVec2(const std::string& name, const glm::vec2& vec) const;
 	inline void SetVec3(const std::string& name, const glm::vec3& vec) const;
@@ -159,6 +160,11 @@ inline void Shader::SetActiveShader()
 inline void Shader::SetInt(const std::string& name, const int i) const
 {
 	glUniform1i(this->UniformIndex(name), i);
+}
+
+inline void Shader::SetUnsignedInt(const std::string& name, const unsigned int i) const
+{
+	glUniform1ui(this->UniformIndex(name), i);
 }
 
 inline void Shader::SetFloat(const std::string& name, const float i) const
