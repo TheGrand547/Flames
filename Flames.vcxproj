@@ -181,6 +181,7 @@
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="StaticOctTree.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
+    <ClCompile Include="Tetra.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="TextureUtil.cpp" />
@@ -238,6 +239,7 @@
     <ClInclude Include="stb_perlin.h" />
     <ClInclude Include="stb_rect_pack.h" />
     <ClInclude Include="stb_truetype.h" />
+    <ClInclude Include="Tetra.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TextureUtil.h" />

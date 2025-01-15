@@ -57,6 +57,7 @@
 #include "DemoGuy.h"
 #include "kdTree.h"
 #include "Level.h"
+#include "Tetra.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -204,11 +205,13 @@ ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
 ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
 ArrayBuffer debugPointing;
+ArrayBuffer tetragram;
 
 ArrayBuffer guyBuffer, guyBuffer2;
 ElementArray guyIndex, guyIndex2;
 
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
+ElementArray tetragramIndex;
 
 UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
 
@@ -229,6 +232,7 @@ Shader voronoi;
 Shader lighting;
 Shader vision;
 Shader ship;
+Shader basic;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -789,7 +793,30 @@ void display()
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawArray<DrawType::Lines>(rayBuffer);
+
+
+	basic.SetActiveShader();
+	plainVAO.BindArrayBuffer(tetragram);
+	bland.translation = glm::vec3(0, 5, 0);
+	basic.SetVec4("Color", glm::vec4(1, 0, 0, 1));
+	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 7.f + 120.f)));
+	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 2, 0, gameTicks / 5.3) * 4.f));
+	basic.SetMat4("Model", bland.GetModelMatrix());
+	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+
+	basic.SetVec4("Color", glm::vec4(1, 1, 0, 1));
+	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 5.f)));
+	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 1.5, gameTicks / 43, gameTicks / 4.f) * 4.f));
+	basic.SetMat4("Model", bland.GetModelMatrix());
+	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+
+	basic.SetVec4("Color", glm::vec4(1, 0.65, 0, 1));
+	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 3.f + 150.f)));
+	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 6, gameTicks / 23, gameTicks / 2.1) * 4.f));
+	basic.SetMat4("Model", bland.GetModelMatrix());
+	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
 	glLineWidth(1.f);
+
 	//EnableGLFeatures<DepthTesting>();
 
 	// Sphere drawing
@@ -1995,6 +2022,7 @@ void init()
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders");
+	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
@@ -2020,6 +2048,7 @@ void init()
 	widget.CompileSimple("widget");
 
 
+	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
@@ -2360,6 +2389,8 @@ void init()
 	normalMap.SetAnisotropy(16.f);
 
 
+	tetragram.BufferData(Tetrahedron::GetPoints());
+	tetragramIndex.BufferData(Tetrahedron::GetTriangleIndex());
 
 	{
 		QUICKTIMER("KdTree Generation");
