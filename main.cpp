@@ -1348,10 +1348,10 @@ void idle()
 
 	if (keyState['B'])
 	{
-		managedProcess.AddExhaust(cameraPosition + unit, unit, 1200);
+		managedProcess.AddExhaust(cameraPosition + unit, unit * 2.f, 256);
 		//std::cout << cameraPosition + forward << std::endl;
 	}
-	managedProcess.Update(exhaustBuffer);
+	managedProcess.FillBuffer(exhaustBuffer);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
@@ -1528,6 +1528,10 @@ void gameTick()
 			Log("Big Jump of " << deltar);
 		}
 
+		managedProcess.Update();
+
+
+		// End of Tick timekeeping
 		auto balb = std::chrono::steady_clock::now();
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
 		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };

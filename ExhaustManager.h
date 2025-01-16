@@ -29,7 +29,8 @@ public:
 	~ExhaustManager() noexcept = default;
 	
 	void AddExhaust(const glm::vec3& position, const glm::vec3& velocity, unsigned int lifetime = 128);
-	void Update(ArrayBuffer& output) noexcept;
+	void Update() noexcept;
+	void FillBuffer(ArrayBuffer& output) const noexcept;
 };
 
 #endif // EXHAUST_MANAGER
