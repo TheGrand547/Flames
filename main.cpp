@@ -58,6 +58,7 @@
 #include "kdTree.h"
 #include "Level.h"
 #include "Tetra.h"
+#include "ExhaustManager.h"
 
 static const std::array<glm::vec3, 8> plainCubeVerts {
 	{
@@ -207,6 +208,7 @@ ArrayBuffer decals;
 ArrayBuffer debugPointing;
 ArrayBuffer tetragram;
 ArrayBuffer instances, dummyEngine;
+ArrayBuffer exhaustBuffer;
 
 ArrayBuffer guyBuffer, guyBuffer2;
 ElementArray guyIndex, guyIndex2;
@@ -411,6 +413,8 @@ Animation flubber = make_animation( Transform(),
 );
 
 glm::vec3 lightColor;
+
+ExhaustManager managedProcess;
 
 void display()
 {
@@ -796,37 +800,18 @@ void display()
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawArray<DrawType::Lines>(rayBuffer);
-
-
-	basic.SetActiveShader();
-	plainVAO.BindArrayBuffer(tetragram);
-	bland.translation = glm::vec3(0, 5, 0);
-	basic.SetVec4("Color", glm::vec4(1, 0, 0, 1));
-	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 7.f + 120.f)));
-	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 2, 0, gameTicks / 5.3) * 4.f));
-	basic.SetMat4("Model", bland.GetModelMatrix());
-	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
-
-	basic.SetVec4("Color", glm::vec4(1, 1, 0, 1));
-	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 5.f)));
-	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 1.5, gameTicks / 43, gameTicks / 4.f) * 4.f));
-	basic.SetMat4("Model", bland.GetModelMatrix());
-	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
-
-	basic.SetVec4("Color", glm::vec4(1, 0.65, 0, 1));
-	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 3.f + 150.f)));
-	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 6, gameTicks / 23, gameTicks / 2.1) * 4.f));
-	basic.SetMat4("Model", bland.GetModelMatrix());
-	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+	
 	glLineWidth(1.f);
 
 	engine.SetActiveShader();
 	engineInstance.Bind();
 	engineInstance.BindArrayBuffer(instances);
 	engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
-	engine.SetUnsignedInt("Period", 128);
+	engine.SetUnsignedInt("Period", 150);
 	engine.DrawArrayInstanced<DrawType::Triangle>(dummyEngine, instances);
 
+	engineInstance.BindArrayBuffer(exhaustBuffer);
+	engine.DrawArrayInstanced<DrawType::Triangle>(dummyEngine, exhaustBuffer);
 	//EnableGLFeatures<DepthTesting>();
 
 	// Sphere drawing
@@ -1136,6 +1121,9 @@ struct te
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
+
+
+// This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
 {
 	static auto lastIdleStart = std::chrono::high_resolution_clock::now();
@@ -1148,7 +1136,7 @@ void idle()
 	const TimeDelta delta = idleStart - lastIdleStart;
 
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
-	
+
 	auto idleDelta = idleTime.count() / 1000;
 	auto displayDelta = displayTime.count() / 1000;
 	auto renderDelta = renderDelay.count() / 1000;
@@ -1175,14 +1163,15 @@ void idle()
 	// This will be used for "release" mode as it's faster but noisier
 	if (!idleSimple) idleSimple = idleDelta;
 	if (!displaySimple) displaySimple = displayDelta;
-	idleSimple =  (idleSimple / 2) + (idleDelta / 2);
-	displaySimple =  (displaySimple / 2) + (displayDelta / 2);
+	idleSimple = (idleSimple / 2) + (idleDelta / 2);
+	displaySimple = (displaySimple / 2) + (displayDelta / 2);
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
 	float turnSpeed = 100 * timeDelta;
 
 	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
+	const glm::vec3 unit = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
 	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
@@ -1292,7 +1281,7 @@ void idle()
 		}
 	}
 	movingSphere = spherePlaceholder.center;
-	
+
 	if (reRenderText && letters.str().size() > 0)
 	{
 		reRenderText = false;
@@ -1356,6 +1345,13 @@ void idle()
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	decals.BufferData(decalVertex, StaticDraw);
+
+	if (keyState['B'])
+	{
+		managedProcess.AddExhaust(cameraPosition + unit, unit, 1200);
+		//std::cout << cameraPosition + forward << std::endl;
+	}
+	managedProcess.Update(exhaustBuffer);
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;

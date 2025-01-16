@@ -10,7 +10,7 @@ layout(std140, binding = 0) uniform Camera
 	mat4 Projection;
 };
 
-// TODO: uniform
+// TODO: uniform block binding
 uniform uint Time;
 uniform uint Period;
 
@@ -58,10 +58,12 @@ void main()
 	float ratio = (TAU) * float(Time) / float(Period);
 	// Provide variance between the three individual tetrahedrons
 	float instanceOffset = floor(gl_VertexID / 12);
-	float offset = gl_InstanceID * (OFFSET + instanceOffset) + instanceOffset;
+	float offset = gl_InstanceID * (OFFSET + instanceOffset) + instanceOffset + gl_InstanceID;
 	colorIn = vec4(Colors[indexed], 1);
 	
 	vec3 local = Points[indexed] * Position.w * 0.5f;
+	if (gl_InstanceID % 2 == 1)
+		local = -local;
 	
 	// Rotate around z axis
 	local.xy *= rotate(1.3 * ratio + offset);
