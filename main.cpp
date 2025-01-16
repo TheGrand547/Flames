@@ -206,6 +206,7 @@ ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
 ArrayBuffer debugPointing;
 ArrayBuffer tetragram;
+ArrayBuffer instances, dummyEngine;
 
 ArrayBuffer guyBuffer, guyBuffer2;
 ElementArray guyIndex, guyIndex2;
@@ -233,6 +234,7 @@ Shader lighting;
 Shader vision;
 Shader ship;
 Shader basic;
+Shader engine;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -243,6 +245,7 @@ CubeMap mapper;
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
 VAO nineSliced, billboardVAO;
 VAO skinInstance;
+VAO engineInstance;
 
 // Not explicitly tied to OpenGL Globals
 
@@ -802,20 +805,27 @@ void display()
 	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 7.f + 120.f)));
 	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 2, 0, gameTicks / 5.3) * 4.f));
 	basic.SetMat4("Model", bland.GetModelMatrix());
-	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
 
 	basic.SetVec4("Color", glm::vec4(1, 1, 0, 1));
 	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 5.f)));
 	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 1.5, gameTicks / 43, gameTicks / 4.f) * 4.f));
 	basic.SetMat4("Model", bland.GetModelMatrix());
-	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
 
 	basic.SetVec4("Color", glm::vec4(1, 0.65, 0, 1));
 	bland.scale = glm::vec3(0.75f + 0.125 * glm::cos(glm::radians(gameTicks / 3.f + 150.f)));
 	bland.rotation = glm::quat(glm::radians(glm::vec3(gameTicks / 6, gameTicks / 23, gameTicks / 2.1) * 4.f));
 	basic.SetMat4("Model", bland.GetModelMatrix());
-	basic.DrawElements<DrawType::Triangle>(tetragramIndex);
+	//basic.DrawElements<DrawType::Triangle>(tetragramIndex);
 	glLineWidth(1.f);
+
+	engine.SetActiveShader();
+	engineInstance.Bind();
+	engineInstance.BindArrayBuffer(instances);
+	engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
+	engine.SetUnsignedInt("Period", 128);
+	engine.DrawArrayInstanced<DrawType::Triangle>(dummyEngine, instances);
 
 	//EnableGLFeatures<DepthTesting>();
 
@@ -851,7 +861,7 @@ void display()
 	sphereMesh.SetTextureUnit("textureIn", texture, 0);
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
-	sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
+	//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
 	for (auto& bullet : bullets)
 	{
 		Model localModel;
@@ -1321,6 +1331,13 @@ void idle()
 	pathway.pop_back();
 	pathway.pop_back();
 
+	auto local = gameTicks % 128;
+	float timeA = 1 - (((local + 25) % 128) / 128.f),
+		timeB = 1 - (((local + 74) % 128) / 128.f),
+		timeC = 1 - (((local + 100) % 128) / 128.f);
+	std::array<glm::vec4, 3> engineEffect = { glm::vec4(0, 6, 0, Easing::EaseOutCubic(timeA)),
+		glm::vec4(2, 6, 0, Easing::EaseOutQuintic(timeB)), glm::vec4(-2, 6, 0, Easing::EaseOutQuintic(timeC)) };
+	instances.BufferData(engineEffect);
 
 	skinMats.fill(glm::mat4(1));
 	skinMats[0][3] = glm::vec4(0, 0, 0, 1);
@@ -2026,6 +2043,7 @@ void init()
 	billboardShader.CompileSimple("texture");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
+	engine.CompileSimple("engine");
 	expand.Compile("framebuffer", "expand");
 	flatLighting.CompileSimple("lightflat");
 	fontShader.CompileSimple("font");
@@ -2052,6 +2070,7 @@ void init()
 	billboardShader.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
+	engine.UniformBlockBinding("Camera", 0);
 	flatLighting.UniformBlockBinding("Camera", 0);
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
@@ -2133,6 +2152,13 @@ void init()
 	mapper.Generate({ "Textures/skybox/right.jpg", "Textures/skybox/left.jpg", "Textures/skybox/top.jpg",
 		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
 	*/
+
+	std::array<glm::vec4, 3> engineEffect = { };
+	instances.BufferData(engineEffect);
+	engineInstance.ArrayFormatOverride<glm::vec4>("Position", engine, 0, 1);
+	engineInstance.BufferBindingPointDivisor(0, 1);
+	std::array<unsigned int, 36> fillibuster{};
+	dummyEngine.BufferData(fillibuster);
 
 	stickBuffer.BufferData(stick);
 	solidCubeIndex.BufferData(cubeIndicies);
