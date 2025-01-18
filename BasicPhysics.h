@@ -2,6 +2,7 @@
 #ifndef BASIC_PHYSICS_H
 #define BASIC_PHYSICS_H
 #include "glmHelp.h"
+#include "util.h"
 
 struct BasicPhysics
 {
@@ -19,7 +20,7 @@ public:
 	inline BasicPhysics(const glm::vec3& position, const glm::vec3& velocity, const float& mass = 1) noexcept
 		: position(position), velocity(velocity), invMass(1.f / mass) {}
 
-	inline glm::vec3 ApplyForces(const glm::vec3& forces, const float& timeStep) noexcept
+	inline glm::vec3 ApplyForces(const glm::vec3& forces, const float& timeStep = Tick::TimeDelta) noexcept
 	{
 		// TODO: Set max speed somewhere
 		// InvMass * timeStep will be a constant so it could be factored out but idk
@@ -27,6 +28,7 @@ public:
 		this->position += this->velocity * timeStep;
 		return this->position;
 	}
+
 	inline void SetMass(const float& mass) noexcept
 	{
 		this->invMass = 1.f / mass;

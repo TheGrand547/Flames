@@ -107,7 +107,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 	case States::SlowDown:
 	{
 		this->stateCounter++;
-		this->PathFollower::physics.ApplyForces(-glm::normalize(this->PathFollower::physics.velocity), Tick::TimeDelta);
+		this->PathFollower::physics.ApplyForces(-glm::normalize(this->PathFollower::physics.velocity));
 		if (glm::length(this->transform.velocity) < EPSILON)
 		{
 			Log("Slowdown Frames: " << this->stateCounter);

@@ -58,21 +58,9 @@
 #include "DemoGuy.h"
 #include "kdTree.h"
 #include "Level.h"
-#include "Tetra.h"
+#include "Geometry.h"
 #include "ExhaustManager.h"
 
-static const std::array<glm::vec3, 8> plainCubeVerts {
-	{
-		{-1, -1, -1},   // -x, -y, -z
-		{ 1, -1, -1},   // +x, -y, -z
-		{ 1,  1, -1},   // +x, +y, -z
-		{-1,  1, -1},   // -x, +y, -z
-		{-1, -1,  1},   // -x, -y, +z
-		{ 1, -1,  1},   // +x, -y, +z
-		{ 1,  1,  1},   // +x, +y, +z
-		{-1,  1,  1},   // -x, +y, +z
-	}
-};
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
 // TODO: Delaunay Trianglulation
@@ -87,66 +75,6 @@ static const std::array<glm::vec3, 8> plainCubeVerts {
 // 128 gameplay ticks a second allowing for 1/16th speed play(wowie slow motion)
 // Animations and such are locked to this "grid"
 // TODO: Stencil buffer for vision cones and things
-
-// If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
-static const std::array<GLubyte, 36> cubeIndicies =
-{
-	0, 4, 3, // -X Face
-	4, 7, 3,
-
-	0, 1, 4, // -Y Face
-	1, 5, 4,
-
-	1, 0, 2, // -Z Face
-	0, 3, 2,
-
-	6, 5, 2, // +X Face
-	5, 1, 2,
-
-	6, 2, 7, // +Y Face
-	2, 3, 7,
-
-	7, 4, 6, // +Z Face
-	4, 5, 6,
-};
-/*
-Assume we have the reduced form with only 24 verticies in the order laid out above, we get:
-{
-	0, 1, 2,  1, 3, 2, // -X Face
-	4, 5, 6,  5, 7, 6, // -Y Face
-
-}
-
-*/
-
-// I don't know what's goign on with this but I didn't like the old thing
-std::array<glm::vec3, cubeIndicies.size()> texturedCubeVerts =
-	[](auto verts, auto index) constexpr
-	{
-		std::array<glm::vec3, index.size()> temp{};
-		for (int i = 0; i < temp.size(); i++)
-		{
-			temp[i] = verts[index[i]];
-		}
-		return temp;
-	} (plainCubeVerts, cubeIndicies);
-
-std::array<GLubyte, 24> cubeOutline =
-{
-	0, 1,  1, 2,  2, 3,  3, 0, 
-	4, 5,  5, 6,  6, 7,  7, 4, 
-	2, 6,  5, 1, 
-	3, 7,  4, 0, 
-};
-
-std::array<Vertex, 4> plane{
-	{
-		{ 1, 0,  1},
-		{ 1, 0, -1},
-		{-1, 0,  1},
-		{-1, 0, -1}
-	}
-};
 
 std::array<glm::vec3, 10> stick{
 	{
@@ -164,8 +92,6 @@ std::array<glm::vec3, 10> stick{
 };
 
 std::array<GLubyte, 14> stickDex = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
-
-std::array<GLubyte, 5> planeOutline = { 0, 1, 3, 2, 0 }; // Can be done with one less vertex using GL_LINE_LOOP
 
 static const std::array<GLubyte, 16 * 16> dither16 = {
 {
@@ -743,7 +669,7 @@ void display()
 	dsf[1] *= 0.25f;
 	dsf[2] *= 0.1f;
 	uniform.SetMat4("Model", dsf);
-	//uniform.DrawElementsMemory<DrawType::Lines>(cubeOutline);
+	//uniform.DrawElementsMemory<DrawType::Lines>(Cube::GetLineIndex());
 
 	ship.SetActiveShader();
 	meshVAO.Bind();
@@ -1497,7 +1423,7 @@ void gameTick()
 			}
 		}
 		player.position = cameraPosition;
-		cameraPosition = player.ApplyForces({}, Tick::TimeDelta);
+		cameraPosition = player.ApplyForces({});
 		player.velocity *= 0.99;
 
 		if (gameTicks % 256 == 0)
@@ -1513,7 +1439,7 @@ void gameTick()
 		//shipPosition.y += 3 * glm::sin(tickRad) * Tick::TimeDelta;
 		glm::vec3 shipDelta = glm::normalize(glm::vec3(0.f, 4.f, 0.f) - shipPosition);
 		shipPhysics.position = shipPosition;
-		shipPhysics.ApplyForces(4.f * shipDelta, Tick::TimeDelta);
+		shipPhysics.ApplyForces(4.f * shipDelta);
 		shipPosition = shipPhysics.position;
 
 		glm::mat3 angles(shipPhysics.velocity, shipDelta, glm::cross(shipPhysics.velocity, shipDelta));
@@ -2193,32 +2119,23 @@ void init()
 	dummyEngine.BufferData(fillibuster);
 
 	stickBuffer.BufferData(stick);
-	solidCubeIndex.BufferData(cubeIndicies);
+	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
 
 	std::array<glm::vec3, 3> pointingV{ glm::vec3(-0.5f, 0, -0.5f), glm::vec3(0.5f, 0, 0), glm::vec3(-0.5f, 0, 0.5f) };
 	debugPointing.BufferData(pointingV);
 
 	shipPhysics.velocity = glm::vec3(2.f, 0.f, 0.f);
-
-
-	std::array<TextureVertex, 4> verts{};
-	for (int i = 0; i < 4; i++)
-		verts[i].position = plane[i];
-	verts[0].coordinates = glm::vec2(1, 1);
-	verts[1].coordinates = glm::vec2(1, 0);
-	verts[2].coordinates = glm::vec2(0, 1);
-	verts[3].coordinates = glm::vec2(0, 0);
 	
 	std::array<TangentVertex, 4> tangents{};
 	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
 
 	normalMapBuffer.BufferData(tangents);
 
-	texturedPlane.BufferData(verts);
+	texturedPlane.BufferData(Plane::GetUVPoints());
 
-	planeBO.BufferData(plane);
+	planeBO.BufferData(Plane::GetPoints());
 
-	plainCube.BufferData(plainCubeVerts);
+	plainCube.BufferData(Cube::GetPoints());
 
 	std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	pathNodePositions.BufferData(funnys);
@@ -2329,10 +2246,11 @@ void init()
 	instanceBuffer.BufferData(awfulTemp, StaticDraw);
 
 	// This sucks
+	// TODO: Put this in Geometry, or something, I don't know
 	std::array<TextureVertex, 36> textVert{};
 	for (std::size_t i = 0; i < 36; i++)
 	{
-		textVert[i].position = texturedCubeVerts[i];
+		textVert[i].position = Cube::GetUVPoints()[i].position;
 		int j = i % 6;
 		// j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
 		switch (j)
@@ -2391,6 +2309,7 @@ void init()
 
 	skinArg.BufferData(grs);
 
+	auto verts = Plane::GetUVPoints();
 	for (auto& point : verts)
 	{
 		point.position = glm::mat3(glm::eulerAngleZY(glm::radians(90.f), glm::radians(-90.f))) * point.position;
@@ -2656,7 +2575,7 @@ void init()
 
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
-	cubeOutlineIndex.BufferData(cubeOutline, StaticDraw);
+	cubeOutlineIndex.BufferData(Cube::GetLineIndex());
 
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));

@@ -124,7 +124,7 @@ void PathFollower::PathUpdate() noexcept
 			direction = targetVelocity;
 		}
 
-		this->physics.ApplyForces(direction * 20.f, Tick::TimeDelta);
+		this->physics.ApplyForces(direction * 20.f);
 	}
 	this->capsule.SetCenter(this->physics.position);
 	this->box.ReCenter(this->physics.position);
