@@ -104,23 +104,23 @@ public:
 	
 	Animation(const Transform& base, AnimationElement const (&transitions)[N - 1]) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
 	{
-		keyFrames[0] = base;
+		this->keyFrames[0] = base.Normalized();
 		auto start = transitions;
 		for (std::size_t i = 1; i < N; i++)
 		{
-			this->keyFrames[i] = start[i - 1].KeyFrame;
+			this->keyFrames[i] = start[i - 1].KeyFrame.Normalized();
 			this->stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
 		}
 	}
 	
 	Animation(const Transform& base, const std::initializer_list<AnimationElement>& transitions) : keyFrames(), stages(), startTick(0), stageIndex(0), finished(false)
 	{
-		keyFrames[0] = base;
+		this->keyFrames[0] = base.Normalized();
 		auto start = transitions.begin();
 		for (std::size_t i = 1; i < N; i++)
 		{
-			keyFrames[i] = start[i - 1].KeyFrame;
-			stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
+			this->keyFrames[i] = start[i - 1].KeyFrame.Normalized();
+			this->stages[i - 1] = std::make_pair(start[i - 1].Duration, start[i - 1].Easing);
 		}
 	}
 

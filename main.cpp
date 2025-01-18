@@ -10,6 +10,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtc/ulp.hpp>
 #include <glm/gtx/euler_angles.hpp>
+#include <glm/gtx/orthonormalize.hpp>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -404,8 +405,8 @@ SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
 
 Animation flubber = make_animation( Transform(),
 	{
-		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, (50.f), 0.f)))}, 120, Easing::EaseOutCubic},
-		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, (50.f), 0.f)))}, 120, Easing::EaseOutCubic},
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, 0.f, -180.f)))}, 120, Easing::EaseOutCubic},
+		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(0.f, 0.f, 270.f)))}, 120, Easing::EaseOutCubic},
 		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(10.f, 0, 32.f)))}, 120, Easing::EaseOutQuadratic},
 		{{glm::vec3(), glm::quat(glm::radians(glm::vec3(10.f, 0, 32.f)))}, 120, Easing::EaseOutQuadratic},
 		{{glm::vec3(), glm::quat()}, 120, Easing::EaseOutQuartic},
@@ -415,6 +416,8 @@ Animation flubber = make_animation( Transform(),
 glm::vec3 lightColor;
 
 ExhaustManager managedProcess;
+glm::vec3 shipPosition{ 0, 3, 0 };
+BasicPhysics shipPhysics;
 
 void display()
 {
@@ -747,7 +750,7 @@ void display()
 	meshVAO.BindArrayBuffer(guyBuffer);
 
 	// TODO: Change light color over time to add visual variety
-	Model defaults{ glm::vec3(0, 3, 0) , gooberAngles};
+	Model defaults{ shipPosition , gooberAngles};
 	defaults.translation += gooberOffset;
 	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
 	ship.SetVec3("lightColor", lightColor);
@@ -1505,6 +1508,19 @@ void gameTick()
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
 		
+		float tickRad = 2.f * glm::radians(static_cast<float>(gameTicks));
+		//shipPosition.x += 3 * glm::cos(tickRad) * Tick::TimeDelta;
+		//shipPosition.y += 3 * glm::sin(tickRad) * Tick::TimeDelta;
+		glm::vec3 shipDelta = glm::normalize(glm::vec3(0.f, 4.f, 0.f) - shipPosition);
+		shipPhysics.position = shipPosition;
+		shipPhysics.ApplyForces(4.f * shipDelta, Tick::TimeDelta);
+		shipPosition = shipPhysics.position;
+
+		glm::mat3 angles(shipPhysics.velocity, shipDelta, glm::cross(shipPhysics.velocity, shipDelta));
+		angles = glm::orthonormalize(angles);
+
+		gooberAngles = glm::normalize(glm::quat(angles));
+		
 		if (flubber.IsFinished())
 		{
 			flubber.Start(gameTicks);
@@ -1512,14 +1528,30 @@ void gameTick()
 		oldPos = gooberOffset;
 		auto _temp = flubber.Get(gameTicks);
 		gooberOffset = _temp.position;
-		gooberAngles = _temp.rotation;
+		//gooberAngles = _temp.rotation;
 		float deltar = glm::distance(oldPos, gooberOffset);
+
+		static bool gasFlag = false;
+
+		if (gameTicks % 24 == 0)
+		{
+			glm::vec3 forward = glm::mat3_cast(gooberAngles) * glm::vec3(1.f, 0.f, 0.f);
+			glm::vec3 left = glm::mat3_cast(gooberAngles) * glm::vec3(0.f, 0.f, 1.f);
+			left *= 0.25f;
+			glm::vec3 local = gooberOffset + shipPosition;
+			local -= forward * 0.65f;
+			if (gasFlag)
+				managedProcess.AddExhaust(local + left, -4.f * forward, 128);
+			else
+				managedProcess.AddExhaust(local - left, -4.f * forward, 128);
+			gasFlag = !gasFlag;
+		}
 
 		if (foobar.IsFinished())
 		{
-			glm::vec3 forward = glm::mat4_cast(_temp.rotation) * glm::vec4(1.f, 0.f, 0.f, 1.f);
+			glm::vec3 forward = glm::mat4_cast(gooberAngles) * glm::vec4(1.f, 0.f, 0.f, 1.f);
 			foobar.Start(gameTicks);
-			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset +  glm::vec3(0, 3, 0), glm::normalize(forward)});
+			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
 		}
 		weaponOffset = foobar.Get(gameTicks).position;
 
@@ -2166,8 +2198,10 @@ void init()
 	std::array<glm::vec3, 3> pointingV{ glm::vec3(-0.5f, 0, -0.5f), glm::vec3(0.5f, 0, 0), glm::vec3(-0.5f, 0, 0.5f) };
 	debugPointing.BufferData(pointingV);
 
-	std::array<TextureVertex, 4> verts{};
+	shipPhysics.velocity = glm::vec3(2.f, 0.f, 0.f);
 
+
+	std::array<TextureVertex, 4> verts{};
 	for (int i = 0; i < 4; i++)
 		verts[i].position = plane[i];
 	verts[0].coordinates = glm::vec2(1, 1);

@@ -61,7 +61,7 @@ void main()
 	float offset = gl_InstanceID * (OFFSET + instanceOffset) + instanceOffset + gl_InstanceID;
 	colorIn = vec4(Colors[indexed], 1);
 	
-	vec3 local = Points[indexed] * Position.w * 0.5f;
+	vec3 local = Points[indexed] * Position.w * 0.35f;
 	if (gl_InstanceID % 2 == 1)
 		local = -local;
 	

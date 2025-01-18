@@ -26,6 +26,7 @@ void ExhaustManager::Update() noexcept
 		{
 			element.ticksLeft--;
 			element.position += element.velocity * Tick::TimeDelta;
+			element.velocity *= 0.99f;
 			// TOOD: Maybe do some math on creation to determine a "slow down" coefficient that works easily for reducing velocity
 			return element.ticksLeft == 0;
 		}
