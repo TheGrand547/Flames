@@ -6,10 +6,10 @@
 struct Transform
 {
 	glm::vec3 position{ 0 };
-	glm::quat rotation{};
+	glm::quat rotation{glm::vec3(0.f, 0.f, 1.f), glm::vec3(1.f, 0.f, 0.f)};
 	
-	inline Transform(const glm::vec3& position = glm::vec3(0), const glm::quat& rotation = glm::quat()) noexcept
-		: position(position), rotation(rotation) {}
+	inline Transform(const glm::vec3& position = glm::vec3(0), const glm::quat& rotation = 
+		glm::quat(glm::vec3(0.f, 0.f, 1.f), glm::vec3(1.f, 0.f, 0.f))) noexcept : position(position), rotation(rotation) {}
 
 	inline void Normalize() noexcept;
 	inline Transform Normalized() const noexcept;

@@ -10,17 +10,22 @@ void ExhaustManager::AddExhaust(const glm::vec3& position, const glm::vec3& velo
 
 void ExhaustManager::FillBuffer(ArrayBuffer& buffer) const noexcept
 {
-	std::vector<glm::vec4> output;
-	output.reserve(this->particles.size());
-	for (const auto& element : this->particles)
+	if (this->dirty)
 	{
-		output.emplace_back(element.position, Easing::EaseOutCubic(static_cast<float>(element.ticksLeft) / element.lifetime));
+		std::vector<glm::vec4> output;
+		output.reserve(this->particles.size());
+		for (const auto& element : this->particles)
+		{
+			output.emplace_back(element.position, Easing::EaseOutCubic(static_cast<float>(element.ticksLeft) / element.lifetime));
+		}
+		buffer.BufferData(output);
+		this->dirty = false;
 	}
-	buffer.BufferData(output);
 }
 
 void ExhaustManager::Update() noexcept
 {
+	this->dirty = true;
 	std::erase_if(this->particles, 
 		[](Exhaust& element)
 		{

@@ -118,7 +118,7 @@ namespace Cube
     }
 }
 
-namespace Plane
+namespace Planes
 {
     static const std::array<glm::vec3, 4> Points =
     {

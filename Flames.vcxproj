@@ -151,6 +151,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ArrayObject.cpp" />
+    <ClCompile Include="BasicPhysics.cpp" />
     <ClCompile Include="BinarySpacePartition.cpp" />
     <ClCompile Include="Buffer.cpp" />
     <ClCompile Include="Button.cpp" />
@@ -175,6 +176,7 @@
     <ClCompile Include="PathFollower.cpp" />
     <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
+    <ClCompile Include="Player.cpp" />
     <ClCompile Include="QuickTimer.cpp" />
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
@@ -231,6 +233,7 @@
     <ClInclude Include="PathFollower.h" />
     <ClInclude Include="PathNode.h" />
     <ClInclude Include="Plane.h" />
+    <ClInclude Include="Player.h" />
     <ClInclude Include="QuickTimer.h" />
     <ClInclude Include="Scrap.h" />
     <ClInclude Include="ScreenRect.h" />

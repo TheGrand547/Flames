@@ -23,6 +23,7 @@ protected:
 		}
 	};
 	std::vector<Exhaust> particles;
+	mutable bool dirty = false;
 
 public:
 	ExhaustManager() noexcept = default;

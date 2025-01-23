@@ -60,6 +60,7 @@
 #include "Level.h"
 #include "Geometry.h"
 #include "ExhaustManager.h"
+#include "Player.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -344,6 +345,9 @@ glm::vec3 lightColor;
 ExhaustManager managedProcess;
 glm::vec3 shipPosition{ 0, 3, 0 };
 BasicPhysics shipPhysics;
+
+Player playfield(glm::vec3(0.f, 3.f, 0.f));
+Input::Keyboard boardState;
 
 void display()
 {
@@ -676,7 +680,8 @@ void display()
 	meshVAO.BindArrayBuffer(guyBuffer);
 
 	// TODO: Change light color over time to add visual variety
-	Model defaults{ shipPosition , gooberAngles};
+	//Model defaults{ shipPosition , gooberAngles};
+	Model defaults(playfield.GetModel());
 	defaults.translation += gooberOffset;
 	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
 	ship.SetVec3("lightColor", lightColor);
@@ -1113,9 +1118,13 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-
+	boardState.heading = glm::vec2(0.f);
+	if (keyState[ArrowKeyUp]) boardState.heading.x = 1.f;
+	if (keyState[ArrowKeyDown]) boardState.heading.x = -1.f;
 	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
+	if (keyState[ArrowKeyRight]) boardState.heading.y = -1.f;
 	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
+	if (keyState[ArrowKeyLeft])  boardState.heading.y = 1.f;
 	if (keyState['W'])
 		cameraPosition += forward;
 	if (keyState['S'])
@@ -1198,7 +1207,6 @@ void idle()
 		}
 	}
 	catapultBox.ReCenter(catapult.GetCenter());
-
 
 	Sphere spherePlaceholder(0.5f, movingSphere);
 	for (auto& letsgo : Level::Geometry.Search(spherePlaceholder.GetAABB()))
@@ -1457,14 +1465,17 @@ void gameTick()
 		//gooberAngles = _temp.rotation;
 		float deltar = glm::distance(oldPos, gooberOffset);
 
+		playfield.Update(boardState);
+
 		static bool gasFlag = false;
 
 		if (gameTicks % 24 == 0)
 		{
+			gooberAngles = playfield.GetModel().rotation;
 			glm::vec3 forward = glm::mat3_cast(gooberAngles) * glm::vec3(1.f, 0.f, 0.f);
 			glm::vec3 left = glm::mat3_cast(gooberAngles) * glm::vec3(0.f, 0.f, 1.f);
 			left *= 0.25f;
-			glm::vec3 local = gooberOffset + shipPosition;
+			glm::vec3 local = gooberOffset + playfield.GetModel().translation;
 			local -= forward * 0.65f;
 			if (gasFlag)
 				managedProcess.AddExhaust(local + left, -4.f * forward, 128);
@@ -2131,9 +2142,9 @@ void init()
 
 	normalMapBuffer.BufferData(tangents);
 
-	texturedPlane.BufferData(Plane::GetUVPoints());
+	texturedPlane.BufferData(Planes::GetUVPoints());
 
-	planeBO.BufferData(Plane::GetPoints());
+	planeBO.BufferData(Planes::GetPoints());
 
 	plainCube.BufferData(Cube::GetPoints());
 
@@ -2309,7 +2320,7 @@ void init()
 
 	skinArg.BufferData(grs);
 
-	auto verts = Plane::GetUVPoints();
+	auto verts = Planes::GetUVPoints();
 	for (auto& point : verts)
 	{
 		point.position = glm::mat3(glm::eulerAngleZY(glm::radians(90.f), glm::radians(-90.f))) * point.position;

@@ -2,6 +2,7 @@
 #ifndef MODEL_H
 #define MODEL_H
 #include "glmHelp.h"
+#include "Transform.h"
 
 struct Model
 {
@@ -9,6 +10,7 @@ struct Model
 	glm::quat rotation;
 
 	// Euler angles are always assumed to be in DEGREES
+	inline Model(const Transform& transform) noexcept : scale(1.f), translation(transform.position), rotation(transform.rotation) {}
 	inline Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f)) noexcept;
 	inline Model(glm::vec3 translation, glm::quat rotation, glm::vec3 scale = glm::vec3(1.f)) noexcept;
 	~Model() = default;

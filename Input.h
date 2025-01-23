@@ -69,9 +69,11 @@ namespace Input
 			Mouse::oldButtons = Mouse::buttons;
 		}
 	};
+
+	// Contains all the relevant player input commands, independent of the keys that actually "fire" them
 	struct Keyboard
 	{
-
+		glm::vec2 heading;
 	};
 };
 

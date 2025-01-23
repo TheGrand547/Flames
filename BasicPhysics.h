@@ -33,6 +33,9 @@ public:
 	{
 		this->invMass = 1.f / mass;
 	}
+
+	static void Update(glm::vec3& position, glm::vec3& velocity, float mass, const glm::vec3& forces) noexcept;
+	static void Update(glm::vec3& position, glm::vec3& velocity, const glm::vec3& forces, float mass = 1.f) noexcept;
 };
 
 

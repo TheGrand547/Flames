@@ -20,7 +20,7 @@ namespace Cube
 	std::array<TextureVertex, 36> GetUVPoints() noexcept;
 }
 
-namespace Plane
+namespace Planes
 {
 	std::array<glm::vec3, 4> GetPoints() noexcept;
 	std::array<unsigned char, 5> GetLineIndex() noexcept;
