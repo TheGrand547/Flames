@@ -73,7 +73,7 @@ namespace Input
 	// Contains all the relevant player input commands, independent of the keys that actually "fire" them
 	struct Keyboard
 	{
-		glm::vec2 heading;
+		glm::vec3 heading;
 	};
 };
 

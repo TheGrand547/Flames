@@ -368,9 +368,14 @@ void display()
 	// Camera matrix
 	glm::vec3 cameraRadians = glm::radians(cameraRotation);
 
+	glm::vec3 localCamera = cameraPosition;
+	glm::mat3 axes(playfield.GetModel().rotation);
+	localCamera = playfield.GetModel().translation - 5.f * axes[0] + 2.5f * axes[1];
+	
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
-									-cameraPosition);
+									-localCamera);
+	view = glm::lookAt(localCamera, playfield.GetModel().translation, glm::vec3(0, 1, 0));
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 	// Demo Sphere drawing
@@ -734,7 +739,6 @@ void display()
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawArray<DrawType::Lines>(rayBuffer);
-	
 	glLineWidth(1.f);
 
 	engine.SetActiveShader();
@@ -1118,9 +1122,11 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	boardState.heading = glm::vec2(0.f);
-	if (keyState[ArrowKeyUp]) boardState.heading.x = 1.f;
-	if (keyState[ArrowKeyDown]) boardState.heading.x = -1.f;
+	boardState.heading = glm::vec3(0.f);
+	//if (keyState['N']) boardState.heading.z = 1.f;
+	//if (keyState['M']) boardState.heading.z = -1.f;
+	if (keyState[ArrowKeyUp]) boardState.heading.z = 1.f;
+	if (keyState[ArrowKeyDown]) boardState.heading.z = -1.f;
 	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyRight]) boardState.heading.y = -1.f;
 	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
@@ -1242,17 +1248,18 @@ void idle()
 
 	if (lastPoster == glm::vec3(0))
 	{
-		lastPoster = sigmaTest.GetPosition();
+		//lastPoster = sigmaTest.GetPosition();
+		lastPoster = playfield.GetModel().translation;
 	}
 	if (frameCounter % 10 == 0)
 	{
 		pathway.push_back(lastPoster);
-		pathway.push_back(sigmaTest.GetPosition());
+		pathway.push_back(playfield.GetModel().translation);
 		lastPoster = pathway.back();
 	}
 
-	pathway.push_back(sigmaTest.GetPosition());
-	pathway.push_back(sigmaTest.GetPosition() + sigmaTest.GetFacing());
+	pathway.push_back(playfield.GetModel().translation);
+	pathway.push_back(playfield.GetModel().translation + static_cast<glm::mat3>(playfield.GetModel().rotation)[0]);
 	rayBuffer.BufferData(pathway);
 	pathway.pop_back();
 	pathway.pop_back();
@@ -1277,8 +1284,39 @@ void idle()
 	toDie = glm::inverse(toDie);
 	skinMats[1] = toDie * skinMats[1];
 
-	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTicks/Second: {:7.2f}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", gameTicks / glfwGetTime()));
+	static glm::vec3 lastCheckedPos = glm::vec3(0.f, 3.f, 0.f);
+	static float lastCheckedDistance = 99;
+	static std::size_t lastCheckedTick = 0;
+	// TODO: have an explicit "only activate once per game tick" zone
+	if (gameTicks % 128 == 0 && gameTicks != lastCheckedTick)
+	{
+		glm::vec3 localPos = playfield.GetModel().translation;
+		lastCheckedDistance = glm::distance(lastCheckedPos, localPos);
+		lastCheckedPos = localPos;
+		lastCheckedTick = gameTicks;
+	}
+	std::vector<glm::vec3> rays;
+	Model rayLocal = playfield.GetModel();
+	glm::mat3 localSpace(rayLocal.rotation);
+	rays.push_back({});
+	rays.push_back(localSpace[0]);
+
+	rays.push_back({});
+	rays.push_back(playfield.GetVelocity());
+
+	for (auto& lco : rays)
+	{
+		lco += rayLocal.translation + localSpace[1];
+	}
+	//rayBuffer.BufferData(rays);
+
+
+	std::stringstream buffered;
+	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
+	buffered << "\nDistance: " << lastCheckedDistance;
+
+	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTicks/Second: {:7.2f}\n{}",
+		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", gameTicks / glfwGetTime(), buffered.str()));
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	decals.BufferData(decalVertex, StaticDraw);
@@ -1726,6 +1764,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	ui_tester = NineSliceGenerate(Window::GetSizeF() / 2.f, deviation);
 	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
+	//boardState.heading.z = 0.f;
+
 
 	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
@@ -1741,6 +1781,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 
 		cameraRotation.y += yDelta;
 		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
+		//boardState.heading.z = glm::sign(yDif);
 	}
 	else
 	{

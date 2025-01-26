@@ -26,6 +26,11 @@ public:
 	{
 		return { this->transform };
 	}
+
+	inline glm::vec3 GetVelocity() const noexcept
+	{
+		return this->velocity;
+	}
 };
 
 
