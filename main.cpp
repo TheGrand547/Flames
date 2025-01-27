@@ -375,7 +375,7 @@ void display()
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
 									-localCamera);
-	view = glm::lookAt(localCamera, playfield.GetModel().translation, glm::vec3(0, 1, 0));
+	view = glm::lookAt(localCamera, playfield.GetModel().translation, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 	// Demo Sphere drawing

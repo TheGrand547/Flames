@@ -20,6 +20,12 @@ inline glm::vec3 SlideAlongPlane(const glm::vec3& plane, const glm::vec3& direct
 	return glm::normalize(direction - glm::dot(direction, plane) * plane);
 }
 
+// Ensure that nan doesn't pollute calculations
+inline float Rectify(const float& value, const float& reference = 0.f) noexcept
+{
+	return (!glm::isnan(value)) ? value : reference;
+}
+
 glm::vec2 GetProjectionHalfs(glm::mat4& mat);
 
 #endif // UTIL_H
