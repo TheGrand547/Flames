@@ -1062,6 +1062,8 @@ struct te
 // Like it's a bit pliable
 
 
+static glm::vec2 targetAngles{0.f};
+
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
 {
@@ -1123,13 +1125,18 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	boardState.heading = glm::vec3(0.f);
-	boardState.heading.x = (playerSpeedControl);
+	boardState.heading = glm::vec3(playerSpeedControl, targetAngles);
+	//boardState.heading.x = (playerSpeedControl);
 	// playerSpeedControl
+	/*
 	if (keyState[ArrowKeyUp]) boardState.heading.z = 1.f;
 	if (keyState[ArrowKeyDown]) boardState.heading.z = -1.f;
 	if (keyState[ArrowKeyRight]) boardState.heading.y = -1.f;
 	if (keyState[ArrowKeyLeft])  boardState.heading.y = 1.f;
+	*/
+	//boardState.heading.y = targetAngles.x;
+	//boardState.heading.z = targetAngles.y;
+
 	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState['W'])
@@ -1768,12 +1775,13 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
-	glm::ivec2 deviation = glm::ceil(glm::abs(Window::GetSizeF() / 2.f - oldPos));
-	ui_tester = NineSliceGenerate(Window::GetSizeF() / 2.f, deviation);
+	glm::ivec2 deviation = glm::ceil(glm::abs(Window::GetHalfF() - oldPos));
+
+
+	ui_tester = NineSliceGenerate(Window::GetHalfF(), deviation);
 	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
-	//boardState.heading.z = 0.f;
-
+	targetAngles = glm::vec2(0.f);
 
 	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
@@ -1789,7 +1797,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 
 		cameraRotation.y += yDelta;
 		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
-		//boardState.heading.z = glm::sign(yDif);
+
+		targetAngles = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
 	}
 	else
 	{
@@ -1950,7 +1959,6 @@ int main(int argc, char** argv)
 	glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
 	glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
 
-	//glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_ES_API); // Look into it with 3.1 at some point
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);

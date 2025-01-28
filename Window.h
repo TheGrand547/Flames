@@ -21,6 +21,11 @@ namespace Window
 		return glm::vec2(Width, Height);
 	}
 
+	inline glm::vec2 GetHalfF() noexcept
+	{
+		return glm::vec2(static_cast<float>(Width / 2), static_cast<float>(Height / 2));
+	}
+
 	constexpr void Update(GLsizei width, GLsizei height) noexcept
 	{
 		Width = width;

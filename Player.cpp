@@ -5,7 +5,7 @@
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
 static constexpr float PlayerMass = 5.f; // Idk
 static constexpr float MaxSpeed = 20.f;
-static constexpr float minTurningRadius = 5.f;
+static constexpr float minTurningRadius = 7.5f;
 static constexpr float EngineThrust = 40.f;
 static constexpr float TurningThrust = 60.f;
 
