@@ -1128,10 +1128,10 @@ void idle()
 	// playerSpeedControl
 	if (keyState[ArrowKeyUp]) boardState.heading.z = 1.f;
 	if (keyState[ArrowKeyDown]) boardState.heading.z = -1.f;
-	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyRight]) boardState.heading.y = -1.f;
-	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState[ArrowKeyLeft])  boardState.heading.y = 1.f;
+	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
+	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState['W'])
 		cameraPosition += forward;
 	if (keyState['S'])

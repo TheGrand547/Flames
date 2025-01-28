@@ -8,24 +8,23 @@ static constexpr float MaxSpeed = 20.f;
 static constexpr float minTurningRadius = 5.f;
 static constexpr float EngineThrust = 40.f;
 static constexpr float TurningThrust = 60.f;
-static constexpr float DecayTicks = 128.f;
-static constexpr float DecayAmount = 0.9f;
-static float DecayConstant = std::exp(std::log(DecayAmount) / DecayTicks);
 
 void Player::Update(Input::Keyboard input) noexcept
 {
-	// Input is a 3d vector, x is thrust/deceleration, y is horizontal turning, z is vertical turning
+	// Input is a 3d vector, x is thrust, y is horizontal turning, z is vertical turning
 	const glm::vec3 unitVector = glm::normalize(this->velocity);
 
-	const glm::mat3 stored(static_cast<glm::mat3>(this->transform.rotation));
+	const glm::mat3 localAxes(static_cast<glm::mat3>(this->transform.rotation));
 
-	const float speed = glm::length(this->velocity);
-	const float v2 = speed * speed;
+	const float currentSpeed = glm::length(this->velocity);
+	const float velocitySquared = currentSpeed * currentSpeed;
 
+	// Relevant equation for circular motion; A = v*v/r = w*w*r, 
+	// A is acceleration towards the center of rotation, v is tangential velocity, r is the radius, w is the angular velocity
 	// Calculate the correct thrust to apply a rotation, attempting to keep the speed of the ship constant
-	float rotationalThrust = glm::min(TurningThrust, v2 / minTurningRadius);
-	float turningRadius = glm::max(v2 / rotationalThrust, minTurningRadius);
-	rotationalThrust = v2 / turningRadius;
+	float rotationalThrust = glm::min(TurningThrust, velocitySquared / minTurningRadius);
+	const float turningRadius = glm::max(velocitySquared / rotationalThrust, minTurningRadius);
+	rotationalThrust = velocitySquared / turningRadius;
 
 	const float angularVelocity = Tick::TimeDelta * Rectify(glm::sqrt(rotationalThrust / turningRadius));
 
@@ -34,41 +33,39 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	// Input.heading.x is always positive, as it indicated the desired fraction
 	const float desiredSpeed = input.heading.x * MaxSpeed;
-	const float speedDifference = Rectify(glm::abs((desiredSpeed - speed) / speed));
+	const float speedDifference = Rectify(glm::abs((desiredSpeed - currentSpeed) / currentSpeed));
 
 	glm::vec3 forces{0.f};
 	if (speedDifference > EPSILON)
 	{
-		if (speed < desiredSpeed)
+		if (currentSpeed < desiredSpeed)
 		{
-			forces = input.heading.x * stored[0] * EngineThrust;
+			forces = localAxes[0] * input.heading.x * EngineThrust;
 		}
 		else
 		{
+			// Stronger 'deceleration' when target speed is further from current speed
 			forces = unitVector * -EngineThrust * (1.f - speedDifference);
 		}
 	}
-
-	if (speed > EPSILON)
+	
+	// Do not allow for turning unless the ship is moving
+	if (currentSpeed > EPSILON)
 	{
+		// Don't do extra quaternion math if we don't have to
 		if (input.heading.y != 0.f)
 		{
-			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, glm::normalize(stored[1])));
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, glm::normalize(localAxes[1])));
 			this->transform.rotation = delta * this->transform.rotation;
-			forces -= input.heading.y * stored[2] * rotationalThrust;
+			forces -= input.heading.y * localAxes[2] * rotationalThrust;
 		}
 		if (input.heading.z != 0.f)
 		{
-			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(stored[2])));
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(localAxes[2])));
 			this->transform.rotation = delta * this->transform.rotation;
-			forces += input.heading.z * stored[1] * rotationalThrust;
+			forces += input.heading.z * localAxes[1] * rotationalThrust;
 		}
 	}
-
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
-	if (glm::length(this->velocity) > (input.heading.x * MaxSpeed))
-	{
-		//this->velocity *= DecayConstant;
-	}
 }
