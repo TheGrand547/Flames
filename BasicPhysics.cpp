@@ -11,3 +11,12 @@ void BasicPhysics::Update(glm::vec3& position, glm::vec3& velocity, const glm::v
 {
 	BasicPhysics::Update(position, velocity, mass, forces);
 }
+
+void BasicPhysics::Clamp(glm::vec3& velocity, const float& magnitude) noexcept
+{
+	float length = glm::length(velocity);
+	if (length > magnitude)
+	{
+		velocity = glm::normalize(velocity) * magnitude;
+	}
+}

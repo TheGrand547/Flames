@@ -347,6 +347,7 @@ glm::vec3 shipPosition{ 0, 3, 0 };
 BasicPhysics shipPhysics;
 
 Player playfield(glm::vec3(0.f, 3.f, 0.f));
+float playerSpeedControl = 0.1f;
 Input::Keyboard boardState;
 
 void display()
@@ -370,12 +371,12 @@ void display()
 
 	glm::vec3 localCamera = cameraPosition;
 	glm::mat3 axes(playfield.GetModel().rotation);
-	localCamera = playfield.GetModel().translation - 5.f * axes[0] + 2.5f * axes[1];
+	localCamera = playfield.GetModel().translation - 5.f * axes[0] + 3.5f * axes[1];
 	
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
 									-localCamera);
-	view = glm::lookAt(localCamera, playfield.GetModel().translation, axes[1]);
+	view = glm::lookAt(localCamera, playfield.GetModel().translation + axes[0] * 3.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 	// Demo Sphere drawing
@@ -1123,8 +1124,8 @@ void idle()
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
 	boardState.heading = glm::vec3(0.f);
-	//if (keyState['N']) boardState.heading.z = 1.f;
-	//if (keyState['M']) boardState.heading.z = -1.f;
+	boardState.heading.x = (playerSpeedControl);
+	// playerSpeedControl
 	if (keyState[ArrowKeyUp]) boardState.heading.z = 1.f;
 	if (keyState[ArrowKeyDown]) boardState.heading.z = -1.f;
 	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
@@ -1313,7 +1314,7 @@ void idle()
 
 	std::stringstream buffered;
 	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
-	buffered << "\nDistance: " << lastCheckedDistance;
+	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
 
 	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTicks/Second: {:7.2f}\n{}",
 		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", gameTicks / glfwGetTime(), buffered.str()));
@@ -1710,6 +1711,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	// Set bit (button) in mouseStatus.buttons
 	//mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button)) | ((action == GLFW_PRESS) << button);
 	Mouse::SetButton(static_cast<Mouse::Button>(button & 0xFF), action == GLFW_PRESS);
+	
 	if (button == GLFW_MOUSE_BUTTON_RIGHT)
 	{
 		if (Mouse::CheckButton(Mouse::ButtonRight))
@@ -1754,6 +1756,12 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	{
 		userPortion.z -= 25;
 	}
+}
+
+void mouseScrollFunc(GLFWwindow* window, double xDelta, double yDelta)
+{
+	playerSpeedControl += 0.1f * glm::sign(static_cast<float>(yDelta));
+	playerSpeedControl = glm::clamp(playerSpeedControl, 0.f, 1.f);
 }
 
 void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
@@ -1981,7 +1989,7 @@ int main(int argc, char** argv)
 
 	glfwSetMouseButtonCallback(windowPointer, mouseButtonFunc);
 	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
-
+	glfwSetScrollCallback(windowPointer, mouseScrollFunc);
 	init();
 	window_size_callback(nullptr, Window::Width, Window::Height);
 

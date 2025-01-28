@@ -5,22 +5,22 @@
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
 static constexpr float PlayerMass = 5.f; // Idk
 static constexpr float MaxSpeed = 20.f;
+static constexpr float minTurningRadius = 5.f;
+static constexpr float EngineThrust = 40.f;
+static constexpr float TurningThrust = 60.f;
+static constexpr float DecayTicks = 128.f;
+static constexpr float DecayAmount = 0.9f;
+static float DecayConstant = std::exp(std::log(DecayAmount) / DecayTicks);
 
 void Player::Update(Input::Keyboard input) noexcept
 {
-	// Input is a 2d vector, x is thrust/deceleration, y is turning
-
-	constexpr float EngineThrust = 20.f;
-	constexpr float TurningThrust = 20.f;
-
+	// Input is a 3d vector, x is thrust/deceleration, y is horizontal turning, z is vertical turning
 	const glm::vec3 unitVector = glm::normalize(this->velocity);
 
 	const glm::mat3 stored(static_cast<glm::mat3>(this->transform.rotation));
 
-	const float rotationSpeed = glm::length(this->velocity);
-	const float v2 = rotationSpeed * rotationSpeed;
-
-	const float minTurningRadius = 10.f;
+	const float speed = glm::length(this->velocity);
+	const float v2 = speed * speed;
 
 	// Calculate the correct thrust to apply a rotation, attempting to keep the speed of the ship constant
 	float rotationalThrust = glm::min(TurningThrust, v2 / minTurningRadius);
@@ -32,35 +32,43 @@ void Player::Update(Input::Keyboard input) noexcept
 	// Angular velocity is independent of mass
 	rotationalThrust *= PlayerMass;
 
-	glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, glm::normalize(stored[1])));
+	// Input.heading.x is always positive, as it indicated the desired fraction
+	const float desiredSpeed = input.heading.x * MaxSpeed;
+	const float speedDifference = Rectify(glm::abs((desiredSpeed - speed) / speed));
 
-	// TODO: Figure out how to handle mouse delta better
-	glm::quat delta2 = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(stored[2])));
-	this->transform.rotation = delta * this->transform.rotation;
-	this->transform.rotation = delta2 * this->transform.rotation;
+	glm::vec3 forces{0.f};
+	if (speedDifference > EPSILON)
+	{
+		if (speed < desiredSpeed)
+		{
+			forces = input.heading.x * stored[0] * EngineThrust;
+		}
+		else
+		{
+			forces = unitVector * -EngineThrust * (1.f - speedDifference);
+		}
+	}
 
-	//glm::vec3 forces = input.heading.x * stored[0];
-	glm::vec3 forces = stored[0] * EngineThrust;
-
-	if (rotationSpeed > EPSILON)
+	if (speed > EPSILON)
 	{
 		if (input.heading.y != 0.f)
 		{
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, glm::normalize(stored[1])));
+			this->transform.rotation = delta * this->transform.rotation;
 			forces -= input.heading.y * stored[2] * rotationalThrust;
 		}
 		if (input.heading.z != 0.f)
 		{
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(stored[2])));
+			this->transform.rotation = delta * this->transform.rotation;
 			forces += input.heading.z * stored[1] * rotationalThrust;
 		}
 	}
 
-	//if (input.heading.x < 0 || glm::dot(this->velocity, forces) < 0.85f)
-		//forces *= 1.25f;
-	//forces += input.heading.y * stored[2] * 0.25f * (1.f - glm::dot(stored[2], glm::normalize(this->velocity)));
-
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
-	if (glm::length(this->velocity) > MaxSpeed)
+	BasicPhysics::Clamp(this->velocity, MaxSpeed);
+	if (glm::length(this->velocity) > (input.heading.x * MaxSpeed))
 	{
-		this->velocity = glm::normalize(this->velocity) * MaxSpeed;
+		//this->velocity *= DecayConstant;
 	}
 }
