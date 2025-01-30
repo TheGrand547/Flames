@@ -209,6 +209,7 @@
     <ClInclude Include="Buffer.h" />
     <ClInclude Include="Button.h" />
     <ClInclude Include="Capsule.h" />
+    <ClInclude Include="CircularBuffer.h" />
     <ClInclude Include="CollisionTypes.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="CubeMap.h" />
@@ -250,6 +251,7 @@
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TextureUtil.h" />
+    <ClInclude Include="TimeAverage.h" />
     <ClInclude Include="Transform.h" />
     <ClInclude Include="Triangle.h" />
     <ClInclude Include="typedefs.h" />

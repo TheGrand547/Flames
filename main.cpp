@@ -62,6 +62,7 @@
 #include "Geometry.h"
 #include "ExhaustManager.h"
 #include "Player.h"
+#include "TimeAverage.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -1066,7 +1067,7 @@ struct te
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 
-static std::chrono::nanoseconds maxTickTime;
+static std::chrono::nanoseconds maxTickTime, averageTickTime;
 static glm::vec2 targetAngles{0.f};
 
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
@@ -1075,6 +1076,8 @@ void idle()
 	static auto lastIdleStart = std::chrono::high_resolution_clock::now();
 	static std::deque<float> frames;
 	static std::deque<long long> displayTimes, idleTimes, renderTimes;
+
+	static TimerAverage<300> displayTimes2;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	frameCounter++;
@@ -1090,6 +1093,9 @@ void idle()
 	displayTimes.push_back(displayDelta);
 	idleTimes.push_back(idleDelta);
 	renderTimes.push_back(renderDelta);
+
+
+	long long simple = displayTimes2.Update(idleTime.count() / 1000);
 	if (frames.size() > 300)
 	{
 		frames.pop_front();
@@ -1106,6 +1112,13 @@ void idle()
 		averageIdle += idleTimes[i] / idleTimes.size();
 		averageRender += renderTimes[i] / renderTimes.size();
 	}
+	//auto simple = displayTimes2.Update(idleTime);
+	auto distance = std::abs(simple - averageIdle);
+	if (distance > 10 && frames.size() > 200)
+	{
+		std::cout << simple << ":" << averageIdle << "\n";
+	}
+
 	// This will be used for "release" mode as it's faster but noisier
 	if (!idleSimple) idleSimple = idleDelta;
 	if (!displaySimple) displaySimple = displayDelta;
@@ -1296,6 +1309,8 @@ void gameTick()
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
+		// Annoying but necessary timekeeping
+		
 		{
 			sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
