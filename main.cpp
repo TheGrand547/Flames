@@ -185,7 +185,7 @@ std::vector<Model> instancedModels;
 std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
-static unsigned int frameCounter = 0;
+static unsigned int idleFrameCounter = 0;
 
 int lineWidth = 3;
 
@@ -256,7 +256,7 @@ void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ =
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
-Button help(buttonRect, [](std::size_t i) {std::cout << frameCounter << std::endl; });
+Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << std::endl; });
 
 
 Sphere visionSphere{ 2 };
@@ -446,7 +446,7 @@ void display()
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	// Maybe move this elsewhere
-	if (frameCounter % 500 == 0 && lastCameraPos != cameraPosition)
+	if (idleFrameCounter % 500 == 0 && lastCameraPos != cameraPosition)
 	{
 		lastCameraPos = cameraPosition;
 		QUICKTIMER("DepthSorting");
@@ -480,7 +480,7 @@ void display()
 		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
-		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
+		pathNodeView.SetFloat("Scale", (glm::cos(idleFrameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 		
 		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, pathNodePositions);
@@ -501,7 +501,7 @@ void display()
 		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
 		pathNodeVAO.BindArrayBuffer(PathFollower::latestPathBuffer, 1);
-		pathNodeView.SetFloat("Scale", (glm::cos(frameCounter / 200.f) * 0.05f) + 0.3f);
+		pathNodeView.SetFloat("Scale", (glm::cos(idleFrameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 
 		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, PathFollower::latestPathBuffer);
@@ -638,7 +638,7 @@ void display()
 
 		OBB placeholder(AABB(glm::vec3(0), glm::vec3(1)));
 		placeholder.Translate(glm::vec3(2, 0.1, 0));
-		placeholder.Rotate(glm::radians(glm::vec3(frameCounter * -2.f, frameCounter * 4.f, frameCounter)));
+		placeholder.Rotate(glm::radians(glm::vec3(idleFrameCounter * -2.f, idleFrameCounter * 4.f, idleFrameCounter)));
 		uniform.SetMat4("Model", placeholder.GetModelMatrix());
 		uniform.SetVec3("color", blue);
 
@@ -768,7 +768,7 @@ void display()
 	normalVAO.BindArrayBuffer(sphereBuffer);
 
 	Model sphereModel(glm::vec3(6.5f, 5.5f, 0.f));
-	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.5f)) * 0.25f;
+	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(idleFrameCounter * 0.5f)) * 0.25f;
 	sphereModel.scale = glm::vec3(1.5f);
 	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
 	//sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
@@ -813,7 +813,7 @@ void display()
 	lightModel.translation = glm::vec3(4, 0, 0);
 	lightModel.scale = glm::vec3(2.2f);//glm::vec3(2.2, 2.2, 1.1);
 
-	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(frameCounter * 0.25f)) * 3.f;
+	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(idleFrameCounter * 0.25f)) * 3.f;
 	stencilTest.SetActiveShader();
 
 	// TODO: Make something to clarify the weirdness of the stencil function
@@ -1067,63 +1067,29 @@ struct te
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 
-static std::chrono::nanoseconds maxTickTime, averageTickTime;
+static long long maxTickTime;
+static long long averageTickTime;
 static glm::vec2 targetAngles{0.f};
 
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
 {
 	static auto lastIdleStart = std::chrono::high_resolution_clock::now();
-	static std::deque<float> frames;
-	static std::deque<long long> displayTimes, idleTimes, renderTimes;
 
-	static TimerAverage<300> displayTimes2;
+	static TimerAverage<300> displayTimes, idleTimes, renderTimes;
+	static TimerAverage<300, float> frames;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
-	frameCounter++;
+	idleFrameCounter++;
 	const TimePoint idleStart = std::chrono::high_resolution_clock::now();
 	const TimeDelta delta = idleStart - lastIdleStart;
 
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
-	auto idleDelta = idleTime.count() / 1000;
-	auto displayDelta = displayTime.count() / 1000;
-	auto renderDelta = renderDelay.count() / 1000;
-	frames.push_back(1.f / timeDelta);
-	displayTimes.push_back(displayDelta);
-	idleTimes.push_back(idleDelta);
-	renderTimes.push_back(renderDelta);
-
-
-	long long simple = displayTimes2.Update(idleTime.count() / 1000);
-	if (frames.size() > 300)
-	{
-		frames.pop_front();
-		displayTimes.pop_front();
-		idleTimes.pop_front();
-		renderTimes.pop_front();
-	}
-	float averageFps = 0.f;
-	long long averageIdle = 0, averageDisplay = 0, averageRender = 0;
-	for (std::size_t i = 0; i < frames.size(); i++)
-	{
-		averageFps += frames[i] / frames.size();
-		averageDisplay += displayTimes[i] / displayTimes.size();
-		averageIdle += idleTimes[i] / idleTimes.size();
-		averageRender += renderTimes[i] / renderTimes.size();
-	}
-	//auto simple = displayTimes2.Update(idleTime);
-	auto distance = std::abs(simple - averageIdle);
-	if (distance > 10 && frames.size() > 200)
-	{
-		std::cout << simple << ":" << averageIdle << "\n";
-	}
-
-	// This will be used for "release" mode as it's faster but noisier
-	if (!idleSimple) idleSimple = idleDelta;
-	if (!displaySimple) displaySimple = displayDelta;
-	idleSimple = (idleSimple / 2) + (idleDelta / 2);
-	displaySimple = (displaySimple / 2) + (displayDelta / 2);
+	float averageFps = frames.Update(1.f / timeDelta);
+	long long averageIdle = idleTimes.Update(idleTime.count() / 1000);
+	long long averageDisplay = displayTimes.Update(displayTime.count() / 1000);
+	long long averageRender = renderTimes.Update(renderDelay.count() / 1000);
 	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
@@ -1211,7 +1177,7 @@ void idle()
 		//lastPoster = sigmaTest.GetPosition();
 		lastPoster = playerModel.translation;
 	}
-	if (frameCounter % 10 == 0)
+	if (idleFrameCounter % 10 == 0)
 	{
 		pathway.push_back(lastPoster);
 		pathway.push_back(playerModel.translation);
@@ -1234,7 +1200,7 @@ void idle()
 
 	skinMats.fill(glm::mat4(1));
 	skinMats[0][3] = glm::vec4(0, 0, 0, 1);
-	skinMats[1][3] = glm::vec4(-4, 2 * glm::cos(frameCounter / 100.f), 3 * glm::sin(frameCounter * 3 / 100.f), 1);
+	skinMats[1][3] = glm::vec4(-4, 2 * glm::cos(idleFrameCounter / 100.f), 3 * glm::sin(idleFrameCounter * 3 / 100.f), 1);
 	glm::mat4 toDie(1);
 	toDie[3] = glm::vec4(1, 0, 0, 1);
 	toDie = glm::inverse(toDie);
@@ -1276,10 +1242,10 @@ void idle()
 	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
 
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
-		\n-GPU Block Time: {}ns\nAverage Tick Length:{:4.2f}ms\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
+		\n-GPU Block Time: {}ns\nAverage Tick Length:{}ns\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
 
 	std::string formatted = std::format(formatString, averageFps, 1000.f / averageFps, averageIdle, 
-		averageDisplay, averageRender, maxTickTime.count() / 1000000.f, maxTickTime.count() / 1000000.f, gameTicks / glfwGetTime(), buffered.str());
+		averageDisplay, averageRender, averageTickTime, maxTickTime / 1000.f, gameTicks / glfwGetTime(), buffered.str());
 
 	fonter.GetTextTris(textBuffer, 0, 0, formatted);
 
@@ -1305,6 +1271,7 @@ void gameTick()
 	using namespace std::chrono_literals;
 	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;
 	TimePoint lastStart = std::chrono::steady_clock::now();
+	TimerAverage<300> gameTickTime;
 	do
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
@@ -1498,7 +1465,11 @@ void gameTick()
 
 		// End of Tick timekeeping
 		auto tickEnd = std::chrono::steady_clock::now();
-		maxTickTime = std::max(tickEnd - tickStart, maxTickTime);
+		long long tickDelta = (tickEnd - tickStart).count();
+
+		maxTickTime = std::max(tickDelta, maxTickTime);
+		averageTickTime = gameTickTime.Update(tickDelta / 1000);
+
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
 		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };
 		while (std::chrono::steady_clock::now() < desired) 
