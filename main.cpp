@@ -11,6 +11,7 @@
 #include <glm/gtc/ulp.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/orthonormalize.hpp>
+#include <glm/gtx/vec_swizzle.hpp>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -66,7 +67,6 @@
 // TODO: imGUI
 // TODO: Delaunay Trianglulation
 // TODO: EASTL
-// TODO: Entity Component System with sparse lists
 
 // Stencil based limited vision range
 // RTWP first person vaguely rpg
@@ -186,7 +186,6 @@ glm::vec3 lastCameraPos;
 
 static unsigned int frameCounter = 0;
 
-glm::vec3 movingSphere(0, 3.5f, 6.5f);
 int lineWidth = 3;
 
 constexpr auto TIGHT_BOXES = 1;
@@ -260,10 +259,6 @@ Button help(buttonRect, [](std::size_t i) {std::cout << frameCounter << std::end
 
 
 Sphere visionSphere{ 2 };
-
-Capsule catapult;
-Model catapultModel;
-OBB catapultBox;
 
 // TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
 // TODO: Move cube stuff into a shader or something I don't know
@@ -348,10 +343,19 @@ BasicPhysics shipPhysics;
 
 Player playfield(glm::vec3(0.f, 3.f, 0.f));
 float playerSpeedControl = 0.1f;
-Input::Keyboard boardState;
+Input::Keyboard boardState; 
 
 void display()
 {
+	/*
+	static std::size_t lastRenderTick = 0;
+	if (lastRenderTick == gameTicks)
+	{
+		return;
+	}
+	lastRenderTick = gameTicks;
+	*/
+
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 	//depthed.Bind();
@@ -366,17 +370,20 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	DisableGLFeatures<StencilTesting>();
 	
+	const Model playerModel(playfield.GetModel());
+
 	// Camera matrix
 	glm::vec3 cameraRadians = glm::radians(cameraRotation);
 
 	glm::vec3 localCamera = cameraPosition;
-	glm::mat3 axes(playfield.GetModel().rotation);
-	localCamera = playfield.GetModel().translation - 5.f * axes[0] + 3.5f * axes[1];
-	
+	glm::mat3 axes(playerModel.rotation);
+	localCamera = playerModel.translation - 5.f * axes[0] + 3.5f * axes[1];
+
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
 									-localCamera);
-	view = glm::lookAt(localCamera, playfield.GetModel().translation + axes[0] * 3.f, axes[1]);
+	view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 3.f, axes[1]);
+	//std::cout << view[3] << '\n';
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 	// Demo Sphere drawing
@@ -687,7 +694,7 @@ void display()
 
 	// TODO: Change light color over time to add visual variety
 	//Model defaults{ shipPosition , gooberAngles};
-	Model defaults(playfield.GetModel());
+	Model defaults(playerModel);
 	defaults.translation += gooberOffset;
 	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
 	ship.SetVec3("lightColor", lightColor);
@@ -730,7 +737,6 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	uniform.SetMat4("Model", catapult.GetAABB().GetModel().GetModelMatrix());
 	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
@@ -913,7 +919,6 @@ void display()
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawElements(Triangle, sphereIndicies);
-	sphereModel.translation = movingSphere;
 	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	flatLighting.DrawElements(Triangle, sphereIndicies);
@@ -1061,7 +1066,7 @@ struct te
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 
-
+static std::chrono::nanoseconds maxTickTime;
 static glm::vec2 targetAngles{0.f};
 
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
@@ -1126,19 +1131,7 @@ void idle()
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
 	boardState.heading = glm::vec3(playerSpeedControl, targetAngles);
-	//boardState.heading.x = (playerSpeedControl);
-	// playerSpeedControl
-	/*
-	if (keyState[ArrowKeyUp]) boardState.heading.z = 1.f;
-	if (keyState[ArrowKeyDown]) boardState.heading.z = -1.f;
-	if (keyState[ArrowKeyRight]) boardState.heading.y = -1.f;
-	if (keyState[ArrowKeyLeft])  boardState.heading.y = 1.f;
-	*/
-	//boardState.heading.y = targetAngles.x;
-	//boardState.heading.z = targetAngles.y;
 
-	if (keyState[ArrowKeyRight]) catapultBox.Rotate(glm::vec3(0, -1.f, 0) * turnSpeed);
-	if (keyState[ArrowKeyLeft])  catapultBox.Rotate(glm::vec3(0, 1.f, 0) * turnSpeed);
 	if (keyState['W'])
 		cameraPosition += forward;
 	if (keyState['S'])
@@ -1178,61 +1171,6 @@ void idle()
 		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
 	}
 
-	// Physics attempt
-	const float CapsuleAcceleration = 0.06f;
-	const float CapsuleMass = 1;
-	const float staticFrictionCoeff = 1.0f;
-	const float slidingFrictionCoeff = 0.57f;
-	const float GravityRate = 0.25f;
-	const float BoxGravityMagnitude = CapsuleMass * GravityRate;
-	const glm::vec3 capsuleGravity = GravityAxis * BoxGravityMagnitude;
-
-	// CAPSULE STUFF
-	float mult = float(keyState[ArrowKeyUp] ^ keyState[ArrowKeyDown]) * ((keyState[ArrowKeyDown]) ? -1.f : 1.f);
-	float capsuleDot = -INFINITY;
-	glm::vec3 capsuleForces{};
-	// Transformations need to be addressed
-	if (!capsuleHit)
-	{
-		capsuleForces += capsuleGravity;
-	}
-	capsuleForces += catapultBox.Forward() * mult * CapsuleAcceleration;
-	capsuleHit = nullptr;
-	capsuleNormal = glm::vec3(0);
-	capsuleAcceleration = capsuleForces / CapsuleMass * timeDelta;
-	capsuleVelocity += capsuleAcceleration;
-	//std::cout << catapult.GetCenter() << std::endl;
-	if (glm::length(capsuleVelocity) > 2.f)
-		capsuleVelocity = glm::normalize(capsuleVelocity) * 2.f;
-	catapult.Translate(capsuleVelocity);
-	capsuleVelocity *= 0.99f; // Maybe "real" friction?
-	for (auto& temps : Level::Geometry.Search(catapult.GetAABB()))
-	{
-		Collision c;
-		if (temps->Overlap(catapult, c))
-		{
-			catapult.Translate(c.normal * c.depth);
-			float dot = glm::dot(GravityUp, c.normal);
-			if (dot > 0 && dot > capsuleDot)
-			{
-				capsuleHit = &*temps;
-				capsuleDot = dot;
-			}
-		}
-	}
-	catapultBox.ReCenter(catapult.GetCenter());
-
-	Sphere spherePlaceholder(0.5f, movingSphere);
-	for (auto& letsgo : Level::Geometry.Search(spherePlaceholder.GetAABB()))
-	{
-		Collision c;
-		if (letsgo->Overlap(spherePlaceholder, c))
-		{
-			spherePlaceholder.center += c.normal * c.depth;
-		}
-	}
-	movingSphere = spherePlaceholder.center;
-
 	if (reRenderText && letters.str().size() > 0)
 	{
 		reRenderText = false;
@@ -1254,20 +1192,21 @@ void idle()
 	Mouse::UpdateEdges();
 	help.MouseUpdate();
 
+	const Model playerModel = playfield.GetModel();
 	if (lastPoster == glm::vec3(0))
 	{
 		//lastPoster = sigmaTest.GetPosition();
-		lastPoster = playfield.GetModel().translation;
+		lastPoster = playerModel.translation;
 	}
 	if (frameCounter % 10 == 0)
 	{
 		pathway.push_back(lastPoster);
-		pathway.push_back(playfield.GetModel().translation);
+		pathway.push_back(playerModel.translation);
 		lastPoster = pathway.back();
 	}
 
-	pathway.push_back(playfield.GetModel().translation);
-	pathway.push_back(playfield.GetModel().translation + static_cast<glm::mat3>(playfield.GetModel().rotation)[0]);
+	pathway.push_back(playerModel.translation);
+	pathway.push_back(playerModel.translation + static_cast<glm::mat3>(playerModel.rotation)[0]);
 	rayBuffer.BufferData(pathway);
 	pathway.pop_back();
 	pathway.pop_back();
@@ -1298,13 +1237,13 @@ void idle()
 	// TODO: have an explicit "only activate once per game tick" zone
 	if (gameTicks % 128 == 0 && gameTicks != lastCheckedTick)
 	{
-		glm::vec3 localPos = playfield.GetModel().translation;
+		glm::vec3 localPos = playerModel.translation;
 		lastCheckedDistance = glm::distance(lastCheckedPos, localPos);
 		lastCheckedPos = localPos;
 		lastCheckedTick = gameTicks;
 	}
 	std::vector<glm::vec3> rays;
-	Model rayLocal = playfield.GetModel();
+	Model rayLocal = playerModel;
 	glm::mat3 localSpace(rayLocal.rotation);
 	rays.push_back({});
 	rays.push_back(localSpace[0]);
@@ -1323,8 +1262,13 @@ void idle()
 	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
 	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
 
-	fonter.GetTextTris(textBuffer, 0, 0, std::format("FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\n-GPU Block Time: {}ns\n{} Version\nTicks/Second: {:7.2f}\n{}",
-		averageFps, 1000.f / averageFps, averageIdle, averageDisplay, averageRender, (featureToggle) ? "New" : "Old", gameTicks / glfwGetTime(), buffered.str()));
+	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
+		\n-GPU Block Time: {}ns\nAverage Tick Length:{:4.2f}ms\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
+
+	std::string formatted = std::format(formatString, averageFps, 1000.f / averageFps, averageIdle, 
+		averageDisplay, averageRender, maxTickTime.count() / 1000000.f, maxTickTime.count() / 1000000.f, gameTicks / glfwGetTime(), buffered.str());
+
+	fonter.GetTextTris(textBuffer, 0, 0, formatted);
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	decals.BufferData(decalVertex, StaticDraw);
@@ -1339,13 +1283,6 @@ void idle()
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
 	lastIdleStart = idleStart;
-	// Delay to keep 100 ticks per second idle stuff
-	/*
-	if (idleTime < std::chrono::milliseconds(10))
-	{
-		while (std::chrono::high_resolution_clock::displayStartTime() - displayStartTime <= std::chrono::milliseconds(10));
-	}
-	*/
 }
 
 glm::vec3 oldPos;
@@ -1354,7 +1291,6 @@ void gameTick()
 {
 	using namespace std::chrono_literals;
 	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;
-	std::cout << std::chrono::duration<float, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	TimePoint lastStart = std::chrono::steady_clock::now();
 	do
 	{
@@ -1512,16 +1448,16 @@ void gameTick()
 		float deltar = glm::distance(oldPos, gooberOffset);
 
 		playfield.Update(boardState);
-
+		const Model playerModel = playfield.GetModel();
 		static bool gasFlag = false;
 
 		if (gameTicks % 24 == 0)
 		{
-			gooberAngles = playfield.GetModel().rotation;
+			gooberAngles = playerModel.rotation;
 			glm::vec3 forward = glm::mat3_cast(gooberAngles) * glm::vec3(1.f, 0.f, 0.f);
 			glm::vec3 left = glm::mat3_cast(gooberAngles) * glm::vec3(0.f, 0.f, 1.f);
 			left *= 0.25f;
-			glm::vec3 local = gooberOffset + playfield.GetModel().translation;
+			glm::vec3 local = gooberOffset + playerModel.translation;
 			local -= forward * 0.65f;
 			if (gasFlag)
 				managedProcess.AddExhaust(local + left, -4.f * forward, 128);
@@ -1545,9 +1481,9 @@ void gameTick()
 
 		managedProcess.Update();
 
-
 		// End of Tick timekeeping
-		auto balb = std::chrono::steady_clock::now();
+		auto tickEnd = std::chrono::steady_clock::now();
+		maxTickTime = std::max(tickEnd - tickStart, maxTickTime);
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
 		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };
 		while (std::chrono::steady_clock::now() < desired) 
@@ -2622,15 +2558,6 @@ void init()
 
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer, guyIndex);
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer2, guyIndex2, 1);
-
-	catapult.SetCenter(glm::vec3(0, 0.5f, 0));
-	catapult.SetRadius(0.25f);
-	catapult.SetLineLength(0.5f);
-
-	catapultModel.translation = glm::vec3(0, 0.5f, 0);
-	catapultBox.ReCenter(glm::vec3(0, 0.5, 0));
-	catapultBox.ReScale(glm::vec3(0.25f, 0.5f, 0.25f));
-
 
 	Font::SetFontDirectory("Fonts");
 
