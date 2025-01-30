@@ -345,6 +345,8 @@ BasicPhysics shipPhysics;
 Player playfield(glm::vec3(0.f, 3.f, 0.f));
 float playerSpeedControl = 0.1f;
 Input::Keyboard boardState; 
+// TODO: Proper start/reset value
+glm::quat aboutTheShip(glm::vec3(0.f));
 
 void display()
 {
@@ -378,12 +380,17 @@ void display()
 
 	glm::vec3 localCamera = cameraPosition;
 	glm::mat3 axes(playerModel.rotation);
-	localCamera = playerModel.translation - 5.f * axes[0] + 3.5f * axes[1];
+	//localCamera = - 5.f * axes[0] + 3.5f * axes[1];
+	localCamera = -5.f * axes[0];
+
+	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
+
+	localCamera += playerModel.translation;
 
 	// Adding pi/2 is necessary because the default camera is facing -z
 	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
 									-localCamera);
-	view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 3.f, axes[1]);
+	view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 0.f, axes[1]);
 	//std::cout << view[3] << '\n';
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
@@ -1275,9 +1282,7 @@ void gameTick()
 	do
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
-		const TimeDelta interval = tickStart - lastStart;
-		// Annoying but necessary timekeeping
-		
+		const TimeDelta interval = tickStart - lastStart;		
 		{
 			sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
@@ -1719,8 +1724,15 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 
 		cameraRotation.y += yDelta;
 		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
-
-		targetAngles = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
+		if (Mouse::CheckButton(Mouse::ButtonLeft))
+		{
+			// TODO: Some clamping to ensure less whackiness
+			aboutTheShip = glm::quat(glm::radians(glm::vec3(zDelta, yDelta, 0.f))) * aboutTheShip;
+		}
+		else
+		{
+			targetAngles = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
+		}
 	}
 	else
 	{
