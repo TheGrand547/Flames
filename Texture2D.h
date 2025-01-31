@@ -5,6 +5,7 @@
 #include <glm/glm.hpp>
 #include <string>
 #include <array>
+#include <format>
 #include <vector>
 #include <math.h>
 #include "log.h"
@@ -32,7 +33,7 @@ private:
 	inline constexpr GLenum TextureType();
 public:
 	Texture2D();
-	Texture2D(const std::string& filename);
+	Texture2D(const std::string& filename, const FilterStruct& filters = {});
 	~Texture2D();
 
 	Texture2D& operator=(Texture2D&& left) noexcept;
@@ -41,6 +42,7 @@ public:
 
 	inline int GetWidth() const noexcept;
 	inline int GetHeight() const noexcept;
+	inline GLenum GetFormat() const noexcept;
 	inline glm::ivec2 GetSize() const noexcept;
 
 	inline glm::vec2 GetTextureCoordinates(const glm::ivec2& pos) const noexcept;
@@ -50,7 +52,7 @@ public:
 
 	void ApplyInfo(GLuint texture, int width, int height, int channels);
 
-	void MakeAliasOf(Texture2D& other);
+	void MakeAliasOf(const Texture2D& other);
 
 	void CopyFrom(Texture2D& other);
 	void CopyFrom(Texture2D&& other);
@@ -101,6 +103,11 @@ inline int Texture2D::GetWidth() const noexcept
 inline int Texture2D::GetHeight() const noexcept
 {
 	return this->height;
+}
+
+inline GLenum Texture2D::GetFormat() const noexcept
+{
+	return this->internalFormat;
 }
 
 inline glm::ivec2 Texture2D::GetSize() const noexcept
@@ -204,6 +211,11 @@ inline void Texture2D::CreateEmptyWithFilters(glm::ivec2 size, TextureFormatInte
 template<class T> inline void Texture2D::Load(const std::vector<T>& data, TextureFormatInternal internal, TextureFormat textureFormat,
 	TextureDataInput dataFormat, std::size_t width, std::size_t height)
 {
+	if (width * height > data.size())
+	{
+		Log(std::format("Specified width({}) and height({}) are too large for the data provided({})", width, height, data.size()));
+		return;
+	}
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
 	if (this->texture)
@@ -226,7 +238,7 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 	this->CleanUp();
 	if (!width && !height)
 	{
-		width = height = (std::size_t)sqrt(L);
+		width = height = static_cast<std::size_t>(sqrt(L));
 		if (width * height != L)
 		{
 			LogF("Width(%zu) and Height(%zu) do not equal the proper size(%zu)\n", width, height, L);
@@ -238,6 +250,8 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 	{
 		glBindTexture(GL_TEXTURE_2D, this->texture);
 		glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+		// TODO: Make internal sizes better
+		internal = static_cast<TextureFormatInternal>(Texture::GetSizedInteral(internal));
 		glTexImage2D(GL_TEXTURE_2D, 0, static_cast<GLenum>(internal), static_cast<GLsizei>(width), static_cast<GLsizei>(height),
 			BORDER_PARAMETER, static_cast<GLenum>(textureFormat), static_cast<GLenum>(dataFormat), data.data());
 		this->internalFormat = static_cast<GLenum>(internal);

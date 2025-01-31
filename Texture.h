@@ -65,6 +65,8 @@ enum TextureFormatInternal
 	InternalDepthStencilFloat    = GL_DEPTH_STENCIL_ATTACHMENT,
 	InternalRed8                 = GL_R8,
 	InternalSignedRed8           = GL_R8_SNORM,
+	InternalRedGreen8            = GL_RG8,
+	InternalSignedRedGreen8      = GL_RG8_SNORM,
 	InternalRed16                = GL_R16,
 	InternalSignedRed16          = GL_R16_SNORM,
 	InternalRedGreen16           = GL_RG16,
@@ -176,6 +178,8 @@ namespace Texture
 	void SetBasePath(const std::string& basePath);
 	GLuint GetColorChannels(const TextureFormatInternal& format);
 	GLuint GetColorChannels(const TextureFormat& format);
+
+	GLenum GetSizedInteral(const TextureFormatInternal& format);
 }
 
 #endif // TEXTURE_H

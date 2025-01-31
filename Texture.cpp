@@ -103,3 +103,19 @@ GLuint Texture::GetColorChannels(const TextureFormat& format)
         return 4;
     }
 }
+
+GLenum Texture::GetSizedInteral(const TextureFormatInternal& format)
+{
+    switch (format)
+    {
+    case InternalRGBA:
+        return InternalRGBA8;
+    case InternalRGB:
+        return InternalRGB8;
+    case InternalRedGreen:
+        return InternalRedGreen8;
+    case InternalRed:
+        return InternalRed8;
+    }
+    return format;
+}

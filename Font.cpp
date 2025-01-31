@@ -134,12 +134,11 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 {
 	ArrayBuffer buffer;
 	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
-	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA, backgroundColor);
+	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA8, backgroundColor);
 	//framebuffer.GetColor().FillTexture(backgroundColor);
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
 	framebuffer.Assemble();
-	glm::mat4 projection = glm::ortho<float>(0.f, static_cast<float>(size.x), static_cast<float>(size.y), 0.f);
 	framebuffer.Bind();
 	glViewport(0, 0, size.x, size.y);
 
@@ -147,7 +146,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	Font::shader.SetActiveShader();
 	Font::shader.SetTextureUnit(std::string("fontTexture"), this->texture, 0);
-	Font::shader.SetMat4("Projection", projection);
+	Font::shader.SetMat4("Projection", glm::ortho<float>(0.f, static_cast<float>(size.x), static_cast<float>(size.y), 0.f));
 	Font::shader.SetVec4("colorIn", textColor);
 	Font::vao.Bind();
 	Font::vao.BindArrayBuffer(buffer);

@@ -166,11 +166,13 @@ Shader vision;
 Shader ship;
 Shader basic;
 Shader engine;
+Shader skyBox;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
 Texture2D buttonA, buttonB, nineSlice, mapping;
 CubeMap mapper;
+CubeMap sky;
 
 // Vertex Array Objects
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
@@ -931,6 +933,17 @@ void display()
 	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
 	flatLighting.DrawElements(Triangle, sphereIndicies);
 	*/
+
+	DisableGLFeatures<FaceCulling>();
+	glDepthFunc(GL_LEQUAL);
+	skyBox.SetActiveShader();
+	plainVAO.Bind();
+	plainVAO.BindArrayBuffer(plainCube);
+	skyBox.SetTextureUnit("skyBox", sky);
+	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+	EnableGLFeatures<FaceCulling>();
+
+
 
 	DisableGLFeatures<DepthTesting>();
 	EnableGLFeatures<Blending>();
@@ -2015,6 +2028,7 @@ void init()
 	pathNodeView.CompileSimple("path_node");
 	ship.CompileSimple("mesh_final");
 	skinner.CompileSimple("skin");
+	skyBox.CompileSimple("sky");
 	sphereMesh.CompileSimple("mesh");
 	stencilTest.CompileSimple("stencil_");
 	triColor.CompileSimple("tri_color");
@@ -2037,6 +2051,7 @@ void init()
 	pathNodeView.UniformBlockBinding("Camera", 0);
 	ship.UniformBlockBinding("Camera", 0);
 	skinner.UniformBlockBinding("Camera", 0);
+	skyBox.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);
 	triColor.UniformBlockBinding("Camera", 0);
@@ -2331,7 +2346,26 @@ void init()
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
 	//followers.Insert(sc, sc.GetAABB());
 	//followers.Insert(sc2, sc2.GetAABB());
+	
+	// Cube map shenanigans
+	{
+		std::array<Texture2D, 6> cubeFaces;
+		for (std::size_t i = 0; i < 6; i++)
+		{
+			Texture2D& current = cubeFaces[i];
+			std::array<unsigned char, 256 * 3> data{0};
+			for (int j = 0; j < 20; j++)
+			{
+				unsigned char pos = 3 * (rand() % 256);
+				data[pos] = 0xFF;
+				data[pos + 1] = 0xFF;
+				data[pos + 2] = 0xFF;
+			}
 
+			current.Load(data, InternalRGB, FormatRGB, DataUnsignedByte, 16, 16);
+		}
+		sky.Generate(cubeFaces);
+	}
 
 	struct 
 	{

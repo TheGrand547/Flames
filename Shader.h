@@ -9,6 +9,7 @@
 #include <string>
 #include "Buffer.h"
 #include "Texture2D.h"
+#include "CubeMap.h"
 
 enum struct PrimitiveDrawingType : unsigned int
 {
@@ -106,6 +107,7 @@ public:
 	inline void SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const;
 	inline void SetTextureUnit(const std::string& name, const GLuint unit = 0) const;
 	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit = 0) const;
+	inline void SetTextureUnit(const std::string& name, const CubeMap& texture, const GLuint unit = 0) const;
 	inline void UniformBlockBinding(const std::string& name, GLuint bindingPoint);
 
 	// TODO: Maybe a draw function that takes a variable amount of VAO, Buffers, etc and does all that in a "magic" step
@@ -203,6 +205,12 @@ inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit) c
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit) const
+{
+	texture.BindTexture(unit);
+	glUniform1i(this->UniformIndex(name), unit);
+}
+
+inline void Shader::SetTextureUnit(const std::string& name, const CubeMap& texture, const GLuint unit) const
 {
 	texture.BindTexture(unit);
 	glUniform1i(this->UniformIndex(name), unit);

@@ -16,9 +16,10 @@ Texture2D::Texture2D() : width(0), height(0), channels(0), texture(0), internalF
 
 }
 
-Texture2D::Texture2D(const std::string& filename) : width(0), height(0), channels(0), texture(0), internalFormat(0), isTextureView(false)
+Texture2D::Texture2D(const std::string& filename, const FilterStruct& filters) : width(0), height(0), channels(0), texture(0), internalFormat(0), isTextureView(false)
 {
 	this->Load(filename);
+	this->SetFilters(filters);
 }
 
 Texture2D::~Texture2D()
@@ -62,7 +63,7 @@ void Texture2D::ApplyInfo(GLuint texture, int width, int height, int channels)
 	this->internalFormat = 0;
 }
 
-void Texture2D::MakeAliasOf(Texture2D& other)
+void Texture2D::MakeAliasOf(const Texture2D& other)
 {
 	this->CleanUp();
 	glGenTextures(1, &this->texture);
