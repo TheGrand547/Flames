@@ -348,7 +348,7 @@ Player playfield(glm::vec3(0.f, 3.f, 0.f));
 float playerSpeedControl = 0.1f;
 Input::Keyboard boardState; 
 // TODO: Proper start/reset value
-glm::quat aboutTheShip(glm::vec3(0.f));
+glm::quat aboutTheShip(0.f, 0.f, 0.f, 1.f);
 
 void display()
 {
@@ -383,7 +383,7 @@ void display()
 	glm::vec3 localCamera = cameraPosition;
 	glm::mat3 axes(playerModel.rotation);
 	//localCamera = - 5.f * axes[0] + 3.5f * axes[1];
-	localCamera = -5.f * axes[0];
+	localCamera = glm::vec3(5.f, 0.f, 0.f);
 
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 
@@ -1732,15 +1732,27 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 		if (abs(yDif) > 20)
 			yDif = 0;
 		// Why 50??
-		float yDelta = 50 * (xDif * ANGLE_DELTA) / Window::Width;
-		float zDelta = 50 * (yDif * ANGLE_DELTA) / Window::Height;
+		const float AngleFactor = ANGLE_DELTA * 50.f;
+		glm::vec2 rawDeltas = glm::vec2(xDif, yDif) / Window::GetSizeF();
+		float yDelta = rawDeltas.x * AngleFactor;
+		float zDelta = rawDeltas.y * AngleFactor;
+		// TODO: Sensitivity values
+
 
 		cameraRotation.y += yDelta;
 		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
 		if (Mouse::CheckButton(Mouse::ButtonLeft))
 		{
 			// TODO: Some clamping to ensure less whackiness
-			aboutTheShip = glm::quat(glm::radians(glm::vec3(zDelta, yDelta, 0.f))) * aboutTheShip;
+
+			rawDeltas = glm::radians(rawDeltas * AngleFactor);
+			glm::vec3 axis = glm::normalize(rawDeltas.x * glm::vec3(0.f, 1.f, 0.f) + rawDeltas.y * glm::vec3(0.f, 0.f, 1.f));
+			float length = glm::length(rawDeltas);
+			if (!glm::any(glm::isnan(axis)))
+			{
+				glm::quat rotation = glm::normalize(glm::angleAxis(length, axis));
+				aboutTheShip = aboutTheShip * rotation;
+			}
 		}
 		else
 		{
@@ -1990,6 +2002,7 @@ void init()
 	std::srand(NULL);
 	// OpenGL Feature Enabling
 	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); 
 	DisableGLFeatures<MultiSampling>();
 	glDepthFunc(GL_LEQUAL);
 
