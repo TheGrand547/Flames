@@ -74,6 +74,7 @@ namespace Input
 	struct Keyboard
 	{
 		glm::vec3 heading;
+		bool fireButton;
 	};
 };
 

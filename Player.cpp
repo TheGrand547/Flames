@@ -1,13 +1,23 @@
 #include "Player.h"
 #include <algorithm>
 #include <numbers>
+#include "Level.h"
 
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
+
+// This will be overhauled due to player mass increasing when "full"
 static constexpr float PlayerMass = 5.f; // Idk
+
+// TODO: Non "eyeball" tune these
 static constexpr float MaxSpeed = 20.f;
 static constexpr float minTurningRadius = 7.5f;
 static constexpr float EngineThrust = 40.f;
 static constexpr float TurningThrust = 60.f;
+static constexpr float MinFiringVelocity = 8.f; 
+
+static constexpr IntervalType FireDelay = 16;
+static constexpr IntervalType FireInterval = 200;
+static constexpr IntervalType WaitingValue = -1;
 
 void Player::Update(Input::Keyboard input) noexcept
 {
@@ -65,6 +75,41 @@ void Player::Update(Input::Keyboard input) noexcept
 			this->transform.rotation = delta * this->transform.rotation;
 			forces += input.heading.z * localAxes[1] * rotationalThrust;
 		}
+	}
+
+	if (input.fireButton && this->fireDelay == 0 && this->fireCountdown == 0 && currentSpeed > MinFiringVelocity)
+	{
+		this->fireCountdown = FireDelay;
+		this->fireDelay = WaitingValue;
+	}
+	if (this->fireDelay != WaitingValue && this->fireDelay)
+	{
+		this->fireDelay--;
+	}
+
+	if (this->fireCountdown)
+	{
+		this->fireCountdown--;
+	}
+	// Time to fire
+	else if (this->fireDelay == WaitingValue)
+	{
+		this->fireDelay = FireInterval;
+		// TODO: See if kinetic energy "feels" better
+		
+
+		// KE = 1/2 * m * v^2
+		float kineticEnergy = 0.5f * PlayerMass * currentSpeed * currentSpeed;
+		float bulletEnergy = glm::sqrt(kineticEnergy * 2.f * Bullet::InvMass);
+
+		float momentum = currentSpeed * PlayerMass;
+		float bulletMomentum = momentum * Bullet::InvMass;
+		// Conserve momentum
+		
+		glm::vec3 bulletVelocity = bulletEnergy * unitVector;
+
+		Level::AddBullet(this->transform.position, bulletVelocity);
+		this->velocity = glm::vec3(0.f);
 	}
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);

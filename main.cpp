@@ -276,7 +276,7 @@ bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 
 constexpr float BulletRadius = 0.05f;
-struct Bullet
+struct SimpleBullet
 {
 	glm::vec3 position, direction;
 };
@@ -286,7 +286,7 @@ PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
 
-std::vector<Bullet> bullets;
+std::vector<SimpleBullet> bullets;
 ArrayBuffer bulletMatrix;
 
 std::vector<TextureVertex> decalVertex;
@@ -382,20 +382,16 @@ void display()
 
 	glm::vec3 localCamera = cameraPosition;
 	glm::mat3 axes(playerModel.rotation);
-	//localCamera = - 5.f * axes[0] + 3.5f * axes[1];
-	localCamera = glm::vec3(5.f, 0.f, 0.f);
+	localCamera = glm::vec3(5.f, -3.5f, 0.f);
 
+	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
-
 	localCamera += playerModel.translation;
 
-	// Adding pi/2 is necessary because the default camera is facing -z
-	glm::mat4 view = glm::translate(glm::eulerAngleXYZ(cameraRadians.x, cameraRadians.y + glm::half_pi<float>(), cameraRadians.z), 
-									-localCamera);
-	view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 0.f, axes[1]);
-	//std::cout << view[3] << '\n';
+	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 0.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
+
 	// Demo Sphere drawing
 
 	// Possibly replace by rendering a quad in view space that gets the depth penetration of that given pixel in world space
@@ -815,6 +811,19 @@ void display()
 		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
 	}
 
+	for (auto& bullet : Level::GetBullets())
+	{
+		Model localModel;
+		localModel.translation = bullet.position;
+		localModel.scale = glm::vec3(BulletRadius * 3.f);
+		sphereMesh.SetMat4("modelMat", localModel.GetModelMatrix());
+		sphereMesh.SetMat4("normalMat", localModel.GetNormalMatrix());
+		sphereMesh.SetTextureUnit("textureIn", texture, 0);
+		//mapper.BindTexture(0);
+		//sphereMesh.SetTextureUnit("textureIn", 0);
+		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
+	}
+
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
 	sphereModel.translation = glm::vec3(0, 0, 0);
@@ -1077,13 +1086,6 @@ OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
 
-struct te
-{
-	glm::vec3 position;
-	std::weak_ptr<PathNode> ptr;
-};
-
-
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
 
@@ -1130,6 +1132,7 @@ void idle()
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
 	boardState.heading = glm::vec3(playerSpeedControl, targetAngles);
+	boardState.fireButton = keyState['T'];
 
 	if (keyState['W'])
 		cameraPosition += forward;
@@ -1271,7 +1274,6 @@ void idle()
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
 	decals.BufferData(decalVertex, StaticDraw);
-
 	if (keyState['B'])
 	{
 		managedProcess.AddExhaust(cameraPosition + unit, unit * 2.f, 256);
@@ -1303,7 +1305,7 @@ void gameTick()
 			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
 			// TODO: Same for bullets
 			std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
-			std::erase_if(bullets, [](const Bullet& bullet)
+			std::erase_if(bullets, [](const SimpleBullet& bullet)
 				{
 					return glm::any(glm::greaterThan(glm::abs(bullet.position), glm::vec3(20)));
 				}
@@ -1416,6 +1418,12 @@ void gameTick()
 		cameraPosition = player.ApplyForces({});
 		player.velocity *= 0.99;
 
+		// Bullet stuff;
+		for (auto& local : Level::GetBullets())
+		{
+			local.Update();
+		}
+
 		if (gameTicks % 256 == 0)
 		{
 			lightColor = glm::abs(glm::ballRand(1.f));
@@ -1470,7 +1478,7 @@ void gameTick()
 		{
 			glm::vec3 forward = glm::mat4_cast(gooberAngles) * glm::vec4(1.f, 0.f, 0.f, 1.f);
 			foobar.Start(gameTicks);
-			bullets.emplace_back<Bullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
+			bullets.emplace_back<SimpleBullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
 		}
 		weaponOffset = foobar.Get(gameTicks).position;
 
@@ -1550,7 +1558,6 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		default: break;
 		}
 	}
-
 	if (action == GLFW_PRESS)
 	{
 		if (key == GLFW_KEY_L)
@@ -1694,7 +1701,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		//pointingCapsule.Translate(pointingCapsule.Forward() * (0.3f + rayLength / 2.f));
 		//pointingCapsule.Rotate(glm::vec3(0, 0, 90.f));
 		//pointingCapsule.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
-		bullets.emplace_back<Bullet>({cameraPosition, liota.delta});
+		bullets.emplace_back<SimpleBullet>({cameraPosition, liota.delta});
 
 		//player.ApplyForces(liota.delta * 5.f, 1.f); // Impulse force
 	}
@@ -1751,7 +1758,8 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 			if (!glm::any(glm::isnan(axis)))
 			{
 				glm::quat rotation = glm::normalize(glm::angleAxis(length, axis));
-				aboutTheShip = aboutTheShip * rotation;
+				//aboutTheShip = aboutTheShip * rotation;
+				// Pretending this doesn't do anything
 			}
 		}
 		else

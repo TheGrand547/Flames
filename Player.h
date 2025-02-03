@@ -7,16 +7,19 @@
 #include "Input.h"
 #include "Model.h"
 
+typedef std::uint8_t IntervalType;
+
 class Player
 {
 protected:
 	Transform transform;
 	glm::vec3 velocity;
-
+	// TODO: Probably move away from size_t's if possible
+	IntervalType fireDelay, fireCountdown;
 
 public:
 	inline Player(const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0)) noexcept 
-		: transform(position, glm::quat(glm::vec3(0.25f))), velocity(velocity) {}
+		: transform(position, glm::quat(glm::vec3(0.25f))), velocity(velocity), fireDelay(0), fireCountdown(0) {}
 
 	// TODO: Encapsulate drawing functions
 
