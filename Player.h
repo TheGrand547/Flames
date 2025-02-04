@@ -14,7 +14,6 @@ class Player
 protected:
 	Transform transform;
 	glm::vec3 velocity;
-	// TODO: Probably move away from size_t's if possible
 	IntervalType fireDelay, fireCountdown;
 
 public:

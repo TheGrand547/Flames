@@ -28,3 +28,29 @@ void OBJReader::ReadOBJ(const std::string& filename, ArrayBuffer& elements, Elem
 		Log("Unable to load model at index " << id);
 	}
 }
+
+std::vector<MeshPair> OBJReader::ReadOBJ(const std::string& filename)
+{
+	std::vector<MeshPair> local{};
+	ReadOBJ(filename, local);
+	return local;
+}
+
+void OBJReader::ReadOBJ(const std::string& filename, std::vector<MeshPair>& input)
+{
+	objl::Loader loading;
+	loading.LoadFile(filename);
+	Log(std::format("Loaded \"{}\": Retrieved: {} Meshes, {} Indices, {} Verticies", filename,
+		loading.LoadedMeshes.size(), loading.LoadedIndices.size(), loading.LoadedVertices.size()));
+	input.clear();
+	input.reserve(loading.LoadedMeshes.size());
+	for (std::size_t i = 0; i < loading.LoadedMeshes.size(); i++)
+	{
+		ArrayBuffer elements;
+		ElementArray index;
+		objl::Mesh mesh = loading.LoadedMeshes[i];
+		elements.BufferData(mesh.Vertices, StaticDraw);
+		index.BufferData(mesh.Indices, StaticDraw);
+		input.emplace_back(std::move(elements), std::move(index));
+	}
+}

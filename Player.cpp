@@ -97,8 +97,11 @@ void Player::Update(Input::Keyboard input) noexcept
 		this->fireDelay = FireInterval;
 		// TODO: See if kinetic energy "feels" better
 		
-
+		// TODO: There's a constant to factor out here
 		// KE = 1/2 * m * v^2
+
+		glm::vec3 facingVector = static_cast<glm::mat3>(this->transform.rotation)[0];
+		facingVector = unitVector;
 		float kineticEnergy = 0.5f * PlayerMass * currentSpeed * currentSpeed;
 		float bulletEnergy = glm::sqrt(kineticEnergy * 2.f * Bullet::InvMass);
 
@@ -106,10 +109,10 @@ void Player::Update(Input::Keyboard input) noexcept
 		float bulletMomentum = momentum * Bullet::InvMass;
 		// Conserve momentum
 		
-		glm::vec3 bulletVelocity = bulletEnergy * unitVector;
+		glm::vec3 bulletVelocity = bulletEnergy * facingVector;
 
 		Level::AddBullet(this->transform.position, bulletVelocity);
-		this->velocity = glm::vec3(0.f);
+		this->velocity = -5.f * facingVector;
 	}
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);

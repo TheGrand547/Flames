@@ -15,9 +15,11 @@ x64/
 *.o
 *.obj
 
-# Allow models
-!/Models/*.o
-!/Models/*.obj
+# Allow models in thoery
+#!/Models/*.o
+#!/Models/*.obj
+!/Models/*.mtl
+*.mtl
 
 # Precompiled Headers
 *.gch

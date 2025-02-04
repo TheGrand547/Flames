@@ -115,26 +115,26 @@ public:
 	// Feed the data in the buffer, unchanged, directly to the shader
 	inline void DrawArray(PrimitiveDrawingType type, const GLuint primitiveCount, const GLuint elementOffset = 0);
 	inline void DrawArray(PrimitiveDrawingType type, ArrayBuffer& buffer, const GLuint elementOffset = 0);
-	template<PrimitiveDrawingType type> inline void DrawArray(const GLuint primitiveCount, const GLuint elementOffset = 0);
-	template<PrimitiveDrawingType type> inline void DrawArray(ArrayBuffer& buffer, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArray(const GLuint primitiveCount, const GLuint elementOffset = 0);
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArray(ArrayBuffer& buffer, const GLuint elementOffset = 0);
 
 	// Feed the shader the data in the buffer, augmented by the instance number, instance count times
-	template<PrimitiveDrawingType type> inline void DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
 																		const GLuint primitiveOffset = 0, const GLuint instanceOffset = 0);
-	template<PrimitiveDrawingType type> inline void DrawArrayInstanced(ArrayBuffer& primitiveBuffer, ArrayBuffer& instanceBuffer,
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayInstanced(ArrayBuffer& primitiveBuffer, ArrayBuffer& instanceBuffer,
 																		const GLuint elementOffset = 0, const GLuint instanceOffset = 0);
 
 	// Draw instanced data from the given parameter struct
-	template<PrimitiveDrawingType type> inline void DrawArrayIndirect(const IndirectDraw& parameters);
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayIndirect(const IndirectDraw& parameters);
 
 	// TODO: maybe glDrawElementsRange() but probably not
 
 	// Feed the data in the buffer to the shader in the order given by the passed container
-	template<PrimitiveDrawingType type, class Container> inline void DrawElementsMemory(const Container& contents);
+	template<PrimitiveDrawingType type = DrawType::Triangle, class Container> inline void DrawElementsMemory(const Container& contents);
 	template<class Container> inline void DrawElementsMemory(PrimitiveDrawingType type, const Container& contents);
 
 	// Feed the data in the buffer to the shader in the order given by the ElementArray buffer
-	template<PrimitiveDrawingType type> inline void DrawElements(ElementArray& indexBuffer, const GLuint elementOffset = 0, const GLuint indexOffset = 0);
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawElements(ElementArray& indexBuffer, const GLuint elementOffset = 0, const GLuint indexOffset = 0);
 	inline void DrawElements(PrimitiveDrawingType type, ElementArray& indexBuffer, const GLuint elementOffset = 0, const GLuint indexOffset = 0);
 
 	template<PrimitiveDrawingType type> inline void DrawElementsInstanced(ElementArray& indexBuffer, ArrayBuffer& instanceBuffer,

@@ -350,6 +350,10 @@ Input::Keyboard boardState;
 // TODO: Proper start/reset value
 glm::quat aboutTheShip(0.f, 0.f, 0.f, 1.f);
 
+ArrayBuffer projectileBuffer;
+std::vector<MeshPair> satelitePairs;
+
+
 void display()
 {
 	/*
@@ -707,8 +711,18 @@ void display()
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
-	
 	ship.DrawElements<DrawType::Triangle>(guyIndex);
+
+	defaults.translation = glm::vec3(10, 10, 0);
+	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
+	ship.SetMat4("modelMat", defaults.GetModelMatrix());
+	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
+	for (auto& local : satelitePairs)
+	{
+		meshVAO.BindArrayBuffer(local.vertex);
+		ship.DrawElements<DrawType::Triangle>(local.index);
+	}
+
 
 	Model defaulter{ weaponOffset };
 
@@ -752,6 +766,11 @@ void display()
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
 	uniform.DrawArray<DrawType::Lines>(rayBuffer);
+	if (projectileBuffer.Size() > 0)
+	{
+		plainVAO.BindArrayBuffer(projectileBuffer);
+		//uniform.DrawArray<DrawType::Lines>(projectileBuffer);
+	}
 	glLineWidth(1.f);
 
 	engine.SetActiveShader();
@@ -1213,6 +1232,16 @@ void idle()
 	pathway.pop_back();
 	pathway.pop_back();
 
+	std::array<glm::vec3, 10> projectiles{};
+	projectiles.fill(playerModel.translation);
+	for (int i = 0; i < 5; i++)
+	{
+		projectiles[2 * i] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i);
+		projectiles[2 * i + 1] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i + 1);
+	}
+	projectileBuffer.BufferData(projectiles);
+
+
 	auto local = gameTicks % 128;
 	float timeA = 1 - (((local + 25) % 128) / 128.f),
 		timeB = 1 - (((local + 74) % 128) / 128.f),
@@ -1428,7 +1457,6 @@ void gameTick()
 		{
 			lightColor = glm::abs(glm::ballRand(1.f));
 		}
-
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
 		
@@ -2611,7 +2639,8 @@ void init()
 
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer, guyIndex);
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer2, guyIndex2, 1);
-
+	OBJReader::ReadOBJ("Models\\Satelite.obj", satelitePairs);
+	std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");
 
 	// Awkward syntax :(
