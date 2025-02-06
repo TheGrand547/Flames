@@ -95,8 +95,8 @@ public:
 	void CleanUp();
 	void ExportCompiled() const;
 
-	inline GLuint GetProgram() const;
-	inline void SetActiveShader();
+	inline GLuint GetProgram() const noexcept;
+	inline void SetActiveShader() const noexcept;
 	inline void SetInt(const std::string& name, const int i) const;
 	inline void SetUnsignedInt(const std::string& name, const unsigned int i) const;
 	inline void SetFloat(const std::string& name, const float i) const;
@@ -149,12 +149,12 @@ constexpr bool Shader::Compiled() const
 {
 	return this->compiled;
 }
-inline GLuint Shader::GetProgram() const
+inline GLuint Shader::GetProgram() const noexcept
 {
 	return this->program;
 }
 
-inline void Shader::SetActiveShader()
+inline void Shader::SetActiveShader() const noexcept
 {
 	glUseProgram(this->program);
 }

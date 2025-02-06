@@ -134,7 +134,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 {
 	ArrayBuffer buffer;
 	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
-	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA8, backgroundColor);
+	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA8, glm::vec4(1, 0.5, 0.25, 1.f));
 	//framebuffer.GetColor().FillTexture(backgroundColor);
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);

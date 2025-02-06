@@ -63,6 +63,7 @@
 #include "ExhaustManager.h"
 #include "Player.h"
 #include "TimeAverage.h"
+#include "Satelite.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -352,7 +353,7 @@ glm::quat aboutTheShip(0.f, 0.f, 0.f, 1.f);
 
 ArrayBuffer projectileBuffer;
 std::vector<MeshPair> satelitePairs;
-
+Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 
 void display()
 {
@@ -715,14 +716,25 @@ void display()
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
+	defaults.scale = glm::vec3(0.5f);
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
-	for (auto& local : satelitePairs)
+	//for (auto& local : satelitePairs)
+	/*
+	for (std::size_t i = 0 ; i < satelitePairs.size(); i++)
 	{
+		MeshPair& local = satelitePairs[i];
 		meshVAO.BindArrayBuffer(local.vertex);
 		ship.DrawElements<DrawType::Triangle>(local.index);
+		if (i == 0)
+		{
+			defaults.rotation = glm::angleAxis(glm::radians(static_cast<float>(gameTicks / 4)), glm::vec3(1.f, 0.f, 0.f)) * defaults.rotation;
+			ship.SetMat4("modelMat", defaults.GetModelMatrix());
+			ship.SetMat4("normalMat", defaults.GetNormalMatrix());
+		}
 	}
-
+	*/
+	groovy.Draw(ship);
 
 	Model defaulter{ weaponOffset };
 
@@ -941,13 +953,17 @@ void display()
 	meshVAO.BindArrayBuffer(capsuleBuffer);
 	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
 	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	flatLighting.SetVec3("viewPos", cameraPosition);
-	flatLighting.SetMat4("modelMat", pointingCapsule.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", pointingCapsule.GetNormalMatrix());
-	//flatLighting.SetVec3("shapeColor", glm::vec3(0.8f, 0.34f, 0.6f));
+	flatLighting.SetVec3("viewPos", glm::vec3(0.f));
+
+
+	Model current{ glm::vec3(10.f, 10.f, 0.f) };
+	current.rotation = glm::quat(glm::radians(glm::vec3(90.f, 0.f, 0.f)));
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	flatLighting.SetMat4("modelMat", current.GetNormalMatrix());
+	flatLighting.SetMat4("normalMat", current.GetNormalMatrix());
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
 	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
-
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(movingCapsule);
@@ -1195,7 +1211,7 @@ void idle()
 	if (reRenderText && letters.str().size() > 0)
 	{
 		reRenderText = false;
-		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1, 0, 0, 1));
+		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1.f, 0.f, 0.f, 1.f));
 		std::stringstream().swap(letters);
 	}
 
@@ -1447,10 +1463,18 @@ void gameTick()
 		cameraPosition = player.ApplyForces({});
 		player.velocity *= 0.99;
 
+
+		Capsule silly{ groovy.GetBounding() };
+
 		// Bullet stuff;
 		for (auto& local : Level::GetBullets())
 		{
 			local.Update();
+			Sphere sphere{ local.position, BulletRadius };
+			if (silly.Intersect(sphere))
+			{
+				std::cout << "Grumpy\n";
+			}
 		}
 
 		if (gameTicks % 256 == 0)
@@ -1514,6 +1538,8 @@ void gameTick()
 		{
 			Log("Big Jump of " << deltar);
 		}
+
+		groovy.Update();
 
 		managedProcess.Update();
 
@@ -1722,7 +1748,7 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 			}
 		}
 		// Point displayStartTime has the pointer to the closest element
-		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
+		//Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, rayLength - 0.5f - 0.2f, 30, 30);
 		//pointingCapsule.ReOrient(glm::vec3(0, 0, 90.f));
 		//pointingCapsule.ReOrient(cameraOrientation);
 		//pointingCapsule.ReCenter(cameraPosition);
@@ -2633,15 +2659,20 @@ void init()
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
 		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
-		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.1f, 10.f, 30, 30);
+		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.75f, 3.25f, 30, 30);
+
+
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer, guyIndex);
 	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer2, guyIndex2, 1);
-	OBJReader::ReadOBJ("Models\\Satelite.obj", satelitePairs);
-	std::cout << satelitePairs.size() << ":\n";
+	//OBJReader::ReadOBJ("Models\\Satelite.obj", satelitePairs);
+	// TODO: Figure out why std::move(readobj) has the wrong number of elements
+	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");
+
+	Satelite::LoadResources();
 
 	// Awkward syntax :(
 

@@ -199,7 +199,14 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	this->height = static_cast<GLsizei>(height);
 
 	glTextureStorage2D(this->texture, level + 1, internalFormat, this->width, this->height);
+	glm::u8vec4 clamped{};
+	for (int i = 0; i < 4; i++)
+	{
+		clamped[i] = static_cast<unsigned char>(color[i] * 255);
+	}
+	// TODO: Eventually figure this garbage out. Pretty sure the error is from the wrong function but who knows man
 	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
+	//glClearTexImage(this->texture, level, pixelType, GL_UNSIGNED_BYTE, glm::value_ptr(clamped));
 	this->internalFormat = internalFormat;
 	this->channels = Texture::GetColorChannels(type);
 

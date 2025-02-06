@@ -10,7 +10,7 @@ static constexpr float PlayerMass = 5.f; // Idk
 
 // TODO: Non "eyeball" tune these
 static constexpr float MaxSpeed = 20.f;
-static constexpr float minTurningRadius = 7.5f;
+static constexpr float minTurningRadius = 2.5f;
 static constexpr float EngineThrust = 40.f;
 static constexpr float TurningThrust = 60.f;
 static constexpr float MinFiringVelocity = 8.f; 

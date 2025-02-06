@@ -55,7 +55,7 @@ public:
 	void SetMessages(const std::string& off, const std::string& on, ASCIIFont& font)
 	{
 		font.RenderToTexture(this->baseTexture, off);
-		font.RenderToTexture(this->alternateTexture, on, glm::vec4(1, 0, 0, 1));
+		font.RenderToTexture(this->alternateTexture, on, glm::vec4(1.f, 0.f, 0.f, 1.f));
 		glm::vec2 fixed = glm::max(this->baseTexture.GetSize(), this->alternateTexture.GetSize());
 		fixed = glm::min(fixed, { this->baseRect.z, this->baseRect.w });
 		this->baseRect.z = fixed.x;

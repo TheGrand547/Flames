@@ -179,6 +179,7 @@
     <ClCompile Include="Plane.cpp" />
     <ClCompile Include="Player.cpp" />
     <ClCompile Include="QuickTimer.cpp" />
+    <ClCompile Include="Satelite.cpp" />
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
     <ClCompile Include="Shader.cpp" />
@@ -238,6 +239,7 @@
     <ClInclude Include="Plane.h" />
     <ClInclude Include="Player.h" />
     <ClInclude Include="QuickTimer.h" />
+    <ClInclude Include="Satelite.h" />
     <ClInclude Include="Scrap.h" />
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
