@@ -10,14 +10,41 @@ static constexpr float PlayerMass = 5.f; // Idk
 
 // TODO: Non "eyeball" tune these
 static constexpr float MaxSpeed = 20.f;
-static constexpr float minTurningRadius = 2.5f;
+static constexpr float minTurningRadius = 4.f;
 static constexpr float EngineThrust = 40.f;
-static constexpr float TurningThrust = 60.f;
+static constexpr float TurningThrust = 40.f;
 static constexpr float MinFiringVelocity = 8.f; 
 
 static constexpr IntervalType FireDelay = 16;
 static constexpr IntervalType FireInterval = 200;
 static constexpr IntervalType WaitingValue = -1;
+
+void Player::SelectTarget() noexcept
+{
+	float alignment = 0.f;
+	std::size_t index = -1;
+	const glm::mat3 localAxes(static_cast<glm::mat3>(this->transform.rotation));
+	const glm::vec3 forward = localAxes[0];
+	const glm::vec3 currentPos{};
+
+	//for(...)
+	{
+		glm::vec3 otherPos = World::Zero;
+		glm::vec3 delta = otherPos - currentPos;
+		glm::vec3 normalized = glm::normalize(delta);
+
+		float directionDelta = glm::dot(normalized, forward);
+
+		// Arbitrary cutoff
+		if (directionDelta > 0.5f && directionDelta < alignment)
+		{
+			alignment = directionDelta;
+			index = 0;
+		}
+
+	}
+
+}
 
 void Player::Update(Input::Keyboard input) noexcept
 {
@@ -55,12 +82,12 @@ void Player::Update(Input::Keyboard input) noexcept
 		else
 		{
 			// Stronger 'deceleration' when target speed is further from current speed
-			forces = unitVector * -EngineThrust * (1.f - speedDifference);
+			forces = unitVector * -EngineThrust * speedDifference;
 		}
 	}
 	
 	// Do not allow for turning unless the ship is moving
-	if (currentSpeed > EPSILON)
+	if (currentSpeed > EPSILON && !this->fireCountdown)
 	{
 		// Don't do extra quaternion math if we don't have to
 		if (input.heading.y != 0.f)
@@ -90,6 +117,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	if (this->fireCountdown)
 	{
 		this->fireCountdown--;
+		forces = World::Zero;
 	}
 	// Time to fire
 	else if (this->fireDelay == WaitingValue)

@@ -16,6 +16,9 @@ namespace Level
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
 	std::vector<Bullet>& GetBullets();
+
+	// Points of Interest
+	std::vector<glm::vec3>& GetPOI();
 }
 
 

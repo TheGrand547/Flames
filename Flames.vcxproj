@@ -165,6 +165,7 @@
     <ClCompile Include="ExhaustManager.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
+    <ClCompile Include="GLData.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Level.cpp" />
@@ -174,6 +175,7 @@
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="OBJReader.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
+    <ClCompile Include="Parallel.cpp" />
     <ClCompile Include="PathFollower.cpp" />
     <ClCompile Include="PathNode.cpp" />
     <ClCompile Include="Plane.cpp" />
@@ -222,6 +224,7 @@
     <ClInclude Include="ExhaustManager.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
+    <ClInclude Include="GLData.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />
     <ClInclude Include="Interpolation.h" />
@@ -233,6 +236,7 @@
     <ClInclude Include="Model.h" />
     <ClInclude Include="OBJReader.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
+    <ClInclude Include="Parallel.h" />
     <ClInclude Include="Pathfinding.h" />
     <ClInclude Include="PathFollower.h" />
     <ClInclude Include="PathNode.h" />

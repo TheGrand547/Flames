@@ -15,14 +15,12 @@ layout(std140) uniform Camera
 	mat4 Projection;
 };
 
-/*
 layout(std140) uniform Lighting
 {
-
+	vec4 lightColor;
+	vec4 lightDirection;
 };
-*/
 
-uniform vec3 lightColor;
 uniform vec3 shapeColor;
 
 void main()
@@ -33,7 +31,6 @@ void main()
 	gl_Position = Projection * View * modelMat * vec4(vPos, 1.0);
 
 	float ambient = 0.25f;
-	vec3 lightDir = normalize(vec3(0.15, 1, 0.15));
-	float diffuse = max(dot(norm, lightDir), 0.0);
-	colorOut = shapeColor * (ambient + diffuse)* lightColor;
+	float diffuse = max(dot(norm, lightDirection.xyz), 0.0);
+	colorOut = shapeColor * (ambient + diffuse)* lightColor.xyz;
 }

@@ -28,7 +28,7 @@ inline void UniformBuffer::BindUniform(std::size_t offset, std::size_t size)
 	{
 		size = this->length;
 	}
-	glBindBufferRange(GL_UNIFORM_BUFFER, this->bufferBinding, this->buffer, (GLintptr) offset, (GLsizeiptr) size);
+	glBindBufferRange(GL_UNIFORM_BUFFER, this->bufferBinding, this->buffer, static_cast<GLintptr>(offset), static_cast<GLintptr>(size));
 }
 
 inline void UniformBuffer::SetBindingPoint(GLuint point)

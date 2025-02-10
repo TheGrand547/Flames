@@ -2,6 +2,7 @@
 #include <algorithm>
 #include "util.h"
 #include "Interpolation.h"
+#include "Parallel.h"
 
 void ExhaustManager::AddExhaust(const glm::vec3& position, const glm::vec3& velocity, unsigned int lifetime)
 {
@@ -26,7 +27,9 @@ void ExhaustManager::FillBuffer(ArrayBuffer& buffer) const noexcept
 void ExhaustManager::Update() noexcept
 {
 	this->dirty = true;
-	std::erase_if(this->particles, 
+	
+	//std::erase_if(this->particles,
+	Parallel::erase_if(std::execution::par, this->particles, 
 		[](Exhaust& element)
 		{
 			element.ticksLeft--;

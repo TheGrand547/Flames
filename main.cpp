@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <execution>
 #include <glew.h>
 #include <GLFW/glfw3.h>
 #include <glm/glm.hpp>
@@ -64,6 +65,7 @@
 #include "Player.h"
 #include "TimeAverage.h"
 #include "Satelite.h"
+#include "Parallel.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -147,6 +149,9 @@ ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex,
 ElementArray tetragramIndex;
 
 UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
+
+// TODO: TODO: TODO: make it not vec4's and use not std140 layout
+UniformBuffer lightingBuffer;
 
 // Framebuffer
 Framebuffer<2, DepthAndStencil> depthed;
@@ -339,8 +344,6 @@ Animation flubber = make_animation( Transform(),
 	}
 );
 
-glm::vec3 lightColor;
-
 ExhaustManager managedProcess;
 glm::vec3 shipPosition{ 0, 3, 0 };
 BasicPhysics shipPhysics;
@@ -354,6 +357,8 @@ glm::quat aboutTheShip(0.f, 0.f, 0.f, 1.f);
 ArrayBuffer projectileBuffer;
 std::vector<MeshPair> satelitePairs;
 Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
+bool shiftHeld;
+
 
 void display()
 {
@@ -708,7 +713,6 @@ void display()
 	Model defaults(playerModel);
 	defaults.translation += gooberOffset;
 	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
-	ship.SetVec3("lightColor", lightColor);
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
@@ -1114,9 +1118,6 @@ void display()
 	renderDelay = end - displayStartTime;
 }
 
-static const glm::vec3 GravityAxis{ 0.f, -1.f, 0.f };
-static const glm::vec3 GravityUp{ 0.f, 1.f, 0.f };
-
 OBB* capsuleHit;
 glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
 int shift = 2;
@@ -1166,7 +1167,8 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	boardState.heading = glm::vec3(playerSpeedControl, targetAngles);
+	glm::vec2 adjustment = (shiftHeld) ? glm::vec2(0.5f) : glm::vec2(1.f);
+	boardState.heading = glm::vec3(playerSpeedControl, targetAngles * adjustment);
 	boardState.fireButton = keyState['T'];
 
 	if (keyState['W'])
@@ -1177,8 +1179,8 @@ void idle()
 		cameraPosition += right;
 	if (keyState['A'])
 		cameraPosition -= right;
-	if (keyState['Z']) cameraPosition += GravityUp * speed;
-	if (keyState['X']) cameraPosition -= GravityUp * speed;
+	if (keyState['Z']) cameraPosition += World::Up * speed;
+	if (keyState['X']) cameraPosition -= World::Up * speed;
 	if (cameraPosition != previous)
 	{
 		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
@@ -1241,16 +1243,11 @@ void idle()
 		pathway.push_back(playerModel.translation);
 		lastPoster = pathway.back();
 	}
-
-	pathway.push_back(playerModel.translation);
-	pathway.push_back(playerModel.translation + static_cast<glm::mat3>(playerModel.rotation)[0]);
 	rayBuffer.BufferData(pathway);
-	pathway.pop_back();
-	pathway.pop_back();
 
 	std::array<glm::vec3, 10> projectiles{};
 	projectiles.fill(playerModel.translation);
-	for (int i = 0; i < 5; i++)
+	for (std::size_t i = 0; i < 5; i++)
 	{
 		projectiles[2 * i] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i);
 		projectiles[2 * i + 1] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i + 1);
@@ -1288,6 +1285,10 @@ void idle()
 		lastCheckedDistance = glm::distance(lastCheckedPos, localPos);
 		lastCheckedPos = localPos;
 		lastCheckedTick = gameTicks;
+		if (gameTicks % 256 == 0)
+		{
+			lightingBuffer.BufferSubData(glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), 0);
+		}
 	}
 	std::vector<glm::vec3> rays;
 	Model rayLocal = playerModel;
@@ -1371,9 +1372,9 @@ void gameTick()
 							//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
 							glm::mat3 dumb(1.f);
 							dumb[0] = glm::normalize(-collision.axis);
-							if (glm::abs(glm::dot(collision.axis, GravityUp)) < 0.85)
+							if (glm::abs(glm::dot(collision.axis, World::Up)) < 0.85)
 							{
-								dumb[2] = glm::normalize(glm::cross(dumb[0], GravityUp));
+								dumb[2] = glm::normalize(glm::cross(dumb[0], World::Up	));
 							}
 							else
 							{
@@ -1469,17 +1470,14 @@ void gameTick()
 		// Bullet stuff;
 		for (auto& local : Level::GetBullets())
 		{
+			glm::vec3 previous = local.position;
 			local.Update();
-			Sphere sphere{ local.position, BulletRadius };
-			if (silly.Intersect(sphere))
+			Capsule bulletCapsule{ {previous, local.position}, BulletRadius };
+			Collision lib;
+			if (bulletCapsule.Intersect(silly, lib))
 			{
-				std::cout << "Grumpy\n";
+				std::cout << lib.point << ";" << lib.depth << '\n';
 			}
-		}
-
-		if (gameTicks % 256 == 0)
-		{
-			lightColor = glm::abs(glm::ballRand(1.f));
 		}
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
@@ -1580,6 +1578,8 @@ void window_focus_callback(GLFWwindow* window, int focused)
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
 	bool state = (action == GLFW_PRESS);
+
+	shiftHeld = mods & GLFW_MOD_SHIFT;
 
 	unsigned char letter = static_cast<unsigned char>(key & 0xFF);
 
@@ -2140,6 +2140,8 @@ void init()
 
 	voronoi.UniformBlockBinding("Points", 2);
 
+	ship.UniformBlockBinding("Lighting", 3);
+
 	CheckError();
 	// VAO SETUP
 	billboardVAO.ArrayFormat<TextureVertex>(billboardShader);
@@ -2160,7 +2162,13 @@ void init()
 	plainVAO.ArrayFormat<Vertex>(uniform);
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
-	CheckError();
+
+	lightingBuffer.Generate(DynamicDraw, sizeof(glm::vec4) * 2);
+	std::array<glm::vec4, 2> locals { glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), glm::vec4(0.15f, 1.f, 0.15f, 0.f)};
+	lightingBuffer.BufferSubData(locals, 0);
+	lightingBuffer.SetBindingPoint(3);
+	lightingBuffer.BindUniform();
+
 	// TEXTURE SETUP
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	Texture::SetBasePath("Textures");
@@ -2301,7 +2309,7 @@ void init()
 	{
 		OBB project(ref);
 		glm::vec3 forawrd = project.Up();
-		if (glm::dot(forawrd, GravityUp) > 0.5f)
+		if (glm::dot(forawrd, World::Up) > 0.5f)
 		{
 			Level::AllNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
 		}
@@ -2314,7 +2322,8 @@ void init()
 	}
 	{
 		QuickTimer _tim("Node Culling");
-		std::erase_if(Level::AllNodes,
+		//std::erase_if(Level::AllNodes,
+		Parallel::erase_if(std::execution::par, Level::AllNodes,
 			[&](const PathNodePtr& A)
 			{
 				AABB boxer{};
@@ -2432,9 +2441,10 @@ void init()
 			for (int j = 0; j < 20; j++)
 			{
 				unsigned char pos = 3 * (rand() % 256);
-				data[pos] = 0xFF;
-				data[pos + 1] = 0xFF;
-				data[pos + 2] = 0xFF;
+				std::size_t index = pos;
+				data[index] = 0xFF;
+				data[index + 1] = 0xFF;
+				data[index + 2] = 0xFF;
 			}
 
 			current.Load(data, InternalRGB, FormatRGB, DataUnsignedByte, 16, 16);
@@ -2491,7 +2501,6 @@ void init()
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
 
-	std::cout << Level::AllNodes.size() << std::endl;
 	{
 		QuickTimer _timer("Node Connections");
 
@@ -2585,6 +2594,7 @@ void init()
 		
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
 		std::erase_if(Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
+		//Parallel::erase_if(std::execution::par_unseq, Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 		{
 			auto& local = Level::AllNodes[i];
@@ -2608,10 +2618,6 @@ void init()
 			}
 		}
 	}
-
-	//PathFollower::pathNodeTree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
-	std::cout << Level::AllNodes.size() << ":" << Level::AllNodes.size() << std::endl;
-
 
 	{
 		QUICKTIMER("kdTree");

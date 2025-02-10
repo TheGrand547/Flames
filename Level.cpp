@@ -20,4 +20,11 @@ namespace Level
 	{
 		return Bullets;
 	}
+	
+	static std::vector<glm::vec3> PointsOfInterest;
+
+	std::vector<glm::vec3>& GetPOI()
+	{
+		return PointsOfInterest;
+	}
 }
