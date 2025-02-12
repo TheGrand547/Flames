@@ -73,8 +73,9 @@ namespace Input
 	// Contains all the relevant player input commands, independent of the keys that actually "fire" them
 	struct Keyboard
 	{
-		glm::vec3 heading;
+		glm::vec4 heading;
 		bool fireButton;
+		bool cruiseControl;
 	};
 };
 

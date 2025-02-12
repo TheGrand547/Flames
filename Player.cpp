@@ -1,6 +1,7 @@
 #include "Player.h"
 #include <algorithm>
 #include <numbers>
+#include <glm/gtx/orthonormalize.hpp>
 #include "Level.h"
 
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
@@ -73,6 +74,41 @@ void Player::Update(Input::Keyboard input) noexcept
 	const float speedDifference = Rectify(glm::abs((desiredSpeed - currentSpeed) / currentSpeed));
 
 	glm::vec3 forces{0.f};
+	if (input.cruiseControl && this->sat)
+	{
+		// Entirely separate logic for "cruise control"
+		const glm::vec3 target = this->sat->GetBounding().GetCenter();
+		const glm::vec3 delta = glm::normalize(target - this->transform.position);
+		glm::mat3 results{ 1.f };
+		results[0] = delta;
+		results[2] = glm::normalize(glm::cross(delta, localAxes[1]));
+		results[1] = glm::normalize(glm::cross(results[2], results[0]));
+		glm::quat transformation(results);
+
+		float angleDot = glm::dot(transformation, this->transform.rotation);
+		const float maxAngleChange = Rectify(angularVelocity / glm::acos(angleDot));
+		if (maxAngleChange != 0.f && glm::isfinite(maxAngleChange))
+		{
+			this->transform.rotation = glm::slerp(this->transform.rotation, transformation, glm::abs(maxAngleChange));
+		}
+
+		glm::vec3 acceleration = glm::normalize(delta - unitVector);
+
+		//if (glm::abs(glm::dot(delta, unitVector)) < 0.88f)
+		//{
+		if (!glm::any(glm::isnan(acceleration)))
+		{
+			forces += acceleration * rotationalThrust;
+		}
+		else if (speedDifference < 1.f)
+		{
+			forces += unitVector * rotationalThrust;
+		}
+		//}
+		BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
+		BasicPhysics::Clamp(this->velocity, MaxSpeed);
+		return;
+	}
 	if (speedDifference > EPSILON)
 	{
 		if (currentSpeed < desiredSpeed)
@@ -101,6 +137,11 @@ void Player::Update(Input::Keyboard input) noexcept
 			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(localAxes[2])));
 			this->transform.rotation = delta * this->transform.rotation;
 			forces += input.heading.z * localAxes[1] * rotationalThrust;
+		}
+		if (input.heading.w != 0.f)
+		{
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.w, glm::normalize(localAxes[0])));
+			this->transform.rotation = delta * this->transform.rotation;
 		}
 	}
 

@@ -1127,7 +1127,7 @@ int shift = 2;
 
 static long long maxTickTime;
 static long long averageTickTime;
-static glm::vec2 targetAngles{0.f};
+static glm::vec3 targetAngles{0.f};
 
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
@@ -1148,7 +1148,6 @@ void idle()
 	long long averageIdle = idleTimes.Update(idleTime.count() / 1000);
 	long long averageDisplay = displayTimes.Update(displayTime.count() / 1000);
 	long long averageRender = renderTimes.Update(renderDelay.count() / 1000);
-	// End of Rolling buffer
 
 	float speed = 4 * timeDelta;
 	float turnSpeed = 100 * timeDelta;
@@ -1167,9 +1166,15 @@ void idle()
 	{
 		dumbBox.Translate(dumbBox.Forward() * -speed);
 	}
-	glm::vec2 adjustment = (shiftHeld) ? glm::vec2(0.5f) : glm::vec2(1.f);
-	boardState.heading = glm::vec3(playerSpeedControl, targetAngles * adjustment);
+	
+	float tilt = 0.f;
+	if (keyState['Q'] && !keyState['E']) tilt =  1.f;
+	if (keyState['E'] && !keyState['Q']) tilt = -1.f;
+	targetAngles.z = tilt * 0.5f;
+	glm::vec3 adjustment = (shiftHeld) ? glm::vec3(0.5f) : glm::vec3(1.f);
+	boardState.heading = glm::vec4(playerSpeedControl, targetAngles * adjustment);
 	boardState.fireButton = keyState['T'];
+	boardState.cruiseControl = keyState['Y'];
 
 	if (keyState['W'])
 		cameraPosition += forward;
@@ -1782,7 +1787,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	ui_tester = NineSliceGenerate(Window::GetHalfF(), deviation);
 	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
 	Mouse::SetPosition(x, y);
-	targetAngles = glm::vec2(0.f);
+	targetAngles = glm::vec3(0.f);
 
 	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
@@ -1818,7 +1823,9 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 		}
 		else
 		{
-			targetAngles = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
+			glm::vec2 clamped = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
+			targetAngles.x = clamped.x;
+			targetAngles.y = clamped.y;
 		}
 	}
 	else
@@ -2747,6 +2754,8 @@ void init()
 
 	help.SetMessages("Work", "UnWork", fonter);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
+
+	playfield.sat = &groovy;
 
 	glClearColor(0.f, 0.f, 0.f, 0.f);
 	Log("End of Init");
