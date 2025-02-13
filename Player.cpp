@@ -96,23 +96,31 @@ void Player::Update(Input::Keyboard input) noexcept
 		glm::vec3 axis = glm::normalize(glm::axis(change));
 
 		float angleDot = glm::dot(transformation, this->transform.rotation);
-		const float maxAngleChange = Rectify(angularVelocity / glm::acos(angleDot));
-		const float maxAngleChange2 = Rectify(angularVelocity);
-		float amount = glm::clamp(glm::angle(change), -maxAngleChange2, maxAngleChange2);
+		const float maxAngleChange = angularVelocity;
 
-		if (maxAngleChange != 0.f && glm::isfinite(maxAngleChange) && !glm::any(glm::isnan(axis)))
+		float amount = glm::clamp(glm::angle(change), -maxAngleChange, maxAngleChange);
+		//float amount = glm::clamp(angleDot, -maxAngleChange, maxAngleChange);
+
+		if (!glm::any(glm::isnan(axis)))
 		{
 			//this->transform.rotation = glm::slerp(this->transform.rotation, transformation, glm::abs(maxAngleChange));
 			float b = glm::dot(this->transform.rotation, transformation);
 			std::cout << "B:" << b;
-			this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount * glm::sign(b), axis));
+			//this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount * glm::sign(angleDot), axis));
+			if (glm::abs(amount) < glm::epsilon<float>() || glm::abs(glm::abs(angleDot) - 1) < glm::epsilon<float>())
+			{
+				//this->transform.rotation = transformation;
+			}
+			else
+			{
+				this->transform.rotation = glm::normalize(glm::rotate(this->transform.rotation, amount * glm::sign(angleDot), axis));
+			}
 			float a = glm::dot(this->transform.rotation, transformation);
-			std::cout << "\tA:" << a << "\tD:" << maxAngleChange2 << "\tAbs:" << glm::abs(b - a);
+			std::cout << "\tA:" << a << "\tD:" << maxAngleChange << "\tAbs:" << glm::abs(b - a);
 			std::cout << "\tAV:" << angularVelocity << "\tV:" << currentSpeed << '\n';
 		}
-		// TODO: replace these static casts with simple rotates
-		glm::mat3 updated = static_cast<glm::mat3>(this->transform.rotation);
-		glm::vec3 acceleration = glm::normalize(updated[0] - localAxes[0]);
+		glm::vec3 newForward = glm::rotate(this->transform.rotation, glm::vec3(1.f, 0.f, 0.f));
+		glm::vec3 acceleration = glm::normalize(newForward - localAxes[0]);
 
 		// Probably the best working version, for no good reason I can tell
 		//glm::vec3 acceleration = glm::normalize(delta - unitVector * glm::dot(delta, unitVector));
@@ -128,8 +136,6 @@ void Player::Update(Input::Keyboard input) noexcept
 		//{
 		if (!glm::any(glm::isnan(acceleration)))
 		{
-			// This should not work
-			//float hack = glm::sign(-axis[1]);
 			forces += acceleration * rotationalThrust;
 		}
 		else if (speedDifference < 1.f)
