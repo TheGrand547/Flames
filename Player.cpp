@@ -105,7 +105,7 @@ void Player::Update(Input::Keyboard input) noexcept
 			//this->transform.rotation = glm::slerp(this->transform.rotation, transformation, glm::abs(maxAngleChange));
 			float b = glm::dot(this->transform.rotation, transformation);
 			std::cout << "B:" << b;
-			this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount, axis));
+			this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount * glm::sign(b), axis));
 			float a = glm::dot(this->transform.rotation, transformation);
 			std::cout << "\tA:" << a << "\tD:" << maxAngleChange2 << "\tAbs:" << glm::abs(b - a);
 			std::cout << "\tAV:" << angularVelocity << "\tV:" << currentSpeed << '\n';
