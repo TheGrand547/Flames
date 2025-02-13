@@ -75,12 +75,6 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	glm::vec3 forces{0.f};
 
-	glm::vec3 wrongDirection = glm::normalize(unitVector - localAxes[0]);
-	if (!glm::any(glm::isnan(wrongDirection)))
-	{
-		//forces += wrongDirection * input.heading.x * EngineThrust;
-	}
-
 	if (input.cruiseControl && this->sat)
 	{
 		// Entirely separate logic for "cruise control"
@@ -99,50 +93,61 @@ void Player::Update(Input::Keyboard input) noexcept
 		const float maxAngleChange = angularVelocity;
 
 		float amount = glm::clamp(glm::angle(change), -maxAngleChange, maxAngleChange);
-		//float amount = glm::clamp(angleDot, -maxAngleChange, maxAngleChange);
 
+		bool significantDeviation = glm::epsilonNotEqual(amount, 0.f, glm::epsilon<float>()) &&
+			glm::epsilonNotEqual(glm::abs(angleDot), 1.f, EPSILON);
+
+		float projection = 0.f;// Rectify(glm::abs(glm::acos(glm::dot(localAxes[0], delta))));
+
+		// TODO: Fix slight jitteriness, unknown cause probably
 		if (!glm::any(glm::isnan(axis)))
 		{
-			//this->transform.rotation = glm::slerp(this->transform.rotation, transformation, glm::abs(maxAngleChange));
 			float b = glm::dot(this->transform.rotation, transformation);
-			std::cout << "B:" << b;
-			//this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount * glm::sign(angleDot), axis));
-			if (glm::abs(amount) < glm::epsilon<float>() || glm::abs(glm::abs(angleDot) - 1) < glm::epsilon<float>())
-			{
-				//this->transform.rotation = transformation;
-			}
-			else
+			//std::cout << "B:" << b;
+			if (significantDeviation)
 			{
 				this->transform.rotation = glm::normalize(glm::rotate(this->transform.rotation, amount * glm::sign(angleDot), axis));
 			}
+			else
+			{
+				// This might've fixed the stuttering but I have no clue at this point man
+				this->transform.rotation = transformation;
+			}
 			float a = glm::dot(this->transform.rotation, transformation);
-			std::cout << "\tA:" << a << "\tD:" << maxAngleChange << "\tAbs:" << glm::abs(b - a);
-			std::cout << "\tAV:" << angularVelocity << "\tV:" << currentSpeed << '\n';
+			//std::cout << "\tA:" << a << "\tD:" << maxAngleChange << "\tAbs:" << glm::abs(b - a);
+			//std::cout << "\tA0:" << angleDot << "\tAV:" << angularVelocity << '\n';
 		}
 		glm::vec3 newForward = glm::rotate(this->transform.rotation, glm::vec3(1.f, 0.f, 0.f));
 		glm::vec3 acceleration = glm::normalize(newForward - localAxes[0]);
-
-		// Probably the best working version, for no good reason I can tell
-		//glm::vec3 acceleration = glm::normalize(delta - unitVector * glm::dot(delta, unitVector));
-
-		//glm::vec3 acceleration = glm::normalize(updated[0] - localAxes[0] * glm::dot(updated[0], localAxes[0]));
-		
-		//glm::vec3 acceleration = glm::normalize(delta - localAxes[0] * glm::dot(delta, localAxes[0]));
-		//glm::vec3 acceleration = glm::normalize(delta - updated[0] * glm::dot(delta, updated[0]));
-		
-		//acceleration = acceleration * glm::sign(glm::dot(acceleration, static_cast<glm::mat3>());
-		//acceleration = glm::normalize(acceleration - localAxes[1] * glm::dot(localAxes[1], acceleration));
-		//if (glm::abs(glm::dot(delta, unitVector)) < 0.88f)
-		//{
+		std::cout << glm::dot(newForward, delta) << "\n";
+		/*
+		std::cout << glm::length(newForward - unitVector) << ":" << glm::length(localAxes[0] - unitVector) 
+			<< ":" << glm::length(newForward - localAxes[0]) << "\n";
+			*/
 		if (!glm::any(glm::isnan(acceleration)))
 		{
 			forces += acceleration * rotationalThrust;
 		}
 		else if (speedDifference < 1.f)
 		{
-			forces += localAxes[0] * rotationalThrust;
+			forces += newForward * input.heading.x * EngineThrust;
 		}
-		//}
+		else
+		{
+			glm::vec3 wrongDirection = glm::normalize(newForward - unitVector);
+			float leng = glm::length(newForward - unitVector);
+			if (leng < EPSILON)
+			{
+				this->velocity = newForward * currentSpeed;
+			}
+			else if (!glm::any(glm::isnan(wrongDirection)))
+			{
+				// Damping coeficient
+				//forces += wrongDirection * input.heading.x * EngineThrust * leng;
+				forces += newForward * input.heading.x * EngineThrust;
+			}
+			this->velocity = newForward * currentSpeed;
+		}
 		BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 		BasicPhysics::Clamp(this->velocity, MaxSpeed);
 		return;
@@ -157,6 +162,15 @@ void Player::Update(Input::Keyboard input) noexcept
 		{
 			// Stronger 'deceleration' when target speed is further from current speed
 			forces = unitVector * -EngineThrust * speedDifference;
+		}
+	}
+	else
+	{
+		glm::vec3 wrongDirection = glm::normalize(localAxes[0] - unitVector);
+		if (!glm::any(glm::isnan(wrongDirection)))
+		{
+			// Damping coeficient
+			forces += wrongDirection * input.heading.x * EngineThrust * 0.25f;
 		}
 	}
 	
