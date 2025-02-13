@@ -74,6 +74,13 @@ void Player::Update(Input::Keyboard input) noexcept
 	const float speedDifference = Rectify(glm::abs((desiredSpeed - currentSpeed) / currentSpeed));
 
 	glm::vec3 forces{0.f};
+
+	glm::vec3 wrongDirection = glm::normalize(unitVector - localAxes[0]);
+	if (!glm::any(glm::isnan(wrongDirection)))
+	{
+		//forces += wrongDirection * input.heading.x * EngineThrust;
+	}
+
 	if (input.cruiseControl && this->sat)
 	{
 		// Entirely separate logic for "cruise control"
@@ -85,32 +92,35 @@ void Player::Update(Input::Keyboard input) noexcept
 		results[1] = glm::normalize(glm::cross(results[2], results[0]));
 		glm::quat transformation = glm::normalize(glm::quat(results));
 		
-		glm::quat change = glm::inverse(this->transform.rotation)* transformation;
+		glm::quat change = glm::inverse(this->transform.rotation) * transformation;
 		glm::vec3 axis = glm::normalize(glm::axis(change));
 
 		float angleDot = glm::dot(transformation, this->transform.rotation);
 		const float maxAngleChange = Rectify(angularVelocity / glm::acos(angleDot));
 		const float maxAngleChange2 = Rectify(angularVelocity);
-		float amount = glm::clamp(glm::angle(change), 0.f, maxAngleChange2);
+		float amount = glm::clamp(glm::angle(change), -maxAngleChange2, maxAngleChange2);
 
 		if (maxAngleChange != 0.f && glm::isfinite(maxAngleChange) && !glm::any(glm::isnan(axis)))
 		{
 			//this->transform.rotation = glm::slerp(this->transform.rotation, transformation, glm::abs(maxAngleChange));
 			float b = glm::dot(this->transform.rotation, transformation);
 			std::cout << "B:" << b;
-			this->transform.rotation = glm::normalize(glm::angleAxis(amount, axis)) * this->transform.rotation;
+			this->transform.rotation = this->transform.rotation * glm::normalize(glm::angleAxis(amount, axis));
 			float a = glm::dot(this->transform.rotation, transformation);
 			std::cout << "\tA:" << a << "\tD:" << maxAngleChange2 << "\tAbs:" << glm::abs(b - a);
 			std::cout << "\tAV:" << angularVelocity << "\tV:" << currentSpeed << '\n';
 		}
 		// TODO: replace these static casts with simple rotates
 		glm::mat3 updated = static_cast<glm::mat3>(this->transform.rotation);
+		glm::vec3 acceleration = glm::normalize(updated[0] - localAxes[0]);
 
+		// Probably the best working version, for no good reason I can tell
 		//glm::vec3 acceleration = glm::normalize(delta - unitVector * glm::dot(delta, unitVector));
-		glm::vec3 acceleration = glm::normalize(updated[0] - localAxes[0] * glm::dot(updated[0], localAxes[0]));
+
+		//glm::vec3 acceleration = glm::normalize(updated[0] - localAxes[0] * glm::dot(updated[0], localAxes[0]));
 		
-		//glm::vec3 acceleration = glm::normalize(scmre[0] - unitVector * glm::dot(delta, scmre[0]));
-		//acceleration = glm::normalize(scmre[0] - unitVector * glm::dot(delta, scmre[0]));
+		//glm::vec3 acceleration = glm::normalize(delta - localAxes[0] * glm::dot(delta, localAxes[0]));
+		//glm::vec3 acceleration = glm::normalize(delta - updated[0] * glm::dot(delta, updated[0]));
 		
 		//acceleration = acceleration * glm::sign(glm::dot(acceleration, static_cast<glm::mat3>());
 		//acceleration = glm::normalize(acceleration - localAxes[1] * glm::dot(localAxes[1], acceleration));
