@@ -75,6 +75,7 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	glm::vec3 forces{0.f};
 
+	// This is kind of a complete mess but it appears to work
 	if (input.cruiseControl && this->sat)
 	{
 		// Entirely separate logic for "cruise control"
@@ -97,13 +98,8 @@ void Player::Update(Input::Keyboard input) noexcept
 		bool significantDeviation = glm::epsilonNotEqual(amount, 0.f, glm::epsilon<float>()) &&
 			glm::epsilonNotEqual(glm::abs(angleDot), 1.f, EPSILON);
 
-		float projection = 0.f;// Rectify(glm::abs(glm::acos(glm::dot(localAxes[0], delta))));
-
-		// TODO: Fix slight jitteriness, unknown cause probably
 		if (!glm::any(glm::isnan(axis)))
 		{
-			float b = glm::dot(this->transform.rotation, transformation);
-			//std::cout << "B:" << b;
 			if (significantDeviation)
 			{
 				this->transform.rotation = glm::normalize(glm::rotate(this->transform.rotation, amount * glm::sign(angleDot), axis));
@@ -113,17 +109,9 @@ void Player::Update(Input::Keyboard input) noexcept
 				// This might've fixed the stuttering but I have no clue at this point man
 				this->transform.rotation = transformation;
 			}
-			float a = glm::dot(this->transform.rotation, transformation);
-			//std::cout << "\tA:" << a << "\tD:" << maxAngleChange << "\tAbs:" << glm::abs(b - a);
-			//std::cout << "\tA0:" << angleDot << "\tAV:" << angularVelocity << '\n';
 		}
 		glm::vec3 newForward = glm::rotate(this->transform.rotation, glm::vec3(1.f, 0.f, 0.f));
 		glm::vec3 acceleration = glm::normalize(newForward - localAxes[0]);
-		std::cout << glm::dot(newForward, delta) << "\n";
-		/*
-		std::cout << glm::length(newForward - unitVector) << ":" << glm::length(localAxes[0] - unitVector) 
-			<< ":" << glm::length(newForward - localAxes[0]) << "\n";
-			*/
 		if (!glm::any(glm::isnan(acceleration)))
 		{
 			forces += acceleration * rotationalThrust;
@@ -132,7 +120,7 @@ void Player::Update(Input::Keyboard input) noexcept
 		{
 			forces += newForward * input.heading.x * EngineThrust;
 		}
-		else
+		
 		{
 			glm::vec3 wrongDirection = glm::normalize(newForward - unitVector);
 			float leng = glm::length(newForward - unitVector);
@@ -145,6 +133,10 @@ void Player::Update(Input::Keyboard input) noexcept
 				// Damping coeficient
 				//forces += wrongDirection * input.heading.x * EngineThrust * leng;
 				forces += newForward * input.heading.x * EngineThrust;
+			}
+			if (currentSpeed > desiredSpeed)
+			{
+				forces += unitVector * -EngineThrust * speedDifference;
 			}
 			this->velocity = newForward * currentSpeed;
 		}

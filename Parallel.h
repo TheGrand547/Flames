@@ -44,6 +44,8 @@ namespace Parallel
 	{
 		if (::Parallel::Enabled())
 		{
+			// This has had some errors for unclear reasons, might have been to do with closing during the parallel loop
+			// but I'm not sure
 			auto last = std::remove_if(execution, container.begin(), container.end(), predicate);
 			auto difference = container.end() - last;
 			container.erase(last, container.end());

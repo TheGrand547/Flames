@@ -141,6 +141,7 @@ ArrayBuffer debugPointing;
 ArrayBuffer tetragram;
 ArrayBuffer instances, dummyEngine;
 ArrayBuffer exhaustBuffer;
+ArrayBuffer leftBuffer, rightBuffer;
 
 ArrayBuffer guyBuffer, guyBuffer2;
 ElementArray guyIndex, guyIndex2;
@@ -173,6 +174,7 @@ Shader ship;
 Shader basic;
 Shader engine;
 Shader skyBox;
+Shader trails;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -358,7 +360,7 @@ ArrayBuffer projectileBuffer;
 std::vector<MeshPair> satelitePairs;
 Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 bool shiftHeld;
-
+std::atomic_uchar addExplosion;
 
 void display()
 {
@@ -781,7 +783,19 @@ void display()
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
 	glLineWidth(15.f);
-	uniform.DrawArray<DrawType::Lines>(rayBuffer);
+	//uniform.DrawArray<DrawType::Lines>(rayBuffer);
+
+	trails.SetActiveShader();
+	DisableGLFeatures<FaceCulling>();
+	EnableGLFeatures<Blending>();
+	trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
+	plainVAO.BindArrayBuffer(leftBuffer);
+	trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
+	plainVAO.BindArrayBuffer(rightBuffer);
+	trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
+	EnableGLFeatures<FaceCulling>();
+	DisableGLFeatures<Blending>();
+
 	if (projectileBuffer.Size() > 0)
 	{
 		plainVAO.BindArrayBuffer(projectileBuffer);
@@ -1129,6 +1143,8 @@ static long long maxTickTime;
 static long long averageTickTime;
 static glm::vec3 targetAngles{0.f};
 
+CircularBuffer<glm::vec3, 256> leftCircle, rightCircle;
+
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
 {
@@ -1242,11 +1258,37 @@ void idle()
 		//lastPoster = sigmaTest.GetPosition();
 		lastPoster = playerModel.translation;
 	}
+	static bool flippyFlop = false;
 	if (idleFrameCounter % 10 == 0)
 	{
 		pathway.push_back(lastPoster);
 		pathway.push_back(playerModel.translation);
 		lastPoster = pathway.back();
+
+
+		glm::mat3 playerLocal = static_cast<glm::mat3>(playerModel.rotation);
+		glm::vec3 forward = playerLocal[0];
+		glm::vec3 left = playerLocal[2];
+		left *= 0.25f;
+		glm::vec3 local =  playerModel.translation;
+		local -= forward * 0.15f;
+		glm::vec3 upSet = playerLocal[1] * 0.15f;
+		if (flippyFlop)
+		{
+			leftCircle.Push(local + left + upSet);
+			leftCircle.Push(local + left - upSet);
+			rightCircle.Push(local - left + upSet);
+			rightCircle.Push(local - left - upSet);
+		}
+		else
+		{
+			leftCircle.Push(local + left - upSet);
+			leftCircle.Push(local + left + upSet);
+			rightCircle.Push(local - left - upSet);
+			rightCircle.Push(local - left + upSet);
+		}
+		leftBuffer.BufferData(leftCircle.GetLinear());
+		rightBuffer.BufferData(rightCircle.GetLinear());
 	}
 	rayBuffer.BufferData(pathway);
 
@@ -1267,18 +1309,6 @@ void idle()
 	std::array<glm::vec4, 3> engineEffect = { glm::vec4(0, 6, 0, Easing::EaseOutCubic(timeA)),
 		glm::vec4(2, 6, 0, Easing::EaseOutQuintic(timeB)), glm::vec4(-2, 6, 0, Easing::EaseOutQuintic(timeC)) };
 	instances.BufferData(engineEffect);
-
-	skinMats.fill(glm::mat4(1));
-	skinMats[0][3] = glm::vec4(0, 0, 0, 1);
-	skinMats[1][3] = glm::vec4(-4, 2 * glm::cos(idleFrameCounter / 100.f), 3 * glm::sin(idleFrameCounter * 3 / 100.f), 1);
-	glm::mat4 toDie(1);
-	toDie[3] = glm::vec4(1, 0, 0, 1);
-	toDie = glm::inverse(toDie);
-	skinMats[0] = toDie * skinMats[0];
-	toDie = glm::mat4(1);
-	toDie[3] = glm::vec4(-5, 0, 0, 1);
-	toDie = glm::inverse(toDie);
-	skinMats[1] = toDie * skinMats[1];
 
 	static glm::vec3 lastCheckedPos = glm::vec3(0.f, 3.f, 0.f);
 	static float lastCheckedDistance = 99;
@@ -1481,8 +1511,24 @@ void gameTick()
 			Collision lib;
 			if (bulletCapsule.Intersect(silly, lib))
 			{
-				std::cout << lib.point << ";" << lib.depth << '\n';
+				for (int i = 0; i < 20; i++)
+				{
+					managedProcess.AddExhaust(silly.GetCenter() + glm::ballRand(0.25f), glm::sphericalRand(5.f), 256);
+				}
 			}
+		}
+		if (addExplosion)
+		{
+			for (int i = 0; i < 20; i++)
+			{
+				glm::vec3 velocity = glm::ballRand(5.f);
+				if (glm::length(velocity) < 2.5f)
+				{
+					velocity *= 2.5f;
+				}
+				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
+			}
+			addExplosion--;
 		}
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
@@ -1619,6 +1665,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 	}
 	if (action == GLFW_PRESS)
 	{
+		if (key == GLFW_KEY_U)
+		{
+			addExplosion++;
+		}
 		if (key == GLFW_KEY_L)
 		{
 			struct
@@ -2113,6 +2163,7 @@ void init()
 	skyBox.CompileSimple("sky");
 	sphereMesh.CompileSimple("mesh");
 	stencilTest.CompileSimple("stencil_");
+	trails.CompileSimple("trail");
 	triColor.CompileSimple("tri_color");
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
@@ -2136,6 +2187,7 @@ void init()
 	skyBox.UniformBlockBinding("Camera", 0);
 	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);
+	trails.UniformBlockBinding("Camera", 0);
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
@@ -2678,9 +2730,15 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer, guyIndex);
-	OBJReader::ReadOBJ("Models\\bloke6.obj", guyBuffer2, guyIndex2, 1);
-	//OBJReader::ReadOBJ("Models\\Satelite.obj", satelitePairs);
+	// TODO: Utility for combining multiple models into a single draw call via DrawIndirect
+	auto flames = OBJReader::ReadOBJ("Models\\bloke6.obj");
+	if (flames.size() > 1)
+	{
+		guyBuffer = std::move(flames[0].vertex);
+		guyIndex = std::move(flames[0].index);
+		guyBuffer2 = std::move(flames[1].vertex);
+		guyIndex2 = std::move(flames[1].index);
+	}
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");
@@ -2694,6 +2752,11 @@ void init()
 		ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
 	}
 
+	// TODO: proper fill of the relevant offset so there's no weird banding
+	leftCircle.Fill(playfield.GetModel().translation);
+	rightCircle.Fill(playfield.GetModel().translation);
+	leftBuffer.BufferData(leftCircle.Get());
+	rightBuffer.BufferData(rightCircle.Get());
 	stickIndicies.BufferData(stickDex, StaticDraw);
 
 	cubeOutlineIndex.BufferData(Cube::GetLineIndex());

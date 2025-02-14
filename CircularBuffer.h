@@ -64,6 +64,32 @@ public:
 		this->full = false;
 		this->frontIndex = 0;
 	}
+
+	void Fill(T value) noexcept
+	{
+		this->elements.fill(value);
+		this->full = true;
+		this->frontIndex = 0;
+	}
+
+	const std::array<T, N>& Get() const noexcept
+	{
+		return this->elements;
+	}
+
+	std::vector<T> GetLinear() const noexcept
+	{
+		std::vector<T> elements;
+		const auto start = this->elements.cbegin() + this->frontIndex;
+		elements.reserve((this->full) ? N : this->frontIndex);
+		if (this->full)
+		{
+			std::copy(start, this->elements.end(), std::back_inserter(elements));
+		}
+		std::copy(this->elements.begin(), start, std::back_inserter(elements));
+
+		return elements;
+	}
 };
 
 #endif // CIRCULAR_BUFFER_H

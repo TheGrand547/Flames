@@ -25,11 +25,10 @@ void ExhaustManager::FillBuffer(ArrayBuffer& buffer) const noexcept
 }
 
 void ExhaustManager::Update() noexcept
-{
-	this->dirty = true;
-	
-	//std::erase_if(this->particles,
-	Parallel::erase_if(std::execution::par, this->particles, 
+{	
+	// Parallel seems to be slower, but could be due to any number of factors
+	std::erase_if(this->particles,
+	//Parallel::erase_if(std::execution::par, this->particles, 
 		[](Exhaust& element)
 		{
 			element.ticksLeft--;
@@ -39,4 +38,5 @@ void ExhaustManager::Update() noexcept
 			return element.ticksLeft == 0;
 		}
 	);
+	this->dirty = true;
 }
