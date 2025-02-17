@@ -187,6 +187,7 @@ VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVA
 VAO nineSliced, billboardVAO;
 VAO skinInstance;
 VAO engineInstance;
+VAO colorVAO;
 
 // Not explicitly tied to OpenGL Globals
 
@@ -786,12 +787,16 @@ void display()
 	//uniform.DrawArray<DrawType::Lines>(rayBuffer);
 
 	trails.SetActiveShader();
+	colorVAO.Bind();
 	DisableGLFeatures<FaceCulling>();
 	EnableGLFeatures<Blending>();
+
 	trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
-	plainVAO.BindArrayBuffer(leftBuffer);
+	//plainVAO.BindArrayBuffer(leftBuffer);
+	colorVAO.BindArrayBuffer(leftBuffer);
 	trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
-	plainVAO.BindArrayBuffer(rightBuffer);
+	//plainVAO.BindArrayBuffer(rightBuffer);
+	colorVAO.BindArrayBuffer(rightBuffer);
 	trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
 	EnableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
@@ -1143,7 +1148,7 @@ static long long maxTickTime;
 static long long averageTickTime;
 static glm::vec3 targetAngles{0.f};
 
-CircularBuffer<glm::vec3, 256> leftCircle, rightCircle;
+CircularBuffer<ColoredVertex, 256> leftCircle, rightCircle;
 
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
@@ -1270,23 +1275,19 @@ void idle()
 		glm::vec3 forward = playerLocal[0];
 		glm::vec3 left = playerLocal[2];
 		left *= 0.25f;
-		glm::vec3 local =  playerModel.translation;
+		glm::vec3 local = playerModel.translation;
 		local -= forward * 0.15f;
 		glm::vec3 upSet = playerLocal[1] * 0.15f;
 		if (flippyFlop)
 		{
-			leftCircle.Push(local + left + upSet);
-			leftCircle.Push(local + left - upSet);
-			rightCircle.Push(local - left + upSet);
-			rightCircle.Push(local - left - upSet);
+
 		}
-		else
-		{
-			leftCircle.Push(local + left - upSet);
-			leftCircle.Push(local + left + upSet);
-			rightCircle.Push(local - left - upSet);
-			rightCircle.Push(local - left + upSet);
-		}
+		flippyFlop = !flippyFlop;
+		leftCircle.Push(ColoredVertex{ local - left,  upSet });
+		leftCircle.Push(ColoredVertex{ local - left, -upSet });
+		rightCircle.Push(ColoredVertex{ local + left,  upSet });
+		rightCircle.Push(ColoredVertex{ local + left, -upSet });
+
 		leftBuffer.BufferData(leftCircle.GetLinear());
 		rightBuffer.BufferData(rightCircle.GetLinear());
 	}
@@ -2121,7 +2122,7 @@ void init()
 	std::srand(NULL);
 	// OpenGL Feature Enabling
 	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
-	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS); 
+	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	DisableGLFeatures<MultiSampling>();
 	glDepthFunc(GL_LEQUAL);
 
@@ -2222,8 +2223,10 @@ void init()
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
 
+	colorVAO.ArrayFormat<ColoredVertex>(trails);
+
 	lightingBuffer.Generate(DynamicDraw, sizeof(glm::vec4) * 2);
-	std::array<glm::vec4, 2> locals { glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), glm::vec4(0.15f, 1.f, 0.15f, 0.f)};
+	std::array<glm::vec4, 2> locals{ glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), glm::vec4(0.15f, 1.f, 0.15f, 0.f) };
 	lightingBuffer.BufferSubData(locals, 0);
 	lightingBuffer.SetBindingPoint(3);
 	lightingBuffer.BindUniform();
@@ -2244,7 +2247,7 @@ void init()
 
 	mapping.Load("gradient.png");
 	mapping.SetFilters();
-	
+
 	normalMap.Load("normal.png");
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
@@ -2284,7 +2287,7 @@ void init()
 	debugPointing.BufferData(pointingV);
 
 	shipPhysics.velocity = glm::vec3(2.f, 0.f, 0.f);
-	
+
 	std::array<TangentVertex, 4> tangents{};
 	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
 
@@ -2333,13 +2336,13 @@ void init()
 		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, instancedModels);
 	}
 	// Diagonal Walls
-	instancedModels.emplace_back(glm::vec3( 2, 1.f, -2), glm::vec3(90,  -45,  0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-	instancedModels.emplace_back(glm::vec3( 2, 1.f,  2), glm::vec3(-90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-	instancedModels.emplace_back(glm::vec3(-2, 1.f,  2), glm::vec3(-90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3(2, 1.f, -2), glm::vec3(90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3(2, 1.f, 2), glm::vec3(-90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
+	instancedModels.emplace_back(glm::vec3(-2, 1.f, 2), glm::vec3(-90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
 	instancedModels.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
 
 	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
-	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0,  90.f));
+	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, 90.f));
 
 
 	constexpr int tileSize = 4;
@@ -2352,7 +2355,7 @@ void init()
 			//GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
 		}
 	}
-	
+
 
 
 	// The ramp
@@ -2376,7 +2379,7 @@ void init()
 		//project.Scale(glm::vec3(1, 0, 1));
 		Level::Geometry.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
-		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({project, 0});
+		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({ project, 0 });
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	{
@@ -2444,7 +2447,7 @@ void init()
 	}
 
 	// SKINNING
-	std::array<float, 3> dummy{1.f};
+	std::array<float, 3> dummy{ 1.f };
 	skinBuf.BufferData(dummy, StaticDraw);
 	skinInstance.ArrayFormat<TextureVertex>(skinner);
 	std::vector<GLuint> grs = {
@@ -2489,14 +2492,18 @@ void init()
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
 	//followers.Insert(sc, sc.GetAABB());
 	//followers.Insert(sc2, sc2.GetAABB());
-	
+
 	// Cube map shenanigans
 	{
 		std::array<Texture2D, 6> cubeFaces;
 		for (std::size_t i = 0; i < 6; i++)
 		{
 			Texture2D& current = cubeFaces[i];
-			std::array<unsigned char, 256 * 3> data{0};
+			//glm::vec3 foolish(244.f, 202.f, 184.f);
+			glm::vec3 foolish{ 0.f };
+			foolish /= 255.f;
+			//std::array<unsigned char, 256 * 3> data{0};
+			/*
 			for (int j = 0; j < 20; j++)
 			{
 				unsigned char pos = 3 * (rand() % 256);
@@ -2504,20 +2511,20 @@ void init()
 				data[index] = 0xFF;
 				data[index + 1] = 0xFF;
 				data[index + 2] = 0xFF;
-			}
+			}*/
 
-			current.Load(data, InternalRGB, FormatRGB, DataUnsignedByte, 16, 16);
+			current.Load(std::array<glm::vec3, 1>{foolish}, InternalRGB, FormatRGB, DataFloat, 1, 1);
 		}
 		sky.Generate(cubeFaces);
 	}
 
-	struct 
+	struct
 	{
 		std::array<glm::vec4, 32> points{};
 		int length = 32;
 		int pad{}, pad2{}, pad3{};
 	} point_temp;
-	for (auto& p: point_temp.points)
+	for (auto& p : point_temp.points)
 	{
 		p = glm::vec4(glm::linearRand(0.f, 1.f), glm::linearRand(0.f, 1.f), 0, 0);
 	}
@@ -2565,7 +2572,7 @@ void init()
 
 
 		// TODO: Investigate with better optimized kdtree stuff
-		
+
 		// TODO: hash pair collide thingy so nodes don't have to recalculate the raycast
 		/*
 		{
@@ -2583,7 +2590,7 @@ void init()
 				}
 				//std::cout << loopy.size() << "\n";
 				//std::cout << loopy.size() << std::endl;
-				
+
 				for (auto& ref : storage)
 				{
 					//PathNode::addNeighborUnconditional(local, ref);
@@ -2610,12 +2617,12 @@ void init()
 							return true;
 						}
 					);
-					
+
 				}
 			}
 			std::cout << "Count: " << countes << std::endl;
 		}*/
-		
+
 		{
 			//QUICKTIMER("Thing B");
 			//std::size_t countes = 0;
@@ -2650,7 +2657,7 @@ void init()
 			}
 			//std::cout << "Count: " << countes << std::endl;
 		}
-		
+
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
 		std::erase_if(Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 		//Parallel::erase_if(std::execution::par_unseq, Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
@@ -2701,7 +2708,7 @@ void init()
 			}
 		}
 	}
-	
+
 	for (auto& autod : Level::AllNodes)
 	{
 		boxingDay.push_back(autod->GetPosition());
@@ -2715,7 +2722,7 @@ void init()
 			}
 		}
 	}
-	
+
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
 
@@ -2753,8 +2760,8 @@ void init()
 	}
 
 	// TODO: proper fill of the relevant offset so there's no weird banding
-	leftCircle.Fill(playfield.GetModel().translation);
-	rightCircle.Fill(playfield.GetModel().translation);
+	leftCircle.Fill({ playfield.GetModel().translation, glm::vec3(0.f) });
+	rightCircle.Fill({playfield.GetModel().translation, glm::vec3(0.f)});
 	leftBuffer.BufferData(leftCircle.Get());
 	rightBuffer.BufferData(rightCircle.Get());
 	stickIndicies.BufferData(stickDex, StaticDraw);
