@@ -10,6 +10,7 @@
 #include "Buffer.h"
 #include "Texture2D.h"
 #include "CubeMap.h"
+#include "DrawStruct.h"
 
 enum struct PrimitiveDrawingType : unsigned int
 {
@@ -139,6 +140,13 @@ public:
 
 	template<PrimitiveDrawingType type> inline void DrawElementsInstanced(ElementArray& indexBuffer, ArrayBuffer& instanceBuffer,
 															const GLuint elementOffset = 0, const GLuint indexOffset = 0, const GLint instanceOffset = 0);
+
+	template<PrimitiveDrawingType type = DrawType::Triangle> void DrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset = 0) const noexcept;
+	template<PrimitiveDrawingType type = DrawType::Triangle> void MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect) const noexcept;
+	template<PrimitiveDrawingType type = DrawType::Triangle> void MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect,
+		const GLuint count) const noexcept;
+	template<PrimitiveDrawingType type = DrawType::Triangle> void MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect,
+		const GLuint offset, const GLuint count) const noexcept;
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 	static void SetBasePath(const std::string& basePath);
@@ -284,6 +292,33 @@ template<PrimitiveDrawingType type> inline void Shader::DrawElementsInstanced(El
 		instanceBuffer.GetElementCount(),
 		indexOffset,
 		instanceOffset);
+}
+
+template<PrimitiveDrawingType type>
+inline void Shader::DrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset) const noexcept
+{
+	indirect.BindBuffer();
+	glDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(Elements)));
+}
+
+template<PrimitiveDrawingType type>
+inline void Shader::MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect) const noexcept
+{
+	this->MultiDrawElements(indirect, 0, indirect.GetElementCount());
+}
+
+template<PrimitiveDrawingType type>
+inline void Shader::MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint count) const noexcept
+{
+	this->MultiDrawElements(indirect, 0, count);
+}
+
+template<PrimitiveDrawingType type>
+inline void Shader::MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset, const GLuint count) const noexcept
+{
+	indirect.BindBuffer();
+	glMultiDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(Elements)),
+		count, sizeof(Elements));
 }
 
 template<PrimitiveDrawingType type, class Container> inline void Shader::DrawElementsMemory(const Container& contents)

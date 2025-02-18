@@ -362,6 +362,9 @@
     <ClInclude Include="GLData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="DrawStruct.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Flames.rc">

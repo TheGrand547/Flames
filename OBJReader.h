@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include "Buffer.h"
+#include "DrawStruct.h"
 
 struct MeshPair
 {
@@ -11,11 +12,20 @@ struct MeshPair
 	ElementArray index;
 };
 
+struct MeshData
+{
+	ArrayBuffer vertex;
+	ElementArray index;
+	Buffer<BufferType::DrawIndirect> indirect;
+};
+
 struct OBJReader
 {
 	static void ReadOBJ(const std::string& filename, ArrayBuffer& elements, ElementArray& index, const std::size_t& id = 0);
 	static std::vector<MeshPair> ReadOBJ(const std::string& filename);
 	static void ReadOBJ(const std::string& filename, std::vector<MeshPair>& input);
+
+	static MeshData ReadOBJSimple(const std::string& filename);
 };
 
 #endif // OBJ_READER_H

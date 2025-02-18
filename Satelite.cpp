@@ -9,6 +9,8 @@
 // 3. Antenna
 // 4. Solar Panel -X
 std::vector<MeshPair> VertexData;
+MeshData datum;
+
 VAO VertexFormat;
 
 // These were trial and error'd
@@ -24,21 +26,16 @@ void Satelite::Draw( Shader& shader) const noexcept
         VertexFormat.ArrayFormat<MeshVertex>(shader);
     }
     Model drawModel(this->transform, SateliteSize);
-    // TODO: Batch this into a multi-draw arrays
     shader.SetActiveShader();
     shader.SetMat4("modelMat", drawModel.GetModelMatrix());
     shader.SetMat4("normalMat", drawModel.GetNormalMatrix());
-    VertexFormat.BindArrayBuffer(VertexData[0].vertex);
-    shader.DrawElements(VertexData[0].index); // Draw Body
-    VertexFormat.BindArrayBuffer(VertexData[2].vertex);
-    shader.DrawElements(VertexData[2].index); // Draw Antenna
+    VertexFormat.BindArrayBuffer(datum.vertex);
+    shader.MultiDrawElements(datum.indirect, 2);
+
     drawModel.rotation = drawModel.rotation * glm::angleAxis(this->solarAngle, glm::vec3(1.f, 0.f, 0.f));
     shader.SetMat4("modelMat", drawModel.GetModelMatrix());
     shader.SetMat4("normalMat", drawModel.GetNormalMatrix());
-    VertexFormat.BindArrayBuffer(VertexData[1].vertex);
-    shader.DrawElements(VertexData[1].index);
-    VertexFormat.BindArrayBuffer(VertexData[3].vertex);
-    shader.DrawElements(VertexData[3].index);
+    shader.MultiDrawElements(datum.indirect, 2, 2);
 }
 
 void Satelite::Update() noexcept
@@ -57,5 +54,6 @@ Capsule Satelite::GetBounding() const noexcept
 bool Satelite::LoadResources() noexcept
 {
     OBJReader::ReadOBJ("Models\\Satelite.obj", VertexData);
-    return VertexData.size() == 4;
+    datum = OBJReader::ReadOBJSimple("Models\\Satelite2.obj");
+    return VertexData.size() == 4 && datum.indirect.GetElementCount() == 4;
 }

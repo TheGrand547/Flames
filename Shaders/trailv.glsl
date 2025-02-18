@@ -22,5 +22,5 @@ void main()
 
 	gl_Position = Projection * View * vec4(local, 1.0);
 	fColor.xyz = Color;
-	fColor.w = ratio * ratio;
+	fColor.w = 1 - pow(1 - ratio, 3);
 }
