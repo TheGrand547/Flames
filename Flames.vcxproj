@@ -160,6 +160,7 @@
     <ClCompile Include="CollisionTypes.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="CubeMap.cpp" />
+    <ClCompile Include="DebrisManager.cpp" />
     <ClCompile Include="Decal.cpp" />
     <ClCompile Include="DemoGuy.cpp" />
     <ClCompile Include="ExhaustManager.cpp" />
@@ -218,6 +219,7 @@
     <ClInclude Include="CollisionTypes.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="CubeMap.h" />
+    <ClInclude Include="DebrisManager.h" />
     <ClInclude Include="Decal.h" />
     <ClInclude Include="DemoGuy.h" />
     <ClInclude Include="DrawStruct.h" />

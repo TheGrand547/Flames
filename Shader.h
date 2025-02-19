@@ -41,11 +41,6 @@ enum ShaderStages : unsigned char
 	GeometryAndTesselation = Geometry | Tesselation,
 };
 
-struct IndirectDraw
-{
-	GLuint count, primCount, first, baseInstance;
-};
-
 class Shader
 {
 protected:
@@ -125,9 +120,6 @@ public:
 	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayInstanced(ArrayBuffer& primitiveBuffer, ArrayBuffer& instanceBuffer,
 																		const GLuint elementOffset = 0, const GLuint instanceOffset = 0);
 
-	// Draw instanced data from the given parameter struct
-	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayIndirect(const IndirectDraw& parameters);
-
 	// TODO: maybe glDrawElementsRange() but probably not
 
 	// Feed the data in the buffer to the shader in the order given by the passed container
@@ -142,6 +134,7 @@ public:
 															const GLuint elementOffset = 0, const GLuint indexOffset = 0, const GLint instanceOffset = 0);
 
 	template<PrimitiveDrawingType type = DrawType::Triangle> void DrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset = 0) const noexcept;
+	template<PrimitiveDrawingType type = DrawType::Triangle> void DrawElements(const DrawIndirect& indirect) const noexcept;
 	template<PrimitiveDrawingType type = DrawType::Triangle> void MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect) const noexcept;
 	template<PrimitiveDrawingType type = DrawType::Triangle> void MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect,
 		const GLuint count) const noexcept;
@@ -262,11 +255,6 @@ template<PrimitiveDrawingType type> inline void Shader::DrawArrayInstanced(Array
 	this->DrawArrayInstanced<type>(primitiveBuffer.GetElementCount(), instanceBuffer.GetElementCount(), primitiveOffset, instanceOffset);
 }
 
-template<PrimitiveDrawingType type> inline void Shader::DrawArrayIndirect(const IndirectDraw& parameters)
-{
-	glDrawArraysIndirect(static_cast<GLenum>(type), reinterpret_cast<const void*>(parameters));
-}
-
 inline void Shader::DrawElements(PrimitiveDrawingType type, ElementArray& indexBuffer, const GLuint elementOffset, const GLuint indexOffset)
 {
 	indexBuffer.BindBuffer();
@@ -298,7 +286,15 @@ template<PrimitiveDrawingType type>
 inline void Shader::DrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset) const noexcept
 {
 	indirect.BindBuffer();
-	glDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(Elements)));
+	glDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(DrawIndirect)));
+}
+
+template<PrimitiveDrawingType type>
+inline void Shader::DrawElements(const DrawIndirect& indirect) const noexcept
+{
+	glDrawElementsInstancedBaseVertexBaseInstance(static_cast<GLenum>(type), indirect.vertexCount, GL_UNSIGNED_INT,
+		reinterpret_cast<const void*>(sizeof(unsigned int) * indirect.firstVertexIndex),
+		indirect.instanceCount, indirect.vertexOffset, indirect.instanceOffset);
 }
 
 template<PrimitiveDrawingType type>
@@ -317,8 +313,8 @@ template<PrimitiveDrawingType type>
 inline void Shader::MultiDrawElements(const Buffer<BufferType::DrawIndirect>& indirect, const GLuint offset, const GLuint count) const noexcept
 {
 	indirect.BindBuffer();
-	glMultiDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(Elements)),
-		count, sizeof(Elements));
+	glMultiDrawElementsIndirect(static_cast<GLenum>(type), GL_UNSIGNED_INT, reinterpret_cast<const void*>(offset * sizeof(DrawIndirect)),
+		count, sizeof(DrawIndirect));
 }
 
 template<PrimitiveDrawingType type, class Container> inline void Shader::DrawElementsMemory(const Container& contents)

@@ -71,7 +71,7 @@ MeshData OBJReader::ReadOBJSimple(const std::string& filename)
 	{
 		output.rawIndirect.emplace_back(static_cast<GLuint>(loading.LoadedMeshes[i].Indices.size()), 1,
 			static_cast<GLuint>(indexElement), 0, static_cast<GLuint>(0));
-		indexElement  += loading.LoadedMeshes[i].Indices.size();
+		indexElement += static_cast<GLuint>(loading.LoadedMeshes[i].Indices.size());
 	}
 	output.indirect.BufferData(output.rawIndirect, StaticDraw);
 	return output;

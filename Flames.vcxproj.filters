@@ -165,6 +165,9 @@
     <ClCompile Include="GLData.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="DebrisManager.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -363,6 +366,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DrawStruct.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DebrisManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

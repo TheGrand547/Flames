@@ -17,7 +17,7 @@ struct MeshData
 	ArrayBuffer vertex;
 	ElementArray index;
 	Buffer<BufferType::DrawIndirect> indirect;
-	std::vector<Elements> rawIndirect;
+	std::vector<DrawIndirect> rawIndirect;
 };
 
 struct OBJReader

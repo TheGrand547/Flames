@@ -4,15 +4,15 @@
 #include <glew.h>
 
 
-struct Elements
+struct DrawIndirect
 {
 	GLuint vertexCount;
 	GLuint instanceCount;
 	GLuint firstVertexIndex = 0;
-	GLuint vertexOffset     = 0;
+	GLint vertexOffset     = 0;
 	GLuint instanceOffset   = 0;
 
-	constexpr Elements(GLuint vertexCount, GLuint instanceCount, GLuint firstVertexIndex, GLuint vertexOffset, GLuint instanceOffset) noexcept :
+	constexpr DrawIndirect(GLuint vertexCount, GLuint instanceCount, GLuint firstVertexIndex, GLint vertexOffset, GLuint instanceOffset) noexcept :
 		vertexCount(vertexCount), instanceCount(instanceCount), firstVertexIndex(firstVertexIndex), vertexOffset(vertexOffset),
 		instanceOffset(instanceOffset) {}
 };

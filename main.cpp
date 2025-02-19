@@ -66,6 +66,7 @@
 #include "TimeAverage.h"
 #include "Satelite.h"
 #include "Parallel.h"
+#include "DebrisManager.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -174,6 +175,7 @@ Shader basic;
 Shader engine;
 Shader skyBox;
 Shader trails;
+Shader debris;
 
 // Textures
 Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
@@ -361,6 +363,8 @@ std::vector<MeshPair> satelitePairs;
 Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 bool shiftHeld;
 std::atomic_uchar addExplosion;
+
+DebrisManager trashMan;
 
 void display()
 {
@@ -752,7 +756,8 @@ void display()
 	groovy.Draw(ship);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
-
+	trashMan.Draw(debris);
+	glLineWidth(10.f);
 
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
@@ -1366,6 +1371,7 @@ void idle()
 		//std::cout << cameraPosition + forward << std::endl;
 	}
 	managedProcess.FillBuffer(exhaustBuffer);
+	trashMan.FillBuffer();
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
@@ -1522,19 +1528,6 @@ void gameTick()
 				}
 			}
 		}
-		if (addExplosion)
-		{
-			for (int i = 0; i < 20; i++)
-			{
-				glm::vec3 velocity = glm::ballRand(5.f);
-				if (glm::length(velocity) < 2.5f)
-				{
-					velocity *= 2.5f;
-				}
-				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
-			}
-			addExplosion--;
-		}
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
 		
@@ -1579,6 +1572,32 @@ void gameTick()
 				managedProcess.AddExhaust(local - left, -4.f * forward, 128);
 			gasFlag = !gasFlag;
 		}
+
+		if (addExplosion)
+		{
+			/*
+			for (int i = 0; i < 20; i++)
+			{
+				glm::vec3 velocity = glm::ballRand(5.f);
+				if (glm::length(velocity) < 2.5f)
+				{
+					velocity *= 2.5f;
+				}
+				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
+			}
+			*/
+			for (int i = 0; i < 10; i++)
+			{
+				glm::vec3 velocity = glm::ballRand(5.f);
+				if (glm::length(velocity) < 2.5f)
+				{
+					velocity *= 2.5f;
+				}
+				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
+			}
+			addExplosion--;
+		}
+		trashMan.Update();
 
 		if (foobar.IsFinished())
 		{
@@ -2151,6 +2170,7 @@ void init()
 	Shader::SetBasePath("Shaders");
 	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
+	debris.Compile("mesh_final_instance", "mesh_final");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
 	engine.CompileSimple("engine");
@@ -2180,6 +2200,7 @@ void init()
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
+	debris.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
 	engine.UniformBlockBinding("Camera", 0);
@@ -2204,6 +2225,7 @@ void init()
 
 	voronoi.UniformBlockBinding("Points", 2);
 
+	debris.UniformBlockBinding("Lighting", 3);
 	ship.UniformBlockBinding("Lighting", 3);
 
 	CheckError();
@@ -2745,8 +2767,11 @@ void init()
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");
-
+	
+	DebrisManager::LoadResources();
 	Satelite::LoadResources();
+	// Doing this should not change anything, why does it fix things
+	trashMan.AddDebris(glm::vec3(5, 5, 0), World::Zero);
 
 	// Awkward syntax :(
 

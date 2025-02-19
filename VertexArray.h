@@ -208,6 +208,15 @@ template<class V> inline void VertexArray::ArrayFormatOverride(const std::string
 	{
 		glVertexAttribFormat(index, 4, GL_FLOAT, GL_FALSE, relativeOffset);
 	}
+	if constexpr (std::is_same_v<V, glm::mat4>)
+	{
+		for (int i = 0; i < 4; i++)
+		{
+			glVertexAttribFormat(index + i, 4, GL_FLOAT, GL_FALSE, relativeOffset + sizeof(glm::vec4) * i);
+			glVertexAttribBinding(index + i, bindingPoint);
+			glEnableVertexAttribArray(index + i);
+		}
+	}
 	glVertexAttribBinding(index, bindingPoint);
 	glEnableVertexAttribArray(index);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
