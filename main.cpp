@@ -143,8 +143,7 @@ ArrayBuffer instances, dummyEngine;
 ArrayBuffer exhaustBuffer;
 ArrayBuffer leftBuffer, rightBuffer;
 
-ArrayBuffer guyBuffer, guyBuffer2;
-ElementArray guyIndex, guyIndex2;
+MeshData guyMeshData;
 
 ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 ElementArray tetragramIndex;
@@ -709,7 +708,9 @@ void display()
 
 	ship.SetActiveShader();
 	meshVAO.Bind();
-	meshVAO.BindArrayBuffer(guyBuffer);
+	//meshVAO.BindArrayBuffer(guyBuffer);
+	meshVAO.BindArrayBuffer(guyMeshData.vertex);
+	guyMeshData.index.BindBuffer();
 
 	// TODO: Change light color over time to add visual variety
 	//Model defaults{ shipPosition , gooberAngles};
@@ -719,13 +720,20 @@ void display()
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
-	ship.DrawElements<DrawType::Triangle>(guyIndex);
+	//ship.DrawElements<DrawType::Triangle>(guyIndex);
+	ship.DrawElements(guyMeshData.indirect, 0);
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
 	defaults.scale = glm::vec3(0.5f);
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
+
+	Model defaulter{ weaponOffset };
+
+	// What the heck?
+	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
+	//ship.DrawElements(guyMeshData.indirect, 1);
 	//for (auto& local : satelitePairs)
 	/*
 	for (std::size_t i = 0 ; i < satelitePairs.size(); i++)
@@ -742,12 +750,8 @@ void display()
 	}
 	*/
 	groovy.Draw(ship);
-
-	Model defaulter{ weaponOffset };
-
-	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
-	meshVAO.BindArrayBuffer(guyBuffer2);
-	ship.DrawElements<DrawType::Triangle>(guyIndex2);
+	//meshVAO.BindArrayBuffer(guyBuffer2);
+	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
 
 
 	glDepthMask(GL_TRUE);
@@ -2737,15 +2741,7 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	// TODO: Utility for combining multiple models into a single draw call via DrawIndirect
-	auto flames = OBJReader::ReadOBJ("Models\\bloke6.obj");
-	if (flames.size() > 1)
-	{
-		guyBuffer = std::move(flames[0].vertex);
-		guyIndex = std::move(flames[0].index);
-		guyBuffer2 = std::move(flames[1].vertex);
-		guyIndex2 = std::move(flames[1].index);
-	}
+	guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");

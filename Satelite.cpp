@@ -8,7 +8,6 @@
 // 2. Solar Panel +X
 // 3. Antenna
 // 4. Solar Panel -X
-std::vector<MeshPair> VertexData;
 MeshData datum;
 
 VAO VertexFormat;
@@ -18,7 +17,7 @@ static constexpr float SateliteSize = 0.5f;
 static constexpr float CapsuleInner = 3.25f;
 static constexpr float CapsuleRadius = 0.75f;
 
-void Satelite::Draw( Shader& shader) const noexcept
+void Satelite::Draw(Shader& shader) const noexcept
 {
     // TODO: Unhack this
     if (!VertexFormat.GetArray())
@@ -30,6 +29,7 @@ void Satelite::Draw( Shader& shader) const noexcept
     shader.SetMat4("modelMat", drawModel.GetModelMatrix());
     shader.SetMat4("normalMat", drawModel.GetNormalMatrix());
     VertexFormat.BindArrayBuffer(datum.vertex);
+    datum.index.BindBuffer();
     shader.MultiDrawElements(datum.indirect, 2);
 
     drawModel.rotation = drawModel.rotation * glm::angleAxis(this->solarAngle, glm::vec3(1.f, 0.f, 0.f));
@@ -53,7 +53,6 @@ Capsule Satelite::GetBounding() const noexcept
 
 bool Satelite::LoadResources() noexcept
 {
-    OBJReader::ReadOBJ("Models\\Satelite.obj", VertexData);
     datum = OBJReader::ReadOBJSimple("Models\\Satelite2.obj");
-    return VertexData.size() == 4 && datum.indirect.GetElementCount() == 4;
+    return datum.indirect.GetElementCount() == 4;
 }

@@ -4,6 +4,11 @@
 #include "glmHelp.h"
 #include "Transform.h"
 
+struct MeshMatrix
+{
+	glm::mat4 model, normal;
+};
+
 struct Model
 {
 	glm::vec3 scale, translation;
@@ -22,6 +27,7 @@ struct Model
 
 	glm::mat4 GetModelMatrix() const noexcept;
 	glm::mat4 GetNormalMatrix() const noexcept;
+	MeshMatrix GetMatrixPair() const noexcept;
 };
 
 inline Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) noexcept : translation(translation), 

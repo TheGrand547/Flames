@@ -63,39 +63,16 @@ MeshData OBJReader::ReadOBJSimple(const std::string& filename)
 		loading.LoadedMeshes.size(), loading.LoadedIndices.size(), loading.LoadedVertices.size()));
 
 	MeshData output;
-	std::size_t vertexSize = 0, indexSize = 0;
+	GLuint indexElement = 0;
 
-	for (std::size_t i = 0; i < loading.LoadedMeshes.size(); i++)
+	output.vertex.BufferData(loading.LoadedVertices);
+	output.index.BufferData(loading.LoadedIndices);
+ 	for (std::size_t i = 0; i < loading.LoadedMeshes.size(); i++)
 	{
-		vertexSize += loading.LoadedMeshes[i].Vertices.size();
-		indexSize += loading.LoadedMeshes[i].Indices.size();
+		output.rawIndirect.emplace_back(static_cast<GLuint>(loading.LoadedMeshes[i].Indices.size()), 1,
+			static_cast<GLuint>(indexElement), 0, static_cast<GLuint>(0));
+		indexElement  += loading.LoadedMeshes[i].Indices.size();
 	}
-	GLintptr vertexStride = sizeof(loading.LoadedMeshes[0].Vertices.front());
-	GLintptr indexStride = sizeof(loading.LoadedMeshes[0].Indices.front());
-	output.vertex.Reserve(vertexSize * vertexStride, StaticDraw);
-	output.index.Reserve(indexSize * indexStride, StaticDraw);
-
-	GLintptr vertexOffset = 0, indexOffset = 0;
-	GLuint vertexElement = 0, indexElement = 0;
-
-	std::vector<Elements> stored;
-
-	for (std::size_t i = 0; i < loading.LoadedMeshes.size(); i++)
-	{
-		output.vertex.BufferSubData(loading.LoadedMeshes[i].Vertices, vertexOffset);
-		output.index.BufferSubData(loading.LoadedMeshes[i].Indices, indexOffset);
-
-		stored.emplace_back(static_cast<GLuint>(loading.LoadedMeshes[i].Vertices.size()), 12,
-			static_cast<GLuint>(indexElement), static_cast<GLuint>(vertexElement), static_cast<GLuint>(3));
-		auto& ref = stored.back();
-
-		// TODO: outstream overload
-		std::cout << ref.vertexCount << ":" << ref.instanceCount << ":" << ref.firstVertexIndex << ":" << ref.vertexOffset << ":" << ref.instanceOffset << "\n";
-		vertexOffset += loading.LoadedMeshes[i].Vertices.size() * vertexStride;
-		indexOffset  += loading.LoadedMeshes[i].Indices.size() * indexStride;
-		vertexElement += loading.LoadedMeshes[i].Vertices.size();
-		indexElement += loading.LoadedMeshes[i].Indices.size();
-	}
-	output.indirect.BufferData(stored, StaticDraw);
+	output.indirect.BufferData(output.rawIndirect, StaticDraw);
 	return output;
 }
