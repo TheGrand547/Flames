@@ -37,7 +37,7 @@ public:
 	template<class V> inline void ArrayFormatM(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0, std::string name = "Model");
 
 	template<class V> inline void ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint = 0, 
-		GLuint bindingDivisor = 0, GLuint relativeOffset = 0);
+		GLuint bindingDivisor = 0, GLuint relativeOffset = 0, GLsizei stride = 0);
 
 	template<typename T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
@@ -186,7 +186,8 @@ template<> inline void VertexArray::ArrayFormatM<glm::mat4>(Shader& shader, GLui
 	this->strides[bindingPoint] = sizeof(glm::mat4);
 }
 
-template<class V> inline void VertexArray::ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint, GLuint bindingDivisor, GLuint relativeOffset)
+template<class V> inline void VertexArray::ArrayFormatOverride(const std::string& name, Shader& shader, 
+	GLuint bindingPoint, GLuint bindingDivisor, GLuint relativeOffset, GLsizei stride)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
@@ -220,9 +221,13 @@ template<class V> inline void VertexArray::ArrayFormatOverride(const std::string
 	glVertexAttribBinding(index, bindingPoint);
 	glEnableVertexAttribArray(index);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
-	if (!relativeOffset)
+	if (!stride)
 	{
-		this->strides[bindingPoint] = sizeof(V);
+		this->strides[bindingPoint] += static_cast<GLsizei>(sizeof(V));
+	}
+	else
+	{
+		this->strides[bindingPoint] = stride;
 	}
 }
 

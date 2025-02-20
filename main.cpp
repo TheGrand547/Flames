@@ -991,7 +991,7 @@ void display()
 	Model current{ glm::vec3(10.f, 10.f, 0.f) };
 	current.rotation = glm::quat(glm::radians(glm::vec3(90.f, 0.f, 0.f)));
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	flatLighting.SetMat4("modelMat", current.GetNormalMatrix());
+	flatLighting.SetMat4("modelMat", current.GetModelMatrix());
 	flatLighting.SetMat4("normalMat", current.GetNormalMatrix());
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
 	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
@@ -1586,14 +1586,16 @@ void gameTick()
 				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
 			}
 			*/
-			for (int i = 0; i < 10; i++)
+			for (int i = 0; i < 1; i++)
 			{
 				glm::vec3 velocity = glm::ballRand(5.f);
 				if (glm::length(velocity) < 2.5f)
 				{
 					velocity *= 2.5f;
 				}
-				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
+				//trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
+				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), 
+					playerModel.rotation * glm::vec3(1.f, 0.f, 0.f) * 2.f);
 			}
 			addExplosion--;
 		}
@@ -2771,7 +2773,7 @@ void init()
 	DebrisManager::LoadResources();
 	Satelite::LoadResources();
 	// Doing this should not change anything, why does it fix things
-	trashMan.AddDebris(glm::vec3(5, 5, 0), World::Zero);
+	//trashMan.AddDebris(glm::vec3(5, 5, 0), World::Zero);
 
 	// Awkward syntax :(
 

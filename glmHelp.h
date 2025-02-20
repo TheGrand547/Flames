@@ -30,4 +30,9 @@ glm::mat3 SetForward(const glm::vec3& vec, const glm::vec3& up = glm::vec3(0, 1,
 glm::vec3 circleRand(const float& radius = 1.f) noexcept;
 glm::vec3 circleRand(const glm::vec3& up, const float& radius = 1.f) noexcept;
 
+inline glm::quat QuatIdentity() noexcept
+{
+	return glm::quat(1.f, 0.f, 0.f, 0.f);
+}
+
 #endif // GLM_HELP_H

@@ -11,11 +11,11 @@ glm::mat4 Model::GetModelMatrix() const noexcept
 
 glm::mat4 Model::GetNormalMatrix() const noexcept
 {
-    return glm::translate(glm::mat4(1.f), this->translation) * glm::mat4_cast(this->rotation);
+    return glm::mat4_cast(this->rotation);
 }
 
 MeshMatrix Model::GetMatrixPair() const noexcept
 {
     glm::mat4 normal = this->GetNormalMatrix();
-    return {glm::scale(normal, this->scale), normal};
+    return {glm::scale(glm::translate(glm::mat4(1.f), this->translation) * normal, this->scale), normal};
 }
