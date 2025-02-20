@@ -1478,34 +1478,6 @@ void gameTick()
 				});
 			bigData.swap(billboards);
 		}
-		glm::vec3 searchPoint = cameraPosition;
-		float searchRadius = 5.5f;
-		std::vector<PathNodePtr> lame = Level::Tree.neighborsInRange(searchPoint, searchRadius);
-		std::vector<PathNodePtr> searchTest;
-		for (auto& node : Level::AllNodes)
-		{
-			if (glm::distance(searchPoint, node->GetPos()) < searchRadius)
-			{
-				searchTest.push_back(node);
-			}
-		}
-		if (searchTest.size() != lame.size())
-		{
-			std::cout << "Failed to match the brute force method: " << searchTest.size() << ":" << lame.size() << std::endl;
-		}
-		for (const PathNodePtr& e : lame)
-		{
-			if (!e)
-			{
-				std::cout << "null pointer in lame search\n";
-				continue;
-			}
-			if (std::find(searchTest.begin(), searchTest.end(), e) == searchTest.end())
-			{
-				std::cout << e.get() << std::endl;
-				std::cout << "Was Missing: " << e->GetPos() << std::endl;
-			}
-		}
 		player.position = cameraPosition;
 		cameraPosition = player.ApplyForces({});
 		player.velocity *= 0.99;
@@ -1525,6 +1497,17 @@ void gameTick()
 				for (int i = 0; i < 20; i++)
 				{
 					managedProcess.AddExhaust(silly.GetCenter() + glm::ballRand(0.25f), glm::sphericalRand(5.f), 256);
+				}
+				for (int i = 0; i < 5; i++)
+				{
+					glm::vec3 velocity = glm::ballRand(5.f);
+					if (glm::length(velocity) < 2.5f)
+					{
+						velocity *= 2.5f;
+					}
+					glm::vec3 center = glm::ballRand(0.25f);
+					trashMan.AddDebris(silly.GetCenter() + center, velocity);
+					trashMan.AddDebris(silly.GetCenter() - center, -velocity);
 				}
 			}
 		}
@@ -1586,16 +1569,15 @@ void gameTick()
 				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
 			}
 			*/
-			for (int i = 0; i < 1; i++)
+			for (int i = 0; i < 5; i++)
 			{
 				glm::vec3 velocity = glm::ballRand(5.f);
 				if (glm::length(velocity) < 2.5f)
 				{
 					velocity *= 2.5f;
 				}
-				//trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
-				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), 
-					playerModel.rotation * glm::vec3(1.f, 0.f, 0.f) * 2.f);
+				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
+				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), -velocity);
 			}
 			addExplosion--;
 		}

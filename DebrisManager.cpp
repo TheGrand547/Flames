@@ -2,6 +2,7 @@
 #include <glm/gtc/random.hpp>
 #include "Buffer.h"
 #include "OBJReader.h"
+#include <numbers>
 #include "VertexArray.h"
 #include "Model.h"
 
@@ -10,6 +11,17 @@ static unsigned char debrisTypes = 1;
 static VAO instanceVAO;
 static ArrayBuffer instanceBuffer;
 
+// Constant speed till 3 seconds after the inciting incident, then a decay for 3 seconds to whatever the final ones are
+static constexpr std::uint16_t FadeOutTime     = static_cast<std::uint16_t>(Tick::PerSecond * 2.5);
+static constexpr std::uint16_t FadeOutDuration = 2;
+static constexpr std::uint16_t FinalSpeedTime  = FadeOutTime + static_cast<std::uint16_t>(Tick::PerSecond) * FadeOutDuration;
+static constexpr float DecayConstant = 0.998f;
+
+// A Full rotation every 5 seconds is the slowest I want it, for some reason
+static constexpr float MinAngleRotation = Tick::TimeDelta * std::numbers::pi_v<float> * 2.f / 5.f;
+static constexpr float MinSpeed = 0.25f;// *Tick::TimeDelta;
+static constexpr float MaxSpeed = 3.5f;// *Tick::TimeDelta;
+
 void DebrisManager::Update() noexcept
 {
 	// TODO: Move to parallel once collision and more complicated stuff are done in here
@@ -17,15 +29,36 @@ void DebrisManager::Update() noexcept
 	std::size_t removedCount = std::erase_if(this->debris, 
 		[](Debris& ref)
 		{
+			ref.ticksAlive++;
 			ref.transform.position += ref.delta.position * Tick::TimeDelta;
-			ref.transform.rotation *= ref.delta.rotation;
-			ref.delta.position *= 0.999f;
-			float angle = glm::angle(ref.delta.rotation);
-			ref.delta.rotation = glm::angleAxis(angle * 0.999f, glm::axis(ref.delta.rotation));
-			ref.delta.rotation = glm::normalize(ref.delta.rotation);
-			if (glm::angle(ref.delta.rotation) > angle)
+			ref.transform.rotation = ref.transform.rotation * ref.delta.rotation;
+
+			if (ref.ticksAlive == FinalSpeedTime)
 			{
-				ref.delta.rotation = QuatIdentity();
+				float speed = glm::length(ref.delta.position);
+				if (speed > MaxSpeed)
+				{
+					ref.delta.position = glm::normalize(ref.delta.position) * MaxSpeed;
+				}
+			}
+			if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
+			{
+				float speed = glm::length(ref.delta.position);
+				if (speed > MinSpeed)
+				{
+					ref.delta.position *= DecayConstant;
+				}
+				float angle = glm::angle(ref.delta.rotation);
+				if (angle > MinAngleRotation)
+				{
+					glm::vec3 axis = glm::axis(ref.delta.rotation);
+					ref.delta.rotation = glm::angleAxis(angle * DecayConstant, axis);
+					ref.delta.rotation = glm::normalize(ref.delta.rotation);
+					if (glm::angle(ref.delta.rotation) > angle)
+					{
+						ref.delta.rotation = glm::angleAxis(MinAngleRotation, axis);
+					}
+				}
 			}
 			return glm::any(glm::isnan(ref.transform.position));
 		}
@@ -108,7 +141,7 @@ void DebrisManager::FillBuffer() noexcept
 		matrix.reserve(this->debris.size());
 		for (const auto& local : this->debris)
 		{
-			matrix.push_back(Model(local.transform).GetMatrixPair());
+			matrix.push_back(Model(local.transform, local.scale).GetMatrixPair());
 		}
 		instanceBuffer.BufferData(matrix);
 		this->dirty = false;
@@ -120,15 +153,16 @@ void DebrisManager::AddDebris(glm::vec3 postion, glm::vec3 velocity) noexcept
 	// TODO: Insertion sort based on id to add variety, yknow
 	this->debris.emplace_back(Transform
 		{
-			postion, 
+			postion,
 			glm::quat(glm::sphericalRand(glm::pi<float>()))
-		}, 
+		},
 		Transform{
 			velocity,
 			glm::angleAxis(glm::radians(glm::length(velocity)), glm::sphericalRand(1.f))
 		},
-		static_cast<unsigned char>(rand()) % debrisTypes
-		//this->debris.size() % debrisTypes
+		static_cast<unsigned char>(rand()) % debrisTypes,
+		static_cast<std::uint16_t>(this->debris.size() % 40), // Add some variation to the time out
+		glm::clamp(glm::gaussRand(0.5f, 0.2f), 0.1f, 0.9f)
 	);
 	this->dirty = true;
 	this->superDirty = true;

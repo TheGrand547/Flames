@@ -12,6 +12,8 @@ private:
 	{
 		Transform transform, delta;
 		unsigned char drawIndex;
+		std::uint16_t ticksAlive;
+		float scale;
 	};
 
 	// TODO: Maybe an array or circular buffer to cap size, who knows

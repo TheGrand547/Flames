@@ -13,6 +13,7 @@
 namespace Tick
 {
 	constexpr float TimeDelta = 0x1.p-7f;
+	constexpr std::size_t PerSecond = 128;
 }
 
 namespace World
