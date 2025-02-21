@@ -9,7 +9,6 @@
 static MeshData meshData;
 static unsigned char debrisTypes = 1;
 static VAO instanceVAO;
-static ArrayBuffer instanceBuffer;
 
 // Constant speed till 3 seconds after the inciting incident, then a decay for 3 seconds to whatever the final ones are
 static constexpr std::uint16_t FadeOutTime     = static_cast<std::uint16_t>(Tick::PerSecond * 2.5);
@@ -22,17 +21,19 @@ static constexpr float MinAngleRotation = Tick::TimeDelta * std::numbers::pi_v<f
 static constexpr float MinSpeed = 0.25f;// *Tick::TimeDelta;
 static constexpr float MaxSpeed = 3.5f;// *Tick::TimeDelta;
 
+// TODO: Migrate to vector of vectors of Debris to remove the need for the stupid sorting and recalculations
+// Might be able to get away with OctTree's instead of vectors but that kind of sounds like a headache of layers
+
 void DebrisManager::Update() noexcept
 {
 	// TODO: Move to parallel once collision and more complicated stuff are done in here
-	// TODO: Proper decay constant
+	// TODO: Maybe this is good but I sure as hell can't tell, poke around numbers y'know
 	std::size_t removedCount = std::erase_if(this->debris, 
 		[](Debris& ref)
 		{
 			ref.ticksAlive++;
 			ref.transform.position += ref.delta.position * Tick::TimeDelta;
 			ref.transform.rotation = ref.transform.rotation * ref.delta.rotation;
-
 			if (ref.ticksAlive == FinalSpeedTime)
 			{
 				float speed = glm::length(ref.delta.position);
@@ -72,12 +73,13 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	// TODO: Unhack this
 	if (instanceVAO.GetArray() == 0)
 	{
-		CheckError();
 		instanceVAO.ArrayFormat<MeshVertex>(shader);
-		CheckError();
 		instanceVAO.ArrayFormatOverride<glm::mat4>("modelMat", shader, 1, 1, 0, sizeof(MeshMatrix));
-		//instanceVAO.ArrayFormatM<glm::mat4>(shader, 1, 1, "modelMat");
 		instanceVAO.ArrayFormatOverride<glm::mat4>("normalMat", shader, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+	}
+	if (this->indirectBuffer.GetElementCount() == 0)
+	{
+		this->indirectBuffer.BufferData(meshData.rawIndirect);
 	}
 	if (this->debris.size() == 0)
 	{
@@ -88,9 +90,9 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	shader.SetVec3("shapeColor", glm::vec3(0.85f));
 	instanceVAO.Bind();
 	instanceVAO.BindArrayBuffer(meshData.vertex, 0);
-	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
+	instanceVAO.BindArrayBuffer(this->instanceBuffer, 1);
 	meshData.index.BindBuffer();
-	shader.MultiDrawElements(meshData.indirect);
+	shader.MultiDrawElements(this->indirectBuffer);
 }
 
 void DebrisManager::FillBuffer() noexcept
@@ -103,6 +105,7 @@ void DebrisManager::FillBuffer() noexcept
 			{
 				return left.drawIndex < right.drawIndex;
 			});
+		std::vector localCopy{ meshData.rawIndirect };
 		// TODO: maybe do this on gpu or something I have no idea man
 		std::vector<std::pair<GLuint, GLuint>> offsets(meshData.rawIndirect.size(), std::make_pair(0, 0));
 		if (this->debris.size() > 0)
@@ -124,13 +127,13 @@ void DebrisManager::FillBuffer() noexcept
 			}
 			for (std::size_t i = 0; i < meshData.rawIndirect.size(); i++)
 			{
-				auto& current = meshData.rawIndirect[i];
+				auto& current = localCopy[i];
 				current.instanceCount = offsets[i].first;
 				current.instanceOffset = offsets[i].second;
 			}
 		}
 		
-		meshData.indirect.BufferSubData(meshData.rawIndirect);
+		this->indirectBuffer.BufferSubData(localCopy);
 		this->superDirty = false;
 		this->dirty = true;
 	}
@@ -143,7 +146,7 @@ void DebrisManager::FillBuffer() noexcept
 		{
 			matrix.push_back(Model(local.transform, local.scale).GetMatrixPair());
 		}
-		instanceBuffer.BufferData(matrix);
+		this->instanceBuffer.BufferData(matrix);
 		this->dirty = false;
 	}
 }
@@ -168,11 +171,31 @@ void DebrisManager::AddDebris(glm::vec3 postion, glm::vec3 velocity) noexcept
 	this->superDirty = true;
 }
 
+void DebrisManager::Add(std::vector<Debris>&& local) noexcept
+{
+	if (local.size() > 0)
+	{
+		this->dirty = true;
+		this->superDirty = true;
+	}
+	std::move(local.begin(), local.end(), std::back_inserter(this->debris));
+	local.clear();
+}
+
+void DebrisManager::Add(std::vector<Debris>& local) noexcept
+{
+	if (local.size() > 0)
+	{
+		this->dirty = true;
+		this->superDirty = true;
+	}
+	std::move(local.begin(), local.end(), std::back_inserter(this->debris));
+	local.clear();
+}
+
 bool DebrisManager::LoadResources() noexcept
 {
 	meshData = OBJReader::ReadOBJSimple("Models\\Debris.obj");
 	debrisTypes = meshData.indirect.GetElementCount();
-	instanceBuffer.Generate();
-	instanceBuffer.BufferData(glm::mat4(1.f));
 	return debrisTypes > 1;
 }

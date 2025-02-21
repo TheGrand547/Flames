@@ -6,7 +6,8 @@
 
 void ExhaustManager::AddExhaust(const glm::vec3& position, const glm::vec3& velocity, unsigned int lifetime)
 {
-	this->particles.emplace_back(position, velocity, lifetime, lifetime);
+	unsigned int offset = rand() % 20;
+	this->particles.emplace_back(position, velocity, lifetime + offset, lifetime + offset);
 }
 
 void ExhaustManager::FillBuffer(ArrayBuffer& buffer) const noexcept

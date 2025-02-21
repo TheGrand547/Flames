@@ -364,7 +364,7 @@ Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 bool shiftHeld;
 std::atomic_uchar addExplosion;
 
-DebrisManager trashMan;
+DebrisManager trashMan, playerMan;
 
 void display()
 {
@@ -757,6 +757,7 @@ void display()
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
 	trashMan.Draw(debris);
+	playerMan.Draw(debris);
 	glLineWidth(10.f);
 
 	glDepthMask(GL_TRUE);
@@ -1292,10 +1293,10 @@ void idle()
 
 		}
 		flippyFlop = !flippyFlop;
-		leftCircle.Push(ColoredVertex{ local - left,  upSet });
-		leftCircle.Push(ColoredVertex{ local - left, -upSet });
-		rightCircle.Push(ColoredVertex{ local + left,  upSet });
-		rightCircle.Push(ColoredVertex{ local + left, -upSet });
+		leftCircle.Push(ColoredVertex{  local - left * 0.8f,  upSet });
+		leftCircle.Push(ColoredVertex{  local - left * 1.2f, -upSet });
+		rightCircle.Push(ColoredVertex{ local + left * 0.8f,  upSet });
+		rightCircle.Push(ColoredVertex{ local + left * 1.2f, -upSet });
 
 		leftBuffer.BufferData(leftCircle.GetLinear());
 		rightBuffer.BufferData(rightCircle.GetLinear());
@@ -1372,6 +1373,7 @@ void idle()
 	}
 	managedProcess.FillBuffer(exhaustBuffer);
 	trashMan.FillBuffer();
+	playerMan.FillBuffer();
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
@@ -1494,21 +1496,7 @@ void gameTick()
 			Collision lib;
 			if (bulletCapsule.Intersect(silly, lib))
 			{
-				for (int i = 0; i < 20; i++)
-				{
-					managedProcess.AddExhaust(silly.GetCenter() + glm::ballRand(0.25f), glm::sphericalRand(5.f), 256);
-				}
-				for (int i = 0; i < 5; i++)
-				{
-					glm::vec3 velocity = glm::ballRand(5.f);
-					if (glm::length(velocity) < 2.5f)
-					{
-						velocity *= 2.5f;
-					}
-					glm::vec3 center = glm::ballRand(0.25f);
-					trashMan.AddDebris(silly.GetCenter() + center, velocity);
-					trashMan.AddDebris(silly.GetCenter() - center, -velocity);
-				}
+				addExplosion++;
 			}
 		}
 		// Gun animation
@@ -1549,26 +1537,21 @@ void gameTick()
 			left *= 0.25f;
 			glm::vec3 local = gooberOffset + playerModel.translation;
 			local -= forward * 0.65f;
+			/*
 			if (gasFlag)
 				managedProcess.AddExhaust(local + left, -4.f * forward, 128);
 			else
 				managedProcess.AddExhaust(local - left, -4.f * forward, 128);
+				*/
 			gasFlag = !gasFlag;
 		}
 
 		if (addExplosion)
 		{
-			/*
 			for (int i = 0; i < 20; i++)
 			{
-				glm::vec3 velocity = glm::ballRand(5.f);
-				if (glm::length(velocity) < 2.5f)
-				{
-					velocity *= 2.5f;
-				}
-				managedProcess.AddExhaust(groovy.GetBounding().GetCenter() + glm::ballRand(0.25f), velocity, 256);
+				managedProcess.AddExhaust(silly.GetCenter() + glm::ballRand(0.25f), glm::sphericalRand(5.f), 256);
 			}
-			*/
 			for (int i = 0; i < 5; i++)
 			{
 				glm::vec3 velocity = glm::ballRand(5.f);
@@ -1576,8 +1559,9 @@ void gameTick()
 				{
 					velocity *= 2.5f;
 				}
-				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), velocity);
-				trashMan.AddDebris(playerModel.translation + playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), -velocity);
+				glm::vec3 center = glm::ballRand(0.25f);
+				trashMan.AddDebris(silly.GetCenter() + center, velocity);
+				trashMan.AddDebris(silly.GetCenter() - center, -velocity);
 			}
 			addExplosion--;
 		}
@@ -1587,7 +1571,7 @@ void gameTick()
 		{
 			glm::vec3 forward = glm::mat4_cast(gooberAngles) * glm::vec4(1.f, 0.f, 0.f, 1.f);
 			foobar.Start(gameTicks);
-			bullets.emplace_back<SimpleBullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
+			//bullets.emplace_back<SimpleBullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
 		}
 		weaponOffset = foobar.Get(gameTicks).position;
 
@@ -1595,6 +1579,60 @@ void gameTick()
 		{
 			Log("Big Jump of " << deltar);
 		}
+		
+		playerMan.Add(trashMan.ExtractElements(
+			[&playerModel] (DebrisManager::Debris& bloke)
+			{
+				if (glm::distance(playerModel.translation, bloke.transform.position) > 4.f)
+				{
+					return true;
+				}
+				bloke.ticksAlive = 0;
+				return false;
+			}
+		));
+		float playerSpeed = glm::length(playfield.GetVelocity());
+		const glm::vec3 playerForward = playfield.GetVelocity();
+		playerMan.Update([&](DebrisManager::Debris& bloke)
+			{
+				constexpr float MaxAcceleration = 5.f;
+				constexpr std::uint16_t MaxAccelerationTime = 256;
+				
+
+				bloke.ticksAlive++;
+				glm::vec3 delta = playerModel.translation - bloke.transform.position;
+
+				float length = glm::length(delta);
+				if (length < 0.25f)
+				{
+					return true;
+				}
+				float mySpeed = glm::length(bloke.delta.position);
+				// TODO: Maybe some checks to try and get closer velocity wise
+
+				glm::vec3 normalized = glm::normalize(delta);
+				glm::vec3 unit = glm::normalize(bloke.delta.position);
+				glm::vec3 forces = World::Zero;
+				float projection = glm::abs(glm::dot(normalized, unit));
+				// Acceleration directly towards the ship is a-okay
+				if (projection > glm::cos(glm::radians(30.f)))
+				{
+
+				}
+				else
+				{
+
+				}
+
+				float ratio = std::min(static_cast<float>(bloke.ticksAlive) / MaxAccelerationTime, 1.f);
+				delta = glm::normalize(delta) * glm::min(glm::lerp(0.f, playerSpeed * 1.5f, ratio) * Tick::TimeDelta, length);
+				//bloke.transform.position += delta;
+				//bloke.transform.position += glm::normalize(delta) * glm::min(Tick::TimeDelta * playerSpeed * 1.5f, length);
+				BasicPhysics::Update(bloke.transform.position, bloke.delta.position, forces);
+				return false;
+			}
+		);
+		
 
 		groovy.Update();
 
