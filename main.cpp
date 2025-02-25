@@ -67,6 +67,7 @@
 #include "Satelite.h"
 #include "Parallel.h"
 #include "DebrisManager.h"
+#include "MissileMotion.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -1583,10 +1584,17 @@ void gameTick()
 		playerMan.Add(trashMan.ExtractElements(
 			[&playerModel] (DebrisManager::Debris& bloke)
 			{
-				if (glm::distance(playerModel.translation, bloke.transform.position) > 4.f)
+				
+				if (glm::distance(playerModel.translation, bloke.transform.position) > 5.f)
+				{
+				//	return true;
+				}
+				if (bloke.ticksAlive > 55)
 				{
 					return true;
 				}
+				//return true;
+				//std::cout << "addewd one\n";
 				bloke.ticksAlive = 0;
 				return false;
 			}
@@ -1595,7 +1603,7 @@ void gameTick()
 		const glm::vec3 playerForward = playfield.GetVelocity();
 		playerMan.Update([&](DebrisManager::Debris& bloke)
 			{
-				constexpr float MaxAcceleration = 5.f;
+				constexpr float MaxAcceleration = 40.f;
 				constexpr std::uint16_t MaxAccelerationTime = 256;
 				
 
@@ -1608,28 +1616,16 @@ void gameTick()
 					return true;
 				}
 				float mySpeed = glm::length(bloke.delta.position);
-				// TODO: Maybe some checks to try and get closer velocity wise
-
 				glm::vec3 normalized = glm::normalize(delta);
-				glm::vec3 unit = glm::normalize(bloke.delta.position);
-				glm::vec3 forces = World::Zero;
-				float projection = glm::abs(glm::dot(normalized, unit));
-				// Acceleration directly towards the ship is a-okay
-				if (projection > glm::cos(glm::radians(30.f)))
-				{
+				float ratio = std::min(static_cast<float>(bloke.ticksAlive + 1) / MaxAccelerationTime, 1.f);
+				glm::vec3 forces = MakePrediction(bloke.transform.position, bloke.delta.position, ratio * MaxAcceleration,
+					playerModel.translation, playfield.GetVelocity());
 
-				}
-				else
-				{
-
-				}
-
-				float ratio = std::min(static_cast<float>(bloke.ticksAlive) / MaxAccelerationTime, 1.f);
-				delta = glm::normalize(delta) * glm::min(glm::lerp(0.f, playerSpeed * 1.5f, ratio) * Tick::TimeDelta, length);
-				//bloke.transform.position += delta;
-				//bloke.transform.position += glm::normalize(delta) * glm::min(Tick::TimeDelta * playerSpeed * 1.5f, length);
+				bloke.transform.rotation = bloke.transform.rotation * bloke.delta.rotation;
+				bloke.scale = glm::min(length / 4.f, bloke.scale);
 				BasicPhysics::Update(bloke.transform.position, bloke.delta.position, forces);
-				return false;
+				BasicPhysics::Clamp(bloke.delta.position, std::max(MaxAcceleration, playerSpeed * 1.25f));
+				return glm::any(glm::isnan(bloke.transform.position));
 			}
 		);
 		
