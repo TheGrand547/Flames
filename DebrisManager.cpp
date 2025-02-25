@@ -44,6 +44,7 @@ void DebrisManager::Update() noexcept
 			}
 			if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
 			{
+				// This is overcomplicated
 				float speed = glm::length(ref.delta.position);
 				if (speed > MinSpeed)
 				{

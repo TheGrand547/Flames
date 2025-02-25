@@ -19,6 +19,7 @@ struct Model
 	inline Model(const Transform& transform, const glm::vec3& scale) noexcept : scale(scale), translation(transform.position), rotation(transform.rotation) {}
 	inline Model(glm::vec3 translation = glm::vec3(0), glm::vec3 rotation = glm::vec3(0), glm::vec3 scale = glm::vec3(1.f)) noexcept;
 	inline Model(glm::vec3 translation, glm::quat rotation, glm::vec3 scale = glm::vec3(1.f)) noexcept;
+	inline Model(glm::vec3 translation, glm::quat rotation, float scale) noexcept;
 	~Model() = default;
 
 	Model(const Model& mode) noexcept = default;
@@ -39,6 +40,11 @@ inline Model::Model(glm::vec3 translation, glm::vec3 rotation, glm::vec3 scale) 
 inline Model::Model(glm::vec3 translation, glm::quat rotation, glm::vec3 scale) noexcept : translation(translation), rotation(rotation), scale(scale)
 {
 
+}
+
+inline Model::Model(glm::vec3 translation, glm::quat rotation, float scale) noexcept : translation(translation), rotation(rotation),
+				scale(glm::vec3(scale))
+{
 }
 
 inline void Model::Translate(const glm::vec3& distance) noexcept

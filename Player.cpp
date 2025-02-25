@@ -156,7 +156,7 @@ void Player::Update(Input::Keyboard input) noexcept
 			forces = unitVector * -EngineThrust * speedDifference;
 		}
 	}
-	else
+	else if (!this->fireCountdown)
 	{
 		glm::vec3 wrongDirection = glm::normalize(localAxes[0] - unitVector);
 		if (!glm::any(glm::isnan(wrongDirection)))

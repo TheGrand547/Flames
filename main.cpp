@@ -68,6 +68,7 @@
 #include "Parallel.h"
 #include "DebrisManager.h"
 #include "MissileMotion.h"
+#include "MagneticAttack.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: imGUI
@@ -366,6 +367,8 @@ bool shiftHeld;
 std::atomic_uchar addExplosion;
 
 DebrisManager trashMan, playerMan;
+
+MagneticAttack magnetic(100, 20, 80, 4.f);
 
 void display()
 {
@@ -760,6 +763,16 @@ void display()
 	trashMan.Draw(debris);
 	playerMan.Draw(debris);
 	glLineWidth(10.f);
+
+	basic.SetActiveShader();
+	meshVAO.Bind();
+	meshVAO.BindArrayBuffer(sphereBuffer);
+	sphereIndicies.BindBuffer();
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	basic.SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
+	basic.SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
+	basic.DrawElements<DrawType::Triangle>(sphereIndicies);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
@@ -1584,11 +1597,7 @@ void gameTick()
 		playerMan.Add(trashMan.ExtractElements(
 			[&playerModel] (DebrisManager::Debris& bloke)
 			{
-				
-				if (glm::distance(playerModel.translation, bloke.transform.position) > 5.f)
-				{
-				//	return true;
-				}
+				// Let them drift a bit before they zoom off towards the player
 				if (bloke.ticksAlive > 55)
 				{
 					return true;
@@ -1633,6 +1642,11 @@ void gameTick()
 		groovy.Update();
 
 		managedProcess.Update();
+
+		if (!magnetic.Finished())
+		{
+			magnetic.Update();
+		}
 
 		// End of Tick timekeeping
 		auto tickEnd = std::chrono::steady_clock::now();
@@ -1707,6 +1721,13 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 	}
 	if (action == GLFW_PRESS)
 	{
+		if (key == GLFW_KEY_V)
+		{
+			if (magnetic.Finished())
+			{
+				magnetic.Start({ playfield.GetModel().translation, playfield.GetModel().rotation});
+			}
+		}
 		if (key == GLFW_KEY_U)
 		{
 			addExplosion++;

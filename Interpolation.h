@@ -16,6 +16,16 @@ enum class Interploation
 
 namespace Easing
 {
+	template<typename T> inline T lerp(const T& a, const T& b, const double& t)
+	{
+		return static_cast<T>(a + (b - a) * t);
+	}
+
+	template<typename T> inline T lerpStable(const T& a, const T& b, const double& t)
+	{
+		return static_cast<T>((1. - t) * a + t * b);
+	}
+
 	inline double Linear(const double& delta) noexcept
 	{
 		return delta;
@@ -28,29 +38,33 @@ namespace Easing
 
 	inline double Cubic(const double& delta) noexcept
 	{
-		return glm::pow(delta, 3);
+		return std::pow(delta, 3);
 	}
 
 	inline double Quartic(const double& delta) noexcept
 	{
-		return glm::pow(delta, 4);
+		return std::pow(delta, 4);
 	}
 
 	inline double Quintic(const double& delta) noexcept
 	{
-		return glm::pow(delta, 5);
+		return std::pow(delta, 5);
 	}
 
 	template<double X> inline double Power(const double& delta) noexcept
 	{
-		return glm::pow(delta, X);
+		return std::pow(delta, X);
 	}
 
 	template<double X> inline double EaseOutPower(const double& delta) noexcept
 	{
-		return 1. - glm::pow(1. - delta, X);
+		return 1. - std::pow(1. - delta, X);
 	}
 
+	inline double Circular(const double& delta) noexcept
+	{
+		return 1. - std::sqrt(1. - delta * delta);
+	}
 
 	inline double EaseOutLinear(const double& delta) noexcept
 	{
@@ -75,6 +89,11 @@ namespace Easing
 	inline double EaseOutQuintic(const double& delta) noexcept
 	{
 		return EaseOutPower<5.>(delta);
+	}
+
+	inline double EaseOutCircular(const double& delta) noexcept
+	{
+		return std::sqrt(1. - std::pow(delta - 1., 2.));
 	}
 }
 

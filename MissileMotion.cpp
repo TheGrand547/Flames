@@ -26,9 +26,5 @@ glm::vec3 MakePrediction(glm::vec3 thisPosition, glm::vec3 thisVelocity, float a
 	
 	glm::vec3 estimated = otherPosition + relativeVelocity * Rectify(result);
 	glm::vec3 estimate = glm::normalize(estimated - thisPosition) * acceleration;
-	if (glm::any(glm::isnan(estimate)))
-	{
-		std::cout << "God dammit\n";
-	}
 	return estimate;
 }

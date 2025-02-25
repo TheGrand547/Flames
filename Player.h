@@ -20,7 +20,7 @@ protected:
 	void SelectTarget() noexcept;
 
 public:
-	Satelite* sat; // AHHHHH
+	Satelite* sat = nullptr; // AHHHHH
 
 	inline Player(const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0)) noexcept 
 		: transform(position, glm::quat(glm::vec3(0.25f))), velocity(velocity), fireDelay(0), fireCountdown(0) {}

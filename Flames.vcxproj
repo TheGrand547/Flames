@@ -172,6 +172,7 @@
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Lines.cpp" />
     <ClCompile Include="log.cpp" />
+    <ClCompile Include="MagneticAttack.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MissileMotion.cpp" />
     <ClCompile Include="Model.cpp" />
@@ -237,6 +238,7 @@
     <ClInclude Include="Level.h" />
     <ClInclude Include="Lines.h" />
     <ClInclude Include="log.h" />
+    <ClInclude Include="MagneticAttack.h" />
     <ClInclude Include="MissileMotion.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="OBJReader.h" />
