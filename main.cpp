@@ -13,6 +13,7 @@
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/orthonormalize.hpp>
 #include <glm/gtx/vec_swizzle.hpp>
+#include <glm/gtx/color_space.hpp>
 #include <iostream>
 #include <map>
 #include <mutex>
@@ -339,6 +340,7 @@ glm::quat gooberAngles{};
 
 SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
 						{glm::vec3(-0.25, 0, 0)}, 80, Easing::Linear };
+AnimationInstance foobarInstance;
 
 Animation flubber = make_animation( Transform(),
 	{
@@ -369,6 +371,7 @@ std::atomic_uchar addExplosion;
 DebrisManager trashMan, playerMan;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
+MeshData playerMesh;
 
 void display()
 {
@@ -729,7 +732,7 @@ void display()
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex);
-	ship.DrawElements(guyMeshData.indirect, 0);
+	//ship.DrawElements(guyMeshData.indirect, 0);
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
@@ -757,22 +760,23 @@ void display()
 		}
 	}
 	*/
+	playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
 	trashMan.Draw(debris);
 	playerMan.Draw(debris);
-	glLineWidth(10.f);
+	glLineWidth(1.f);
 
 	basic.SetActiveShader();
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	sphereIndicies.BindBuffer();
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	basic.SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
 	basic.SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
-	basic.DrawElements<DrawType::Triangle>(sphereIndicies);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	basic.DrawElements<DrawType::Lines>(sphereIndicies);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glDepthMask(GL_TRUE);
 	uniform.SetVec3("color", glm::vec3(1, 1, 1));
@@ -1220,6 +1224,7 @@ void idle()
 	boardState.heading = glm::vec4(playerSpeedControl, targetAngles * adjustment);
 	boardState.fireButton = keyState['T'];
 	boardState.cruiseControl = keyState['Y'];
+	boardState.popcornFire = Mouse::CheckButton(Mouse::ButtonLeft);
 
 	if (keyState['W'])
 		cameraPosition += forward;
@@ -1347,7 +1352,9 @@ void idle()
 		lastCheckedTick = gameTicks;
 		if (gameTicks % 256 == 0)
 		{
-			lightingBuffer.BufferSubData(glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), 0);
+			glm::vec3 color = glm::abs(glm::ballRand(1.f));
+			color.z = glm::clamp(color.z, 0.42f, 0.8f);
+			lightingBuffer.BufferSubData(glm::vec4(glm::rgbColor(color), 0.f), 0);
 		}
 	}
 	std::vector<glm::vec3> rays;
@@ -1581,13 +1588,13 @@ void gameTick()
 		}
 		trashMan.Update();
 
-		if (foobar.IsFinished())
+		if (foobarInstance.IsFinished())
 		{
 			glm::vec3 forward = glm::mat4_cast(gooberAngles) * glm::vec4(1.f, 0.f, 0.f, 1.f);
-			foobar.Start(gameTicks);
+			foobar.Start(foobarInstance);
 			//bullets.emplace_back<SimpleBullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
 		}
-		weaponOffset = foobar.Get(gameTicks).position;
+		weaponOffset = foobar.Get(foobarInstance).position;
 
 		if (deltar > 1)
 		{
@@ -2803,6 +2810,7 @@ void init()
 	}
 
 	guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
+	playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");

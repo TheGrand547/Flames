@@ -75,6 +75,7 @@ namespace Input
 	{
 		glm::vec4 heading;
 		bool fireButton;
+		bool popcornFire;
 		bool cruiseControl;
 	};
 };

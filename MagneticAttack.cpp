@@ -60,6 +60,7 @@ void MagneticAttack::Update() noexcept
 		float ratio = static_cast<float>(difference) / this->growTime;
 		this->radius = Easing::lerp(0.f, this->maxRadius, Easing::Circular(ratio));
 	}
+	this->local = glm::angleAxis(glm::radians(1.25f), glm::normalize(glm::vec3(1.f, 2.f, 3.f))) * this->local;
 }
 
 Sphere MagneticAttack::GetCollision(const glm::vec3& center) const noexcept

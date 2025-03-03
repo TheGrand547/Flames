@@ -7,6 +7,7 @@
 #include "Input.h"
 #include "Model.h"
 #include "Satelite.h"
+#include "VertexArray.h"
 
 typedef std::uint8_t IntervalType;
 
@@ -29,7 +30,7 @@ public:
 
 	void Update(Input::Keyboard input) noexcept;
 
-	inline Model GetModel() noexcept
+	inline Model GetModel() const noexcept
 	{
 		return { this->transform };
 	}
@@ -38,6 +39,8 @@ public:
 	{
 		return this->velocity;
 	}
+
+	void Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model model) const noexcept;
 };
 
 

@@ -7,6 +7,13 @@
 #include <tuple>
 #include <span>
 
+typedef std::uint16_t AnimationDuration;
+
+enum class AnimationStage
+{
+	Rising, Midpoint, Falling, Rest
+};
+
 // HACK
 template<typename F> F EaseOut(F functor) noexcept
 {
@@ -24,8 +31,20 @@ typedef double (*EasingFunction)(const double&);
 struct AnimationElement
 {
 	Transform KeyFrame;
-	std::size_t Duration;
+	AnimationDuration Duration;
 	EasingFunction Easing;
+};
+
+struct AnimationInstance
+{
+	AnimationDuration ticksDone = 0;
+	bool finished = true;
+	AnimationInstance() noexcept = default;
+	inline AnimationInstance(AnimationDuration x) noexcept : ticksDone(x), finished(false) {}
+	inline bool IsFinished() const noexcept
+	{
+		return this->finished;
+	}
 };
 
 // TODO: The smarter way of doing it, where every "get" is assumed to be the next tick so less has to be stored and dealt with
@@ -42,55 +61,72 @@ protected:
 	InFunc easeIn;
 	OutFunc easeOut;
 	// Probably overkill lol
-	std::size_t startTick, inDuration, outDuration;
-	bool finished;
+	AnimationDuration inDuration, outDuration;
 public:
-	void Start(const std::size_t& currentTick) noexcept
+	void Start(AnimationInstance& operand) noexcept
 	{
-		this->startTick = currentTick;
-		this->finished = false;
+		operand.ticksDone = 0;
+		operand.finished = false;
 	}
 
-	inline Transform Get(const std::size_t& currentTick) noexcept
+	inline AnimationStage GetStatus(const AnimationInstance& operand) const noexcept
 	{
-		if (this->finished)
+		if (operand.finished)
+		{
+			return AnimationStage::Rest;
+		}
+		if (operand.ticksDone > this->inDuration)
+		{
+			return AnimationStage::Falling;
+		}
+		if (operand.ticksDone == this->inDuration)
+		{
+			return AnimationStage::Midpoint;
+		}
+		return AnimationStage::Rising;
+	}
+
+	inline Transform Look(const AnimationInstance& operand) const noexcept
+	{
+		if (operand.IsFinished())
 		{
 			return this->start;
 		}
-		if (currentTick >= (this->startTick + this->inDuration))
+		if (operand.ticksDone >= this->inDuration)
 		{
-			std::size_t difference = currentTick - (this->startTick + this->inDuration);
-			if (difference >= this->outDuration)
-			{
-				this->finished = true;
-			}
-			double delta = static_cast<double>(currentTick - (this->startTick + this->inDuration)) / this->outDuration;
+			AnimationDuration difference = operand.ticksDone - this->inDuration;
+			double delta = static_cast<double>(difference) / this->outDuration;
 			return Interpolation::lerp(this->end, this->start, this->easeOut(delta));
 		}
 		else
 		{
-			double delta = static_cast<double>(currentTick - this->startTick) / this->inDuration;
+			double delta = static_cast<double>(operand.ticksDone) / this->inDuration;
 			return Interpolation::lerp(this->start, this->end, this->easeIn(delta));
 		}
 	}
 
-	inline std::size_t Duration() const noexcept
+	inline Transform Get(AnimationInstance& operand) const noexcept
+	{
+		operand.ticksDone++;
+		if (operand.ticksDone >= this->outDuration)
+		{
+			operand.finished = true;
+		}
+		return this->Look(operand);
+	}
+
+	inline AnimationDuration Duration() const noexcept
 	{
 		return this->inDuration + this->outDuration;
 	}
 
-	inline bool IsFinished() const noexcept
-	{
-		return this->finished;
-	}
+	SimpleAnimation(const Transform& start, const Transform& end, AnimationDuration inDuration = 128, InFunc easeIn = Easing::Linear,
+		AnimationDuration outDuration = 0, OutFunc easeOut = Easing::Linear) noexcept : start(start), end(end),
+		easeIn(easeIn), easeOut(easeOut), inDuration(inDuration), outDuration(outDuration) { }
 
-	SimpleAnimation(const Transform& start, const Transform& end, std::size_t inDuration = 128, InFunc easeIn = Easing::Linear,
-							std::size_t outDuration = 0, OutFunc easeOut = Easing::Linear) noexcept : start(start), end(end),
-		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
-
-	SimpleAnimation(const Transform& start, std::size_t inDuration, InFunc easeIn,
-		const Transform& end, std::size_t outDuration, OutFunc easeOut) noexcept : start(start), end(end),
-		easeIn(easeIn), easeOut(easeOut), startTick(0), inDuration(inDuration), outDuration(outDuration), finished(false) { }
+	SimpleAnimation(const Transform& start, AnimationDuration inDuration, InFunc easeIn,
+		const Transform& end, AnimationDuration outDuration, OutFunc easeOut) noexcept : start(start), end(end),
+		easeIn(easeIn), easeOut(easeOut), inDuration(inDuration), outDuration(outDuration) { }
 };
 
 template<std::size_t N>

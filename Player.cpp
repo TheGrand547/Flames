@@ -3,6 +3,7 @@
 #include <numbers>
 #include <glm/gtx/orthonormalize.hpp>
 #include "Level.h"
+#include "Animation.h"
 
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
 
@@ -19,6 +20,23 @@ static constexpr float MinFiringVelocity = 8.f;
 static constexpr IntervalType FireDelay = 16;
 static constexpr IntervalType FireInterval = 200;
 static constexpr IntervalType WaitingValue = -1;
+
+
+static  constexpr float PlayerScale = 0.5f; // HACK
+// Popcorn constants
+static constexpr float PopcornSpeed = 40.f;
+static const glm::vec3 PopcornOffset  = glm::vec3(6.75f, 0.f,  3.4f);
+static const glm::vec3 PopcornOffsetZ = glm::vec3(6.75f, 0.f, -3.4f); // Painfully sloppy
+
+static constexpr IntervalType PopcornDelay = 80;
+static constexpr IntervalType RecoilTime = 32;
+static SimpleAnimation popcornAnimation{ {glm::vec3(0.f)}, PopcornDelay - RecoilTime, Easing::Quintic,
+						{glm::vec3(-0.5f, 0.f, 0.f)}, RecoilTime, Easing::Linear };
+
+static AnimationInstance gunA, gunB(static_cast<AnimationDuration>(PopcornDelay - 10));
+
+glm::vec3 gunAPos, gunBPos; // You guessed it -- a hack
+
 
 void Player::SelectTarget() noexcept
 {
@@ -229,6 +247,64 @@ void Player::Update(Input::Keyboard input) noexcept
 		Level::AddBullet(this->transform.position, bulletVelocity);
 		this->velocity = -5.f * facingVector;
 	}
+	
+	// Popcorn weapon firing
+	if (input.popcornFire && (gunA.IsFinished() || gunB.IsFinished()))
+	{
+		// Popcorn fire
+		//const glm::mat3 updatedAxes(static_cast<glm::mat3>(this->transform.rotation));
+
+		//glm::vec3 facingVector = updatedAxes[0];
+		// Conserve momentum
+		//glm::vec3 bulletVelocity = facingVector * PopcornSpeed;
+		//glm::vec3 bulletPos = this->transform.position;
+		if (gunA.IsFinished())
+		{
+			//Level::AddBullet(bulletPos + updatedAxes * (PopcornOffset * PlayerScale), bulletVelocity);
+			popcornAnimation.Start(gunA);
+		}
+		if (gunB.IsFinished())
+		{
+			//Level::AddBullet(bulletPos + updatedAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
+			popcornAnimation.Start(gunB);
+		}
+	}
+	gunAPos = popcornAnimation.Get(gunA).position;
+	gunBPos = popcornAnimation.Get(gunB).position;
+	if (popcornAnimation.GetStatus(gunA) == AnimationStage::Midpoint)
+	{
+		glm::vec3 bulletVelocity = localAxes[0] * PopcornSpeed;
+		Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
+
+	}
+	if (popcornAnimation.GetStatus(gunB) == AnimationStage::Midpoint)
+	{
+		// Conserve momentum
+		glm::vec3 bulletVelocity = localAxes[0] * PopcornSpeed;
+		Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
+	}
+
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
+}
+
+void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept
+{
+	shader.SetActiveShader();
+	vertex.Bind();
+	vertex.BindArrayBuffer(renderData.vertex);
+	renderData.index.BindBuffer();
+	// Render the static(non-animation bound) things
+	localModel.scale = glm::vec3(PlayerScale);
+	const glm::mat4 stored = localModel.GetModelMatrix();
+	shader.SetMat4("modelMat", stored);
+	shader.SetMat4("normalMat", localModel.GetNormalMatrix());
+	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 0, 3);
+
+	Model temp(gunAPos);
+	shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
+	shader.DrawElements<DrawType::Triangle>(renderData.indirect, 3);
+	temp.translation = gunBPos;
+	shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
+	shader.DrawElements<DrawType::Triangle>(renderData.indirect, 4);
 }
