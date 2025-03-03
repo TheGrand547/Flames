@@ -69,6 +69,11 @@ public:
 		operand.finished = false;
 	}
 
+	inline AnimationDuration Duration() const noexcept
+	{
+		return this->inDuration + this->outDuration;
+	}
+
 	inline AnimationStage GetStatus(const AnimationInstance& operand) const noexcept
 	{
 		if (operand.finished)
@@ -107,17 +112,16 @@ public:
 
 	inline Transform Get(AnimationInstance& operand) const noexcept
 	{
-		operand.ticksDone++;
-		if (operand.ticksDone >= this->outDuration)
+		if (operand.ticksDone >= this->Duration())
 		{
 			operand.finished = true;
 		}
+		if (operand.finished)
+		{
+			return this->start;
+		}
+		operand.ticksDone++;
 		return this->Look(operand);
-	}
-
-	inline AnimationDuration Duration() const noexcept
-	{
-		return this->inDuration + this->outDuration;
 	}
 
 	SimpleAnimation(const Transform& start, const Transform& end, AnimationDuration inDuration = 128, InFunc easeIn = Easing::Linear,

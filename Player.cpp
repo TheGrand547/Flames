@@ -29,14 +29,15 @@ static const glm::vec3 PopcornOffset  = glm::vec3(6.75f, 0.f,  3.4f);
 static const glm::vec3 PopcornOffsetZ = glm::vec3(6.75f, 0.f, -3.4f); // Painfully sloppy
 
 static constexpr IntervalType PopcornDelay = 80;
-static constexpr IntervalType RecoilTime = 32;
-static SimpleAnimation popcornAnimation{ {glm::vec3(0.f)}, PopcornDelay - RecoilTime, Easing::Quintic,
-						{glm::vec3(-0.5f, 0.f, 0.f)}, RecoilTime, Easing::Linear };
+static constexpr IntervalType RecoilTime = 30;
+static SimpleAnimation popcornAnimation{ {glm::vec3(0.f)},  RecoilTime, Easing::EaseOutCircular,
+						{glm::vec3(-0.4f, 0.f, 0.f)}, PopcornDelay - RecoilTime, Easing::EaseOutBack };
 
-static AnimationInstance gunA, gunB(static_cast<AnimationDuration>(PopcornDelay - 10));
+static AnimationInstance gunA, gunB;
 
 glm::vec3 gunAPos, gunBPos; // You guessed it -- a hack
 
+// TODO: Button to switch between simultaneous and alternating fire
 
 void Player::SelectTarget() noexcept
 {
@@ -252,38 +253,21 @@ void Player::Update(Input::Keyboard input) noexcept
 	if (input.popcornFire && (gunA.IsFinished() || gunB.IsFinished()))
 	{
 		// Popcorn fire
-		//const glm::mat3 updatedAxes(static_cast<glm::mat3>(this->transform.rotation));
-
-		//glm::vec3 facingVector = updatedAxes[0];
-		// Conserve momentum
-		//glm::vec3 bulletVelocity = facingVector * PopcornSpeed;
-		//glm::vec3 bulletPos = this->transform.position;
+		glm::vec3 facingVector = localAxes[0];
+		glm::vec3 bulletVelocity = facingVector * PopcornSpeed;
 		if (gunA.IsFinished())
 		{
-			//Level::AddBullet(bulletPos + updatedAxes * (PopcornOffset * PlayerScale), bulletVelocity);
+			Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
 			popcornAnimation.Start(gunA);
 		}
 		if (gunB.IsFinished())
 		{
-			//Level::AddBullet(bulletPos + updatedAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
+			Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
 			popcornAnimation.Start(gunB);
 		}
 	}
 	gunAPos = popcornAnimation.Get(gunA).position;
 	gunBPos = popcornAnimation.Get(gunB).position;
-	if (popcornAnimation.GetStatus(gunA) == AnimationStage::Midpoint)
-	{
-		glm::vec3 bulletVelocity = localAxes[0] * PopcornSpeed;
-		Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
-
-	}
-	if (popcornAnimation.GetStatus(gunB) == AnimationStage::Midpoint)
-	{
-		// Conserve momentum
-		glm::vec3 bulletVelocity = localAxes[0] * PopcornSpeed;
-		Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
-	}
-
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
 }

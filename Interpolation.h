@@ -95,6 +95,15 @@ namespace Easing
 	{
 		return std::sqrt(1. - std::pow(delta - 1., 2.));
 	}
+
+	// From: https://easings.net/#easeOutBack
+	inline double EaseOutBack(const double& delta) noexcept
+	{
+		const double c1 = 1.70158;
+		const double c3 = c1 + 1;
+
+		return 1. + c3 * std::pow(delta - 1., 3.) + c1 * std::pow(delta - 1., 2.);
+	}
 }
 
 namespace Interpolation
