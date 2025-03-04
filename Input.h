@@ -2,6 +2,8 @@
 #ifndef INPUT_H
 #define INPUT_H
 #include <glm/glm.hpp>
+#include <GLFW/glfw3.h>
+#include <array>
 
 namespace Input
 {
@@ -70,6 +72,47 @@ namespace Input
 		}
 	};
 
+	struct Gamepad
+	{
+	protected:
+		static std::uint16_t oldButtons;
+		static std::uint16_t currentButtons;
+		static std::uint16_t risingEdge;
+		static std::uint16_t fallingEdge;
+		static std::array<glm::vec2, 3> axes;
+	public:
+		enum Button
+		{
+			A               = 1 << 0,
+			B               = 1 << 1,
+			X               = 1 << 2,
+			Y               = 1 << 3,
+			LeftBumper      = 1 << 4,
+			RightBumper     = 1 << 5,
+			BackButton      = 1 << 6,
+			LeftThumbstick  = 1 << 7,
+			RightThumbstick = 1 << 8,
+			DPadUp          = 1 << 9,
+			DPadRight       = 1 << 10,
+			DPadDown        = 1 << 11,
+			DPadLeft        = 1 << 12,
+		};
+
+		static inline constexpr bool CheckButton(Gamepad::Button button)
+		{
+			return Gamepad::currentButtons & button;
+		}
+		static inline constexpr bool CheckRisng(Gamepad::Button button)
+		{
+			return Gamepad::risingEdge & button;
+		}
+		static inline constexpr bool CheckFalling(Gamepad::Button button)
+		{
+			return Gamepad::fallingEdge & button;
+		}
+		static void Update();
+	};
+
 	// Contains all the relevant player input commands, independent of the keys that actually "fire" them
 	struct Keyboard
 	{
@@ -78,6 +121,19 @@ namespace Input
 		bool popcornFire;
 		bool cruiseControl;
 	};
+
+	void ControllerStuff();
+	void HandleController();
+	void ControllerStatusCallback(int joystick, int event);
+	
+	// TODO: Make a clearer(bitwise) rising and falling edges for gamepad
+
+	GLFWgamepadstate GetGamepadState();
+	GLFWgamepadstate GetGamepadStateRising();
+	GLFWgamepadstate GetGamepadStateFalling();
+	GLFWgamepadstate GetGamepadStateDifference();
+
+	Keyboard UpdateStatus();
 };
 
 

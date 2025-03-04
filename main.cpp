@@ -1377,6 +1377,21 @@ void idle()
 	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
 	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
 
+	if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1) && false)
+	{
+		GLFWgamepadstate input;
+		if (glfwGetGamepadState(GLFW_JOYSTICK_1, &input))
+		{
+			buffered << std::format("\n{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}", input.axes[0],
+				input.axes[1], input.axes[2], input.axes[3], input.axes[4], input.axes[5]);
+			boardState.heading.y = -input.axes[2];
+			boardState.heading.z = input.axes[3];
+			boardState.heading.w = 0.f;
+			boardState.heading.x = playerSpeedControl;
+			boardState.popcornFire = input.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER];
+		}
+	}
+	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
 		\n-GPU Block Time: {}ns\nAverage Tick Length:{}ns\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
 
@@ -2146,6 +2161,9 @@ int main(int argc, char** argv)
 	glfwSetMouseButtonCallback(windowPointer, mouseButtonFunc);
 	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
 	glfwSetScrollCallback(windowPointer, mouseScrollFunc);
+
+	glfwSetJoystickCallback(Input::ControllerStatusCallback);
+
 	init();
 	window_size_callback(nullptr, Window::Width, Window::Height);
 
@@ -2187,6 +2205,7 @@ void testOBB()
 
 void init()
 {
+	//Input::ControllerStuff();
 	//testOBB();
 	std::srand(NULL);
 	// OpenGL Feature Enabling
