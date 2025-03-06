@@ -2,6 +2,7 @@
 #ifndef INPUT_H
 #define INPUT_H
 #include <glm/glm.hpp>
+#include <glew.h>
 #include <GLFW/glfw3.h>
 #include <array>
 
@@ -80,22 +81,27 @@ namespace Input
 		static std::uint16_t risingEdge;
 		static std::uint16_t fallingEdge;
 		static std::array<glm::vec2, 3> axes;
+		static bool Active;
+
+		static int currentGamepad;
 	public:
 		enum Button
 		{
-			A               = 1 << 0,
-			B               = 1 << 1,
-			X               = 1 << 2,
-			Y               = 1 << 3,
-			LeftBumper      = 1 << 4,
-			RightBumper     = 1 << 5,
-			BackButton      = 1 << 6,
-			LeftThumbstick  = 1 << 7,
-			RightThumbstick = 1 << 8,
-			DPadUp          = 1 << 9,
-			DPadRight       = 1 << 10,
-			DPadDown        = 1 << 11,
-			DPadLeft        = 1 << 12,
+			A               = 1 << GLFW_GAMEPAD_BUTTON_A,
+			B               = 1 << GLFW_GAMEPAD_BUTTON_B,
+			X               = 1 << GLFW_GAMEPAD_BUTTON_X,
+			Y               = 1 << GLFW_GAMEPAD_BUTTON_Y,
+			LeftBumper      = 1 << GLFW_GAMEPAD_BUTTON_LEFT_BUMPER,
+			RightBumper     = 1 << GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER,
+			BackButton      = 1 << GLFW_GAMEPAD_BUTTON_BACK,
+			Start           = 1 << GLFW_GAMEPAD_BUTTON_START,
+			Guide           = 1 << GLFW_GAMEPAD_BUTTON_GUIDE,
+			LeftThumbstick  = 1 << GLFW_GAMEPAD_BUTTON_LEFT_THUMB,
+			RightThumbstick = 1 << GLFW_GAMEPAD_BUTTON_RIGHT_THUMB,
+			DPadUp          = 1 << GLFW_GAMEPAD_BUTTON_DPAD_UP,
+			DPadRight       = 1 << GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
+			DPadDown        = 1 << GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
+			DPadLeft        = 1 << GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
 		};
 
 		static inline constexpr bool CheckButton(Gamepad::Button button)
@@ -110,7 +116,18 @@ namespace Input
 		{
 			return Gamepad::fallingEdge & button;
 		}
+		
+		static inline glm::vec2 CheckAxes(int index) // TODO: You know the clearer stuff yknow
+		{
+			return Gamepad::axes[index];
+		}
+
+		// Only to be called once per update loop, otherwise edges will be garbage
 		static void Update();
+		static void Setup() noexcept;
+		static void ControllerStatusCallback(int joystick, int event);
+
+		static void Deactivate();
 	};
 
 	// Contains all the relevant player input commands, independent of the keys that actually "fire" them
@@ -123,16 +140,8 @@ namespace Input
 	};
 
 	void ControllerStuff();
-	void HandleController();
-	void ControllerStatusCallback(int joystick, int event);
 	
-	// TODO: Make a clearer(bitwise) rising and falling edges for gamepad
-
-	GLFWgamepadstate GetGamepadState();
-	GLFWgamepadstate GetGamepadStateRising();
-	GLFWgamepadstate GetGamepadStateFalling();
-	GLFWgamepadstate GetGamepadStateDifference();
-
+	bool ControllerActive();
 	Keyboard UpdateStatus();
 };
 

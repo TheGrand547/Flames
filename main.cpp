@@ -373,6 +373,8 @@ DebrisManager trashMan, playerMan;
 MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh;
 
+static GLFWwindow* windowPointer = nullptr;
+
 void display()
 {
 	/*
@@ -602,35 +604,6 @@ void display()
 		billboardShader.SetMat4("orient", tempMatrix);
 		//billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
 	}*/
-	/*
-	DisableGLFeatures<FaceCulling>();
-	ground.SetActiveShader();
-	glPatchParameteri(GL_PATCH_VERTICES, 4);
-	texturedVAO.BindArrayBuffer(texturedPlane);
-	ground.SetTextureUnit("heightMap", tessMap, 0);
-	float big = 30;
-	m22.scale = glm::vec3(big);
-	ground.SetMat4("Model", m22.GetModelMatrix());
-	ground.SetInt("redLine", 0);
-	ground.SetInt("amount", tessAmount);
-	for (int i = -5; i <= 5; i++)
-	{
-		for (int j = -5; j <= 5; j++)
-		{
-			m22.translation = glm::vec3(i, 0, j) * 2.f * big;
-			m22.translation.y = 3;
-			ground.SetMat4("Model", m22.GetModelMatrix());
-			//ground.SetInt("redLine", 0);
-			//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			//ground.DrawArray<DrawType::Patches>(4);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			ground.SetInt("redLine", 1);
-			ground.DrawArray<DrawType::Patches>(4);
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-		}
-	}
-	EnableGLFeatures<FaceCulling>();
-	*/
 
 	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
 	decalShader.SetActiveShader();
@@ -745,21 +718,7 @@ void display()
 	// What the heck?
 	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
 	//ship.DrawElements(guyMeshData.indirect, 1);
-	//for (auto& local : satelitePairs)
-	/*
-	for (std::size_t i = 0 ; i < satelitePairs.size(); i++)
-	{
-		MeshPair& local = satelitePairs[i];
-		meshVAO.BindArrayBuffer(local.vertex);
-		ship.DrawElements<DrawType::Triangle>(local.index);
-		if (i == 0)
-		{
-			defaults.rotation = glm::angleAxis(glm::radians(static_cast<float>(gameTicks / 4)), glm::vec3(1.f, 0.f, 0.f)) * defaults.rotation;
-			ship.SetMat4("modelMat", defaults.GetModelMatrix());
-			ship.SetMat4("normalMat", defaults.GetNormalMatrix());
-		}
-	}
-	*/
+	
 	playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
@@ -859,15 +818,6 @@ void display()
 	sphereModel.scale = glm::vec3(1.5f);
 	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
 	//sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
-	/*
-	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	flatLighting.SetVec3("viewPos", cameraPosition);
-	flatLighting.SetVec3("shapeColor", glm::vec3(1.f, .75f, 0.f));
-	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
-	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	flatLighting.SetTextureUnit("hatching", hatching, 0);
-	*/
 
 	// Doing this while letting the normal be the color will create a cool effect
 	
@@ -1207,24 +1157,64 @@ void idle()
 	forward = speed * glm::normalize(forward);
 	right = speed * glm::normalize(right);
 	glm::vec3 previous = cameraPosition;
-	if (keyState['Z'])
-	{
-		dumbBox.Translate(dumbBox.Forward() * speed);
-	}
-	if (keyState['X'])
-	{
-		dumbBox.Translate(dumbBox.Forward() * -speed);
-	}
 	
 	float tilt = 0.f;
-	if (keyState['Q'] && !keyState['E']) tilt =  1.f;
-	if (keyState['E'] && !keyState['Q']) tilt = -1.f;
-	targetAngles.z = tilt * 0.5f;
-	glm::vec3 adjustment = (shiftHeld) ? glm::vec3(0.5f) : glm::vec3(1.f);
-	boardState.heading = glm::vec4(playerSpeedControl, targetAngles * adjustment);
-	boardState.fireButton = keyState['T'];
-	boardState.cruiseControl = keyState['Y'];
-	boardState.popcornFire = Mouse::CheckButton(Mouse::ButtonLeft);
+
+
+	// "Proper" input handling
+	// These functions should be moved to the gametick loop, don't want to over-poll the input device and get weird
+	Gamepad::Update();
+	Mouse::UpdateEdges();
+	boardState = Input::UpdateStatus();
+
+	help.MouseUpdate();
+	if (!Input::ControllerActive())
+	{
+		if (keyState['Q'] && !keyState['E']) tilt = 1.f;
+		if (keyState['E'] && !keyState['Q']) tilt = -1.f;
+		targetAngles.z = tilt * 0.5f;
+		glm::vec3 adjustment = (shiftHeld) ? glm::vec3(0.5f) : glm::vec3(1.f);
+		boardState.heading = glm::vec4(playerSpeedControl, targetAngles * adjustment);
+		boardState.fireButton = keyState['T'];
+		boardState.cruiseControl = keyState['Y'];
+		boardState.popcornFire = Mouse::CheckButton(Mouse::ButtonLeft);
+	}
+	else
+	{
+		if (Input::Gamepad::CheckRisng(Input::Gamepad::DPadUp))
+		{
+			playerSpeedControl += 0.1f;
+		}
+		if (Input::Gamepad::CheckRisng(Input::Gamepad::DPadDown))
+		{
+			playerSpeedControl -= 0.1f;
+		}
+		float thrust = Input::Gamepad::CheckAxes(0).y;
+		if (glm::abs(thrust) > 0.125)
+		{
+			playerSpeedControl += glm::sign(-thrust) * timeDelta * 0.25f;
+		}
+		float turn = 0.f;
+		if (Input::Gamepad::CheckButton(Input::Gamepad::LeftBumper))  turn -= 1.f;
+		if (Input::Gamepad::CheckButton(Input::Gamepad::RightBumper)) turn += 1.f;
+		playerSpeedControl = glm::clamp(playerSpeedControl, 0.f, 1.f);
+		boardState.heading.y = -Input::Gamepad::CheckAxes(1).x;//-input.axes[2];
+		boardState.heading.z = Input::Gamepad::CheckAxes(1).y;
+		boardState.heading.w = turn;
+		boardState.heading.x = playerSpeedControl;
+		boardState.popcornFire = Input::Gamepad::CheckButton(Input::Gamepad::A);
+		boardState.fireButton = Input::Gamepad::CheckAxes(2).y > 0.f;
+		boardState.cruiseControl = Input::Gamepad::CheckButton(Input::Gamepad::X);
+		if (Input::Gamepad::CheckButton(Input::Gamepad::BackButton))
+		{
+			shouldClose = true;
+			glfwSetWindowShouldClose(windowPointer, true);
+		}
+
+	}
+		
+	// End of input handling
+
 
 	if (keyState['W'])
 		cameraPosition += forward;
@@ -1283,8 +1273,6 @@ void idle()
 	{
 		follow.first.Update(timeDelta, Level::Geometry);
 	}*/
-	Mouse::UpdateEdges();
-	help.MouseUpdate();
 
 	const Model playerModel = playfield.GetModel();
 	if (lastPoster == glm::vec3(0))
@@ -1377,18 +1365,20 @@ void idle()
 	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
 	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
 
-	if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1) && false)
+	
+	//if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1) && false)
 	{
-		GLFWgamepadstate input;
-		if (glfwGetGamepadState(GLFW_JOYSTICK_1, &input))
+		//GLFWgamepadstate input;
+		//if (glfwGetGamepadState(GLFW_JOYSTICK_1, &input))
 		{
-			buffered << std::format("\n{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}", input.axes[0],
-				input.axes[1], input.axes[2], input.axes[3], input.axes[4], input.axes[5]);
-			boardState.heading.y = -input.axes[2];
-			boardState.heading.z = input.axes[3];
-			boardState.heading.w = 0.f;
-			boardState.heading.x = playerSpeedControl;
-			boardState.popcornFire = input.buttons[GLFW_GAMEPAD_BUTTON_RIGHT_BUMPER];
+			float axes[6];
+			for (int i = 0; i < 3; i++)
+			{
+				axes[2 * i] = Input::Gamepad::CheckAxes(i).x;
+				axes[2 * i + 1] = Input::Gamepad::CheckAxes(i).y;
+			}
+			buffered << std::format("\n{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}", axes[0],
+				axes[1], axes[2],axes[3], axes[4], axes[5]);
 		}
 	}
 	
@@ -2112,7 +2102,7 @@ int main(int argc, char** argv)
 	int error = 0;
 	debugFlags.fill(false);
 
-	GLFWwindow* windowPointer = nullptr;
+	windowPointer = nullptr;
 	if (!glfwInit())
 	{
 		LogF("Failed to initialized GLFW.n\n");
@@ -2162,7 +2152,7 @@ int main(int argc, char** argv)
 	glfwSetCursorPosCallback(windowPointer, mouseCursorFunc);
 	glfwSetScrollCallback(windowPointer, mouseScrollFunc);
 
-	glfwSetJoystickCallback(Input::ControllerStatusCallback);
+	glfwSetJoystickCallback(Input::Gamepad::ControllerStatusCallback);
 
 	init();
 	window_size_callback(nullptr, Window::Width, Window::Height);
