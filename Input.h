@@ -102,6 +102,8 @@ namespace Input
 			DPadRight       = 1 << GLFW_GAMEPAD_BUTTON_DPAD_RIGHT,
 			DPadDown        = 1 << GLFW_GAMEPAD_BUTTON_DPAD_DOWN,
 			DPadLeft        = 1 << GLFW_GAMEPAD_BUTTON_DPAD_LEFT,
+			LeftTrigger     = 1 << (GLFW_GAMEPAD_BUTTON_LAST + 1),
+			RightTrigger    = 1 << (GLFW_GAMEPAD_BUTTON_LAST + 2),
 		};
 
 		static inline constexpr bool CheckButton(Gamepad::Button button)

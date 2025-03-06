@@ -116,6 +116,8 @@ namespace Input
 				Gamepad::axes[0] = glm::vec2(input.axes[0], input.axes[1]);
 				Gamepad::axes[1] = glm::vec2(input.axes[2], input.axes[3]);
 				Gamepad::axes[2] = glm::vec2(input.axes[4], input.axes[5]);
+				Gamepad::currentButtons |= (Gamepad::axes[2].x > 0.f) * Gamepad::LeftTrigger;
+				Gamepad::currentButtons |= (Gamepad::axes[2].y > 0.f) * Gamepad::RightTrigger;
 				Gamepad::risingEdge  =  Gamepad::currentButtons & (~Gamepad::oldButtons);
 				Gamepad::fallingEdge = ~Gamepad::currentButtons & ( Gamepad::oldButtons);
 				Gamepad::oldButtons  =  Gamepad::currentButtons;

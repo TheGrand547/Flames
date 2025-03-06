@@ -1190,9 +1190,10 @@ void idle()
 			playerSpeedControl -= 0.1f;
 		}
 		float thrust = Input::Gamepad::CheckAxes(0).y;
-		if (glm::abs(thrust) > 0.125)
+		// TOOD: Account for this in a better manner
+		if (glm::abs(thrust) > 0.125) // TODO: Deadzone constants
 		{
-			playerSpeedControl += glm::sign(-thrust) * timeDelta * 0.25f;
+			//playerSpeedControl += glm::sign(-thrust) * timeDelta * 0.25f;
 		}
 		float turn = 0.f;
 		if (Input::Gamepad::CheckButton(Input::Gamepad::LeftBumper))  turn -= 1.f;
@@ -1203,6 +1204,9 @@ void idle()
 		boardState.heading.w = turn;
 		boardState.heading.x = playerSpeedControl;
 		boardState.popcornFire = Input::Gamepad::CheckButton(Input::Gamepad::A);
+		boardState.popcornFire |= Input::Gamepad::CheckAxes(2).x > 0.f;
+
+		// Something weird with this and the cruise control button for some reason
 		boardState.fireButton = Input::Gamepad::CheckAxes(2).y > 0.f;
 		boardState.cruiseControl = Input::Gamepad::CheckButton(Input::Gamepad::X);
 		if (Input::Gamepad::CheckButton(Input::Gamepad::BackButton))
@@ -1697,7 +1701,10 @@ void window_focus_callback(GLFWwindow* window, int focused)
 void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
 	bool state = (action == GLFW_PRESS);
-
+	if (state)
+	{
+		Input::Gamepad::Deactivate();
+	}
 	shiftHeld = mods & GLFW_MOD_SHIFT;
 
 	unsigned char letter = static_cast<unsigned char>(key & 0xFF);
