@@ -1,8 +1,13 @@
 #include "Input.h"
 #include <glm/gtc/epsilon.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <iostream>
 #include <array>
 #include "util.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_stdlib.h"
+#include "Interpolation.h"
+#include "ini.h"
 
 namespace Input
 {
@@ -19,6 +24,10 @@ namespace Input
 	std::array<glm::vec2, 3> Gamepad::axes;
 	int Gamepad::currentGamepad;
 	bool Gamepad::Active;
+
+	static std::array<float, 6> controllerDeadzones;
+	static std::array<int, 6> controllerCurves;
+
 
 	static bool GamepadActive = true;
 
@@ -140,5 +149,110 @@ namespace Input
 		{
 			GamepadActive = false;
 		}
+	}
+
+	float deadzone(float in, float threshold)
+	{
+		if (glm::abs(in) > threshold)
+		{
+			return in;
+		}
+		return 0;
+	}
+	// TODO: Format this
+	// TODO: Integrate the ini file stuff
+
+	static std::array<decltype(&Easing::Linear), 7> smoothings
+	{
+		Easing::Linear, Easing::Quadratic, Easing::EaseOutQuadratic, Easing::Cubic, Easing::EaseOutCubic,
+		Easing::Circular, Easing::EaseOutCircular
+	};
+	static const char* names[]{ "Linear", "Quadratic", "Quadratic Ease Out", "Cubic",
+		"Cubic Ease Out", "Circular", "Circular Ease Out" };
+
+	static void ControlTuning(int index)
+	{
+		ImGui::SliderFloat("Deadzone", &controllerDeadzones[index], 0.0f, 1.f);
+		static bool sharpEdge = false;
+		ImGui::Checkbox("Sharp Deadzone", &sharpEdge);
+		ImGui::Combo("Curve", &controllerCurves[index], names, smoothings.size());
+		std::array<float, 101> plot{};
+		float currentDeadzone = controllerCurves[index];
+
+		float duration = 1.f - currentDeadzone;
+		for (std::size_t i = 0; i < plot.size(); i++)
+		{
+			float delta = i * 1.f / (plot.size() - 1);
+			delta = deadzone(delta, currentDeadzone);
+			if (!sharpEdge && delta > currentDeadzone)
+			{
+				delta = (delta - currentDeadzone) / duration;
+			}
+			delta = smoothings[controllerCurves[index]](delta);
+			plot[i] = delta;
+		}
+		ImGui::PlotLines("Plot", plot.data(), plot.size(), 0, nullptr, 0.f, 1.f, ImVec2(0.f, 50.f));
+	}
+
+	void AxesTuning(int index)
+	{
+		if (ImGui::TreeNode("X Axis"))
+		{
+			ControlTuning(2 * index);
+			ImGui::TreePop();
+		}
+		if (ImGui::TreeNode("Y Axis"))
+		{
+			ControlTuning(2 * index + 1);
+			ImGui::TreePop();
+		}
+	}
+
+	void UIStuff()
+	{
+		static float slider;
+		static glm::vec4 colorPicked;
+		ImGui::Begin("Input Configuration");
+		if (ImGui::CollapsingHeader("Controller"))
+		{
+			if (ImGui::TreeNode("Input Tuning"))
+			{
+				if (ImGui::TreeNode("Left Thumbstick"))
+				{
+					AxesTuning(0);
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNode("Right Thumbstick"))
+				{
+					AxesTuning(1);
+					ImGui::TreePop();
+				}
+				if (ImGui::TreeNode("Bumpers"))
+				{
+					ImGui::SliderFloat("Left Threshold", &controllerDeadzones[4], -1.f, 1.f);
+					ImGui::SetTooltip("-1 is the 'resting' state", ImGui::GetStyle().HoverDelayShort);
+					ImGui::SliderFloat("Right Threshold", &controllerDeadzones[5], -1.f, 1.f);
+					ImGui::SetTooltip("-1 is the 'resting' state", ImGui::GetStyle().HoverDelayShort);
+					ImGui::TreePop();
+				}
+
+				ImGui::TreePop();
+			}
+			if (ImGui::TreeNode("Input Mapping"))
+			{
+
+
+				ImGui::TreePop();
+			}
+		}
+		if (ImGui::CollapsingHeader("Mouse + Keyboard"))
+		{
+
+		}
+		ImGui::SliderFloat("Dragging", &slider, 0.f, 1.f);
+		ImGui::SliderAngle("Angle", &slider);
+		ImGui::ArrowButton("Arrows", ImGuiDir_Right);
+		ImGui::ColorPicker4("Pick a Color", glm::value_ptr(colorPicked));
+		ImGui::End();
 	}
 };

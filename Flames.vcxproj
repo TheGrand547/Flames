@@ -104,7 +104,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;CLEANER_FUNCTIONS;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS;DEBUG</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;C:\Users\sdfis\Documents\Programming\mINI-master\src\mini</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -168,6 +168,14 @@
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="GLData.cpp" />
     <ClCompile Include="glmHelp.cpp" />
+    <ClCompile Include="imgui\imgui.cpp" />
+    <ClCompile Include="imgui\imgui_demo.cpp" />
+    <ClCompile Include="imgui\imgui_draw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_glfw.cpp" />
+    <ClCompile Include="imgui\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="imgui\imgui_stdlib.cpp" />
+    <ClCompile Include="imgui\imgui_tables.cpp" />
+    <ClCompile Include="imgui\imgui_widgets.cpp" />
     <ClCompile Include="Input.cpp" />
     <ClCompile Include="Level.cpp" />
     <ClCompile Include="Lines.cpp" />
@@ -232,6 +240,16 @@
     <ClInclude Include="GLData.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />
+    <ClInclude Include="imgui\imconfig.h" />
+    <ClInclude Include="imgui\imgui.h" />
+    <ClInclude Include="imgui\imgui_impl_glfw.h" />
+    <ClInclude Include="imgui\imgui_impl_opengl3.h" />
+    <ClInclude Include="imgui\imgui_impl_opengl3_loader.h" />
+    <ClInclude Include="imgui\imgui_internal.h" />
+    <ClInclude Include="imgui\imgui_stdlib.h" />
+    <ClInclude Include="imgui\imstb_rectpack.h" />
+    <ClInclude Include="imgui\imstb_textedit.h" />
+    <ClInclude Include="imgui\imstb_truetype.h" />
     <ClInclude Include="Interpolation.h" />
     <ClInclude Include="Input.h" />
     <ClInclude Include="kdTree.h" />
@@ -279,6 +297,12 @@
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Flames.rc" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="imgui\imgui.natstepfilter" />
+  </ItemGroup>
+  <ItemGroup>
+    <Natvis Include="imgui\imgui.natvis" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

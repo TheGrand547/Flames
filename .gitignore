@@ -21,6 +21,9 @@ x64/
 !/Models/*.mtl
 *.mtl
 
+/imgui
+imgui.ini
+
 # Precompiled Headers
 *.gch
 *.pch
@@ -39,6 +42,8 @@ x64/
 *.la
 *.a
 *.lib
+
+
 
 # Executables
 *.exe

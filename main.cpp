@@ -70,9 +70,12 @@
 #include "DebrisManager.h"
 #include "MissileMotion.h"
 #include "MagneticAttack.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_impl_opengl3.h"
+#include "imgui/imgui_impl_glfw.h"
+
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
-// TODO: imGUI
 // TODO: Delaunay Trianglulation
 // TODO: EASTL
 
@@ -1107,6 +1110,9 @@ void display()
 	
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
+	ImGui::Render();
+	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
@@ -1168,6 +1174,7 @@ void idle()
 	boardState = Input::UpdateStatus();
 
 	help.MouseUpdate();
+	Input::UIStuff();
 	if (!Input::ControllerActive())
 	{
 		if (keyState['Q'] && !keyState['E']) tilt = 1.f;
@@ -2161,6 +2168,16 @@ int main(int argc, char** argv)
 
 	glfwSetJoystickCallback(Input::Gamepad::ControllerStatusCallback);
 
+	// imgui setup
+	IMGUI_CHECKVERSION();
+	ImGui::CreateContext();
+	ImGui_ImplGlfw_InitForOpenGL(windowPointer, true);
+	ImGui_ImplOpenGL3_Init();
+	ImGuiIO& io = ImGui::GetIO();
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+
 	init();
 	window_size_callback(nullptr, Window::Width, Window::Height);
 
@@ -2169,11 +2186,18 @@ int main(int argc, char** argv)
 	glfwSetTime(0);
 	while (!glfwWindowShouldClose(windowPointer))
 	{
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+		ImGui::ShowDemoWindow();
 		idle();
 		display();
 		glfwSwapBuffers(windowPointer);
 		glfwPollEvents();
 	}
+	ImGui_ImplOpenGL3_Shutdown();
+	ImGui_ImplGlfw_Shutdown();
+	ImGui::DestroyContext();
 	// TODO: cleanup
 	return 0;
 }
