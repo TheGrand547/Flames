@@ -23,6 +23,7 @@ x64/
 
 /imgui
 imgui.ini
+/Textures/skybox
 
 # Precompiled Headers
 *.gch

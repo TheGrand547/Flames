@@ -39,6 +39,9 @@ public:
 	template<class V> inline void ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint = 0, 
 		GLuint bindingDivisor = 0, GLuint relativeOffset = 0, GLsizei stride = 0);
 
+	template<class V> inline void ArrayFormatOverride(const GLuint index, GLuint bindingPoint = 0,
+		GLuint bindingDivisor = 0, GLuint relativeOffset = 0, GLsizei stride = 0);
+
 	template<typename T> static void GenerateArrays(T& arrays);
 	template<class T> static void GenerateArrays(std::map<T, VertexArray>& arrays);
 };
@@ -189,10 +192,16 @@ template<> inline void VertexArray::ArrayFormatM<glm::mat4>(Shader& shader, GLui
 template<class V> inline void VertexArray::ArrayFormatOverride(const std::string& name, Shader& shader, 
 	GLuint bindingPoint, GLuint bindingDivisor, GLuint relativeOffset, GLsizei stride)
 {
+	this->ArrayFormatOverride<V>(shader.Index(name), bindingPoint, bindingDivisor, relativeOffset, stride);
+}
+
+template<class V>
+inline void VertexArray::ArrayFormatOverride(const GLuint index, GLuint bindingPoint, 
+	GLuint bindingDivisor, GLuint relativeOffset, GLsizei stride)
+{
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
 	// TODO: more of these
-	GLuint index = shader.Index(name);
 	if constexpr (std::is_same_v<V, glm::vec1>)
 	{
 		glVertexAttribFormat(index, 1, GL_FLOAT, GL_FALSE, relativeOffset);

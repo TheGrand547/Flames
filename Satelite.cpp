@@ -22,7 +22,9 @@ void Satelite::Draw(Shader& shader) const noexcept
     // TODO: Unhack this
     if (!VertexFormat.GetArray())
     {
-        VertexFormat.ArrayFormat<MeshVertex>(shader);
+        VertexFormat.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
+        VertexFormat.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
+        VertexFormat.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
     }
     Model drawModel(this->transform, SateliteSize);
     shader.SetActiveShader();

@@ -76,6 +76,7 @@ namespace Input
 	struct Gamepad
 	{
 	protected:
+		// TODO: Lose your mind over there being too many triggers for all the buttons to work, you'll figure it out
 		static std::uint16_t oldButtons;
 		static std::uint16_t currentButtons;
 		static std::uint16_t risingEdge;
@@ -140,13 +141,16 @@ namespace Input
 		bool popcornFire;
 		bool cruiseControl;
 	};
-
-	void ControllerStuff();
 	
 	bool ControllerActive();
 	Keyboard UpdateStatus();
+	void ToggleUI();
 
 	void UIStuff();
+
+	void Setup() noexcept;
+
+	//void keyboardCallback()
 };
 
 

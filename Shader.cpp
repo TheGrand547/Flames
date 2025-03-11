@@ -136,7 +136,6 @@ Shader& Shader::operator=(Shader&& other) noexcept
 
 bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock::rep threshold)
 {
-
 	std::filesystem::path compiledPath(shaderBasePath + name + ".csp");
 	if (!Recompile && std::filesystem::exists(compiledPath)) // Attempt to read precompiled shader file
 	{
@@ -147,7 +146,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 			input.open(compiledPath, std::ios::binary);
 			if (input.is_open())
 			{
-				Log("Reading '" << this->name << "' from compiled shader file.");
+				//Log("Reading '" << this->name << "' from compiled shader file.");
 				GLint length = 0;
 				GLenum format = 0;
 				input.read((char*)&length, sizeof(GLint));
@@ -313,7 +312,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
-		std::cerr << "One or more of the shader files missing for '" << combined << "'" << std::endl;
+		Log("One or more of the shader files missing for '" << combined << "'\n");
 		EXIT;
 		return false;
 	}
@@ -327,7 +326,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
-		std::cout << "Compiling Shader from " << vertexPath << " and " << fragmentPath << std::endl;
+		Log("Compiling Shader from " << vertexPath << " and " << fragmentPath << "\n");
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
 		std::string fragment(std::istreambuf_iterator<char>{fragmentFile}, {});
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex.c_str());
@@ -477,7 +476,7 @@ void Shader::ExportCompiled() const
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;
-	std::cout << this->name << std::endl;
+	Log(std::format("Exporting Shader '{}'\n", this->name));
 	std::ofstream output(shaderBasePath + this->name + ".csp", std::ios::binary);
 	if (output.is_open())
 	{
@@ -493,7 +492,7 @@ void Shader::ExportCompiled() const
 	else
 	{
 #ifndef RELEASE
-		std::cout << "Failed to save Shader '" << this->name << "' to precompiled binary." << std::endl;
+		Log(std::format("Failed to save Shader '{}' to precompiled binary\n", this->name));
 #endif
 	}
 	output.close();

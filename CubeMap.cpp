@@ -68,10 +68,11 @@ void CubeMap::Generate(const std::array<std::string, 6> files)
 		return;
 	}
 	glBindTexture(GL_TEXTURE_CUBE_MAP, this->texture);
-	int width, height, nrChannels;;
+	int width, height, nrChannels;
+	std::string path = Texture::GetBasePath();
 	for (std::size_t i = 0; i < 6; i++)
 	{
-		unsigned char* data = stbi_load(files[i].c_str(), &width, &height, &nrChannels, 0);
+		unsigned char* data = stbi_load((path + files[i]).c_str(), &width, &height, &nrChannels, 0);
 		if (data)
 		{
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(i),

@@ -74,13 +74,16 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	// TODO: Unhack this
 	if (instanceVAO.GetArray() == 0)
 	{
-		instanceVAO.ArrayFormat<MeshVertex>(shader);
+		//instanceVAO.ArrayFormat<MeshVertex>(shader);
+		instanceVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
+		instanceVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
+		instanceVAO.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
 		instanceVAO.ArrayFormatOverride<glm::mat4>("modelMat", shader, 1, 1, 0, sizeof(MeshMatrix));
 		instanceVAO.ArrayFormatOverride<glm::mat4>("normalMat", shader, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	if (this->indirectBuffer.GetElementCount() == 0)
 	{
-		this->indirectBuffer.BufferData(meshData.rawIndirect);
+		this->indirectBuffer.BufferData(meshData.rawIndirect, StreamDraw);
 	}
 	if (this->debris.size() == 0)
 	{
@@ -133,8 +136,14 @@ void DebrisManager::FillBuffer() noexcept
 				current.instanceOffset = offsets[i].second;
 			}
 		}
-		
-		this->indirectBuffer.BufferSubData(localCopy);
+		if (!this->indirectBuffer.GetBuffer())
+		{
+			this->indirectBuffer.BufferData(localCopy, StreamDraw);
+		}
+		else
+		{
+			this->indirectBuffer.BufferSubData(localCopy);
+		}
 		this->superDirty = false;
 		this->dirty = true;
 	}
@@ -147,7 +156,7 @@ void DebrisManager::FillBuffer() noexcept
 		{
 			matrix.push_back(Model(local.transform, local.scale).GetMatrixPair());
 		}
-		this->instanceBuffer.BufferData(matrix);
+		this->instanceBuffer.BufferData(matrix, StreamDraw);
 		this->dirty = false;
 	}
 }

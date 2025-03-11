@@ -268,6 +268,8 @@ void Player::Update(Input::Keyboard input) noexcept
 	}
 	gunAPos = popcornAnimation.Get(gunA).position;
 	gunBPos = popcornAnimation.Get(gunB).position;
+	//forces = glm::vec3(0.f);
+	//this->velocity = localAxes[0] * input.heading.x * MaxSpeed;
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
 }

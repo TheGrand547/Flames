@@ -1382,7 +1382,7 @@ void idle()
 		//GLFWgamepadstate input;
 		//if (glfwGetGamepadState(GLFW_JOYSTICK_1, &input))
 		{
-			float axes[6];
+			float axes[6]{};
 			for (int i = 0; i < 3; i++)
 			{
 				axes[2 * i] = Input::Gamepad::CheckAxes(i).x;
@@ -1621,7 +1621,7 @@ void gameTick()
 			[&playerModel] (DebrisManager::Debris& bloke)
 			{
 				// Let them drift a bit before they zoom off towards the player
-				if (bloke.ticksAlive > 55)
+				if (bloke.ticksAlive < 55)
 				{
 					return true;
 				}
@@ -1650,13 +1650,22 @@ void gameTick()
 				float mySpeed = glm::length(bloke.delta.position);
 				glm::vec3 normalized = glm::normalize(delta);
 				float ratio = std::min(static_cast<float>(bloke.ticksAlive + 1) / MaxAccelerationTime, 1.f);
-				glm::vec3 forces = MakePrediction(bloke.transform.position, bloke.delta.position, ratio * MaxAcceleration,
-					playerModel.translation, playfield.GetVelocity());
+				// Maybe this is better, maybe it isn't, I have no idea
+				if (bloke.ticksAlive > 1.25 * MaxAccelerationTime)
+				{
+					normalized *= ratio * MaxAcceleration;
+					BasicPhysics::Update(bloke.transform.position, normalized, glm::vec3(0.f));
+				}
+				else
+				{
+					glm::vec3 forces = MakePrediction(bloke.transform.position, bloke.delta.position, ratio * MaxAcceleration,
+						playerModel.translation, playfield.GetVelocity());
 
-				bloke.transform.rotation = bloke.transform.rotation * bloke.delta.rotation;
-				bloke.scale = glm::min(length / 4.f, bloke.scale);
-				BasicPhysics::Update(bloke.transform.position, bloke.delta.position, forces);
-				BasicPhysics::Clamp(bloke.delta.position, std::max(MaxAcceleration, playerSpeed * 1.25f));
+					bloke.transform.rotation = bloke.transform.rotation * bloke.delta.rotation;
+					bloke.scale = glm::min(length / 4.f, bloke.scale);
+					BasicPhysics::Update(bloke.transform.position, bloke.delta.position, forces);
+					BasicPhysics::Clamp(bloke.delta.position, std::max(MaxAcceleration, playerSpeed * 1.25f));
+				}
 				return glm::any(glm::isnan(bloke.transform.position));
 			}
 		);
@@ -1747,6 +1756,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 	}
 	if (action == GLFW_PRESS)
 	{
+		if (key == GLFW_KEY_GRAVE_ACCENT)
+		{
+			Input::ToggleUI();
+		}
 		if (key == GLFW_KEY_V)
 		{
 			if (magnetic.Finished())
@@ -2189,7 +2202,6 @@ int main(int argc, char** argv)
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
-		ImGui::ShowDemoWindow();
 		idle();
 		display();
 		glfwSwapBuffers(windowPointer);
@@ -2607,27 +2619,9 @@ void init()
 
 	// Cube map shenanigans
 	{
-		std::array<Texture2D, 6> cubeFaces;
-		for (std::size_t i = 0; i < 6; i++)
-		{
-			Texture2D& current = cubeFaces[i];
-			//glm::vec3 foolish(244.f, 202.f, 184.f);
-			glm::vec3 foolish{ 0.f };
-			foolish /= 255.f;
-			//std::array<unsigned char, 256 * 3> data{0};
-			/*
-			for (int j = 0; j < 20; j++)
-			{
-				unsigned char pos = 3 * (rand() % 256);
-				std::size_t index = pos;
-				data[index] = 0xFF;
-				data[index + 1] = 0xFF;
-				data[index + 2] = 0xFF;
-			}*/
-
-			current.Load(std::array<glm::vec3, 1>{foolish}, InternalRGB, FormatRGB, DataFloat, 1, 1);
-		}
-		sky.Generate(cubeFaces);
+		// From Here https://opengameart.org/content/space-skybox-1 under CC0 Public Domain License
+		sky.Generate(std::to_array<std::string>({"skybox/space_ft.png", "skybox/space_bk.png", "skybox/space_up.png", 
+			"skybox/space_dn.png", "skybox/space_rt.png", "skybox/space_lf.png"}));
 	}
 
 	struct

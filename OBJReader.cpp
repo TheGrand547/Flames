@@ -1,7 +1,7 @@
 #include "OBJReader.h"
 #include <format>
 
-// Might be worth putting elsewhere but who cares
+// Only change is disabling OBJL_CONSOLE_OUTPUT by removing the #define
 #pragma warning (push)
 #pragma warning( disable : 6001 )
 #pragma warning( disable : 4244 )
