@@ -14,7 +14,7 @@ static constexpr float PlayerMass = 5.f; // Idk
 static constexpr float MaxSpeed = 20.f;
 static constexpr float minTurningRadius = 4.f;
 static constexpr float EngineThrust = 40.f;
-static constexpr float TurningThrust = 40.f;
+static constexpr float TurningThrust = 30.f;
 static constexpr float MinFiringVelocity = 8.f; 
 
 static constexpr IntervalType FireDelay = 16;
@@ -24,12 +24,18 @@ static constexpr IntervalType WaitingValue = -1;
 
 static  constexpr float PlayerScale = 0.5f; // HACK
 // Popcorn constants
-static constexpr float PopcornSpeed = 40.f;
-static const glm::vec3 PopcornOffset  = glm::vec3(6.75f, 0.f,  3.4f);
-static const glm::vec3 PopcornOffsetZ = glm::vec3(6.75f, 0.f, -3.4f); // Painfully sloppy
+static constexpr float PopcornSpeed = 100.f;
 
-static constexpr IntervalType PopcornDelay = 80;
-static constexpr IntervalType RecoilTime = 30;
+
+static const glm::vec3 PopcornOffset  = glm::vec3(3.5f, 0.f,  1.25f);
+static const glm::vec3 PopcornOffsetZ = glm::vec3(3.5f, 0.f, -1.25f); // Painfully sloppy
+
+// SPONSON OFFSET
+static const glm::vec3 SponsonOffset = glm::vec3(6.75f, 0.f, 3.4f);
+static const glm::vec3 SponsonOffsetZ = glm::vec3(6.75f, 0.f, -3.4f); // Painfully sloppy
+
+static constexpr IntervalType PopcornDelay = 40;
+static constexpr IntervalType RecoilTime = 15;
 static SimpleAnimation popcornAnimation{ {glm::vec3(0.f)},  RecoilTime, Easing::EaseOutCircular,
 						{glm::vec3(-0.4f, 0.f, 0.f)}, PopcornDelay - RecoilTime, Easing::EaseOutBack };
 
@@ -38,6 +44,7 @@ static AnimationInstance gunA, gunB;
 glm::vec3 gunAPos, gunBPos; // You guessed it -- a hack
 
 // TODO: Button to switch between simultaneous and alternating fire
+// TODO: Compute shader for creating vertex positions of the hexagon based on a center and axes
 
 void Player::SelectTarget() noexcept
 {
@@ -98,7 +105,8 @@ void Player::Update(Input::Keyboard input) noexcept
 	if (input.cruiseControl && this->sat)
 	{
 		// Entirely separate logic for "cruise control"
-		const glm::vec3 target = this->sat->GetBounding().GetCenter();
+		//const glm::vec3 target = this->sat->GetBounding().GetCenter();
+		const glm::vec3 target = Level::GetInterest();
 		const glm::vec3 delta = glm::normalize(target - this->transform.position);
 		glm::mat3 results{ 1.f };
 		results[0] = delta;
@@ -272,6 +280,18 @@ void Player::Update(Input::Keyboard input) noexcept
 	//this->velocity = localAxes[0] * input.heading.x * MaxSpeed;
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
+
+	// Evil Hack
+	glm::mat3 orient{};
+	glm::mat3 current = glm::mat3_cast(this->transform.rotation);
+	// Pretend it's non-zero
+	if (glm::length(this->velocity) > EPSILON && false)
+	{
+		orient[0] = glm::normalize(this->velocity);
+		orient[1] = glm::cross(current[2], orient[0]);
+		orient[2] = glm::cross(orient[0], orient[1]);
+		this->transform.rotation = glm::quat_cast(orient);
+	}
 }
 
 void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept

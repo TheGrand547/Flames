@@ -27,4 +27,15 @@ namespace Level
 	{
 		return PointsOfInterest;
 	}
+	static glm::vec3 interesting;
+
+	void SetInterest(glm::vec3 vec)
+	{
+		interesting = vec;
+	}
+
+	glm::vec3 GetInterest()
+	{
+		return interesting;
+	}
 }

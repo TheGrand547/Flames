@@ -116,6 +116,8 @@ Shader::Shader(Shader&& other) noexcept : compiled(false), precompiled(false), n
 
 Shader::~Shader()
 {
+	// TODO: Return to this
+	//this->ExportCompiled();
 	this->CleanUp();
 }
 
@@ -146,11 +148,11 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 			input.open(compiledPath, std::ios::binary);
 			if (input.is_open())
 			{
-				//Log("Reading '" << this->name << "' from compiled shader file.");
+				Log(std::format("Loaded shader from file '{}'", compiledPath.string()));
 				GLint length = 0;
 				GLenum format = 0;
-				input.read((char*)&length, sizeof(GLint));
-				input.read((char*)&format, sizeof(GLenum));
+				input.read(reinterpret_cast<char*>(&length), sizeof(GLint));
+				input.read(reinterpret_cast<char*>(&format), sizeof(GLenum));
 
 				std::unique_ptr<char[]> data = std::make_unique<char[]>(static_cast<size_t>(length) + 1);
 				data[length] = '\0';
@@ -172,7 +174,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
 				logMsg[length] = '\0';
 				glGetProgramInfoLog(this->program, logSize, NULL, logMsg.get());
-				Log("Error reading compiled shader from file '" << name << ".csp'\n" << logMsg.get() << std::endl);
+				Log("Error reading compiled shader from file '" << name << ".csp'" << logMsg.get() << std::endl);
 				input.close();
 				this->program = 0;
 			}
@@ -189,8 +191,9 @@ bool Shader::ProgramStatus()
 	{
 		GLint logSize;
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
-		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
-		logMsg[logSize] = '\0';
+		std::size_t trueLogSize = static_cast<std::size_t>(logSize) + 1;
+		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(trueLogSize);
+		logMsg[trueLogSize] = '\0';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cerr << "Linking of shader failed: " << logMsg.get() << std::endl;
 		EXIT;
@@ -201,8 +204,9 @@ bool Shader::ProgramStatus()
 	if (logSize)
 	{
 		std::cout << std::bit_cast<unsigned int>(logSize) << std::endl;
-		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(static_cast<size_t>(logSize) + 1);
-		logMsg[static_cast<size_t>(logSize) + 1] = '\n';
+		std::size_t trueLogSize = static_cast<std::size_t>(logSize) + 1;
+		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(trueLogSize);
+		logMsg[trueLogSize] = '\n';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		std::cout << "Program Log: " << logMsg.get() << std::endl;
 		EXIT;
@@ -476,18 +480,19 @@ void Shader::ExportCompiled() const
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;
-	Log(std::format("Exporting Shader '{}'\n", this->name));
+	Log(std::format("Exporting Shader '{}'", this->name));
 	std::ofstream output(shaderBasePath + this->name + ".csp", std::ios::binary);
 	if (output.is_open())
 	{
 		GLint length = 0;
 		GLenum format;
 		glGetProgramiv(this->program, GL_PROGRAM_BINARY_LENGTH, &length);
-		std::vector<char> buffer(length);
-		glGetProgramBinary(this->program, length, &length, &format, buffer.data());
+		std::size_t trueLength = static_cast<std::size_t>(length) + 1;
+		std::unique_ptr<char[]> programData = std::make_unique<char[]>(trueLength);
+		glGetProgramBinary(this->program, length, &length, &format, programData.get());
 		output.write(reinterpret_cast<char*> (&length), sizeof(length));
 		output.write(reinterpret_cast<char*> (&format), sizeof(format));
-		output.write(buffer.data(), buffer.size());
+		output.write(programData.get(), trueLength);
 	}
 	else
 	{

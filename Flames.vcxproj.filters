@@ -198,6 +198,9 @@
     <ClCompile Include="imgui\imgui_impl_glfw.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="ClockBrain.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -435,6 +438,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_glfw.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ClockBrain.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -30,7 +30,7 @@ void main()
 	
 	gl_Position = Projection * View * modelMat * vec4(vPos, 1.0);
 
-	float ambient = 0.25f;
+	float ambient = 0.45f;
 	float diffuse = max(dot(norm, lightDirection.xyz), 0.0);
 	colorOut = shapeColor * (ambient + diffuse)* lightColor.xyz;
 }

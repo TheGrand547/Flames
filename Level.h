@@ -19,6 +19,8 @@ namespace Level
 
 	// Points of Interest
 	std::vector<glm::vec3>& GetPOI();
+	glm::vec3 GetInterest();
+	void SetInterest(glm::vec3 vec);
 }
 
 

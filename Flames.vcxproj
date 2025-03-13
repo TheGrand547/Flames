@@ -157,6 +157,7 @@
     <ClCompile Include="Bullet.cpp" />
     <ClCompile Include="Button.cpp" />
     <ClCompile Include="Capsule.cpp" />
+    <ClCompile Include="ClockBrain.cpp" />
     <ClCompile Include="CollisionTypes.cpp" />
     <ClCompile Include="Cube.cpp" />
     <ClCompile Include="CubeMap.cpp" />
@@ -226,6 +227,7 @@
     <ClInclude Include="Button.h" />
     <ClInclude Include="Capsule.h" />
     <ClInclude Include="CircularBuffer.h" />
+    <ClInclude Include="ClockBrain.h" />
     <ClInclude Include="CollisionTypes.h" />
     <ClInclude Include="Cube.h" />
     <ClInclude Include="CubeMap.h" />

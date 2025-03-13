@@ -73,6 +73,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_glfw.h"
+#include "ClockBrain.h"
 
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
@@ -188,6 +189,7 @@ Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTe
 Texture2D buttonA, buttonB, nineSlice, mapping;
 CubeMap mapper;
 CubeMap sky;
+CubeMap noise;
 
 // Vertex Array Objects
 VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
@@ -375,6 +377,8 @@ DebrisManager trashMan, playerMan;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh;
+
+ClockBrain tickTockMan;
 
 static GLFWwindow* windowPointer = nullptr;
 
@@ -793,10 +797,13 @@ void display()
 
 	if (projectileBuffer.Size() > 0)
 	{
+		uniform.SetActiveShader();
 		plainVAO.BindArrayBuffer(projectileBuffer);
-		//uniform.DrawArray<DrawType::Lines>(projectileBuffer);
+		uniform.DrawArray<DrawType::Lines>(projectileBuffer);
 	}
 	glLineWidth(1.f);
+
+	tickTockMan.Draw(guyMeshData, meshVAO, ship);
 
 	engine.SetActiveShader();
 	engineInstance.Bind();
@@ -1225,47 +1232,6 @@ void idle()
 	}
 		
 	// End of input handling
-
-
-	if (keyState['W'])
-		cameraPosition += forward;
-	if (keyState['S'])
-		cameraPosition -= forward;
-	if (keyState['D'])
-		cameraPosition += right;
-	if (keyState['A'])
-		cameraPosition -= right;
-	if (keyState['Z']) cameraPosition += World::Up * speed;
-	if (keyState['X']) cameraPosition -= World::Up * speed;
-	if (cameraPosition != previous)
-	{
-		AABB playerBounds(glm::vec3(0, 0, 0), glm::vec3(1, 1, 1));
-		OBB playerBox(playerBounds);
-		playerBounds.Center(cameraPosition);
-
-		OBB playerObb(playerBounds);
-		//playerObb.Rotate(glm::eulerAngleY(glm::radians(-cameraRotation.y)));
-		//playerObb.Rotate(glm::vec3(0, -cameraRotation.y, cameraRotation.z));
-
-		playerBox.Translate(glm::vec3(2, 0, 0));
-		//playerBox.Rotate(glm::vec3(0, frameCounter * 4.f, 0));
-		for (auto& wall : Level::Geometry)
-		{
-			if (wall.Overlap(playerObb))
-			{
-				playerObb.OverlapAndSlide(wall);
-				//offset = previous;
-				//break;
-			}
-		}
-		if (playerBox.Overlap(playerObb))
-		{
-			//offset = previous;
-		}
-		cameraPosition = playerObb.Center();
-		//Model(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f))
-	}
-
 	if (reRenderText && letters.str().size() > 0)
 	{
 		reRenderText = false;
@@ -1302,10 +1268,10 @@ void idle()
 		glm::mat3 playerLocal = static_cast<glm::mat3>(playerModel.rotation);
 		glm::vec3 forward = playerLocal[0];
 		glm::vec3 left = playerLocal[2];
-		left *= 0.25f;
+		left *= 0.5f;
 		glm::vec3 local = playerModel.translation;
 		local -= forward * 0.15f;
-		glm::vec3 upSet = playerLocal[1] * 0.15f;
+		glm::vec3 upSet = playerLocal[1] * 0.05f;
 		if (flippyFlop)
 		{
 
@@ -1321,15 +1287,15 @@ void idle()
 	}
 	rayBuffer.BufferData(pathway);
 
-	std::array<glm::vec3, 10> projectiles{};
+	std::array<glm::vec3, 4> projectiles{};
 	projectiles.fill(playerModel.translation);
-	for (std::size_t i = 0; i < 5; i++)
-	{
-		projectiles[2 * i] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i);
-		projectiles[2 * i + 1] += static_cast<glm::mat3>(playerModel.rotation)[0] * static_cast<float>(2 * i + 1);
-	}
+	glm::mat3 playerLocal2 = static_cast<glm::mat3>(playerModel.rotation);
+	/*
+	projectiles[0] += glm::normalize(playerLocal2[0]) * 5.f;
+	projectiles[2] += glm::normalize(playfield.GetVelocity()) * 5.f;
+	
 	projectileBuffer.BufferData(projectiles);
-
+	*/
 
 	auto local = gameTicks % 128;
 	float timeA = 1 - (((local + 25) % 128) / 128.f),
@@ -1373,10 +1339,10 @@ void idle()
 
 
 	std::stringstream buffered;
-	buffered << "Velocity:" << playfield.GetVelocity() << "\nMagnitude:" << glm::length(playfield.GetVelocity());
-	buffered << "\nDistance: " << lastCheckedDistance << "\nVelocity: " << playerSpeedControl;
+	buffered << tickTockMan.GetPos();
+	Level::SetInterest(tickTockMan.GetPos());
 
-	
+	/*
 	//if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1) && false)
 	{
 		//GLFWgamepadstate input;
@@ -1391,7 +1357,7 @@ void idle()
 			buffered << std::format("\n{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}", axes[0],
 				axes[1], axes[2],axes[3], axes[4], axes[5]);
 		}
-	}
+	}*/
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
 		\n-GPU Block Time: {}ns\nAverage Tick Length:{}ns\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
@@ -1536,6 +1502,8 @@ void gameTick()
 				addExplosion++;
 			}
 		}
+		tickTockMan.Update();
+
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
 		
@@ -1973,7 +1941,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 				// Pretending this doesn't do anything
 			}
 		}
-		else
+		//else
 		{
 			glm::vec2 clamped = glm::clamp((Window::GetHalfF() - glm::vec2(x, y)) / Window::GetHalfF(), glm::vec2(-1.f), glm::vec2(1.f));
 			targetAngles.x = clamped.x;
@@ -2623,6 +2591,8 @@ void init()
 		sky.Generate(std::to_array<std::string>({"skybox/space_ft.png", "skybox/space_bk.png", "skybox/space_up.png", 
 			"skybox/space_dn.png", "skybox/space_rt.png", "skybox/space_lf.png"}));
 	}
+
+	tickTockMan.Init();
 
 	struct
 	{

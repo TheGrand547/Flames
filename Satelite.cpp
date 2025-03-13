@@ -19,7 +19,6 @@ static constexpr float CapsuleRadius = 0.75f;
 
 void Satelite::Draw(Shader& shader) const noexcept
 {
-    // TODO: Unhack this
     if (!VertexFormat.GetArray())
     {
         VertexFormat.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
