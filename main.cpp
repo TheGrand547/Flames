@@ -414,13 +414,13 @@ void display()
 
 	glm::vec3 localCamera = cameraPosition;
 	glm::mat3 axes(playerModel.rotation);
-	localCamera = glm::vec3(5.f, -3.5f, 0.f);
+	localCamera = glm::vec3(4.f, -2.5f, 0.f);
 
 	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 	localCamera += playerModel.translation;
 
-	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 0.f, axes[1]);
+	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 
@@ -634,6 +634,25 @@ void display()
 			uniform.SetMat4("Model", d.GetModelMatrix());
 			uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		}
+	}
+
+	const glm::mat3 axes22 = glm::mat3_cast(playerModel.rotation);
+	uniform.SetActiveShader();
+	glm::vec3 blue(0, 0, 1);
+	plainVAO.Bind();
+	plainVAO.BindArrayBuffer(plainCube);
+	uniform.SetVec3("color", blue);
+	glLineWidth(1.f);
+	glm::vec3 position = playerModel.translation + 10.f * axes22[0];
+	Model model{ position, playerModel.rotation };
+	model.scale = glm::vec3(0.25f);
+	uniform.SetMat4("Model", model.GetModelMatrix());
+	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+	for (int i = 0; i < 5; i++)
+	{
+		model.translation += 10.f * axes22[0];
+		uniform.SetMat4("Model", model.GetModelMatrix());
+		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
 
 	// Debugging staticBoxes
@@ -1192,6 +1211,15 @@ void idle()
 		boardState.fireButton = keyState['T'];
 		boardState.cruiseControl = keyState['Y'];
 		boardState.popcornFire = Mouse::CheckButton(Mouse::ButtonLeft);
+
+		boardState.movement = glm::vec3(0.f);
+		boardState.movement.x +=  1.f * keyState['W'];
+		boardState.movement.x += -1.f * keyState['S'];
+		boardState.movement.y +=  1.f * keyState['Z'];
+		boardState.movement.y += -1.f * keyState['X'];
+		boardState.movement.z += -1.f * keyState['A'];
+		boardState.movement.z +=  1.f * keyState['D'];
+		boardState.rotation = glm::yzw(boardState.heading);
 	}
 	else
 	{
@@ -1277,10 +1305,10 @@ void idle()
 
 		}
 		flippyFlop = !flippyFlop;
-		leftCircle.Push(ColoredVertex{  local - left * 0.8f,  upSet });
-		leftCircle.Push(ColoredVertex{  local - left * 1.2f, -upSet });
-		rightCircle.Push(ColoredVertex{ local + left * 0.8f,  upSet });
-		rightCircle.Push(ColoredVertex{ local + left * 1.2f, -upSet });
+		leftCircle.Push(ColoredVertex{  local - left,  upSet + left * 0.2f});
+		leftCircle.Push(ColoredVertex{  local - left, -upSet - left * 0.2f});
+		rightCircle.Push(ColoredVertex{ local + left,  upSet - left * 0.2f });
+		rightCircle.Push(ColoredVertex{ local + left, -upSet + left * 0.2f });
 
 		leftBuffer.BufferData(leftCircle.GetLinear());
 		rightBuffer.BufferData(rightCircle.GetLinear());
@@ -1764,7 +1792,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
 		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
-		if (key == GLFW_KEY_Q) 
+		if (key == GLFW_KEY_ESCAPE) 
 		{
 			shouldClose = true;
 			glfwSetWindowShouldClose(window, GLFW_TRUE);

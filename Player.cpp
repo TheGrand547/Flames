@@ -90,7 +90,8 @@ void Player::Update(Input::Keyboard input) noexcept
 	const float turningRadius = glm::max(velocitySquared / rotationalThrust, minTurningRadius);
 	rotationalThrust = velocitySquared / turningRadius;
 
-	const float angularVelocity = Tick::TimeDelta * Rectify(glm::sqrt(rotationalThrust / turningRadius));
+	//const float angularVelocity = Tick::TimeDelta * Rectify(glm::sqrt(rotationalThrust / turningRadius));
+	const float angularVelocity = Tick::TimeDelta * glm::pi<float>();
 
 	// Angular velocity is independent of mass
 	rotationalThrust *= PlayerMass;
@@ -278,6 +279,31 @@ void Player::Update(Input::Keyboard input) noexcept
 	gunBPos = popcornAnimation.Get(gunB).position;
 	//forces = glm::vec3(0.f);
 	//this->velocity = localAxes[0] * input.heading.x * MaxSpeed;
+
+	// Move towards 6DOF
+	forces = glm::vec3(0.f);
+	glm::vec3 signFlags{ input.movement };
+	// If a direction is not held, counteract the current force in that direction
+	if (!glm::any(glm::isnan(unitVector)))
+	{
+		if (glm::abs(signFlags.x) < EPSILON)
+		{
+			signFlags.x = -1.f * (glm::dot(localAxes[0], unitVector)) * 0.25f;
+		}
+		if (glm::abs(signFlags.y) < EPSILON)
+		{
+			signFlags.y = -1.f * (glm::dot(localAxes[1], unitVector)) * 0.25f;
+		}
+		if (glm::abs(signFlags.z) < EPSILON)
+		{
+			signFlags.z = -1.f * (glm::dot(localAxes[2], unitVector)) * 0.25f;
+		}
+	}
+	input.heading.x = 0.75f;
+	forces += signFlags.x * localAxes[0] * input.heading.x * EngineThrust * 5.f;
+	forces += signFlags.y * localAxes[1] * input.heading.x * EngineThrust * 5.f;
+	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
+
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
 

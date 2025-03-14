@@ -137,6 +137,9 @@ namespace Input
 	struct Keyboard
 	{
 		glm::vec4 heading;
+
+		glm::vec3 movement;
+		glm::vec3 rotation;
 		bool fireButton;
 		bool popcornFire;
 		bool cruiseControl;

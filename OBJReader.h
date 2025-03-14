@@ -5,6 +5,7 @@
 #include <vector>
 #include "Buffer.h"
 #include "DrawStruct.h"
+#include "VertexArray.h"
 
 struct MeshPair
 {
@@ -18,6 +19,13 @@ struct MeshData
 	ElementArray index;
 	Buffer<BufferType::DrawIndirect> indirect;
 	std::vector<DrawIndirect> rawIndirect;
+
+	inline void Bind(VAO& vao) const noexcept
+	{
+		vao.Bind();
+		vao.BindArrayBuffer(this->vertex);
+		this->index.BindBuffer();
+	}
 };
 
 struct OBJReader

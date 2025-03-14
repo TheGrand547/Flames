@@ -10,6 +10,25 @@
 
 #include "Vertex.h" 
 
+glm::vec3 convert(objl::Vector3 left) { return glm::vec3(left.X, left.Y, left.Z); }
+glm::vec2 convert(objl::Vector2 left) { return glm::vec2(left.X, left.Y); }
+
+// TODO: Switch to assimp, https://github.com/assimp/assimp
+
+void GenerateBitangent(unsigned int a, unsigned int b, unsigned int c, std::vector<glm::vec3>& output, const std::vector<objl::Vertex>& input)
+{
+	glm::vec3 edgeA = convert(input[b].Position) - convert(input[a].Position);
+	glm::vec3 edgeB = convert(input[c].Position) - convert(input[a].Position);
+
+	// Bitangents could also be trivially computed by multiplying the inverse of the column matrix created
+	// By the UV deltas on the left of the transpose of the column matrix but this might be easier
+	glm::vec2 uvA = convert(input[b].TextureCoordinate) - convert(input[a].TextureCoordinate);
+	glm::vec2 uvB = convert(input[c].TextureCoordinate) - convert(input[a].TextureCoordinate);
+	float scaling = 1.f / (glm::determinant(glm::mat2{ uvA, uvB }));
+	glm::vec3 tangent = scaling * (uvB.y * edgeA - uvA.y * edgeB);
+	output.push_back(tangent);
+}
+
 // TODO: Multiple meshes per file and all that jazz
 void OBJReader::ReadOBJ(const std::string& filename, ArrayBuffer& elements, ElementArray& index, const std::size_t& id)
 {
