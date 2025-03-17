@@ -7,7 +7,7 @@
 #include "imgui/imgui.h"
 #include "imgui/imgui_stdlib.h"
 #include "Interpolation.h"
-#include "ini.h"
+#include <iniparser.hpp>
 
 namespace Input
 {
@@ -47,7 +47,7 @@ namespace Input
 		"Alt", "Left Alt" });
 	static auto buttonInputNames = std::to_array<const char*>({ "Fire Main Weapon", "Autopilot", "Fire Secondary Weapon" });
 	static auto stickNames = std::to_array<std::string>({"Left Thumbstick X", "Left Thumbstick Y", "Right Thumbstick X", "Right Thumbstick Y",
-		"Right Trigger X", "Right Trigger Y"});
+		"Left Trigger", "Right Trigger"});
 
 	static std::array<int, buttonInputNames.size()> keyboardBindings, gamepadBindings;
 
@@ -67,90 +67,84 @@ namespace Input
 	void Setup() noexcept
 	{
 		// INI stuff
-		mINI::INIFile file("input.ini");
-		mINI::INIStructure input;
-		if (!file.read(input))
+		INI::File file;
+		//if (!file.read(input))
+		if (!file.Load("input.ini"))
 		{
 			// No config file, load defaults
-			
+			return;
 		}
 		// Translate from ini to the configuration
-		if (input.has("Gamepad Tuning"))
+		
+		// Do some gestures towards memory safety
+		INI::Section* gt = file.GetSection("Gamepad Tuning");
+		if (!gt) return;
+		for (std::size_t i = 0; i < 4; i++)
 		{
-			for (auto& a : input)
+			// Check for easing functions and such
+			INI::Section* local = gt->GetSubSection(stickNames[i]);
+			if (!local) continue;
+			if (gt->FindSubSection(stickNames[i]))
 			{
-				std::cout << a.first << "L:" << a.second.size() << "\n";
-				for (auto& b : a.second)
-				{
-					std::cout << b.first << "L:" << b.second.size() << "\n";
-				}
+				controllerDeadzones[i] = std::clamp(static_cast<float>(local->GetValue("Deadzone", 0.f).AsDouble()), -1.f, 1.f);
+				controllerCurves[i] = std::clamp(local->GetValue("Deadzone", 0.f).AsInt(), 0, static_cast<int>(controllerCurves.size()));
+				curveSmoothing[i] = local->GetValue("Sharp Easing", false).AsBool();
 			}
-			auto& local = input["Gamepad Tuning"];
-			for (std::size_t i = 0; i < 6; i++)
-			{
-				// Check for easing functions and such
-				const std::string& ref = stickNames[i];
-				{
-					std::string temp = ref + " Deadzone";
-					if (local.has(temp))
-					{
-						std::string current = local[temp];
-						auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), controllerDeadzones[i]);
-						std::cout << controllerDeadzones[i] << '\n';
-						if (result.ec != std::errc())
-						{
-							controllerDeadzones[i] = 0.f;
-						}
-					}
-				}
-				if (i > 4) // Triggers don't have easing functions
-					continue;
-				std::string temp = ref + " Easing";
-				if (local.has(temp))
-				{
-					std::string current = local[temp];
-					auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), controllerCurves[i]);
-					std::cout << controllerCurves[i] << '\n';
-					if (result.ec != std::errc())
-					{
-						controllerCurves[i] = 0;
-					}
-					controllerCurves[i] = std::clamp(controllerCurves[i], 0, static_cast<int>(easingNames.size()) - 1);
-				}
-				std::string temp2 = ref + " Sharp Easing";
-				if (local.has(temp))
-				{
-					std::string current = local[temp2];
-					int local = 0;
-					auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), local);
-					std::cout << controllerCurves[i] << '\n';
-					if (result.ec != std::errc())
-					{
-						local = 0;
-					}
-					curveSmoothing[i] = !!local;
-				}
-			}
+		}
+		if (gt->FindSubSection(stickNames[4]))
+		{
+			controllerDeadzones[4] = std::clamp(static_cast<float>(gt->GetSubSection(stickNames[4])->GetValue("Threshold", 0.f).AsDouble()), -1.f, 1.f);
+		}
+		if (gt->FindSubSection(stickNames[5]))
+		{
+			controllerDeadzones[5] = std::clamp(static_cast<float>(gt->GetSubSection(stickNames[5])->GetValue("Threshold", 0.f).AsDouble()), -1.f, 1.f);
 		}
 		Input::Gamepad::Setup();
 	}
 	
 	bool Teardown() noexcept
 	{
-		mINI::INIFile file("input.ini");
-		mINI::INIStructure output;
-
-		// TODO: Generate from current data
-		for (std::size_t i = 0; i < 6; i++)
+		INI::File file;
+		if (!file.Load("input.ini"))
 		{
-			output["Gamepad Tuning"][stickNames[i] + " Deadzone"] = std::format("{:f}", controllerDeadzones[i]);
-			if (i < 4)
-			{
-				output["Gamepad Tuning"][stickNames[i] + " Easing"] = std::format("{}", controllerCurves[i]);
-				output["Gamepad Tuning"][stickNames[i] + " Sharp Easing"] = std::format("{}", (curveSmoothing[i]) ? 1 : 0);
-			}
+			return false;
 		}
-		return file.write(output, true);
+		INI::Section* gt = file.GetSection("Gamepad Tuning");
+		if (!gt) return false;
+		for (std::size_t i = 0; i < 4; i++)
+		{
+			// Check for easing functions and such
+			INI::Section* local = gt->GetSubSection(stickNames[i]);
+			if (!local) continue;
+			local->SetValue("Deadzone", controllerDeadzones[i]);
+			local->SetValue("Easing", controllerCurves[i]);
+			local->SetValue("Sharp Easing", curveSmoothing[i]);
+		}
+		INI::Section* bumpers = nullptr;
+		if ((bumpers = gt->GetSubSection(stickNames[4])))
+		{
+			bumpers->SetValue("Threshold", controllerDeadzones[4]);
+		}
+		if ((bumpers = gt->GetSubSection(stickNames[5])))
+		{
+			bumpers->SetValue("Threshold", controllerDeadzones[5]);
+		}
+
+		return file.Save("input.ini");
+	}
+
+	static float applyConfig(float input, int index)
+	{
+		float threshold = controllerDeadzones[index];
+		if (glm::abs(input) < threshold)
+		{
+			return 0;
+		}
+		if (curveSmoothing[index])
+		{
+			input = (input - threshold) / (1.f - threshold);
+		}
+		return static_cast<float>(smoothings[controllerCurves[index]](input));
 	}
 
 	void Gamepad::Setup() noexcept
@@ -230,11 +224,15 @@ namespace Input
 				{
 					Gamepad::currentButtons |= (input.buttons[i] == GLFW_PRESS) << i;
 				}
+				for (int i = 0; i < 4; i++)
+				{
+					input.axes[i] = applyConfig(input.axes[i], i);
+				}
 				Gamepad::axes[0] = glm::vec2(input.axes[0], input.axes[1]);
 				Gamepad::axes[1] = glm::vec2(input.axes[2], input.axes[3]);
 				Gamepad::axes[2] = glm::vec2(input.axes[4], input.axes[5]);
-				Gamepad::currentButtons |= (Gamepad::axes[2].x > 0.f) * Gamepad::LeftTrigger;
-				Gamepad::currentButtons |= (Gamepad::axes[2].y > 0.f) * Gamepad::RightTrigger;
+				Gamepad::currentButtons |= (Gamepad::axes[2].x > controllerDeadzones[4]) * Gamepad::LeftTrigger;
+				Gamepad::currentButtons |= (Gamepad::axes[2].y > controllerDeadzones[5]) * Gamepad::RightTrigger;
 				Gamepad::risingEdge  =  Gamepad::currentButtons & (~Gamepad::oldButtons);
 				Gamepad::fallingEdge = ~Gamepad::currentButtons & ( Gamepad::oldButtons);
 				Gamepad::oldButtons  =  Gamepad::currentButtons;
