@@ -27,6 +27,7 @@ namespace Input
 
 	static std::array<float, 6> controllerDeadzones;
 	static std::array<int, 6> controllerCurves;
+	static std::array<bool, 6> curveSmoothing;
 	static bool GamepadActive = true;
 
 	// TODO: Format this
@@ -37,7 +38,7 @@ namespace Input
 		Easing::Linear, Easing::Quadratic, Easing::EaseOutQuadratic, Easing::Cubic, Easing::EaseOutCubic,
 		Easing::Circular, Easing::EaseOutCircular
 	};
-	static auto names = std::to_array<const char*>({ "Linear", "Quadratic", "Quadratic Ease Out", "Cubic",
+	static auto easingNames = std::to_array<const char*>({ "Linear", "Quadratic", "Quadratic Ease Out", "Cubic",
 		"Cubic Ease Out", "Circular", "Circular Ease Out" });
 	static auto buttonNames = std::to_array<const char*>({ "A / Cross", "B / Circle", "X / Square", "Y / Triangle", "Left Bumper", "Right Bumper",
 		"Back", "Start", "Guide", "Left Thumbstick", "Right Thumbstick", "D-Pad Up", "D-Pad Right", "D-Pad Down", "D-Pad Left",
@@ -45,6 +46,9 @@ namespace Input
 	static auto keyboardInputs = std::to_array<const char*>({ "Input Character", "Shift", "Right Shift", "Control", "Right Control", "Tab",
 		"Alt", "Left Alt" });
 	static auto buttonInputNames = std::to_array<const char*>({ "Fire Main Weapon", "Autopilot", "Fire Secondary Weapon" });
+	static auto stickNames = std::to_array<std::string>({"Left Thumbstick X", "Left Thumbstick Y", "Right Thumbstick X", "Right Thumbstick Y",
+		"Right Trigger X", "Right Trigger Y"});
+
 	static std::array<int, buttonInputNames.size()> keyboardBindings, gamepadBindings;
 
 	static glm::vec2 mouseSensitivity{};
@@ -73,12 +77,58 @@ namespace Input
 		// Translate from ini to the configuration
 		if (input.has("Gamepad Tuning"))
 		{
+			for (auto& a : input)
+			{
+				std::cout << a.first << "L:" << a.second.size() << "\n";
+				for (auto& b : a.second)
+				{
+					std::cout << b.first << "L:" << b.second.size() << "\n";
+				}
+			}
 			auto& local = input["Gamepad Tuning"];
 			for (std::size_t i = 0; i < 6; i++)
 			{
-				if (local.has("Left Stick X"))
+				// Check for easing functions and such
+				const std::string& ref = stickNames[i];
 				{
-
+					std::string temp = ref + " Deadzone";
+					if (local.has(temp))
+					{
+						std::string current = local[temp];
+						auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), controllerDeadzones[i]);
+						std::cout << controllerDeadzones[i] << '\n';
+						if (result.ec != std::errc())
+						{
+							controllerDeadzones[i] = 0.f;
+						}
+					}
+				}
+				if (i > 4) // Triggers don't have easing functions
+					continue;
+				std::string temp = ref + " Easing";
+				if (local.has(temp))
+				{
+					std::string current = local[temp];
+					auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), controllerCurves[i]);
+					std::cout << controllerCurves[i] << '\n';
+					if (result.ec != std::errc())
+					{
+						controllerCurves[i] = 0;
+					}
+					controllerCurves[i] = std::clamp(controllerCurves[i], 0, static_cast<int>(easingNames.size()) - 1);
+				}
+				std::string temp2 = ref + " Sharp Easing";
+				if (local.has(temp))
+				{
+					std::string current = local[temp2];
+					int local = 0;
+					auto result = std::from_chars(current.c_str(), current.c_str() + current.length(), local);
+					std::cout << controllerCurves[i] << '\n';
+					if (result.ec != std::errc())
+					{
+						local = 0;
+					}
+					curveSmoothing[i] = !!local;
 				}
 			}
 		}
@@ -88,10 +138,19 @@ namespace Input
 	bool Teardown() noexcept
 	{
 		mINI::INIFile file("input.ini");
-		mINI::INIStructure input;
+		mINI::INIStructure output;
 
 		// TODO: Generate from current data
-		return file.write(input, true);
+		for (std::size_t i = 0; i < 6; i++)
+		{
+			output["Gamepad Tuning"][stickNames[i] + " Deadzone"] = std::format("{:f}", controllerDeadzones[i]);
+			if (i < 4)
+			{
+				output["Gamepad Tuning"][stickNames[i] + " Easing"] = std::format("{}", controllerCurves[i]);
+				output["Gamepad Tuning"][stickNames[i] + " Sharp Easing"] = std::format("{}", (curveSmoothing[i]) ? 1 : 0);
+			}
+		}
+		return file.write(output, true);
 	}
 
 	void Gamepad::Setup() noexcept
@@ -214,8 +273,8 @@ namespace Input
 		ImGui::PushID(123);
 		ImGui::SliderFloat("Deadzone", &controllerDeadzones[index], 0.0f, 1.f);
 		static bool sharpEdge = false;
-		ImGui::Checkbox("Sharp Deadzone", &sharpEdge);
-		ImGui::Combo("Curve", &controllerCurves[index], names.data(), static_cast<int>(names.size()));
+		ImGui::Checkbox("Sharp Deadzone", &curveSmoothing[index]);
+		ImGui::Combo("Curve", &controllerCurves[index], easingNames.data(), static_cast<int>(easingNames.size()));
 		std::array<float, 101> plot{};
 		float currentDeadzone = controllerDeadzones[index];
 
@@ -224,7 +283,7 @@ namespace Input
 		{	
 			float delta = i * 1.f / (plot.size() - 1);
 			delta = deadzone(delta, currentDeadzone);
-			if (!sharpEdge && delta > currentDeadzone)
+			if (!curveSmoothing[index] && delta > currentDeadzone)
 			{
 				delta = (delta - currentDeadzone) / duration;
 			}
@@ -256,6 +315,22 @@ namespace Input
 	void ToggleUI()
 	{
 		inputConfigurationEnabled = !inputConfigurationEnabled;
+	}
+
+	void DisplayInput()
+	{
+		if (GamepadActive)
+		{
+			ImGui::Begin("Gamepad Status");
+			for (int i = 0; i < 3; i++)
+			{
+				//ImGui::TreePush("###");
+				ImGui::Text("%f", Gamepad::Gamepad::CheckAxes(i).x);
+				ImGui::SameLine();
+				ImGui::Text("%f", Gamepad::Gamepad::CheckAxes(i).y);
+			}
+			ImGui::End();
+		}
 	}
 
 	void UIStuff()

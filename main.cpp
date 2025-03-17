@@ -419,7 +419,7 @@ void display()
 	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 	localCamera += playerModel.translation;
-
+	localCamera = playerModel.translation + axes[0] * 0.5f;
 	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
@@ -1201,6 +1201,7 @@ void idle()
 
 	help.MouseUpdate();
 	Input::UIStuff();
+	Input::DisplayInput();
 	if (!Input::ControllerActive())
 	{
 		if (keyState['Q'] && !keyState['E']) tilt = 1.f;
@@ -1247,6 +1248,25 @@ void idle()
 		boardState.heading.x = playerSpeedControl;
 		boardState.popcornFire = Input::Gamepad::CheckButton(Input::Gamepad::A);
 		boardState.popcornFire |= Input::Gamepad::CheckAxes(2).x > 0.f;
+
+		glm::vec2 bad = Input::Gamepad::CheckAxes(0);
+		glm::vec2 sig = glm::sign(bad);
+		if (glm::abs(bad).x < 0.1)
+		{
+			bad.x = 0;
+		}
+		if (glm::abs(bad).y < 0.1)
+		{
+			bad.y = 0;
+		}
+
+		boardState.movement.x = -bad.y;
+		boardState.movement.z = bad.x;
+		boardState.movement.y = 0.f;
+		boardState.movement.y += 1.f * Input::Gamepad::CheckButton(Input::Gamepad::A);
+		boardState.movement.y -= 1.f * Input::Gamepad::CheckButton(Input::Gamepad::B);
+
+		boardState.rotation = glm::yzw(boardState.heading);
 
 		// Something weird with this and the cruise control button for some reason
 		boardState.fireButton = Input::Gamepad::CheckAxes(2).y > 0.f;
@@ -2206,6 +2226,8 @@ int main(int argc, char** argv)
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
+
+	Input::Teardown();
 	// TODO: cleanup
 	return 0;
 }
@@ -2926,7 +2948,7 @@ void init()
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);
 
 	playfield.sat = &groovy;
-
+	Input::Setup();
 	glClearColor(0.f, 0.f, 0.f, 0.f);
 	Log("End of Init");
 }

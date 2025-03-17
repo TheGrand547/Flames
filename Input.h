@@ -150,6 +150,8 @@ namespace Input
 	void ToggleUI();
 
 	void UIStuff();
+	void DisplayInput();
+	bool Teardown() noexcept;
 
 	void Setup() noexcept;
 

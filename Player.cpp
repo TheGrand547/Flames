@@ -91,7 +91,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	rotationalThrust = velocitySquared / turningRadius;
 
 	//const float angularVelocity = Tick::TimeDelta * Rectify(glm::sqrt(rotationalThrust / turningRadius));
-	const float angularVelocity = Tick::TimeDelta * glm::pi<float>();
+	const float angularVelocity = Tick::TimeDelta * glm::pi<float>() * 0.75f;
 
 	// Angular velocity is independent of mass
 	rotationalThrust *= PlayerMass;
