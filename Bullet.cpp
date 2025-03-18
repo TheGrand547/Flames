@@ -7,4 +7,5 @@ void Bullet::Update() noexcept
 	glm::vec3 forces{ 0.f };
 
 	BasicPhysics::Update(this->position, this->velocity, forces, Bullet::Mass);
+	this->lifeTime++;
 }

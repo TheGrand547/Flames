@@ -377,6 +377,11 @@ DebrisManager trashMan, playerMan;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh;
+MeshData bulletMesh;
+
+ArrayBuffer bulletMats;
+VAO bulletVAO;
+std::vector<MeshMatrix> active, inactive;
 
 ClockBrain tickTockMan;
 
@@ -419,7 +424,7 @@ void display()
 	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 	localCamera += playerModel.translation;
-	localCamera = playerModel.translation + axes[0] * 0.5f;
+	//localCamera = playerModel.translation + axes[0] * 0.5f;
 	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
@@ -643,14 +648,15 @@ void display()
 	plainVAO.BindArrayBuffer(plainCube);
 	uniform.SetVec3("color", blue);
 	glLineWidth(1.f);
-	glm::vec3 position = playerModel.translation + 10.f * axes22[0];
+	glm::vec3 bulletPath = glm::normalize(axes22[0] * 100.f + playfield.GetVelocity());
+	glm::vec3 position = playerModel.translation + bulletPath * 10.f;
 	Model model{ position, playerModel.rotation };
 	model.scale = glm::vec3(0.25f);
 	uniform.SetMat4("Model", model.GetModelMatrix());
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	for (int i = 0; i < 5; i++)
 	{
-		model.translation += 10.f * axes22[0];
+		model.translation += 10.f * bulletPath;
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
@@ -859,6 +865,7 @@ void display()
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
 	//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
+	/*
 	for (auto& bullet : bullets)
 	{
 		Model localModel;
@@ -870,8 +877,9 @@ void display()
 		//mapper.BindTexture(0);
 		//sphereMesh.SetTextureUnit("textureIn", 0);
 		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
-	}
+	}*/
 
+	/*
 	for (auto& bullet : Level::GetBullets())
 	{
 		Model localModel;
@@ -882,9 +890,15 @@ void display()
 		sphereMesh.SetTextureUnit("textureIn", texture, 0);
 		//mapper.BindTexture(0);
 		//sphereMesh.SetTextureUnit("textureIn", 0);
-		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
+		//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
 	}
-
+	*/
+	debris.SetActiveShader();
+	bulletMesh.Bind(bulletVAO);
+	bulletVAO.BindArrayBuffer(bulletMats, 1);
+	debris.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
+	debris.SetVec3("shapeColor", glm::vec3(0.85f));
+	debris.DrawElements(bulletMesh.indirect);
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
 	sphereModel.translation = glm::vec3(0, 0, 0);
@@ -1385,6 +1399,13 @@ void idle()
 	}
 	//rayBuffer.BufferData(rays);
 
+	// Better bullet drawing
+	{
+		bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(active.size());
+		bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
+		bulletMats.BufferData(active);
+	}
+
 
 	std::stringstream buffered;
 	buffered << tickTockMan.GetPos();
@@ -1539,17 +1560,28 @@ void gameTick()
 		Capsule silly{ groovy.GetBounding() };
 
 		// Bullet stuff;
-		for (auto& local : Level::GetBullets())
-		{
-			glm::vec3 previous = local.position;
-			local.Update();
-			Capsule bulletCapsule{ {previous, local.position}, BulletRadius };
-			Collision lib;
-			if (bulletCapsule.Intersect(silly, lib))
+		inactive.clear();
+		std::erase_if(Level::GetBullets(), [&](Bullet& local)
 			{
-				addExplosion++;
-			}
-		}
+				if (local.lifeTime > Tick::PerSecond * 5)
+				{
+					return true;
+				}
+				glm::vec3 previous = local.position;
+				local.Update();
+				Capsule bulletCapsule{ {previous, local.position}, BulletRadius };
+				Collision lib;
+				if (bulletCapsule.Intersect(silly, lib))
+				{
+					addExplosion++;
+					return true;
+				}
+				Model mupen{ local.position, ForwardDir(local.velocity)};
+				inactive.push_back(mupen.GetMatrixPair());
+				return false;
+			});
+		// Maybe this is a "better" method of syncing stuff
+		std::swap(active, inactive);
 		tickTockMan.Update();
 
 		// Gun animation
@@ -2865,6 +2897,14 @@ void init()
 
 	guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
 	playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
+	bulletMesh = OBJReader::ReadOBJSimple("Models\\Projectiles.obj");
+
+	bulletVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
+	bulletVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
+	bulletVAO.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
+	bulletVAO.ArrayFormatOverride<glm::mat4>("modelMat", debris, 1, 1, 0, sizeof(MeshMatrix));
+	bulletVAO.ArrayFormatOverride<glm::mat4>("normalMat", debris, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
 	Font::SetFontDirectory("Fonts");

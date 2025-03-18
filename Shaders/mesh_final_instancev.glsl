@@ -21,6 +21,7 @@ layout(std140) uniform Lighting
 };
 
 uniform vec3 shapeColor;
+// TODO: gl_DrawID to switch textures
 
 void main()
 {

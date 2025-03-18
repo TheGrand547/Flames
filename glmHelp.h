@@ -35,4 +35,10 @@ inline glm::quat QuatIdentity() noexcept
 	return glm::quat(1.f, 0.f, 0.f, 0.f);
 }
 
+// Creates an arbitrary quaternion with the given 'forward' direction
+inline glm::quat ForwardDir(const glm::vec3& forward)
+{
+	return glm::quat(SetForward(forward));
+}
+
 #endif // GLM_HELP_H

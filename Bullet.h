@@ -9,6 +9,7 @@ struct Bullet
 	static constexpr float Mass = 1.f;
 	static constexpr float InvMass = 1.f / Mass;
 	glm::vec3 position, velocity;
+	unsigned int lifeTime = 0;
 
 	void Update() noexcept;
 };

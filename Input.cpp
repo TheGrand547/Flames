@@ -140,11 +140,13 @@ namespace Input
 		{
 			return 0;
 		}
-		if (curveSmoothing[index])
+		float sign = glm::sign(input);
+		input = std::abs(input);
+		if (!curveSmoothing[index] && input > threshold)
 		{
 			input = (input - threshold) / (1.f - threshold);
 		}
-		return static_cast<float>(smoothings[controllerCurves[index]](input));
+		return Rectify(sign * static_cast<float>(smoothings[controllerCurves[index]](input)));
 	}
 
 	void Gamepad::Setup() noexcept

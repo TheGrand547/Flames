@@ -100,6 +100,27 @@ void Player::Update(Input::Keyboard input) noexcept
 	const float desiredSpeed = input.heading.x * MaxSpeed;
 	const float speedDifference = Rectify(glm::abs((desiredSpeed - currentSpeed) / currentSpeed));
 
+	// Popcorn weapon firing
+	if (input.popcornFire && (gunA.IsFinished() || gunB.IsFinished()))
+	{
+		// Popcorn fire
+		glm::vec3 facingVector = localAxes[0];
+		glm::vec3 bulletVelocity = facingVector * PopcornSpeed + this->velocity;
+		//bulletVelocity = glm::normalize(bulletVelocity + this->velocity) * PopcornSpeed;
+		if (gunA.IsFinished())
+		{
+			Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
+			popcornAnimation.Start(gunA);
+		}
+		if (gunB.IsFinished())
+		{
+			Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
+			popcornAnimation.Start(gunB);
+		}
+	}
+	gunAPos = popcornAnimation.Get(gunA).position;
+	gunBPos = popcornAnimation.Get(gunB).position;
+
 	glm::vec3 forces{0.f};
 
 	// This is kind of a complete mess but it appears to work
@@ -258,25 +279,6 @@ void Player::Update(Input::Keyboard input) noexcept
 		this->velocity = -5.f * facingVector;
 	}
 	
-	// Popcorn weapon firing
-	if (input.popcornFire && (gunA.IsFinished() || gunB.IsFinished()))
-	{
-		// Popcorn fire
-		glm::vec3 facingVector = localAxes[0];
-		glm::vec3 bulletVelocity = facingVector * PopcornSpeed;
-		if (gunA.IsFinished())
-		{
-			Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
-			popcornAnimation.Start(gunA);
-		}
-		if (gunB.IsFinished())
-		{
-			Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
-			popcornAnimation.Start(gunB);
-		}
-	}
-	gunAPos = popcornAnimation.Get(gunA).position;
-	gunBPos = popcornAnimation.Get(gunB).position;
 	//forces = glm::vec3(0.f);
 	//this->velocity = localAxes[0] * input.heading.x * MaxSpeed;
 
