@@ -865,40 +865,16 @@ void display()
 	//mapper.BindTexture(0);
 	//sphereMesh.SetTextureUnit("textureIn", 0);
 	//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
-	/*
-	for (auto& bullet : bullets)
+	
+	if (bulletMesh.rawIndirect[0].instanceCount > 0)
 	{
-		Model localModel;
-		localModel.translation = bullet.position;
-		localModel.scale = glm::vec3(BulletRadius);
-		sphereMesh.SetMat4("modelMat", localModel.GetModelMatrix());
-		sphereMesh.SetMat4("normalMat", localModel.GetNormalMatrix());
-		sphereMesh.SetTextureUnit("textureIn", texture, 0);
-		//mapper.BindTexture(0);
-		//sphereMesh.SetTextureUnit("textureIn", 0);
-		sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
-	}*/
-
-	/*
-	for (auto& bullet : Level::GetBullets())
-	{
-		Model localModel;
-		localModel.translation = bullet.position;
-		localModel.scale = glm::vec3(BulletRadius * 3.f);
-		sphereMesh.SetMat4("modelMat", localModel.GetModelMatrix());
-		sphereMesh.SetMat4("normalMat", localModel.GetNormalMatrix());
-		sphereMesh.SetTextureUnit("textureIn", texture, 0);
-		//mapper.BindTexture(0);
-		//sphereMesh.SetTextureUnit("textureIn", 0);
-		//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
+		debris.SetActiveShader();
+		bulletMesh.Bind(bulletVAO);
+		bulletVAO.BindArrayBuffer(bulletMats, 1);
+		debris.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
+		debris.SetVec3("shapeColor", glm::vec3(0.85f));
+		debris.DrawElements(bulletMesh.indirect);
 	}
-	*/
-	debris.SetActiveShader();
-	bulletMesh.Bind(bulletVAO);
-	bulletVAO.BindArrayBuffer(bulletMats, 1);
-	debris.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
-	debris.SetVec3("shapeColor", glm::vec3(0.85f));
-	debris.DrawElements(bulletMesh.indirect);
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
 	sphereModel.translation = glm::vec3(0, 0, 0);
@@ -1580,7 +1556,7 @@ void gameTick()
 				inactive.push_back(mupen.GetMatrixPair());
 				return false;
 			});
-		// Maybe this is a "better" method of syncing stuff
+		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		std::swap(active, inactive);
 		tickTockMan.Update();
 
@@ -2898,6 +2874,7 @@ void init()
 	guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
 	playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
 	bulletMesh = OBJReader::ReadOBJSimple("Models\\Projectiles.obj");
+	//MeshThingy("Models\\Debris.obj");
 
 	bulletVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
 	bulletVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));

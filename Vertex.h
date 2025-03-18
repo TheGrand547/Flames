@@ -25,7 +25,7 @@ struct TextureVertex
 	glm::vec3 position;
 	union
 	{
-		glm::vec2 textureCoordinates, coordinates, uvs;
+		glm::vec2 texture, textureCoordinates, coordinates, uvs;
 	};
 };
 
@@ -38,6 +38,18 @@ struct MeshVertex
 struct CompleteVertex
 {
 	glm::vec3 position, color, normal;
+	glm::vec2 texture;
+};
+
+struct LargestVertex
+{
+	glm::vec3 position, color, normal, tangent;
+	glm::vec2 texture;
+};
+
+struct OverstuffedVertex
+{
+	glm::vec3 position, color, normal, tangent, biTangent;
 	glm::vec2 texture;
 };
 

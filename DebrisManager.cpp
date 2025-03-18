@@ -205,7 +205,8 @@ void DebrisManager::Add(std::vector<Debris>& local) noexcept
 
 bool DebrisManager::LoadResources() noexcept
 {
-	meshData = OBJReader::ReadOBJSimple("Models\\Debris.obj");
+	//meshData = OBJReader::ReadOBJSimple("Models\\Debris.obj");
+	meshData = MeshThingy("Models\\Debris.obj");
 	debrisTypes = meshData.indirect.GetElementCount();
 	return debrisTypes > 1;
 }

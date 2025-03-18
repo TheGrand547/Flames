@@ -9,6 +9,9 @@ x64/
 # Prerequisites
 *.d
 
+# vcpkg
+vcpkg_installed/
+
 # Compiled Object files
 *.slo
 *.lo

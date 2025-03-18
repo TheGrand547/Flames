@@ -37,4 +37,6 @@ struct OBJReader
 	static MeshData ReadOBJSimple(const std::string& filename);
 };
 
+MeshData MeshThingy(const std::string& filename);
+
 #endif // OBJ_READER_H
