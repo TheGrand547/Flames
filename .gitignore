@@ -23,6 +23,7 @@ vcpkg_installed/
 #!/Models/*.obj
 !/Models/*.mtl
 *.mtl
+Models/
 
 /imgui
 imgui.ini

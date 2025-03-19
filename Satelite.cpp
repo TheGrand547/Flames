@@ -54,6 +54,7 @@ Capsule Satelite::GetBounding() const noexcept
 
 bool Satelite::LoadResources() noexcept
 {
-    datum = OBJReader::ReadOBJSimple("Models\\Satelite2.obj");
+    //datum = OBJReader::ReadOBJSimple("Models\\Satelite2.obj");
+    datum = OBJReader::MeshThingy("Models\\Satelite2.obj");
     return datum.indirect.GetElementCount() == 4;
 }

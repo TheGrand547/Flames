@@ -379,9 +379,10 @@ MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh;
 MeshData bulletMesh;
 
+Shader bulletShader;
 ArrayBuffer bulletMats;
 VAO bulletVAO;
-std::vector<MeshMatrix> active, inactive;
+std::vector<glm::mat4> active, inactive;
 
 ClockBrain tickTockMan;
 
@@ -868,12 +869,10 @@ void display()
 	
 	if (bulletMesh.rawIndirect[0].instanceCount > 0)
 	{
-		debris.SetActiveShader();
+		bulletShader.SetActiveShader();
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
-		debris.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
-		debris.SetVec3("shapeColor", glm::vec3(0.85f));
-		debris.DrawElements(bulletMesh.indirect);
+		bulletShader.DrawElements(bulletMesh.indirect);
 	}
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
@@ -1553,7 +1552,7 @@ void gameTick()
 					return true;
 				}
 				Model mupen{ local.position, ForwardDir(local.velocity)};
-				inactive.push_back(mupen.GetMatrixPair());
+				inactive.push_back(mupen.GetModelMatrix());
 				return false;
 			});
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
@@ -2294,6 +2293,7 @@ void init()
 	Shader::SetBasePath("Shaders");
 	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
+	bulletShader.Compile("color_final", "mesh_final");
 	debris.Compile("mesh_final_instance", "mesh_final");
 	decalShader.CompileSimple("decal");
 	dither.CompileSimple("light_text_dither");
@@ -2324,6 +2324,7 @@ void init()
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
+	bulletShader.UniformBlockBinding("Camera", 0);
 	debris.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
 	dither.UniformBlockBinding("Camera", 0);
@@ -2871,16 +2872,22 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
-	playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
-	bulletMesh = OBJReader::ReadOBJSimple("Models\\Projectiles.obj");
+	{
+		QUICKTIMER("Model Loading");
+		//guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
+		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
+		//playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
+		//playerMesh = MeshThingy("Models\\Playership.obj");
+		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
+		//bulletMesh = OBJReader::ReadOBJSimple("Models\\Projectiles.obj");
+		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb");
+		//bulletMesh = OBJReader::MeshThingy("Models\\Projectiles.obj");
+	}
 	//MeshThingy("Models\\Debris.obj");
 
 	bulletVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
-	bulletVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
-	bulletVAO.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
-	bulletVAO.ArrayFormatOverride<glm::mat4>("modelMat", debris, 1, 1, 0, sizeof(MeshMatrix));
-	bulletVAO.ArrayFormatOverride<glm::mat4>("normalMat", debris, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+	bulletVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(ColoredVertex, color));
+	bulletVAO.ArrayFormatOverride<glm::mat4>("modelMat", bulletShader, 1, 1, 0, sizeof(glm::mat4));
 
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
