@@ -11,10 +11,10 @@ class ClockBrain
 {
 protected:
 	Transform transform;
-	glm::vec3 velocity, target;
+	glm::vec3 velocity{}, target{};
 
 public:
-
+	inline ClockBrain() { this->Init(); }
 	void Init();
 	void Update();
 	void Draw(MeshData& data, VAO& vao, Shader& shader);
@@ -25,7 +25,12 @@ public:
 	inline AABB GetAABB() const noexcept
 	{
 		// Probably should make this a constant or something idk
-		return AABB(this->transform.position - (0.5f), this->transform.position +(0.5f));
+		return AABB(this->transform.position - (1.f), this->transform.position +(1.5f));
+	}
+
+	inline MeshMatrix GetPair() const noexcept
+	{
+		return Model{ this->transform }.GetMatrixPair();
 	}
 
 };

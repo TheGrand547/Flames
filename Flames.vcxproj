@@ -200,6 +200,7 @@
     <ClCompile Include="ScreenRect.cpp" />
     <ClCompile Include="ScreenSpace.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ShipManager.cpp" />
     <ClCompile Include="SimpleShip.cpp" />
     <ClCompile Include="Sphere.cpp" />
     <ClCompile Include="StaticOctTree.cpp" />
@@ -278,6 +279,7 @@
     <ClInclude Include="ScreenRect.h" />
     <ClInclude Include="ScreenSpace.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShipManager.h" />
     <ClInclude Include="SimpleShip.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="StaticOctTree.h" />

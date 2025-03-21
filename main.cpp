@@ -74,7 +74,7 @@
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_glfw.h"
 #include "ClockBrain.h"
-
+#include "ShipManager.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -384,6 +384,8 @@ Shader bulletShader;
 ArrayBuffer bulletMats;
 VAO bulletVAO;
 std::vector<glm::mat4> active, inactive;
+//DynamicOctTree<Bullet> bullets;
+ShipManager management;
 
 ClockBrain tickTockMan;
 
@@ -662,6 +664,8 @@ void display()
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
+	uniform.SetMat4("Model", management.GetAABB().GetModel().GetModelMatrix());
+	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Debugging staticBoxes
 	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
@@ -835,6 +839,7 @@ void display()
 	glLineWidth(1.f);
 
 	tickTockMan.Draw(guyMeshData, meshVAO, ship);
+	management.Draw(guyMeshData, meshVAO, ship);
 
 	engine.SetActiveShader();
 	engineInstance.Bind();
@@ -1391,24 +1396,8 @@ void idle()
 
 	std::stringstream buffered;
 	buffered << tickTockMan.GetPos();
-	Level::SetInterest(tickTockMan.GetPos());
-
-	/*
-	//if (glfwJoystickIsGamepad(GLFW_JOYSTICK_1) && false)
-	{
-		//GLFWgamepadstate input;
-		//if (glfwGetGamepadState(GLFW_JOYSTICK_1, &input))
-		{
-			float axes[6]{};
-			for (int i = 0; i < 3; i++)
-			{
-				axes[2 * i] = Input::Gamepad::CheckAxes(i).x;
-				axes[2 * i + 1] = Input::Gamepad::CheckAxes(i).y;
-			}
-			buffered << std::format("\n{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}:{:.4f}", axes[0],
-				axes[1], axes[2],axes[3], axes[4], axes[5]);
-		}
-	}*/
+	//Level::SetInterest(tickTockMan.GetPos());
+	Level::SetInterest(management.GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
 		\n-GPU Block Time: {}ns\nAverage Tick Length:{}ns\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
@@ -1565,6 +1554,7 @@ void gameTick()
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		std::swap(active, inactive);
 		tickTockMan.Update();
+		management.Update();
 
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
@@ -1611,6 +1601,27 @@ void gameTick()
 				managedProcess.AddExhaust(local - left, -4.f * forward, 128);
 				*/
 			gasFlag = !gasFlag;
+		}
+		if (Level::NumExplosion() > 0)
+		{
+			for (auto copy : Level::GetExplosion())
+			{
+				for (int i = 0; i < 20; i++)
+				{
+					managedProcess.AddExhaust(copy + glm::ballRand(0.25f), glm::sphericalRand(5.f), 256);
+				}
+				for (int i = 0; i < 5; i++)
+				{
+					glm::vec3 velocity = glm::ballRand(5.f);
+					if (glm::length(velocity) < 2.5f)
+					{
+						velocity *= 2.5f;
+					}
+					glm::vec3 center = glm::ballRand(0.25f);
+					trashMan.AddDebris(copy + center, velocity);
+					trashMan.AddDebris(copy - center, -velocity);
+				}
+			}
 		}
 
 		if (addExplosion)
@@ -2663,6 +2674,10 @@ void init()
 	}
 
 	tickTockMan.Init();
+	for (int i = 0; i < 10; i++)
+	{
+		management.Make();
+	}
 
 	struct
 	{

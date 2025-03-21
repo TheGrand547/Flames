@@ -21,6 +21,10 @@ namespace Level
 	std::vector<glm::vec3>& GetPOI();
 	glm::vec3 GetInterest();
 	void SetInterest(glm::vec3 vec);
+
+	void SetExplosion(glm::vec3 location);
+	std::size_t NumExplosion();
+	std::vector<glm::vec3> GetExplosion();
 }
 
 

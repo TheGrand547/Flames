@@ -2,6 +2,8 @@
 #ifndef DYNAMIC_OCT_TREE_H
 #define DYNAMIC_OCT_TREE_H
 #include <list>
+#include <vector>
+#include <algorithm>
 #include "AABB.h"
 #include "Log.h"
 #include "QuickTimer.h"
@@ -222,25 +224,25 @@ public:
 			return iteratorz(this->iter + i);
 		}
 
-		constexpr iteratorz& operator++() const noexcept
+		constexpr iteratorz& operator++() noexcept
 		{
 			this->iter++;
 			return *this;
 		}
 
-		constexpr iteratorz operator++(int) const noexcept
+		constexpr iteratorz operator++(int) noexcept
 		{
 			iteratorz old = *this;
 			this->operator++();
 			return old;
 		}
 
-		constexpr iteratorz& operator--() const noexcept
+		constexpr iteratorz& operator--() noexcept
 		{
-			return -this->iter;
+			return --this->iter;
 		}
 
-		constexpr iteratorz operator--(int) const noexcept
+		constexpr iteratorz operator--(int) noexcept
 		{
 			iteratorz old = *this;
 			this->operator--();
@@ -259,7 +261,7 @@ public:
 
 		constexpr bool operator==(const iteratorz& other) const noexcept
 		{
-			return this->iter->first == other.iter->first;
+			return this->iter == other.iter;
 		}
 
 		constexpr bool operator!=(const iteratorz& other) const noexcept = default;
@@ -320,7 +322,7 @@ public:
 #ifdef DEBUG
 		if (total % 10000 == 0)
 		{
-			std::cout << "Ratio of partial to full insertions: " << small << ":" << total << std::endl;
+			Log(std::format("Ratio of partial to full insertions: {} : {}", small, total));
 		}
 #endif // DEBUG
 	}
@@ -348,15 +350,16 @@ public:
 		std::size_t size = this->elements.end() - end;
 		if (end != this->elements.end())
 		{
-			for (typename Structure::iterator iter = end; iter != this->elements.end(); iter++)
-			{
-				iter->second.pointer->objects.erase(iter->second.iterator);
-			}
 			this->elements.erase(end, this->elements.end());
+			// Unfortunately has to be done until I slightly rework things
+			// If this frequently causes reseating
+			Log(std::format("Reseating OctTree after removing {} elements", size));
+			this->ReSeat();
 		}
 		return size;
 	}
 
+	// Does *not* necessarily call the destructor for the element, or remove it from memory, it simply marks it as inactive
 	void Erase(iterator element) noexcept
 	{
 		this->InternalErase(element.iter);
@@ -422,7 +425,7 @@ public:
 	iterator Insert(const T& element, const AABB& box) noexcept
 	{
 		std::size_t oldSize = this->elements.capacity();
-		this->elements.push_back({ element, Member{} });
+		this->elements.emplace_back(element, Member{});
 		this->InternalInsert(static_cast<Index>(this->elements.size() - 1), box);
 		if (this->elements.capacity() != oldSize)
 		{

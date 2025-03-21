@@ -216,7 +216,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	}
 	
 	// Do not allow for turning unless the ship is moving
-	if (currentSpeed > EPSILON && !this->fireCountdown)
+	if (!this->fireCountdown)
 	{
 		// Don't do extra quaternion math if we don't have to
 		if (input.heading.y != 0.f)
