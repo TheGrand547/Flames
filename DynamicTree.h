@@ -183,20 +183,26 @@ public:
 	DynamicOctTree(const AABB& bounds) noexcept : root(bounds) {}
 	~DynamicOctTree() noexcept = default;
 
-	typedef unsigned int Index;
-	typedef std::list<std::pair<AABB, Index>> MemberType;
-	typedef std::pair<T, Member> MemberPair;
-	typedef std::vector<MemberPair> Structure;
-	typedef Structure::iterator iterator;
-	typedef Structure::const_iterator const_iterator;
+	using Index = unsigned int;
+	using MemberType = std::list<std::pair<AABB, Index>>;
+	using MemberPair = std::pair<T, Member>;
+	using Structure  = std::vector<MemberPair>;
+	//typedef Structure::iterator iterator;
+	//typedef Structure::const_iterator const_iterator;
 
 	// Don't know if this is worth the effort
-	/*
+	
+	template<typename Value>
 	struct iteratorz
 	{
 	protected:
 		Structure::iterator iter;
+		//friend void DynamicOctTree<T>::Erase(DynamicOctTree<T>::iterator element) noexcept;
+		friend DynamicOctTree<T>;
 	public:
+		using difference_type = std::ptrdiff_t;
+		using value_type = Value;
+		constexpr iteratorz() noexcept : iter() {}
 		constexpr iteratorz(const Structure::iterator& iter) noexcept : iter(iter) {}
 		constexpr iteratorz(const iteratorz& iter) noexcept : iter(iter.iter) {}
 		constexpr ~iteratorz() noexcept {}
@@ -205,19 +211,68 @@ public:
 			this->iter += i;
 			return *this;
 		}
+		constexpr iteratorz& operator-=(const std::size_t i) noexcept
+		{
+			this->iter -= i;
+			return *this;
+		}
 
 		constexpr iteratorz operator+(const std::size_t i) const noexcept
 		{
 			return iteratorz(this->iter + i);
 		}
 
-		constexpr iteratorz& operator-=(const std::size_t i) noexcept
+		constexpr iteratorz& operator++() const noexcept
 		{
-			this->iter -= i;
+			this->iter++;
 			return *this;
 		}
+
+		constexpr iteratorz operator++(int) const noexcept
+		{
+			iteratorz old = *this;
+			this->operator++();
+			return old;
+		}
+
+		constexpr iteratorz& operator--() const noexcept
+		{
+			return -this->iter;
+		}
+
+		constexpr iteratorz operator--(int) const noexcept
+		{
+			iteratorz old = *this;
+			this->operator--();
+			return old;
+		}
+
+		constexpr Value& operator*() const noexcept
+		{
+			return this->iter->first;
+		}
+
+		constexpr Value* operator->() const noexcept
+		{
+			return &this->iter->first;
+		}
+
+		constexpr bool operator==(const iteratorz& other) const noexcept
+		{
+			return this->iter->first == other.iter->first;
+		}
+
+		constexpr bool operator!=(const iteratorz& other) const noexcept = default;
 	};
-	*/
+	static_assert(std::bidirectional_iterator<iteratorz<T>>);
+	static_assert(std::bidirectional_iterator<iteratorz<const T>>);
+	
+	using value_type = T ;
+	using iterator = iteratorz<T>;
+	using const_iterator = iteratorz<const T>;
+	using reverse_iterator = std::reverse_iterator<iteratorz<T>>;
+	using const_reverse_iterator = std::reverse_iterator<iteratorz<const T>>;
+	using reference = T&;
 
 	// Invalidates the whole tree
 	void AdjustBounds(const AABB& box) noexcept
@@ -286,9 +341,25 @@ public:
 		}
 	}
 
-	void Erase(Structure::iterator element) noexcept
+	template<typename F>
+	std::size_t EraseIf(F func)
 	{
-		this->InternalErase(element);
+		typename Structure::iterator end = std::remove_if(this->elements.begin(), this->elements.end(), func);
+		std::size_t size = this->elements.end() - end;
+		if (end != this->elements.end())
+		{
+			for (typename Structure::iterator iter = end; iter != this->elements.end(); iter++)
+			{
+				iter->second.pointer->objects.erase(iter->second.iterator);
+			}
+			this->elements.erase(end, this->elements.end());
+		}
+		return size;
+	}
+
+	void Erase(iterator element) noexcept
+	{
+		this->InternalErase(element.iter);
 	}
 
 	std::vector<iterator> Search(const AABB& area) noexcept
@@ -345,7 +416,7 @@ public:
 	// Reserves 50% more than you explicitly request for safety from re-allocation 
 	void ReserveSize(const std::size_t size) noexcept
 	{
-		this->ReserveSizeExact((size * 3) >> 2);
+		this->ReserveSizeExact((size * 3) / 2);
 	}
 
 	iterator Insert(const T& element, const AABB& box) noexcept

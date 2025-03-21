@@ -374,6 +374,7 @@ bool shiftHeld;
 std::atomic_uchar addExplosion;
 
 DebrisManager trashMan, playerMan;
+Shader normalDebris;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh;
@@ -756,6 +757,10 @@ void display()
 	groovy.Draw(ship);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
+
+
+	//normalDebris.SetActiveShader();
+	//normalDebris.SetTextureUnit("normalMapIn", normalMap);
 	trashMan.Draw(debris);
 	playerMan.Draw(debris);
 	glLineWidth(1.f);
@@ -1356,7 +1361,9 @@ void idle()
 		{
 			glm::vec3 color = glm::abs(glm::ballRand(1.f));
 			color.z = glm::clamp(color.z, 0.42f, 0.8f);
-			lightingBuffer.BufferSubData(glm::vec4(glm::rgbColor(color), 0.f), 0);
+			color = glm::vec3(0.9f, 0.9f, 0.9f);
+			//lightingBuffer.BufferSubData(glm::vec4(glm::rgbColor(color), 0.f), 0);
+			lightingBuffer.BufferSubData(glm::vec4(color, 0.f), 0);
 		}
 	}
 	std::vector<glm::vec3> rays;
@@ -1492,7 +1499,7 @@ void gameTick()
 				example.SetTotalLength(2.f);
 				for (auto& hit : followers.Search(spherePlaceholder.GetAABB()))
 				{
-					example.SetCenter(hit->first.GetPosition());
+					example.SetCenter(hit->GetPosition());
 					if (example.Intersect(spherePlaceholder))
 					{
 						to_remove.push_back(hit);
@@ -2306,6 +2313,7 @@ void init()
 	instancing.CompileSimple("instance");
 	lighting.Compile("framebuffer", "funky_test");
 	nineSlicer.CompileSimple("ui_nine");
+	normalDebris.CompileSimple("mesh_instance");
 	pathNodeView.CompileSimple("path_node");
 	ship.CompileSimple("mesh_final");
 	skinner.CompileSimple("skin");
@@ -2332,6 +2340,7 @@ void init()
 	flatLighting.UniformBlockBinding("Camera", 0);
 	ground.UniformBlockBinding("Camera", 0);
 	instancing.UniformBlockBinding("Camera", 0);
+	normalDebris.UniformBlockBinding("Camera", 0);
 	pathNodeView.UniformBlockBinding("Camera", 0);
 	ship.UniformBlockBinding("Camera", 0);
 	skinner.UniformBlockBinding("Camera", 0);
@@ -2351,6 +2360,7 @@ void init()
 	voronoi.UniformBlockBinding("Points", 2);
 
 	debris.UniformBlockBinding("Lighting", 3);
+	normalDebris.UniformBlockBinding("Lighting", 3);
 	ship.UniformBlockBinding("Lighting", 3);
 
 	CheckError();
@@ -2399,6 +2409,7 @@ void init()
 	mapping.Load("gradient.png");
 	mapping.SetFilters();
 
+	//normalMap.Load("bear_nm.png");
 	normalMap.Load("normal.png");
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
@@ -2684,11 +2695,12 @@ void init()
 	depthMap.BindTexture();
 	depthMap.SetAnisotropy(16.f);
 
+	/*
 	HeightToNormal(depthMap, normalMap);
 	normalMap.BindTexture();
 	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 	normalMap.SetAnisotropy(16.f);
-
+	*/
 
 	tetragram.BufferData(Tetrahedron::GetPoints());
 	tetragramIndex.BufferData(Tetrahedron::GetTriangleIndex());
@@ -2874,14 +2886,9 @@ void init()
 
 	{
 		QUICKTIMER("Model Loading");
-		//guyMeshData = OBJReader::ReadOBJSimple("Models\\bloke6.obj");
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
-		//playerMesh = OBJReader::ReadOBJSimple("Models\\Playership.obj");
-		//playerMesh = MeshThingy("Models\\Playership.obj");
 		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
-		//bulletMesh = OBJReader::ReadOBJSimple("Models\\Projectiles.obj");
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb");
-		//bulletMesh = OBJReader::MeshThingy("Models\\Projectiles.obj");
 	}
 	//MeshThingy("Models\\Debris.obj");
 

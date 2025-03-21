@@ -51,18 +51,21 @@ struct OBJReader
 		constexpr bool HasPosition = std::is_same_v<T, Vertex> || std::is_same_v<T, ColoredVertex>
 			|| std::is_same_v<T, NormalVertex> || std::is_same_v<T, TextureVertex> ||
 			std::is_same_v<T, CompleteVertex> || std::is_same_v<T, LargestVertex> ||
-			std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, MeshVertex>;
+			std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, MeshVertex> || std::is_same_v<T, NormalMeshVertex>;
 
 		constexpr bool HasColor = std::is_same_v<T, ColoredVertex> || std::is_same_v<T, CompleteVertex> ||
 			std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex>;
 
 		constexpr bool HasNormal = std::is_same_v<T, MeshVertex> || std::is_same_v<T, CompleteVertex> ||
-			std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, NormalVertex>;
+			std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, NormalVertex> 
+			|| std::is_same_v<T, NormalMeshVertex>;
 
-		constexpr bool HasTangents = std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex>;
-		constexpr bool HasBiTangents = std::is_same_v<T, OverstuffedVertex>;
+		constexpr bool HasTangents = std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex> 
+			|| std::is_same_v<T, NormalMeshVertex>;
+		constexpr bool HasBiTangents = std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, NormalMeshVertex>;
 		constexpr bool HasTexture = std::is_same_v<T, MeshVertex> || std::is_same_v<T, CompleteVertex> ||
-			std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, TextureVertex>;
+			std::is_same_v<T, LargestVertex> || std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, TextureVertex> 
+			|| std::is_same_v<T, NormalMeshVertex>;
 		if (!mesh)
 		{
 			Log("Invalid mesh given.");
@@ -164,32 +167,6 @@ struct OBJReader
 		// Since this is "pure" model loading this might be moved to iterating through scene->mMeshes
 		// Sounds like it would work, but it doesn't, unless there are no translations locally. Animations are a huge mess
 		ExtractData(scene, root, vertex, index, result.rawIndirect, aiVector3D(0.));
-		/*
-		for (unsigned int j = 0; j < root->mNumChildren; j++)
-		{
-			aiNode* child = root->mChildren[j];
-			if (!child) continue;
-			std::cout << child->mName.C_Str() << "\n";
-			for (unsigned int i = 0; i < child->mNumMeshes; i++)
-			{
-				aiMesh* mesh = scene->mMeshes[child->mMeshes[i]];
-				if (!mesh)
-					continue;
-				aiVector3D r, t, s;
-				child->mTransformation.Decompose(s, r, t);
-				OBJReader::ExtractData(mesh, vertex, index, result.rawIndirect, t);
-			}
-		}
-		if (root->mNumChildren == 0)
-		{
-			for (unsigned int i = 0; i < root->mNumMeshes; i++)
-			{
-				if (scene->mMeshes[i])
-				{
-					ExtractData(scene->mMeshes[root->mMeshes[i]], vertex, index, result.rawIndirect, aiVector3D(0.f));
-				}
-			}
-		}*/
 		result.vertex.BufferData(vertex);
 		result.index.BufferData(index);
 		result.indirect.BufferData(result.rawIndirect);

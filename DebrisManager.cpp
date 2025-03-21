@@ -75,11 +75,22 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	if (instanceVAO.GetArray() == 0)
 	{
 		//instanceVAO.ArrayFormat<MeshVertex>(shader);
+		
 		instanceVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
 		instanceVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
 		instanceVAO.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
 		instanceVAO.ArrayFormatOverride<glm::mat4>("modelMat", shader, 1, 1, 0, sizeof(MeshMatrix));
 		instanceVAO.ArrayFormatOverride<glm::mat4>("normalMat", shader, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+		
+		/*
+		instanceVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
+		instanceVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal));
+		instanceVAO.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent));
+		instanceVAO.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent));
+		instanceVAO.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture));
+		instanceVAO.ArrayFormatOverride<glm::mat4>("modelMat", shader, 1, 1, 0, sizeof(MeshMatrix));
+		instanceVAO.ArrayFormatOverride<glm::mat4>("normalMat", shader, 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+		*/
 	}
 	if (this->indirectBuffer.GetElementCount() == 0)
 	{
@@ -90,7 +101,7 @@ void DebrisManager::Draw(Shader& shader) noexcept
 		return;
 	}
 	shader.SetActiveShader();
-	shader.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
+	//shader.SetVec3("shapeColor", glm::vec3(0.85, 0.25, 0.f));
 	shader.SetVec3("shapeColor", glm::vec3(0.85f));
 	instanceVAO.Bind();
 	instanceVAO.BindArrayBuffer(meshData.vertex, 0);
@@ -206,7 +217,9 @@ void DebrisManager::Add(std::vector<Debris>& local) noexcept
 bool DebrisManager::LoadResources() noexcept
 {
 	//meshData = OBJReader::ReadOBJSimple("Models\\Debris.obj");
-	meshData = OBJReader::MeshThingy("Models\\Debris.obj");
+	//meshData = OBJReader::MeshThingy("Models\\Debris.obj");
+	//meshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Debris.glb");
+	meshData = OBJReader::MeshThingy<MeshVertex>("Models\\Debris.glb");
 	debrisTypes = meshData.indirect.GetElementCount();
 	return debrisTypes > 1;
 }

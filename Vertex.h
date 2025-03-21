@@ -35,6 +35,12 @@ struct MeshVertex
 	glm::vec2 texture;
 };
 
+struct NormalMeshVertex
+{
+	glm::vec3 position, normal, tangent, biTangent;
+	glm::vec2 texture;
+};
+
 struct CompleteVertex
 {
 	glm::vec3 position, color, normal;

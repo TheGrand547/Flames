@@ -4,6 +4,7 @@
 #include "Transform.h"
 #include "OBJReader.h"
 #include "VertexArray.h"
+#include "AABB.h"
 
 // TODO: Batching and shit
 class ClockBrain
@@ -20,6 +21,11 @@ public:
 	inline glm::vec3 GetPos() const noexcept
 	{
 		return this->transform.position;
+	}
+	inline AABB GetAABB() const noexcept
+	{
+		// Probably should make this a constant or something idk
+		return AABB(this->transform.position - (0.5f), this->transform.position +(0.5f));
 	}
 
 };
