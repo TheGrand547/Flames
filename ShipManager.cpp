@@ -1,5 +1,6 @@
 #include "ShipManager.h"
 #include "Level.h"
+#include "ResourceBank.h"
 
 void ShipManager::Update() noexcept
 {
@@ -9,7 +10,7 @@ void ShipManager::Update() noexcept
 		{
 			glm::vec3 position = element.GetPos();
 			element.Update();
-			//this->inactive.push_back(element.GetPair());
+			this->inactive.push_back(element.GetPair());
 			return position != element.GetPos();
 		}
 	);
@@ -35,10 +36,19 @@ void ShipManager::Update() noexcept
 
 void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 {
+	DrawIndirect flubber = data.rawIndirect[0];
+	shader.SetActiveShader();
+	shader.SetVec3("shapeColor", glm::vec3(0.8f));
+	flubber.instanceCount = this->pain.GetElementCount();
+	data.Bind(VAOBank::Get("instance"));
+	VAOBank::Get("instance").BindArrayBuffer(this->pain, 1);
+	shader.DrawElements(flubber);
+
+	/*
 	for (auto& bloke : this->brainDrain)
 	{
 		bloke.Draw(data, vao, shader);
-	}
+	}*/
 	/*
 	this->brainDrain.for_each([&](ClockBrain& guy) 
 		{

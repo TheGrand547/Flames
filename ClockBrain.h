@@ -25,12 +25,12 @@ public:
 	inline AABB GetAABB() const noexcept
 	{
 		// Probably should make this a constant or something idk
-		return AABB(this->transform.position - (1.f), this->transform.position +(1.5f));
+		return AABB(this->transform.position - (2.5f), this->transform.position +(2.5f));
 	}
 
 	inline MeshMatrix GetPair() const noexcept
 	{
-		return Model{ this->transform }.GetMatrixPair();
+		return Model{ this->transform, glm::vec3(2.f)}.GetMatrixPair();
 	}
 
 };

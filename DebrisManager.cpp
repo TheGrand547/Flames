@@ -5,10 +5,11 @@
 #include <numbers>
 #include "VertexArray.h"
 #include "Model.h"
+#include "ResourceBank.h"
 
 static MeshData meshData;
 static unsigned char debrisTypes = 1;
-static VAO instanceVAO;
+//static VAO instanceVAO;
 
 // Constant speed till 3 seconds after the inciting incident, then a decay for 3 seconds to whatever the final ones are
 static constexpr std::uint16_t FadeOutTime     = static_cast<std::uint16_t>(Tick::PerSecond * 2.5);
@@ -72,10 +73,10 @@ void DebrisManager::Update() noexcept
 void DebrisManager::Draw(Shader& shader) noexcept
 {
 	// TODO: Unhack this
+	VAO& instanceVAO = VAOBank::Get("instance");
 	if (instanceVAO.GetArray() == 0)
 	{
 		//instanceVAO.ArrayFormat<MeshVertex>(shader);
-		
 		instanceVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
 		instanceVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal));
 		instanceVAO.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture));
@@ -216,8 +217,6 @@ void DebrisManager::Add(std::vector<Debris>& local) noexcept
 
 bool DebrisManager::LoadResources() noexcept
 {
-	//meshData = OBJReader::ReadOBJSimple("Models\\Debris.obj");
-	//meshData = OBJReader::MeshThingy("Models\\Debris.obj");
 	//meshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Debris.glb");
 	meshData = OBJReader::MeshThingy<MeshVertex>("Models\\Debris.glb");
 	debrisTypes = meshData.indirect.GetElementCount();

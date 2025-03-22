@@ -8,9 +8,9 @@
 // 2. Solar Panel +X
 // 3. Antenna
 // 4. Solar Panel -X
-MeshData datum;
+static MeshData datum;
 
-VAO VertexFormat;
+static VAO VertexFormat;
 
 // These were trial and error'd
 static constexpr float SateliteSize = 0.5f;

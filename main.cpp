@@ -839,7 +839,8 @@ void display()
 	glLineWidth(1.f);
 
 	tickTockMan.Draw(guyMeshData, meshVAO, ship);
-	management.Draw(guyMeshData, meshVAO, ship);
+	debris.SetActiveShader();
+	management.Draw(guyMeshData, meshVAO, debris);
 
 	engine.SetActiveShader();
 	engineInstance.Bind();
@@ -1391,6 +1392,7 @@ void idle()
 		bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(active.size());
 		bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
 		bulletMats.BufferData(active);
+		management.UpdateMeshes();
 	}
 
 
@@ -1436,7 +1438,7 @@ void gameTick()
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;		
 		{
-			sigmaTest.Update(sigmaTarget);
+			//sigmaTest.Update(sigmaTarget);
 			Sphere spherePlaceholder{BulletRadius};
 			Collision collision;
 			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
