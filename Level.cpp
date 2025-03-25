@@ -21,6 +21,19 @@ namespace Level
 	{
 		return Bullets;
 	}
+
+	static DynamicOctTree<Bullet> bulletTree{ glm::vec3(1000.f) };
+
+	DynamicOctTree<Bullet>& GetBulletTree()
+	{
+		return bulletTree;
+	}
+
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity)
+	{
+		Bullet value(position, velocity);
+		return *bulletTree.Insert(value, value.GetAABB());
+	}
 	
 	static std::vector<glm::vec3> PointsOfInterest;
 

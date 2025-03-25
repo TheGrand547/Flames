@@ -1534,25 +1534,16 @@ void gameTick()
 
 		// Bullet stuff;
 		inactive.clear();
-		std::erase_if(Level::GetBullets(), [&](Bullet& local)
+		//std::erase_if(Level::GetBullets(), [&](Bullet& local)
+		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
-				if (local.lifeTime > Tick::PerSecond * 5)
-				{
-					return true;
-				}
 				glm::vec3 previous = local.position;
 				local.Update();
-				Capsule bulletCapsule{ {previous, local.position}, BulletRadius };
-				Collision lib;
-				if (bulletCapsule.Intersect(silly, lib))
-				{
-					addExplosion++;
-					return true;
-				}
 				Model mupen{ local.position, ForwardDir(local.velocity)};
 				inactive.push_back(mupen.GetModelMatrix());
-				return false;
+				return previous != local.position;
 			});
+		Level::GetBulletTree().EraseIf([](Bullet& local) {return glm::any(glm::isnan(local.position)); });
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		std::swap(active, inactive);
 		tickTockMan.Update();

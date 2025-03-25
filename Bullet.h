@@ -3,6 +3,7 @@
 #define BULLET_H
 #include "glmHelp.h"
 #include "BasicPhysics.h"
+#include "AABB.h"
 
 struct Bullet
 {
@@ -12,5 +13,10 @@ struct Bullet
 	unsigned int lifeTime = 0;
 
 	void Update() noexcept;
+
+	AABB GetAABB() const noexcept
+	{
+		return AABB::MakeAABB(this->position + this->velocity * Tick::TimeDelta, this->position - Tick::TimeDelta);
+	}
 };
 #endif // BULLET_H

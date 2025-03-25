@@ -239,7 +239,8 @@ public:
 
 		constexpr iteratorz& operator--() noexcept
 		{
-			return --this->iter;
+			--this->iter;
+			return *this;
 		}
 
 		constexpr iteratorz operator--(int) noexcept
@@ -265,6 +266,12 @@ public:
 		}
 
 		constexpr bool operator!=(const iteratorz& other) const noexcept = default;
+
+		void swap(iteratorz<T> other) noexcept
+		{
+			std::iter_swap(this->iter, other.iter);
+			std::iter_swap(this->iter->second.iterator, other.iter->second.iterator);
+		}
 	};
 	static_assert(std::bidirectional_iterator<iteratorz<T>>);
 	static_assert(std::bidirectional_iterator<iteratorz<const T>>);
@@ -346,6 +353,73 @@ public:
 	template<typename F>
 	std::size_t EraseIf(F func)
 	{
+		std::size_t size = 0;
+		//using iter_type = Structure::iterator;
+		using iter_type = iterator;
+		if (this->elements.size() == 0)
+		{
+			return size;
+		}
+		if (this->elements.size() == 1)
+		{
+			if (func(this->elements.front().first))
+			{
+				// CLEAN UP
+				this->InternalErase(this->elements.begin());
+			}
+			return 0;
+		}
+		iter_type endOfInvalid = iterator(std::prev(this->elements.end()));
+		for (iter_type i = iterator(endOfInvalid); i != this->elements.begin(); i--)
+		{
+			if (func(*i))
+			{
+				// Need to replace swap it to the 'start' of the 'invalid' region;
+				size++;
+				i.swap(endOfInvalid);
+				endOfInvalid--;
+			}
+		}
+		/*
+		typename Structure::iterator first = std::find_if(this->elements.begin(), this->elements.end(), func);
+		std::size_t size = 0;
+		// Certain elements must be removed
+
+		
+		if (first != this->elements.end())
+		{
+			if (std::next(first) == this->elements.end())
+			{
+				// We're already done, just clean up the iterator
+				return 1;
+			}
+			typename Structure::iterator last = this->elements.end() - 1;
+			for (; last != first; last--)
+			{
+				if (func(*last))
+				{
+					// Shit
+					break;
+				}
+			}
+			
+			// Simple! Just move it to the end
+			if (first == last)
+			{
+				// Simply swap them and bobs your uncle
+				return 1;
+			}
+			// Iterate from first to this->elements.end();
+			for (decltype(first) iter = first + 1; iter != this->elements.end(); iter++)
+			{
+				if (!func(*iter))
+				{
+
+				}
+			}
+		}
+		*/
+		/*
 		typename Structure::iterator end = std::remove_if(this->elements.begin(), this->elements.end(), func);
 		std::size_t size = this->elements.end() - end;
 		if (end != this->elements.end())
@@ -355,7 +429,7 @@ public:
 			// If this frequently causes reseating
 			Log(std::format("Reseating OctTree after removing {} elements", size));
 			this->ReSeat();
-		}
+		}*/
 		return size;
 	}
 
@@ -427,10 +501,13 @@ public:
 		std::size_t oldSize = this->elements.capacity();
 		this->elements.emplace_back(element, Member{});
 		this->InternalInsert(static_cast<Index>(this->elements.size() - 1), box);
+		// I don't think this is necessary? 
+		/*
 		if (this->elements.capacity() != oldSize)
 		{
 			this->ReSeat();
 		}
+		*/
 		return std::prev(this->elements.end());
 	}
 

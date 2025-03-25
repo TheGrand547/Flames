@@ -6,7 +6,8 @@ void ShipManager::Update() noexcept
 {
 	this->inactive.clear();
 	this->inactive.reserve(this->brainDrain.size());
-	this->brainDrain.for_each([&] (ClockBrain& element)
+	//this->brainDrain.for_each([&] (ClockBrain& element)
+	std::for_each(this->brainDrain2.begin(), this->brainDrain2.end(), [&](ClockBrain& element)
 		{
 			glm::vec3 position = element.GetPos();
 			element.Update();
@@ -17,18 +18,18 @@ void ShipManager::Update() noexcept
 	std::swap(this->active, this->inactive);
 	// I got confused and I think made the wrong thing a dynamic oct tree
 
-	for (Bullet& bullet : Level::GetBullets())
+	
+	//for (Bullet& bullet : Level::GetBullets())
+	for (auto& bloke : this->brainDrain2)
 	{
-		for (auto& thingy : this->brainDrain.Search(AABB::MakeAABB(bullet.position - bullet.velocity * Tick::TimeDelta, 
-			bullet.position, 
-			bullet.position + bullet.velocity * Tick::TimeDelta)))
+		for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
 		{
 			//Log(glm::distance(thingy->GetPos(), bullet.position));
-			if (glm::distance(thingy->GetPos(), bullet.position) < 0.5f)
+			if (bullet->GetAABB().Overlap(bloke.GetAABB()))
 			{
 				Log("Oh shit we got one");
-				bullet.position = glm::vec3(NAN);
-				Level::SetExplosion(thingy->GetPos());
+				bullet->position = glm::vec3(NAN);
+				Level::SetExplosion(bloke.GetPos());
 			}
 		}
 	}

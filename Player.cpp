@@ -109,12 +109,12 @@ void Player::Update(Input::Keyboard input) noexcept
 		//bulletVelocity = glm::normalize(bulletVelocity + this->velocity) * PopcornSpeed;
 		if (gunA.IsFinished())
 		{
-			Level::AddBullet(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
+			Level::AddBulletTree(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity);
 			popcornAnimation.Start(gunA);
 		}
 		if (gunB.IsFinished())
 		{
-			Level::AddBullet(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
+			Level::AddBulletTree(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity);
 			popcornAnimation.Start(gunB);
 		}
 	}

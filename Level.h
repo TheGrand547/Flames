@@ -15,7 +15,9 @@ namespace Level
 	void Clear() noexcept;
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity);
 	std::vector<Bullet>& GetBullets();
+	DynamicOctTree<Bullet>& GetBulletTree();
 
 	// Points of Interest
 	std::vector<glm::vec3>& GetPOI();
