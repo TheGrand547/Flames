@@ -32,7 +32,6 @@ public:
 	{
 		return Model{ this->transform, glm::vec3(2.f)}.GetMatrixPair();
 	}
-
 };
 
 #endif // CLOCK_BRAIN_H

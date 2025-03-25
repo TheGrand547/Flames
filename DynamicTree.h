@@ -43,10 +43,11 @@ protected:
 		Container objects;
 		const AABB bounds;
 		const int depth;
+		std::size_t size;
 	public:
 		InternalOctTree(const glm::vec3& negativeBound = glm::vec3(-DYNAMIC_OCT_TREE_DIMENSION),
 			const glm::vec3& positiveBound = glm::vec3(DYNAMIC_OCT_TREE_DIMENSION), int depth = 0) noexcept
-			: bounds(negativeBound, positiveBound), depth(depth)
+			: bounds(negativeBound, positiveBound), depth(depth), size(0)
 		{
 			this->Generate();
 		};
@@ -68,6 +69,12 @@ protected:
 			{
 				pointer.reset();
 			}
+		}
+
+		// Provides a strick upper bound on the number of elements in this tree, and its descenents
+		std::size_t Size() const noexcept
+		{
+			return this->size;
 		}
 
 		void Generate() noexcept
@@ -111,6 +118,24 @@ protected:
 			return { this, static_cast<typename Container::iterator>(std::prev(this->objects.end())) };
 		}
 
+		std::size_t Recalculate() noexcept
+		{
+			this->size = this->objects.size();
+			for (MemberPointer& pointer : this->members)
+			{
+				if (pointer)
+				{
+					std::size_t result = pointer->Recalculate();
+					if (result == 0)
+					{
+						pointer.reset(nullptr);
+					}
+					this->size += result;
+				}
+			}
+			return this->size;
+		}
+
 		template<typename C>
 		void Dump(C& container) const noexcept
 		{
@@ -120,7 +145,7 @@ protected:
 			}
 			for (const MemberPointer& pointer : this->members)
 			{
-				if (pointer)
+				if (pointer && pointer->size > 0)
 				{
 					pointer->Dump(container);
 				}
@@ -151,7 +176,7 @@ protected:
 			}
 			for (std::size_t i = 0; i < 8; i++)
 			{
-				if (this->members[i])
+				if (this->members[i] && this->members[i]->size > 0)
 				{
 					if (box.Contains(this->internals[i]))
 					{
@@ -171,11 +196,22 @@ protected:
 				staticBoxes.push_back(this->bounds);
 			for (const MemberPointer& point: this->members)
 			{
-				if (point)
+				if (point && point->size > 0)
 				{
 					point->GetBoxes(staticBoxes);
 				}
 			}
+		}
+
+		void Erase(Container::iterator iter) noexcept
+		{
+			// size must never be zero while there is a possibility of a child node having children
+			// Thus the size must be greater than one before we're allowed to decrement it
+			if (this->objects.size() > 1)
+			{
+				this->size--;
+			}
+			this->objects.erase(iter);
 		}
 	};
 	
@@ -377,60 +413,19 @@ public:
 				// Need to replace swap it to the 'start' of the 'invalid' region;
 				size++;
 				i.swap(endOfInvalid);
+				endOfInvalid.iter->second.pointer->Erase(endOfInvalid.iter->second.iterator);
+				//endOfInvalid->second.pointer->objects.erase(endOfInvalid->second.iterator);
 				endOfInvalid--;
 			}
 		}
-		/*
-		typename Structure::iterator first = std::find_if(this->elements.begin(), this->elements.end(), func);
-		std::size_t size = 0;
-		// Certain elements must be removed
-
-		
-		if (first != this->elements.end())
-		{
-			if (std::next(first) == this->elements.end())
-			{
-				// We're already done, just clean up the iterator
-				return 1;
-			}
-			typename Structure::iterator last = this->elements.end() - 1;
-			for (; last != first; last--)
-			{
-				if (func(*last))
-				{
-					// Shit
-					break;
-				}
-			}
-			
-			// Simple! Just move it to the end
-			if (first == last)
-			{
-				// Simply swap them and bobs your uncle
-				return 1;
-			}
-			// Iterate from first to this->elements.end();
-			for (decltype(first) iter = first + 1; iter != this->elements.end(); iter++)
-			{
-				if (!func(*iter))
-				{
-
-				}
-			}
-		}
-		*/
-		/*
-		typename Structure::iterator end = std::remove_if(this->elements.begin(), this->elements.end(), func);
-		std::size_t size = this->elements.end() - end;
-		if (end != this->elements.end())
-		{
-			this->elements.erase(end, this->elements.end());
-			// Unfortunately has to be done until I slightly rework things
-			// If this frequently causes reseating
-			Log(std::format("Reseating OctTree after removing {} elements", size));
-			this->ReSeat();
-		}*/
+		this->elements.erase(endOfInvalid.iter + 1, this->elements.end());
+		// Make sure this gets rid of the pointer things
 		return size;
+	}
+
+	void UpdateStructure() noexcept
+	{
+		this->root.Recalculate();
 	}
 
 	// Does *not* necessarily call the destructor for the element, or remove it from memory, it simply marks it as inactive
@@ -561,11 +556,13 @@ protected:
 			Index stored = iter->second.iterator->second;
 			std::iter_swap(temp, iter);
 			iter->second.iterator->second = stored;
-			temp->second.pointer->objects.erase(temp->second.iterator);
+			//temp->second.pointer->objects.erase(temp->second.iterator);
+			iter->second.pointer->Erase(iter->second.iterator);
 		}
 		else
 		{
-			iter->second.pointer->objects.erase(iter->second.iterator);
+			//iter->second.pointer->objects.erase(iter->second.iterator);
+			iter->second.pointer->Erase(iter->second.iterator);
 		}
 		this->elements.pop_back();
 	}

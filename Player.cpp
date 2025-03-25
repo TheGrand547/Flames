@@ -301,25 +301,13 @@ void Player::Update(Input::Keyboard input) noexcept
 			signFlags.z = -1.f * (glm::dot(localAxes[2], unitVector)) * 0.25f;
 		}
 	}
-	input.heading.x = 0.75f;
+	input.heading.x = 0.75f; // ?????
 	forces += signFlags.x * localAxes[0] * input.heading.x * EngineThrust * 5.f;
 	forces += signFlags.y * localAxes[1] * input.heading.x * EngineThrust * 5.f;
 	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
-
-	// Evil Hack
-	glm::mat3 orient{};
-	glm::mat3 current = glm::mat3_cast(this->transform.rotation);
-	// Pretend it's non-zero
-	if (glm::length(this->velocity) > EPSILON && false)
-	{
-		orient[0] = glm::normalize(this->velocity);
-		orient[1] = glm::cross(current[2], orient[0]);
-		orient[2] = glm::cross(orient[0], orient[1]);
-		this->transform.rotation = glm::quat_cast(orient);
-	}
 }
 
 void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept

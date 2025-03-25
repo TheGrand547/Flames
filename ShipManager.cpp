@@ -20,19 +20,24 @@ void ShipManager::Update() noexcept
 
 	
 	//for (Bullet& bullet : Level::GetBullets())
-	for (auto& bloke : this->brainDrain2)
-	{
-		for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
+	//for (auto& bloke : this->brainDrain2)
+	std::erase_if(this->brainDrain2, 
+		[](ClockBrain& bloke)
 		{
-			//Log(glm::distance(thingy->GetPos(), bullet.position));
-			if (bullet->GetAABB().Overlap(bloke.GetAABB()))
+			for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
 			{
-				Log("Oh shit we got one");
-				bullet->position = glm::vec3(NAN);
-				Level::SetExplosion(bloke.GetPos());
+				//Log(glm::distance(thingy->GetPos(), bullet.position));
+				if (bullet->GetAABB().Overlap(bloke.GetAABB()))
+				{
+					Log("Oh shit we got one");
+					bullet->position = glm::vec3(NAN);
+					Level::SetExplosion(bloke.GetPos());
+					return true;
+				}
 			}
+			return false;
 		}
-	}
+	);
 }
 
 void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept

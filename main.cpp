@@ -422,12 +422,20 @@ void display()
 	glm::vec3 cameraRadians = glm::radians(cameraRotation);
 
 	glm::vec3 localCamera = cameraPosition;
-	glm::mat3 axes(playerModel.rotation);
-	localCamera = glm::vec3(4.f, -2.5f, 0.f);
+	const glm::mat3 axes(playerModel.rotation);
+	const glm::vec3 velocity = playfield.GetVelocity();
 
+
+	localCamera = glm::vec3(4.f, -2.5f, 0.f);
+	//localCamera.z -= Rectify(glm::dot(glm::normalize(velocity), axes[2])) * glm::length(velocity) / 20.f;
 	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 	localCamera += playerModel.translation;
+	/*
+	localCamera -= Rectify(glm::dot(glm::normalize(velocity), axes[2])) * glm::length(velocity) / 20.f * axes[2];
+	localCamera += Rectify(glm::dot(glm::normalize(velocity), axes[0])) * glm::length(velocity) / 20.f * axes[0];
+	*/
+	localCamera -= velocity / 20.f;
 	//localCamera = playerModel.translation + axes[0] * 0.5f;
 	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
@@ -1291,7 +1299,7 @@ void idle()
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
-		dynamicTreeBoxes = followers.GetBoxes();
+		dynamicTreeBoxes = Level::GetBulletTree().GetBoxes();
 	}
 	/*
 	for (auto& follow : followers2)
@@ -1436,95 +1444,7 @@ void gameTick()
 	do
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
-		const TimeDelta interval = tickStart - lastStart;		
-		{
-			//sigmaTest.Update(sigmaTarget);
-			Sphere spherePlaceholder{BulletRadius};
-			Collision collision;
-			const float BulletSpeed = static_cast<float>(Tick::TimeDelta * 5.f); //  5 units per second
-			// TODO: Same for bullets
-			std::vector<DynamicOctTree<PathFollower>::iterator> to_remove;
-			std::erase_if(bullets, [](const SimpleBullet& bullet)
-				{
-					return glm::any(glm::greaterThan(glm::abs(bullet.position), glm::vec3(20)));
-				}
-			);
-			for (std::size_t i = 0; i < bullets.size(); i++)
-			{
-				spherePlaceholder.center = bullets[i].position + bullets[i].direction * BulletSpeed;
-				for (auto& boxers : Level::Geometry.Search(spherePlaceholder.GetAABB()))
-				{
-					if (boxers->Overlap(spherePlaceholder, collision))
-					{
-						{
-							//QuickTimer _timer("New Decal Generation");
-							OBB boxed;
-
-							// TODO: investigate
-							// TODO: glm::orthonormalize
-							//boxed.ReOrient(glm::lookAt(glm::vec3(), bullets[i].direction, glm::vec3(0, 1, 0)));
-							glm::mat3 dumb(1.f);
-							dumb[0] = glm::normalize(-collision.axis);
-							if (glm::abs(glm::dot(collision.axis, World::Up)) < 0.85)
-							{
-								dumb[2] = glm::normalize(glm::cross(dumb[0], World::Up	));
-							}
-							else
-							{
-								dumb[2] = glm::normalize(glm::cross(dumb[0], glm::vec3(1, 0, 0)));
-							}
-							dumb[2] = glm::normalize(glm::cross(dumb[0], bullets[i].direction));
-							dumb[1] = glm::normalize(glm::cross(dumb[2], dumb[0]));
-							glm::mat4 dumber{ dumb };
-							dumber[3] = glm::vec4(0, 0, 0, 1);
-							boxed.ReOrient(dumber);
-							boxed.ReScale(glm::vec3(spherePlaceholder.radius * 2.f));
-							boxed.ReCenter(collision.point - collision.axis * BulletSpeed);
-							//Decal::GetDecal(boxed, Level::Geometry, decalVertex);
-						}
-						spherePlaceholder.center = collision.point + collision.normal * EPSILON;
-						bullets[i].direction = glm::reflect(bullets[i].direction, collision.normal);
-					}
-				}
-				Capsule example;
-				example.SetTotalLength(2.f);
-				for (auto& hit : followers.Search(spherePlaceholder.GetAABB()))
-				{
-					example.SetCenter(hit->GetPosition());
-					if (example.Intersect(spherePlaceholder))
-					{
-						to_remove.push_back(hit);
-						std::cout << "Hit!" << std::endl;
-						spherePlaceholder.center = glm::vec3(-100.f);
-						continue;
-					}
-				}
-				bullets[i].position = spherePlaceholder.center;
-			}
-			for (auto& a : to_remove)
-			{
-				followers.Erase(a);
-			}
-			std::vector<glm::mat4> billboards{};
-			billboards.reserve(followers.size());
-			followers.for_each([&billboards](auto& a)
-				{
-					glm::vec3 old = a.GetPosition();
-					a.Update();
-					glm::vec3 billboardPosition = a.GetPosition();
-					glm::vec3 billboardDelta = cameraPosition - billboardPosition;
-					glm::vec3 up = glm::vec3(0, 1, 0);
-					glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
-					glm::vec3 forward = glm::normalize(glm::cross(right, up));
-					glm::mat4 tempMatrix{ glm::mat3(forward, up, right) };
-					tempMatrix = glm::transpose(tempMatrix);
-					tempMatrix[3] = glm::vec4(billboardPosition, 1);
-					tempMatrix[2] *= 0.5f;
-					billboards.push_back(tempMatrix);
-					return old != a.GetPosition();
-				});
-			bigData.swap(billboards);
-		}
+		const TimeDelta interval = tickStart - lastStart;
 		player.position = cameraPosition;
 		cameraPosition = player.ApplyForces({});
 		player.velocity *= 0.99;
@@ -1543,7 +1463,15 @@ void gameTick()
 				inactive.push_back(mupen.GetModelMatrix());
 				return previous != local.position;
 			});
-		Level::GetBulletTree().EraseIf([](Bullet& local) {return glm::any(glm::isnan(local.position)); });
+		std::size_t removedBullets = Level::GetBulletTree().EraseIf([](Bullet& local) 
+			{
+				return glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond; 
+			}
+		);
+		if (removedBullets > 0)
+		{
+			Level::GetBulletTree().UpdateStructure();
+		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		std::swap(active, inactive);
 		tickTockMan.Update();
