@@ -5,6 +5,8 @@
 #include "Transform.h"
 #include "Shader.h"
 #include "Buffer.h"
+#include "Model.h"
+#include "async/BufferSync.h"
 
 class DebrisManager
 {
@@ -22,6 +24,7 @@ private:
 	std::vector<Debris> debris;
 	ArrayBuffer instanceBuffer;
 	DrawIndirectBuffer indirectBuffer;
+	BufferSync<std::vector<MeshMatrix>> buffered;
 	bool dirty = true, superDirty = true;
 public:
 	DebrisManager() noexcept = default;

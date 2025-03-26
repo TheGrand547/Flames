@@ -248,9 +248,6 @@
     <ClInclude Include="StaticOctTree.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AABB.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="CollisionTypes.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -453,6 +450,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="ResourceBank.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="AABB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="async\BufferSync.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

@@ -225,6 +225,7 @@
     </ClInclude>
     <ClInclude Include="Animation.h" />
     <ClInclude Include="ArrayObject.h" />
+    <ClInclude Include="async\BufferSync.h" />
     <ClInclude Include="BasicPhysics.h" />
     <ClInclude Include="BinarySpacePartition.h" />
     <ClInclude Include="Buffer.h" />

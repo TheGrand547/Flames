@@ -15,6 +15,9 @@ static unsigned char debrisTypes = 1;
 static constexpr std::uint16_t FadeOutTime     = static_cast<std::uint16_t>(Tick::PerSecond * 2.5);
 static constexpr std::uint16_t FadeOutDuration = 2;
 static constexpr std::uint16_t FinalSpeedTime  = FadeOutTime + static_cast<std::uint16_t>(Tick::PerSecond) * FadeOutDuration;
+static constexpr std::uint16_t DecayStart      = FinalSpeedTime + static_cast<std::uint16_t>(Tick::PerSecond) * 2;
+static constexpr std::uint16_t DecayLength     = static_cast<std::uint16_t>(Tick::PerSecond);
+static constexpr std::uint16_t DecayEnd        = DecayStart + DecayLength;
 static constexpr float DecayConstant = 0.998f;
 
 // A Full rotation every 5 seconds is the slowest I want it, for some reason
@@ -27,10 +30,12 @@ static constexpr float MaxSpeed = 3.5f;// *Tick::TimeDelta;
 
 void DebrisManager::Update() noexcept
 {
+	std::vector<MeshMatrix> paringKnife;
+	paringKnife.reserve(this->debris.size());
 	// TODO: Move to parallel once collision and more complicated stuff are done in here
 	// TODO: Maybe this is good but I sure as hell can't tell, poke around numbers y'know
 	std::size_t removedCount = std::erase_if(this->debris, 
-		[](Debris& ref)
+		[&](Debris& ref)
 		{
 			ref.ticksAlive++;
 			ref.transform.position += ref.delta.position * Tick::TimeDelta;
@@ -43,7 +48,15 @@ void DebrisManager::Update() noexcept
 					ref.delta.position = glm::normalize(ref.delta.position) * MaxSpeed;
 				}
 			}
-			if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
+			if (ref.ticksAlive > DecayStart)
+			{
+				if (ref.ticksAlive > DecayEnd)
+				{
+					return true;
+				}
+				ref.scale *= 0.95f;
+			}
+			else if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
 			{
 				// This is overcomplicated
 				float speed = glm::length(ref.delta.position);
@@ -63,9 +76,15 @@ void DebrisManager::Update() noexcept
 					}
 				}
 			}
-			return glm::any(glm::isnan(ref.transform.position));
+			bool result = glm::any(glm::isnan(ref.transform.position));
+			if (!result)
+			{
+				paringKnife.push_back(Model(ref.transform, ref.scale).GetMatrixPair());
+			}
+			return result;
 		}
 	);
+	this->buffered.Swap(paringKnife);
 	this->superDirty |= (removedCount != 0);
 	this->dirty = true;
 }
@@ -116,6 +135,7 @@ void DebrisManager::FillBuffer() noexcept
 	// Recalculate whole offset dealio
 	if (this->superDirty)
 	{
+		// TODO: stop doing this shit
 		std::sort(this->debris.begin(), this->debris.end(), 
 			[] (const Debris& left, const Debris& right)
 			{
@@ -162,13 +182,18 @@ void DebrisManager::FillBuffer() noexcept
 	if (this->dirty)
 	{
 		// Recalculate buffer
+		/*
 		std::vector<MeshMatrix> matrix;
 		matrix.reserve(this->debris.size());
 		for (const auto& local : this->debris)
 		{
 			matrix.push_back(Model(local.transform, local.scale).GetMatrixPair());
-		}
-		this->instanceBuffer.BufferData(matrix, StreamDraw);
+		}*/
+		this->buffered.ExclusiveOperation([&](std::vector<MeshMatrix>& matrix)
+			{
+				this->instanceBuffer.BufferData(matrix, StreamDraw);
+			}
+		);
 		this->dirty = false;
 	}
 }

@@ -414,7 +414,6 @@ public:
 				size++;
 				i.swap(endOfInvalid);
 				endOfInvalid.iter->second.pointer->Erase(endOfInvalid.iter->second.iterator);
-				//endOfInvalid->second.pointer->objects.erase(endOfInvalid->second.iterator);
 				endOfInvalid--;
 			}
 		}

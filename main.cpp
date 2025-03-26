@@ -75,6 +75,7 @@
 #include "imgui/imgui_impl_glfw.h"
 #include "ClockBrain.h"
 #include "ShipManager.h"
+#include "async/BufferSync.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -383,7 +384,9 @@ MeshData bulletMesh;
 Shader bulletShader;
 ArrayBuffer bulletMats;
 VAO bulletVAO;
-std::vector<glm::mat4> active, inactive;
+//std::vector<glm::mat4> active, inactive;
+BufferSync<std::vector<glm::mat4>> active;
+
 //DynamicOctTree<Bullet> bullets;
 ShipManager management;
 
@@ -431,10 +434,6 @@ void display()
 	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
 	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
 	localCamera += playerModel.translation;
-	/*
-	localCamera -= Rectify(glm::dot(glm::normalize(velocity), axes[2])) * glm::length(velocity) / 20.f * axes[2];
-	localCamera += Rectify(glm::dot(glm::normalize(velocity), axes[0])) * glm::length(velocity) / 20.f * axes[0];
-	*/
 	localCamera -= velocity / 20.f;
 	//localCamera = playerModel.translation + axes[0] * 0.5f;
 	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
@@ -1397,9 +1396,12 @@ void idle()
 
 	// Better bullet drawing
 	{
-		bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(active.size());
-		bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
-		bulletMats.BufferData(active);
+		active.ExclusiveOperation([&](std::vector<glm::mat4>& mats) {
+			bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(mats.size());
+			bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
+			bulletMats.BufferData(mats);
+			}
+		);
 		management.UpdateMeshes();
 	}
 
@@ -1453,8 +1455,7 @@ void gameTick()
 		Capsule silly{ groovy.GetBounding() };
 
 		// Bullet stuff;
-		inactive.clear();
-		//std::erase_if(Level::GetBullets(), [&](Bullet& local)
+		std::vector<glm::mat4> inactive;
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
 				glm::vec3 previous = local.position;
@@ -1473,7 +1474,9 @@ void gameTick()
 			Level::GetBulletTree().UpdateStructure();
 		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
-		std::swap(active, inactive);
+		//std::swap(active, inactive);
+		active.Swap(inactive);
+
 		tickTockMan.Update();
 		management.Update();
 
@@ -1579,6 +1582,7 @@ void gameTick()
 			Log("Big Jump of " << deltar);
 		}
 		
+		/*
 		playerMan.Add(trashMan.ExtractElements(
 			[&playerModel] (DebrisManager::Debris& bloke)
 			{
@@ -1592,7 +1596,7 @@ void gameTick()
 				bloke.ticksAlive = 0;
 				return false;
 			}
-		));
+		));*/
 		float playerSpeed = glm::length(playfield.GetVelocity());
 		const glm::vec3 playerForward = playfield.GetVelocity();
 		playerMan.Update([&](DebrisManager::Debris& bloke)

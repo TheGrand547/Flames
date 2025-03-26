@@ -196,16 +196,19 @@ struct OBJReader
 	template<typename T> static void ExtractData(const aiScene *scene, aiNode* node, std::vector<T>& vertexOut, std::vector<unsigned int>& indexOut,
 		std::vector<DrawIndirect>& indirectOut, aiVector3D translation)
 	{
+		aiVector3D rotation, localTranslation, scale;
+		node->mTransformation.Decompose(scale, rotation, localTranslation);
+		localTranslation += translation;
 		for (unsigned int i = 0; i < node->mNumMeshes; i++)
 		{
-			ExtractData(scene->mMeshes[node->mMeshes[i]], vertexOut, indexOut, indirectOut, translation);
+			ExtractData(scene->mMeshes[node->mMeshes[i]], vertexOut, indexOut, indirectOut, localTranslation );
 		}
 		for (unsigned int i = 0; i < node->mNumChildren; i++)
 		{
 			aiVector3D r, t, s;
 			aiNode *child = node->mChildren[i];
 			child->mTransformation.Decompose(s, r, t);
-			ExtractData(scene, node->mChildren[i], vertexOut, indexOut, indirectOut, translation);
+			ExtractData(scene, node->mChildren[i], vertexOut, indexOut, indirectOut, localTranslation);
 		}
 	}
 
