@@ -76,6 +76,7 @@
 #include "ClockBrain.h"
 #include "ShipManager.h"
 #include "async/BufferSync.h"
+#include "ResourceBank.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -243,7 +244,7 @@ constexpr float ANGLE_DELTA = 4;
 glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 
-float zNear = 0.1f, zFar = 100.f;
+float zNear = 0.1f, zFar = 200.f;
 
 enum GeometryThing : unsigned short
 {
@@ -387,12 +388,14 @@ VAO bulletVAO;
 //std::vector<glm::mat4> active, inactive;
 BufferSync<std::vector<glm::mat4>> active;
 
+MeshData geometry;
 //DynamicOctTree<Bullet> bullets;
 ShipManager management;
 
 ClockBrain tickTockMan;
 
 static GLFWwindow* windowPointer = nullptr;
+ArrayBuffer volumetric;
 
 void display()
 {
@@ -766,6 +769,34 @@ void display()
 	
 	playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
+
+	ship.SetActiveShader();
+	geometry.Bind(meshVAO);
+	ship.SetMat4("modelMat", glm::mat4(1.f));
+	ship.SetMat4("normalMat", glm::mat4(1.f));
+	ship.SetVec3("shapeColor", glm::vec3(0.7f));
+	DrawIndirect draw = geometry.rawIndirect[0];
+	draw.vertexCount = 3;
+	//ship.DrawElements(draw);
+	//ship.DrawElements(geometry.indirect);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	ship.DrawElements<DrawType::Triangle>(geometry.indirect);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	if (featureToggle)
+	{
+		Shader& shaderRef = ShaderBank::Get("uniformInstance");
+		VAO& vaoRef = VAOBank::Get("uniformInstance");
+		shaderRef.SetActiveShader();
+		vaoRef.Bind();
+		vaoRef.BindArrayBuffer(plainCube, 0);
+		vaoRef.BindArrayBuffer(volumetric, 1);
+		//shaderRef.SetMat4("Model2", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f)));
+		shaderRef.SetMat4("Model2", glm::mat4(1.f));
+		shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, volumetric);
+		shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, volumetric);
+		
+	}
+
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
 
@@ -1325,7 +1356,7 @@ void idle()
 		glm::vec3 left = playerLocal[2];
 		left *= 0.5f;
 		glm::vec3 local = playerModel.translation;
-		local -= forward * 0.15f;
+		local -= forward * 0.55f;
 		glm::vec3 upSet = playerLocal[1] * 0.05f;
 		if (flippyFlop)
 		{
@@ -1384,7 +1415,6 @@ void idle()
 	glm::mat3 localSpace(rayLocal.rotation);
 	rays.push_back({});
 	rays.push_back(localSpace[0]);
-
 	rays.push_back({});
 	rays.push_back(playfield.GetVelocity());
 
@@ -2265,6 +2295,7 @@ void init()
 	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
 
+	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2287,6 +2318,7 @@ void init()
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
@@ -2317,6 +2349,12 @@ void init()
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 	plainVAO.ArrayFormat<Vertex>(uniform);
+
+	{
+		VAO& ref = VAOBank::Get("uniformInstance");
+		ref.ArrayFormat<Vertex>(ShaderBank::Get("uniformInstance"));
+		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
+	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
 
@@ -2829,7 +2867,21 @@ void init()
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
 		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb");
+		//geometry = OBJReader::MeshThingy<glm::vec3>("Models\\Player.glb");
+		geometry = OBJReader::MeshThingy<glm::vec3>("Models\\LevelMaybe.glb");
+		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb");
+
 	}
+	{
+		QUICKTIMER("OBB Loading");
+		std::vector<glm::mat4> matrixif;
+		for (const auto& box : Level::GetOBBTree())
+		{
+			matrixif.push_back(box.GetModelMatrix());
+		}
+		volumetric.BufferData(matrixif);
+	}
+
 	//MeshThingy("Models\\Debris.obj");
 
 	bulletVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);

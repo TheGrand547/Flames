@@ -14,6 +14,9 @@ namespace Level
 	static std::vector<PathNodePtr> AllNodes;
 	void Clear() noexcept;
 
+	void AddOBB(OBB obb);
+	StaticOctTree<OBB>& GetOBBTree();
+
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
 	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity);
 	std::vector<Bullet>& GetBullets();

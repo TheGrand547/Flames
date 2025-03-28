@@ -119,6 +119,8 @@ public:
 	// Trust the user to not do this erroneously
 	inline void ApplyCollision(const SlidingCollision& collision) noexcept;
 	inline void ApplyCollision(const RotationCollision& collision) noexcept;
+
+	static OrientedBoundingBox MakeOBB(const std::span<glm::vec3>& points);
 };
 
 inline OrientedBoundingBox::OrientedBoundingBox(const AABB& other) noexcept : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0),
@@ -224,9 +226,10 @@ inline void OrientedBoundingBox::ReScale(const glm::vec3& scale) noexcept
 inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation) noexcept
 {
 	glm::vec4 center = this->matrix[3];
-	this->matrix = glm::mat4(1.f);
+	this->matrix = glm::mat4(rotation);
 	this->matrix[3] = center;
-	this->Rotate(rotation);
+	this->matrix[3][3] = 1.f;
+	//this->Rotate(rotation);
 }
 
 inline void OrientedBoundingBox::Rotate(const glm::mat4& rotation) noexcept
@@ -351,5 +354,5 @@ inline bool OrientedBoundingBox::IntersectionWithResponse(const Plane& plane) no
 	return result;
 }
 
-typedef OrientedBoundingBox OBB;
+using OBB = OrientedBoundingBox;
 #endif // ORIENTED_BOUNDING_BOX_H

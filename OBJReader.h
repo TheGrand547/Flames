@@ -7,6 +7,8 @@
 #include "DrawStruct.h"
 #include "VertexArray.h"
 #include "Vertex.h" 
+#include "Level.h"
+#include "OrientedBoundingBox.h"
 
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
@@ -48,7 +50,7 @@ struct OBJReader
 
 	template<typename T> static void ProcessVertexed(aiMesh* mesh, aiVector3D translation, std::vector<T>& results)
 	{
-		constexpr bool HasPosition = std::is_same_v<T, Vertex> || std::is_same_v<T, ColoredVertex>
+		constexpr bool HasPosition = std::is_same_v<T, ColoredVertex>
 			|| std::is_same_v<T, NormalVertex> || std::is_same_v<T, TextureVertex> ||
 			std::is_same_v<T, CompleteVertex> || std::is_same_v<T, LargestVertex> ||
 			std::is_same_v<T, OverstuffedVertex> || std::is_same_v<T, MeshVertex> || std::is_same_v<T, NormalMeshVertex>;
@@ -84,6 +86,17 @@ struct OBJReader
 				else
 				{
 					current.position = glm::vec3(0.f);
+				}
+			}
+			if constexpr (!HasPosition)
+			{
+				if (mesh->HasPositions())
+				{
+					current = convert(mesh->mVertices[i] + translation);
+				}
+				else
+				{
+					current = glm::vec3(0.f);
 				}
 			}
 			if constexpr (HasNormal)
@@ -149,8 +162,11 @@ struct OBJReader
 	static MeshData MeshThingy(const std::string& filename)
 	{
 		Assimp::Importer importer;
-		const aiScene* scene = importer.ReadFile(filename, aiProcess_Triangulate | aiProcess_ImproveCacheLocality
-			| aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices);
+		auto flags = aiProcess_ImproveCacheLocality
+			| aiProcess_CalcTangentSpace | aiProcess_JoinIdenticalVertices;
+		//if constexpr (!std::is_same_v<T, glm::vec3>)
+			//flags |= aiProcess_Triangulate;
+		const aiScene* scene = importer.ReadFile(filename, flags);
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
 			// Loading failed
@@ -180,6 +196,7 @@ struct OBJReader
 		DrawIndirect flames{ 0, 1, 0, static_cast<GLint>(vertexOut.size()), 0 };
 		ProcessVertexed<T>(mesh, translation, vertexOut);
 		flames.firstVertexIndex = static_cast<GLuint>(indexOut.size());
+		const std::size_t first = vertexOut.size();
 		unsigned int numIndicies = 0;
 		for (unsigned int x = 0; x < mesh->mNumFaces; x++)
 		{
@@ -188,6 +205,25 @@ struct OBJReader
 				indexOut.push_back(mesh->mFaces[x].mIndices[y]);
 			}
 			numIndicies += mesh->mFaces[x].mNumIndices;
+			if constexpr (std::is_same_v<T, glm::vec3>)
+			{
+				/*
+				static std::size_t socun = 0;
+				socun++;
+				if (socun > 1)
+				{
+					x = mesh->mNumFaces;
+					continue;
+				}
+				*/
+				std::vector<T> paint;
+				for (unsigned int y = 0; y < mesh->mFaces[x].mNumIndices; y++)
+				{
+					unsigned int index = mesh->mFaces[x].mIndices[y];
+					paint.push_back(convert(mesh->mVertices[index]));
+				}
+				Level::AddOBB(OBB::MakeOBB(paint));
+			}
 		}
 		flames.vertexCount = numIndicies;
 		indirectOut.push_back(flames);

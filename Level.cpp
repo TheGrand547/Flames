@@ -10,6 +10,17 @@ namespace Level
 		Tree.Clear();
 	}
 
+	static StaticOctTree<OBB> Boxes;
+	void AddOBB(OBB obb)
+	{
+		Boxes.Insert(obb, obb.GetAABB());
+	}
+	StaticOctTree<OBB>& GetOBBTree()
+	{
+		return Boxes;
+	}
+
+
 	static std::vector<Bullet> Bullets;
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity)

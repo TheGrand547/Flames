@@ -1,6 +1,7 @@
 #include "OrientedBoundingBox.h"
 #include <algorithm>
 #include <bit>
+#include <numbers>
 
 OrientedBoundingBox::OrientedBoundingBox(const glm::vec3& euler, const glm::vec3& halfs) noexcept : matrix(1.f), halfs(glm::abs(halfs))
 {
@@ -536,4 +537,120 @@ std::vector<Triangle> OrientedBoundingBox::GetTriangles() const noexcept
 		}
 	}
 	return triangles;
+}
+
+double trace(glm::dmat3 input)
+{
+	return input[0][0] + input[1][1] + input[2][2];
+}
+
+
+// Algorithm from pseudocode on https://en.wikipedia.org/wiki/Eigenvalue_algorithm#Symmetric_3%C3%973_matrices
+std::array<double, 3> GetEigenValues(glm::dmat3 precise)
+{
+	double p1 = std::pow(precise[0][1], 2.) + std::pow(precise[0][2], 2.) + std::pow(precise[1][2], 2.);
+	if (p1 == 0)
+	{
+		// Diagonal matrix
+		return std::to_array({ precise[0][0], precise[1][1], precise[2][2] });
+	}
+	else
+	{
+		double q = trace(precise) / 3.;
+		double p2 = std::pow(precise[0][0] - q, 2.) + std::pow(precise[1][1] - q, 2.) + std::pow(precise[2][2] - q, 2.) + 2 * p1;
+		double p = std::sqrt(p2 / 6.);
+		glm::dmat3 B = (1. / p) * (precise - glm::dmat3(1.f) * q);
+		double r = glm::determinant(B) / 2.;
+		double phi;
+		if (r <= -1.)
+		{
+			phi = std::numbers::pi_v<double> / 3.;
+		}
+		else if (r >= 1.)
+		{
+			phi = 0.;
+		}
+		else
+		{
+			phi = std::acos(r) / 3.;
+		}
+
+		double eigenA = q + 2. * p * std::cos(phi);
+		double eigenB = q + 2. * p * std::cos(phi + (2. / 3.) * std::numbers::pi_v<double>);
+		double eigenC = 3. * q - eigenA - eigenB;
+		return std::to_array({ eigenA, eigenB, eigenC });
+	}
+}
+#include <glm/gtx/orthonormalize.hpp>
+
+OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& points)
+{
+	const double weight = 1. / static_cast<double>(points.size());
+	//const double covarianceWeight = 3. / static_cast<double>(points.size());
+	glm::dvec3 center{ 0. };
+	for (const glm::vec3& point : points)
+	{
+		center += glm::dvec3(point) * weight;
+	}
+	glm::dmat3 covariance{ 0.f };
+	for (const glm::vec3& point : points)
+	{
+		const glm::dvec3 doublePoint{ glm::dvec3(point) - center};
+		for (std::size_t i = 0; i < 3; i++)
+		{
+			for (std::size_t j = 0; j < 3; j++)
+			{
+				covariance[i][j] += weight * doublePoint[i] * doublePoint[j];
+			}
+		}
+	}
+	if (points.size() > 2)
+	{
+		Triangle t(points[0], points[1], points[2]);
+		//std::cout <<"Normal:" << t.GetNormal() << "\n";
+	}
+	std::array<double, 3> eigens = GetEigenValues(covariance);
+	glm::dmat3 basis{};
+	const glm::dmat3 original(covariance);
+	//std::cout << eigens[0] << ":" << eigens[1] << ":" << eigens[2] << "\n";
+ 	for (std::size_t i = 0; i < 3; i++)
+	{
+		const glm::dmat3 whoops = (original - glm::dmat3(eigens[(i + 1) % 3])) * (original - glm::dmat3(eigens[(i + 2) % 3]));
+		for (auto x = 0; x < whoops.length(); x++)
+		{
+			if (glm::length(whoops[x]) > D_EPSILON)
+			{
+				basis[i] = glm::normalize(whoops[x]);
+				break;
+			}
+		}
+	}
+	basis = glm::orthonormalize(basis);
+	//std::cout << basis << "\n";
+	for (auto x = 0; x < basis.length(); x++)
+	{
+		if (glm::any(glm::isnan(basis[x])))
+		{
+			basis[x] = glm::dvec3(0.);
+			//break;
+		}
+	}
+	//std::cout << basis << "\n";
+	glm::dmat3 inverse = glm::transpose(basis);
+	glm::dvec3 max{ -std::numeric_limits<double>::infinity() }, min{ std::numeric_limits<double>::infinity() };
+	glm::dvec3 newAverage(center);
+	for (const glm::vec3& point : points)
+	{
+		const glm::dvec3 doublePoint{ inverse * (glm::dvec3(point) - center) };
+		max = glm::max(doublePoint, max);
+		min = glm::min(doublePoint, min);
+		newAverage += doublePoint * weight;
+	}
+	center = (basis * ((min + max) / 2.)) + center;
+	//auto bd = glm::orthonormalize(basis);
+	OBB zoomer{};
+	zoomer.ReCenter(glm::vec3(center));
+	zoomer.ReScale(glm::vec3(max - min) / 2.f);
+	zoomer.ReOrient(glm::mat3(basis));
+	return zoomer;
 }

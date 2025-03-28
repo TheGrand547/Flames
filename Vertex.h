@@ -4,6 +4,10 @@
 #include <glm/glm.hpp>
 
 typedef glm::vec3 Vertex;
+struct Vertex2
+{
+	glm::vec3 position;
+};
 
 struct ColoredVertex
 {

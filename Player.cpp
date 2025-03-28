@@ -308,6 +308,10 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
+	if (glm::length(this->velocity) < EPSILON)
+	{
+		this->velocity = glm::vec3(0.f);
+	}
 }
 
 void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept

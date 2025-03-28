@@ -11,6 +11,8 @@ protected:
 	std::mutex mutex;
 	T data;
 public:
+	using value_type = T;
+
 	template <typename F> void ExclusiveOperation(F func)
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
