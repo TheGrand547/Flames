@@ -4,6 +4,7 @@
 #include <vector>
 #include "glmHelp.h"
 #include "Buffer.h"
+#include "async/BufferSync.h"
 
 class ExhaustManager
 {
@@ -22,7 +23,7 @@ protected:
 			return *this;
 		}
 	};
-	std::vector<Exhaust> particles;
+	BufferSync<std::vector<Exhaust>> particles;
 	mutable bool dirty = false;
 
 public:

@@ -308,7 +308,7 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
-	if (glm::length(this->velocity) < EPSILON)
+	if (glm::length(this->velocity) * Tick::TimeDelta < EPSILON)
 	{
 		this->velocity = glm::vec3(0.f);
 	}

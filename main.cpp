@@ -779,24 +779,27 @@ void display()
 	draw.vertexCount = 3;
 	//ship.DrawElements(draw);
 	//ship.DrawElements(geometry.indirect);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	ship.DrawElements<DrawType::Triangle>(geometry.indirect);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+
 	if (featureToggle)
 	{
-		Shader& shaderRef = ShaderBank::Get("uniformInstance");
-		VAO& vaoRef = VAOBank::Get("uniformInstance");
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		Shader& shaderRef = uniform;
+		VAO& vaoRef = plainVAO;//VAOBank::Get("uniformInstance");
 		shaderRef.SetActiveShader();
 		vaoRef.Bind();
-		vaoRef.BindArrayBuffer(plainCube, 0);
-		vaoRef.BindArrayBuffer(volumetric, 1);
+		vaoRef.BindArrayBuffer(volumetric, 0);
+		//vaoRef.BindArrayBuffer(volumetric, 1);
 		//shaderRef.SetMat4("Model2", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f)));
-		shaderRef.SetMat4("Model2", glm::mat4(1.f));
-		shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, volumetric);
-		shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, volumetric);
+		shaderRef.SetMat4("Model", glm::mat4(1.f));
+		shaderRef.DrawArray<DrawType::Triangle>(volumetric);
+		//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, volumetric);
+		//shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, volumetric);
 		
 	}
-
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
 
@@ -1205,6 +1208,7 @@ void idle()
 
 	static TimerAverage<300> displayTimes, idleTimes, renderTimes;
 	static TimerAverage<300, float> frames;
+	static CircularBuffer<float, 200> fpsPlot;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
 	idleFrameCounter++;
@@ -1214,9 +1218,23 @@ void idle()
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
 	float averageFps = frames.Update(1.f / timeDelta);
+	
 	long long averageIdle = idleTimes.Update(idleTime.count() / 1000);
 	long long averageDisplay = displayTimes.Update(displayTime.count() / 1000);
 	long long averageRender = renderTimes.Update(renderDelay.count() / 1000);
+
+	fpsPlot.Push(timeDelta * 1000.f);
+	static bool disableFpsDisplay = true;
+
+	if (disableFpsDisplay)
+	{
+		ImGui::Begin("Metrics", &disableFpsDisplay);
+		auto frames = fpsPlot.GetLinear();
+		ImGui::PlotLines("##2", frames.data(), static_cast<int>(frames.size()), 0, "Frame Time", 0.f, 5.f, ImVec2(100, 100));
+		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
+		ImGui::End();
+	}
+
 
 	float speed = 4 * timeDelta;
 	float turnSpeed = 100 * timeDelta;
@@ -1437,7 +1455,7 @@ void idle()
 
 
 	std::stringstream buffered;
-	buffered << tickTockMan.GetPos();
+	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	//Level::SetInterest(tickTockMan.GetPos());
 	Level::SetInterest(management.GetPos());
 	
@@ -1496,7 +1514,19 @@ void gameTick()
 			});
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([](Bullet& local) 
 			{
-				return glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond; 
+				if (glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond)
+				{
+					return true;
+				}
+				for (const auto& scoob : Level::GetTriangleTree().Search(local.GetAABB()))
+				{
+					if (scoob->GetPlane().Facing(local.position) <= 0.f)
+					{
+						Log("Eliminated bullet");
+						return true;
+					}
+				}
+				return false; 
 			}
 		);
 		if (removedBullets > 0)
@@ -2868,16 +2898,32 @@ void init()
 		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb");
 		//geometry = OBJReader::MeshThingy<glm::vec3>("Models\\Player.glb");
-		geometry = OBJReader::MeshThingy<glm::vec3>("Models\\LevelMaybe.glb");
-		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb");
-
+		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb", 
+			[](const std::span<glm::vec3>& c) 
+			{
+				if (c.size() >= 3)
+				{
+					Log("Adding tri");
+					Level::AddTri(Triangle(c[0], c[1], c[2]));
+				}
+				else
+				{
+					Log("Failed to add tri");
+				}
+			}
+		);
+		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb");
 	}
 	{
 		QUICKTIMER("OBB Loading");
-		std::vector<glm::mat4> matrixif;
-		for (const auto& box : Level::GetOBBTree())
+		std::vector<glm::vec3> matrixif;
+		for (const auto& box : Level::GetTriangleTree())
 		{
-			matrixif.push_back(box.GetModelMatrix());
+			//matrixif.push_back(box.GetModelMatrix());
+			for (const auto& b : box.GetPointVector())
+			{
+				matrixif.push_back(b);
+			}
 		}
 		volumetric.BufferData(matrixif);
 	}

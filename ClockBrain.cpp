@@ -18,7 +18,7 @@ void ClockBrain::Update()
 	{
 		// Generate new target
 		this->target = glm::ballRand(100.f);
-		Log("Switched targets");
+		//Log("Switched targets");
 	}
 	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 20.f, this->target, glm::vec3(0.f));
 	BasicPhysics::Update(this->transform.position, this->velocity, forced);

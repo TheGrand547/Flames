@@ -1,6 +1,6 @@
 #version 440 core
 
-in vec3 vPos;
+layout(location = 0) in vec3 vPos;
 
 layout(location = 0) out vec4 fColor;
 

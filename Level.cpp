@@ -20,6 +20,18 @@ namespace Level
 		return Boxes;
 	}
 
+	static StaticOctTree<Triangle> Tris;
+
+	void AddTri(Triangle triangle)
+	{
+		Tris.Insert(triangle, triangle.GetAABB());
+	}
+
+	StaticOctTree<Triangle>& GetTriangleTree()
+	{
+		return Tris;
+	}
+
 
 	static std::vector<Bullet> Bullets;
 

@@ -8,12 +8,19 @@ template<typename T>
 struct BufferSync
 {
 protected:
-	std::mutex mutex;
+	// This feels like a complete hack
+	mutable std::mutex mutex;
 	T data;
 public:
 	using value_type = T;
 
 	template <typename F> void ExclusiveOperation(F func)
+	{
+		std::lock_guard<std::mutex> lock(this->mutex);
+		func(this->data);
+	}
+
+	template <typename F> void ExclusiveOperation(F func) const
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
 		func(this->data);
