@@ -4,6 +4,9 @@
 #include <array>
 #include "glmHelp.h"
 #include "Vertex.h"
+#include "Triangle.h"
+#include "Sphere.h"
+#include "OrientedBoundingBox.h"
 
 namespace Tetrahedron
 {
@@ -27,6 +30,12 @@ namespace Planes
 	// Redundant, since the plane is ordered to be drawn as a Triangle Strip, but included for completeness
 	std::array<unsigned char, 6> GetTriangleIndex() noexcept;
 	std::array<TextureVertex, 4> GetUVPoints() noexcept;
+}
+
+namespace DetectCollision
+{
+	bool Overlap(Sphere sphere, Triangle triangle) noexcept;
+	bool Overlap(OBB sphere, Triangle triangle) noexcept;
 }
 
 #endif // TETRA_H

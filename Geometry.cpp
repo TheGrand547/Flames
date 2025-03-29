@@ -71,18 +71,18 @@ namespace Cube
     // If j = (index) % 6, then j = 0/4 are unique, j = 1/2 are repeated as 3/5 respectively
     static const std::array<unsigned char, 36> Triangles =
     {
-        0, 4, 3, // -X Face
-	    4, 7, 3,
-	    0, 1, 4, // -Y Face
-	    1, 5, 4,
-	    1, 0, 2, // -Z Face
-	    0, 3, 2,
-	    6, 5, 2, // +X Face
-	    5, 1, 2,
-	    6, 2, 7, // +Y Face
-	    2, 3, 7,
-	    7, 4, 6, // +Z Face
-	    4, 5, 6,
+        0, 3, 4, // -X Face
+	    4, 3, 7,
+	    0, 4, 1, // -Y Face
+	    1, 4, 5,
+	    1, 2, 0, // -Z Face
+	    0, 2, 3,
+	    6, 2, 5, // +X Face
+	    5, 2, 1,
+	    6, 7, 2, // +Y Face
+	    2, 7, 3,
+	    7, 6, 4, // +Z Face
+	    4, 6, 5,
     };
 
     // TODO: Fix
@@ -164,5 +164,19 @@ namespace Planes
     std::array<TextureVertex, 4> GetUVPoints() noexcept
     {
         return UVPoints;
+    }
+}
+
+
+namespace DetectCollision
+{
+    bool Overlap(Sphere sphere, Triangle triangle) noexcept
+    {
+        return glm::distance(sphere.center, triangle.ClosestPoint(sphere.center)) < sphere.radius;
+    }
+
+    bool Overlap(OBB sphere, Triangle triangle) noexcept
+    {
+        return false;
     }
 }
