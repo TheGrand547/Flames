@@ -186,11 +186,12 @@ struct OBJReader
 		return result;
 	}
 
-	template<typename T> using FaceFunction = std::function<void(const std::span<T>&)>;
+	template<typename T> using MeshFunction = std::function<void(const std::span<T>&)>;
 	using SimpleFaceFunction = std::function<void(const std::span<glm::vec3>&)>;
 
 	template<typename T = MeshVertex>
-	static MeshData MeshThingy(const std::string& filename, SimpleFaceFunction faceFunc = [](const std::span<glm::vec3>& c) {})
+	static MeshData MeshThingy(const std::string& filename, SimpleFaceFunction faceFunc = {},
+		MeshFunction<T> meshFunc = {})
 	{
 		Assimp::Importer importer;
 		// TODO: Options for I don't remember
@@ -211,7 +212,7 @@ struct OBJReader
 
 		// Since this is "pure" model loading this might be moved to iterating through scene->mMeshes
 		// Sounds like it would work, but it doesn't, unless there are no translations locally. Animations are a huge mess
-		ExtractSceneNodeData(scene, root, vertex, index, result.rawIndirect, aiVector3D(0.), faceFunc);
+		ExtractSceneNodeData(scene, root, vertex, index, result.rawIndirect, aiVector3D(0.), faceFunc, meshFunc);
 		result.vertex.BufferData(vertex);
 		result.index.BufferData(index);
 		result.indirect.BufferData(result.rawIndirect);
@@ -221,7 +222,8 @@ struct OBJReader
 	// TODO: Better version once you get around to data stuff
 	template<typename T> 
 	static void ExtractMeshData(aiMesh* mesh, std::vector<T>& vertexOut, std::vector<unsigned int>& indexOut, 
-		std::vector<DrawIndirect>& indirectOut, aiVector3D translation, SimpleFaceFunction faceFunc)
+		std::vector<DrawIndirect>& indirectOut, aiVector3D translation, SimpleFaceFunction faceFunc, 
+		MeshFunction<T> meshFunc = {})
 	{
 		DrawIndirect flames{ 0, 1, 0, static_cast<GLint>(vertexOut.size()), 0 };
 		ProcessVertexed<T>(mesh, translation, vertexOut);
@@ -235,7 +237,7 @@ struct OBJReader
 				indexOut.push_back(mesh->mFaces[x].mIndices[y]);
 			}
 			numIndicies += mesh->mFaces[x].mNumIndices;
-			if (mesh->mFaces[x].mNumIndices == 3)
+			if (mesh->mFaces[x].mNumIndices == 3 && faceFunc)
 			{
 				std::array<glm::vec3, 3> paint{};
 				for (unsigned int y = 0; y < mesh->mFaces[x].mNumIndices; y++)
@@ -245,32 +247,33 @@ struct OBJReader
 				}
 				faceFunc(std::span(paint));
 			}
-			else
-			{
-				Log(std::format("{} Veritices in face", mesh->mFaces[x].mNumIndices));
-			}
 		}
 		flames.vertexCount = numIndicies;
+		if (meshFunc)
+		{
+			meshFunc(std::span(vertexOut.begin() + flames.vertexOffset, vertexOut.end()));
+		}
 		indirectOut.push_back(flames);
 	}
 
 	template<typename T> 
 	static void ExtractSceneNodeData(const aiScene *scene, aiNode* node, std::vector<T>& vertexOut, std::vector<unsigned int>& indexOut,
-		std::vector<DrawIndirect>& indirectOut, aiVector3D translation, SimpleFaceFunction faceFunc)
+		std::vector<DrawIndirect>& indirectOut, aiVector3D translation, SimpleFaceFunction faceFunc, 
+		MeshFunction<T> meshFunc = [](const std::span<T>& c) {})
 	{
 		aiVector3D rotation, localTranslation, scale;
 		node->mTransformation.Decompose(scale, rotation, localTranslation);
 		localTranslation += translation;
 		for (unsigned int i = 0; i < node->mNumMeshes; i++)
 		{
-			ExtractMeshData(scene->mMeshes[node->mMeshes[i]], vertexOut, indexOut, indirectOut, localTranslation, faceFunc);
+			ExtractMeshData(scene->mMeshes[node->mMeshes[i]], vertexOut, indexOut, indirectOut, localTranslation, faceFunc, meshFunc);
 		}
 		for (unsigned int i = 0; i < node->mNumChildren; i++)
 		{
 			aiVector3D r, t, s;
 			aiNode *child = node->mChildren[i];
 			child->mTransformation.Decompose(s, r, t);
-			ExtractSceneNodeData(scene, node->mChildren[i], vertexOut, indexOut, indirectOut, localTranslation, faceFunc);
+			ExtractSceneNodeData(scene, node->mChildren[i], vertexOut, indexOut, indirectOut, localTranslation, faceFunc, meshFunc);
 		}
 	}
 

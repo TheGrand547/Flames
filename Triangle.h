@@ -7,6 +7,7 @@
 #include "CollisionTypes.h"
 #include "glmHelp.h"
 #include "Lines.h"
+#include <array>
 
 class Plane;
 
@@ -22,6 +23,7 @@ public:
 
 	inline glm::mat3 GetPoints() const noexcept;
 	inline std::vector<glm::vec3> GetPointVector() const noexcept;
+	inline std::array<glm::vec3, 3> GetPointArray() const noexcept;
 
 	inline glm::vec3 GetNormal() const noexcept;
 
@@ -45,6 +47,8 @@ public:
 	inline bool RayCast(const Ray& ray, RayCollision& collision) const noexcept;
 
 	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
+
+	glm::vec3 ClosestPoint(glm::vec3 vec3) const noexcept;
 };
 
 inline Triangle::Triangle() noexcept : vertices(1.f)
@@ -68,6 +72,11 @@ inline glm::mat3 Triangle::GetPoints() const noexcept
 inline std::vector<glm::vec3> Triangle::GetPointVector() const noexcept
 {
 	return std::vector<glm::vec3>({ this->vertices[0], this->vertices[1], this->vertices[2] });
+}
+
+inline std::array<glm::vec3, 3> Triangle::GetPointArray() const noexcept
+{
+	return std::to_array({ this->vertices[0], this->vertices[1], this->vertices[2] });
 }
 
 inline glm::vec3 Triangle::GetNormal() const noexcept

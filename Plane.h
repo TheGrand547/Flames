@@ -35,6 +35,8 @@ public:
 
 	glm::vec3 GetPoint() const noexcept;
 
+	glm::vec3 GetClosestPoint(glm::vec3 point) const noexcept;
+
 	inline float Facing(const glm::vec3& vector) const noexcept;
 	inline glm::vec3 Facing(const glm::mat3& points) const noexcept;
 	inline float FacingNormal(const glm::vec3& vector) const noexcept;

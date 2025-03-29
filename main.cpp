@@ -383,8 +383,10 @@ MeshData playerMesh;
 MeshData bulletMesh;
 
 Shader bulletShader;
-ArrayBuffer bulletMats;
+ArrayBuffer bulletMats, bulletMats2;
 VAO bulletVAO;
+OBB bulletBox;
+
 //std::vector<glm::mat4> active, inactive;
 BufferSync<std::vector<glm::mat4>> active;
 
@@ -783,6 +785,21 @@ void display()
 	ship.DrawElements<DrawType::Triangle>(geometry.indirect);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	/*
+	{
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		Shader& shaderRef = uniform;
+		VAO& vaoRef = plainVAO;//VAOBank::Get("uniformInstance");
+		shaderRef.SetActiveShader();
+		vaoRef.Bind();
+		vaoRef.BindArrayBuffer(plainCube, 0);
+		//vaoRef.BindArrayBuffer(volumetric, 1);
+		//shaderRef.SetMat4("Model2", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f)));
+		shaderRef.SetMat4("Model", bulletBox.GetModelMatrix());
+		shaderRef.DrawElements<DrawType::Triangle>(solidCubeIndex);
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}*/
+
 	if (featureToggle)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -797,7 +814,6 @@ void display()
 		shaderRef.DrawArray<DrawType::Triangle>(volumetric);
 		//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, volumetric);
 		//shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, volumetric);
-		
 	}
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
@@ -925,6 +941,20 @@ void display()
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
 		bulletShader.DrawElements(bulletMesh.indirect);
+		{
+			
+			Shader& shaderRef = ShaderBank::Get("uniformInstance");
+			VAO& vaoRef = VAOBank::Get("uniformInstance");
+			shaderRef.SetActiveShader();
+			vaoRef.Bind();
+			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+			vaoRef.BindArrayBuffer(plainCube, 0);
+			vaoRef.BindArrayBuffer(bulletMats2, 1);
+			shaderRef.SetMat4("Model2", glm::mat4(1.f));
+			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
+			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+			
+		}
 	}
 
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
@@ -1444,12 +1474,23 @@ void idle()
 
 	// Better bullet drawing
 	{
-		active.ExclusiveOperation([&](std::vector<glm::mat4>& mats) {
-			bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(mats.size());
-			bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
-			bulletMats.BufferData(mats);
+		std::vector<glm::mat4> mat2{};
+		active.ExclusiveOperation([&](std::vector<glm::mat4>& mats) 
+			{
+				bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(mats.size());
+				bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
+				std::copy(mats.begin(), mats.end(), std::back_inserter(mat2));
+				bulletMats.BufferData(mats);
 			}
 		);
+		if (mat2.size() > 0)
+		{
+			for (auto& copy : mat2)
+			{
+				copy = copy * bulletBox.GetModelMatrix();
+			}
+		}
+		bulletMats2.BufferData(mat2);
 		management.UpdateMeshes();
 	}
 
@@ -1534,7 +1575,6 @@ void gameTick()
 			Level::GetBulletTree().UpdateStructure();
 		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
-		//std::swap(active, inactive);
 		active.Swap(inactive);
 
 		tickTockMan.Update();
@@ -2896,19 +2936,21 @@ void init()
 		QUICKTIMER("Model Loading");
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
 		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
-		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb");
-		//geometry = OBJReader::MeshThingy<glm::vec3>("Models\\Player.glb");
+		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb", 
+			{}, 
+			[&](auto& c)
+			{
+				std::vector<glm::vec3> pain{ c.size() };
+				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
+				bulletBox = OBB::MakeOBB(pain);
+			}
+		);
 		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb", 
 			[](const std::span<glm::vec3>& c) 
 			{
 				if (c.size() >= 3)
 				{
-					Log("Adding tri");
 					Level::AddTri(Triangle(c[0], c[1], c[2]));
-				}
-				else
-				{
-					Log("Failed to add tri");
 				}
 			}
 		);

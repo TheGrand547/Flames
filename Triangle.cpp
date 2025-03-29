@@ -204,3 +204,27 @@ std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
 	}
 	return triangles;
 }
+
+glm::vec3 Triangle::ClosestPoint(glm::vec3 point) const noexcept
+{
+	glm::vec3 closestPoint = Plane(this->GetNormal(), this->vertices[0]).GetClosestPoint(point);
+	if (this->ContainsPoint(closestPoint))
+	{
+		return closestPoint;
+	}
+	glm::vec3 current{};
+	float currentDistance = INFINITY;
+	for (auto i = 0; i < this->vertices.length(); i++)
+	{
+		glm::vec3 local = LineSegment(this->vertices[i], this->vertices[(i + 1) % 3]).PointClosestTo(point);
+		float distance = glm::length(local);
+		if (distance < currentDistance)
+		{
+			currentDistance = distance;
+			current = local;
+		}
+	}
+	return current;
+}
+
+
