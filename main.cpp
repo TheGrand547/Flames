@@ -1553,7 +1553,7 @@ void gameTick()
 				inactive.push_back(mupen.GetModelMatrix());
 				return previous != local.position;
 			});
-		std::size_t removedBullets = Level::GetBulletTree().EraseIf([](Bullet& local) 
+		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
 				if (glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond)
 				{
@@ -1565,9 +1565,10 @@ void gameTick()
 					//glm::mat4 funGames = Model(local.position, ForwardDir(local.velocity)).GetModelMatrix() * bulletBox.GetModelMatrix();
 					OBB simp = bulletBox;
 					simp.Rotate(Model(local.position, ForwardDir(local.velocity)).GetModelMatrix());
+					inactive.push_back(simp.GetModelMatrix());
 					if (DetectCollision::Overlap(simp, *scoob))
 					{
-						//Log("Eliminated bullet");
+						Log("Eliminated bullet");
 						return true;
 					}
 				}

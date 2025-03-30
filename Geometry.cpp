@@ -179,18 +179,33 @@ namespace DetectCollision
 	bool Overlap(OBB box, Triangle triangle) noexcept
 	{
 		const glm::mat3 triPoints = triangle.GetPoints();
-		const glm::vec3 delta = glm::normalize(triPoints[0] - box.Center());
-		const glm::vec3 edgeA = glm::normalize(triPoints[1] - triPoints[0]), edgeB = glm::normalize(triPoints[2] - triPoints[0]),
-			edgeC = glm::normalize(edgeB - edgeA);
+		const glm::vec3 delta = (triPoints[0] - box.Center());
+		const glm::vec3 edgeA = (triPoints[1] - triPoints[0]), edgeB = (triPoints[2] - triPoints[0]),
+			edgeC = (triPoints[2] - triPoints[1]);
 		const glm::mat3 triEdges(edgeA, edgeB, edgeC);
-		const glm::vec3 normal = triangle.GetNormal();
+		const glm::mat3 triDeltas(delta, triPoints[1] - box.Center(), triPoints[2] - box.Center());
+		const glm::vec3 normal = glm::normalize(glm::cross(edgeA, edgeB));
 		const glm::mat3 boxAxes(box.Forward(), box.Up(), box.Cross());
 
 
-		const glm::vec3 faceDots = glm::transpose(boxAxes) * normal;
+		const glm::vec3 faceDots = normal * boxAxes;
+		glm::vec3 flubber;
+		for (glm::mat3::length_type i = 0; i < 3; i++) 
+		{
+			flubber[i] = glm::dot(boxAxes[i], normal);
+			assert(flubber[i] == faceDots[i]);
+		}
 
 		// dotProducts[i][j] is equivalent to dot(boxAxes[i], triEdges[j])
-		const glm::mat3 dotProducts = glm::transpose(boxAxes) * triEdges;
+		const glm::mat3 dotProducts = glm::transpose(triEdges) * boxAxes;
+		for (glm::length_t i = 0; i < 3; i++)
+		{
+			for (glm::length_t j = 0; j < 3; j++)
+			{
+				assert(dotProducts[i][j] == glm::dot(boxAxes[i], triEdges[j]));
+			}
+		}
+
 		const glm::vec3 boxSides = box.GetScale();
 
 		// Axes to be tested:
@@ -202,11 +217,7 @@ namespace DetectCollision
 			if (i == 0) // Triangle normal
 			{
 				triProjections = glm::vec3(glm::dot(delta, normal));
-				//boxProjection = box.ProjectionLength(normal);
-				for (glm::mat3::length_type j = 0; j < 3; j++)
-				{
-					boxProjection += boxSides[j] * glm::abs(glm::dot(boxAxes[j], normal));
-				}
+				boxProjection = glm::dot(glm::abs(normal * boxAxes), boxSides);
 			}
 			else if (i < 4) // Box face normal
 			{
@@ -215,6 +226,17 @@ namespace DetectCollision
 				triProjections = glm::vec3(glm::dot(delta, boxAxes[face]));
 				triProjections.y += dotProducts[face][0];
 				triProjections.z += dotProducts[face][1];
+#ifdef _DEBUG
+				glm::vec3 triProjections2{ 0.f };
+				triProjections2.x = glm::dot(boxAxes[face], triDeltas[0]);
+				triProjections2.y = glm::dot(boxAxes[face], triDeltas[1]);
+				triProjections2.z = glm::dot(boxAxes[face], triDeltas[2]);
+				if (glm::distance(triProjections, triProjections2) > EPSILON)
+				{
+					Log("Optimization failed");
+					triProjections = triProjections2;
+				}
+#endif // _DEBUG
 				boxProjection = boxSides[face];
 			}
 			else // Box face normal cross edge
@@ -224,14 +246,33 @@ namespace DetectCollision
 				glm::mat3::length_type edge = j % 3;
 				const glm::vec3 axis = glm::normalize(glm::cross(boxAxes[face], triEdges[edge]));
 				triProjections = glm::vec3(glm::dot(delta, axis));
+				// I cannot for the life of me figure out why this doesn't work, at least the backup works
 				if (edge != 0)
 				{
-					triProjections.y -= faceDots[face];
+					//triProjections.y -= faceDots[face] - glm::length(triDeltas[edge]);
 				}
 				if (edge != 1)
 				{
-					triProjections.z += ((edge == 0) ? 1.f : -1.f) * faceDots[face];
+					//triProjections.z += ((edge == 0) ? 1.f : -1.f) * (faceDots[face] - glm::length(triDeltas[edge]));
 				}
+				triProjections = axis * triDeltas;
+				glm::vec3 triProjections2{};
+				triProjections2.x = glm::dot(axis, triDeltas[0]);
+				triProjections2.y = glm::dot(axis, triDeltas[1]);
+				triProjections2.z = glm::dot(axis, triDeltas[2]);
+				if (glm::distance(triProjections, triProjections2) > EPSILON)
+				{
+					static std::uint16_t counter = 0;
+					counter++;
+					if (counter % 16 == 0)
+					{
+						Log("Optimization failed again");
+						std::cout << triProjections.x - triProjections2.y << ":" << triProjections.x - triProjections2.z << '\n';
+						std::cout << glm::length(triDeltas[edge]) << "," << glm::length(triDeltas[face]) << '\n';
+					}
+					triProjections = triProjections2;
+				}
+
 				glm::imat3x2 faceLUT{glm::ivec2(1, 2), glm::ivec2(0, 2), glm::ivec2(0, 1)};
 
 				glm::imat3x2 dotLUT{glm::ivec2(2, 1), glm::ivec2(2, 0), glm::ivec2(1, 0)};
@@ -261,8 +302,13 @@ namespace DetectCollision
 			//std::cout << std::format("[{},{}] : [-{}, +{}]", low, high, boxProjection, boxProjection) << '\n';
 			if (low > boxProjection || high < -boxProjection)
 			{
-				std::cout << std::format("Broke off at i = {}\n", i);
-				std::cout << std::format("[{},{}] : [-{}, +{}]", low, high, boxProjection, boxProjection) << '\n';
+				//std::cout << std::format("Broke off at i = {}\n", i);
+				//std::cout << std::format("[{},{}] : [-{}, +{}]", low, high, boxProjection, boxProjection) << '\n';
+				if (i == 3)
+				{
+					//std::cout << boxAxes << ":\n";
+
+				}
 				return false;
 			}
 		}
