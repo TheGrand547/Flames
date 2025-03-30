@@ -5,6 +5,7 @@
 #include <glm/gtc/epsilon.hpp>
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/matrix_operation.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <glm/glm.hpp>
 #include <limits>
 #include "AABB.h"
@@ -28,6 +29,7 @@ public:
 	OrientedBoundingBox(const Model& model) noexcept;
 	inline OrientedBoundingBox(const AABB& other) noexcept;
 	~OrientedBoundingBox() noexcept = default;
+	inline OrientedBoundingBox(glm::mat4 model) noexcept;
 
 	OrientedBoundingBox& operator=(const OrientedBoundingBox& other) noexcept = default;
 
@@ -127,6 +129,16 @@ inline OrientedBoundingBox::OrientedBoundingBox(const AABB& other) noexcept : ma
 																				glm::vec4(other.GetCenter(), 1)), halfs(glm::abs(other.Deviation()))
 {
 
+}
+
+inline OrientedBoundingBox::OrientedBoundingBox(glm::mat4 model) noexcept : matrix(1.f), halfs(1.f)
+{
+	glm::quat orientation = QuatIdentity();
+	glm::vec3 center{}, skew{};
+	glm::vec4 perspective{};
+	glm::decompose(model, this->halfs, orientation, center, skew, perspective);
+	this->matrix = glm::mat4_cast(orientation);
+	this->matrix[3] = glm::vec4(center, 1.f);
 }
 
 inline AABB OrientedBoundingBox::GetAABB() const noexcept
@@ -234,7 +246,7 @@ inline void OrientedBoundingBox::ReOrient(const glm::mat4& rotation) noexcept
 
 inline void OrientedBoundingBox::Rotate(const glm::mat4& rotation) noexcept
 {
-	this->matrix *= rotation;
+	this->matrix = rotation * this->matrix;
 }
 
 inline void OrientedBoundingBox::Rotate(const glm::vec3& euler) noexcept

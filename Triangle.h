@@ -81,7 +81,7 @@ inline std::array<glm::vec3, 3> Triangle::GetPointArray() const noexcept
 
 inline glm::vec3 Triangle::GetNormal() const noexcept
 {
-	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[1]));
+	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[0]));
 }
 
 inline AABB Triangle::GetAABB() const noexcept

@@ -940,7 +940,7 @@ void display()
 		bulletShader.SetActiveShader();
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
-		bulletShader.DrawElements(bulletMesh.indirect);
+		//bulletShader.DrawElements(bulletMesh.indirect);
 		{
 			
 			Shader& shaderRef = ShaderBank::Get("uniformInstance");
@@ -1561,9 +1561,13 @@ void gameTick()
 				}
 				for (const auto& scoob : Level::GetTriangleTree().Search(local.GetAABB()))
 				{
-					if (scoob->GetPlane().Facing(local.position) <= 0.f)
+					//if (scoob->GetPlane().Facing(local.position) <= 0.f)
+					//glm::mat4 funGames = Model(local.position, ForwardDir(local.velocity)).GetModelMatrix() * bulletBox.GetModelMatrix();
+					OBB simp = bulletBox;
+					simp.Rotate(Model(local.position, ForwardDir(local.velocity)).GetModelMatrix());
+					if (DetectCollision::Overlap(simp, *scoob))
 					{
-						Log("Eliminated bullet");
+						//Log("Eliminated bullet");
 						return true;
 					}
 				}

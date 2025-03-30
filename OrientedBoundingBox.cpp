@@ -596,9 +596,9 @@ OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& poi
 	for (const glm::vec3& point : points)
 	{
 		const glm::dvec3 doublePoint{ glm::dvec3(point) - center};
-		for (std::size_t i = 0; i < 3; i++)
+		for (glm::mat3::length_type i = 0; i < 3; i++)
 		{
-			for (std::size_t j = 0; j < 3; j++)
+			for (glm::mat3::length_type j = 0; j < 3; j++)
 			{
 				covariance[i][j] += weight * doublePoint[i] * doublePoint[j];
 			}
