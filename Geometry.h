@@ -35,7 +35,15 @@ namespace Planes
 namespace DetectCollision
 {
 	bool Overlap(Sphere sphere, Triangle triangle) noexcept;
-	bool Overlap(OBB sphere, Triangle triangle) noexcept;
+	bool Overlap(OBB box, Triangle triangle) noexcept;
+	inline bool Overlap(Triangle triangle, OBB box) noexcept
+	{
+		return Overlap(box, triangle);
+	}
+	inline bool Overlap(OBB boxA, OBB boxB) noexcept
+	{
+		return boxA.Overlap(boxB);
+	}
 }
 
 #endif // TETRA_H

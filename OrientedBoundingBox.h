@@ -42,7 +42,7 @@ public:
 	inline glm::vec3 Up() const noexcept;
 	inline glm::vec3 Cross() const noexcept;
 	inline glm::vec3 operator[](const std::size_t& t) const noexcept;
-	inline glm::vec3 Center() const noexcept;
+	inline glm::vec3 GetCenter() const noexcept;
 
 	inline glm::vec3 GetScale() const noexcept;
 
@@ -183,7 +183,7 @@ inline glm::vec3 OrientedBoundingBox::operator[](const std::size_t& t) const noe
 	return this->matrix[static_cast<glm::length_t>(t)];
 }
 
-inline glm::vec3 OrientedBoundingBox::Center() const noexcept
+inline glm::vec3 OrientedBoundingBox::GetCenter() const noexcept
 {
 	return this->matrix[3];
 }

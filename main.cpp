@@ -309,7 +309,8 @@ DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
 std::vector<SimpleBullet> bullets;
 ArrayBuffer bulletMatrix;
 
-std::vector<TextureVertex> decalVertex;
+// TODO: Semaphore version of buffersync
+BufferSync<std::vector<TextureVertex>> decalVertex;
 
 std::array<ScreenRect, 9> ui_tester;
 ArrayBuffer ui_tester_buffer;
@@ -1063,14 +1064,14 @@ void display()
 	flatLighting.SetMat4("modelMat", current.GetModelMatrix());
 	flatLighting.SetMat4("normalMat", current.GetNormalMatrix());
 	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
+	//flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(movingCapsule);
 	flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
 	flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
-	flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
+	//flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
 	flatLighting.DrawElements(Triangle, sphereIndicies);
@@ -1509,7 +1510,13 @@ void idle()
 	fonter.GetTextTris(textBuffer, 0, 0, formatted);
 
 	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
-	decals.BufferData(decalVertex, StaticDraw);
+
+	decalVertex.ExclusiveOperation([&](auto& ref)
+		{
+			decals.BufferData(ref, StaticDraw);
+		}
+	);
+
 	if (keyState['B'])
 	{
 		managedProcess.AddExhaust(cameraPosition + unit, unit * 2.f, 256);
@@ -1568,7 +1575,13 @@ void gameTick()
 					inactive.push_back(simp.GetModelMatrix());
 					if (DetectCollision::Overlap(simp, *scoob))
 					{
-						Log("Eliminated bullet");
+						//Log("Eliminated bullet");
+						decalVertex.ExclusiveOperation([&](auto& ref)
+							{
+								QuickTimer _time("Decal Generation");
+								Decal::GetDecal(simp, Level::GetTriangleTree(), ref);
+							}
+						);
 						return true;
 					}
 				}
@@ -2491,6 +2504,7 @@ void init()
 	std::array<unsigned int, 36> fillibuster{};
 	dummyEngine.BufferData(fillibuster);
 
+	decals.Generate();
 	stickBuffer.BufferData(stick);
 	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
 
@@ -2584,7 +2598,7 @@ void init()
 		glm::vec3 forawrd = project.Up();
 		if (glm::dot(forawrd, World::Up) > 0.5f)
 		{
-			Level::AllNodes.push_back(PathNode::MakeNode(project.Center() + glm::vec3(0, 1, 0)));
+			Level::AllNodes.push_back(PathNode::MakeNode(project.GetCenter() + glm::vec3(0, 1, 0)));
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
 		//project.Scale(glm::vec3(1, 0, 1));
@@ -2601,7 +2615,7 @@ void init()
 			{
 				AABB boxer{};
 				boxer.SetScale(0.75f);
-				boxer.Center(A->GetPosition());
+				boxer.GetCenter(A->GetPosition());
 				auto temps = Level::Geometry.Search(boxer);
 				if (temps.size() == 0)
 					return false;

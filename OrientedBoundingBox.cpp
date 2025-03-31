@@ -17,7 +17,7 @@ OrientedBoundingBox::OrientedBoundingBox(const Model& model) noexcept : matrix(g
 
 bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision) const noexcept
 {
-	float delta = plane.Facing(this->Center());
+	float delta = plane.Facing(this->GetCenter());
 	collision.normal = plane.GetNormal();
 
 	// Ensure that the box can always go from out to inbounds
@@ -30,13 +30,13 @@ bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision)
 		projected += glm::abs(glm::dot(glm::vec3(this->matrix[i] * this->halfs[i]), plane.GetNormal()));
 
 	collision.distance = projected - glm::abs(delta);
-	collision.point = this->Center() + glm::sign(delta) * glm::abs(collision.distance) * collision.normal; // This might be wrong?
+	collision.point = this->GetCenter() + glm::sign(delta) * glm::abs(collision.distance) * collision.normal; // This might be wrong?
 	return glm::abs(projected) > glm::abs(delta);
 }
 
 bool OrientedBoundingBox::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
 {
-	glm::vec3 delta = glm::vec3(this->Center()) - point;
+	glm::vec3 delta = glm::vec3(this->GetCenter()) - point;
 	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
 	for (auto i = 0; i < 3; i++)
 	{
@@ -88,7 +88,7 @@ bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir
 	nearHit.distance = -std::numeric_limits<float>::infinity();
 	farHit.distance = std::numeric_limits<float>::infinity();
 
-	glm::vec3 delta = this->Center() - point;
+	glm::vec3 delta = this->GetCenter() - point;
 	for (auto i = 0; i < 3; i++)
 	{
 		glm::vec3 axis = this->matrix[i];
@@ -147,7 +147,7 @@ bool OrientedBoundingBox::Intersect(const glm::vec3& point, const glm::vec3& dir
 
 bool OrientedBoundingBox::Overlap(const Capsule& other, Collision& collide) const noexcept
 {
-	return this->Overlap(Sphere(other.GetRadius(), other.ClosestPoint(this->Center())), collide);
+	return this->Overlap(Sphere(other.GetRadius(), other.ClosestPoint(this->GetCenter())), collide);
 }
 
 bool OrientedBoundingBox::Overlap(const Sphere& other, Collision& collision) const noexcept
@@ -195,7 +195,7 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 	}
 
 	// If the least separating axis is one of the 6 face normals it's a corner-edge collision, otherwise it's edge-edge
-	const glm::vec3 delta = this->Center() - other.Center();
+	const glm::vec3 delta = this->GetCenter() - other.GetCenter();
 	result.distance = INFINITY;
 	glm::length_t index = 0;
 	for (glm::length_t i = 0; i < separatingAxes.size(); i++)
@@ -287,7 +287,7 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 
 #pragma warning( suppress : 28020 )
 	result.normal = separatingAxes[index] * glm::sign(glm::dot(delta, separatingAxes[index]));
-	result.point = this->Center() + result.distance * result.normal;
+	result.point = this->GetCenter() + result.distance * result.normal;
 	return true;
 }
 
@@ -377,7 +377,7 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 			rotate.point = myPlaceHolder.total;
 		}
 
-		glm::vec3 oldCenter = this->Center();
+		glm::vec3 oldCenter = this->GetCenter();
 		if (!skipRotate && std::_Is_finite(myPlaceHolder.overlap) && myPlaceHolder.overlap > EPSILON)
 		{
 			glm::vec3 mostAlignedVector(0.f), mostAlignedVector2(0.f);
@@ -399,7 +399,7 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 			}
 
 			glm::vec3 lastAxis = glm::normalize(glm::cross(rotate.axis, slide.normal));
-			float direction = -(glm::dot(lastAxis, rotate.point) - glm::dot(lastAxis, this->Center()));
+			float direction = -(glm::dot(lastAxis, rotate.point) - glm::dot(lastAxis, this->GetCenter()));
 			//direction = -(glm::dot(lastAxis, rotationPoint) - glm::dot(lastAxis, oldCenter));
 			if (glm::abs(direction) > EPSILON)
 			{
@@ -439,7 +439,7 @@ glm::vec3 OrientedBoundingBox::WorldToLocal(const glm::vec3& in) const noexcept
 {
 	// Inverse of an ortho-normal matrix is its transpose
 	// (3x3)T * 3x1 == 1x3 * 3x3 in this situation, due to how glm does math
-	return (in - this->Center()) * glm::mat3(this->matrix);
+	return (in - this->GetCenter()) * glm::mat3(this->matrix);
 }
 
 static const std::array<const glm::vec3, 8> multiples = {
@@ -477,7 +477,7 @@ std::array<LineSegment, 12> OrientedBoundingBox::GetLineSegments() const noexcep
 {
 	std::array<LineSegment, 12> segments{};
 	std::array<glm::vec3, 8> points{};
-	glm::vec3 center = this->Center();
+	glm::vec3 center = this->GetCenter();
 	points.fill(center);
 	for (glm::length_t i = 0; i < 8; i++)
 	{
@@ -499,7 +499,7 @@ std::vector<Triangle> OrientedBoundingBox::GetTriangles() const noexcept
 	if (!glm::all(glm::equal(this->halfs, glm::vec3(0))))
 	{
 		std::array<glm::vec3, 8> points{};
-		glm::vec3 center = this->Center();
+		glm::vec3 center = this->GetCenter();
 		points.fill(center);
 		for (glm::length_t i = 0; i < 8; i++)
 		{
@@ -613,7 +613,7 @@ OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& poi
 	glm::dmat3 basis{};
 	const glm::dmat3 original(covariance);
 	//std::cout << eigens[0] << ":" << eigens[1] << ":" << eigens[2] << "\n";
- 	for (std::size_t i = 0; i < 3; i++)
+ 	for (glm::dmat3::length_type i = 0; i < 3; i++)
 	{
 		const glm::dmat3 whoops = (original - glm::dmat3(eigens[(i + 1) % 3])) * (original - glm::dmat3(eigens[(i + 2) % 3]));
 		for (auto x = 0; x < whoops.length(); x++)

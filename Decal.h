@@ -6,6 +6,7 @@
 #include "OrientedBoundingBox.h"
 #include "StaticOctTree.h"
 #include "Triangle.h"
+#include "Geometry.h"
 
 class Decal
 {
@@ -29,14 +30,14 @@ template<> inline ArrayBuffer Decal::GetDecal<OBB>(const OBB& box, const StaticO
 template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out)
 {
 	glm::vec3 halfs = box.GetScale();
-	glm::vec3 center = box.Center();
+	glm::vec3 center = box.GetCenter();
 	// Maybe the other size too
 	glm::mat3 inverseView = glm::mat3(box.GetNormalMatrix());
 	glm::mat3 view = glm::transpose(inverseView);
 
 	for (const auto& maybeHit : tree.Search(box.GetAABB()))
 	{
-		if (maybeHit->Overlap(box))
+		if (DetectCollision::Overlap(*maybeHit, box))
 		{
 			for (const Triangle& tri : maybeHit->GetTriangles())
 			{

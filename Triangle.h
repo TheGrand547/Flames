@@ -48,6 +48,8 @@ public:
 
 	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
 
+	std::vector<Triangle> GetTriangles() const noexcept;
+
 	glm::vec3 ClosestPoint(glm::vec3 vec3) const noexcept;
 };
 

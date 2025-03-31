@@ -23,7 +23,7 @@ void smartBoxAlignCorner(OBB& other, glm::length_t minDotI, glm::length_t maxDot
 {
 	// Only the scale of the other one is needed to determine if this midpoint is inside
 	glm::vec3 dumbScale = other.GetScale();
-	glm::vec3 delta = other.Center() - smartBox.Center();
+	glm::vec3 delta = other.GetCenter() - smartBox.GetCenter();
 
 	// Maintain right handedness
 	int indexA[3] = { 0, 0, 1 };
@@ -209,7 +209,7 @@ bool smartBoxCollide()
 	{
 		// This is probably a bad idea
 
-		glm::vec3 oldCenter = smartBox.Center();
+		glm::vec3 oldCenter = smartBox.GetCenter();
 		smartBox.Translate(glm::vec3(0, 1, 0) * 2.f * EPSILON);
 
 		potentialCollisions = staticBoxes.Search(smartBox.GetAABB());

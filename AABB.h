@@ -44,7 +44,7 @@ public:
 	inline glm::vec3 Deviation() const noexcept;
 
 	// Recenter the AABB
-	inline void Center(const glm::vec3& point) noexcept;
+	inline void GetCenter(const glm::vec3& point) noexcept;
 	inline void SetScale(const glm::vec3& factor) noexcept;
 	inline void SetScale(const float& value) noexcept;
 	inline void ScaleInPlace(const glm::vec3& factor) noexcept;
@@ -146,7 +146,7 @@ inline AABB& AABB::operator-=(const glm::vec3& point) noexcept
 	return *this;
 }
 
-inline void AABB::Center(const glm::vec3& point) noexcept
+inline void AABB::GetCenter(const glm::vec3& point) noexcept
 {
 	this->center = point;
 }

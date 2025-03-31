@@ -51,7 +51,8 @@ std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, con
             break;
         }
         // Ensure the newly clipped triangles are set as the next set of triangles to clip
-        currentSet = empty;
+        //currentSet = empty;
+        std::swap(currentSet, empty);
     }
     return currentSet;
 }

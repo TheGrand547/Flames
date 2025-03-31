@@ -205,6 +205,11 @@ std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
 	return triangles;
 }
 
+std::vector<Triangle> Triangle::GetTriangles() const noexcept
+{
+	return { *this };
+}
+
 glm::vec3 Triangle::ClosestPoint(glm::vec3 point) const noexcept
 {
 	glm::vec3 closestPoint = Plane(this->GetNormal(), this->vertices[0]).GetClosestPoint(point);
