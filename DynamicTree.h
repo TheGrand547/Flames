@@ -406,7 +406,8 @@ public:
 			return 0;
 		}
 		iter_type endOfInvalid = iterator(std::prev(this->elements.end()));
-		for (iter_type i = iterator(endOfInvalid); i != this->elements.begin(); i--)
+		bool clearAll = false;
+		for (iter_type i = iterator(endOfInvalid); ; i--)
 		{
 			if (func(*i))
 			{
@@ -414,10 +415,28 @@ public:
 				size++;
 				i.swap(endOfInvalid);
 				endOfInvalid.iter->second.pointer->Erase(endOfInvalid.iter->second.iterator);
-				endOfInvalid--;
+				if (endOfInvalid != this->elements.begin())
+				{
+					endOfInvalid--;
+				}
+				else
+				{
+					clearAll = true;
+				}
+			}
+			if (i == this->elements.begin())
+			{
+				break;
 			}
 		}
-		this->elements.erase(endOfInvalid.iter + 1, this->elements.end());
+		if (clearAll)
+		{
+			this->elements.clear();
+		}
+		else
+		{
+			this->elements.erase(endOfInvalid.iter + 1, this->elements.end());
+		}
 		// Make sure this gets rid of the pointer things
 		return size;
 	}

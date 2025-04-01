@@ -22,5 +22,5 @@ vec4 colors[] = {
 void main()
 {
 	gl_Position = Projection * View * Model2 * Model * vec4(vPos, 1.0);
-	fColor = colors[int(gl_VertexID / 6) % 3];
+	fColor = colors[int(gl_InstanceID) % 3];
 }

@@ -50,10 +50,12 @@ template<class T> inline std::span<TextureVertex> Decal::GetDecal(const OBB& box
 				glm::vec3 normal = tri.GetNormal();
 				if (glm::dot(normal, box.Forward()) > 0.5f)
 					continue;
+				/*
 				for (glm::length_t i = 0; i < 3; i++)
 				{
 					local[i] = view * (local[i] - center);
-				}
+				}*/
+				local = view * (local - glm::mat3(center, center, center));
 				for (const Triangle& inner : Decal::ClipTriangleToUniform(Triangle(local), halfs))
 				{
 					glm::mat3 innerLocal = inner.GetPoints();
@@ -68,7 +70,7 @@ template<class T> inline std::span<TextureVertex> Decal::GetDecal(const OBB& box
 			}
 		}
 	}
-	return std::span(out.begin() + out.size(), out.end());
+	return std::span(out.begin() + first, out.end());
 }
 
 

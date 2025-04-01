@@ -389,7 +389,8 @@ VAO bulletVAO;
 OBB bulletBox;
 
 //std::vector<glm::mat4> active, inactive;
-BufferSync<std::vector<glm::mat4>> active;
+BufferSync<std::vector<glm::mat4>> active, active2;
+ArrayBuffer visual2;
 
 MeshData geometry;
 //DynamicOctTree<Bullet> bullets;
@@ -941,7 +942,7 @@ void display()
 		bulletShader.SetActiveShader();
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
-		//bulletShader.DrawElements(bulletMesh.indirect);
+		bulletShader.DrawElements(bulletMesh.indirect);
 		{
 			
 			Shader& shaderRef = ShaderBank::Get("uniformInstance");
@@ -952,7 +953,10 @@ void display()
 			vaoRef.BindArrayBuffer(plainCube, 0);
 			vaoRef.BindArrayBuffer(bulletMats2, 1);
 			shaderRef.SetMat4("Model2", glm::mat4(1.f));
-			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
+			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
+
+			vaoRef.BindArrayBuffer(visual2, 1);
+			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, visual2);
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			
 		}
@@ -1484,6 +1488,12 @@ void idle()
 				bulletMats.BufferData(mats);
 			}
 		);
+
+		active2.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
+			{
+				visual2.BufferData(mats);
+			}
+		);
 		if (mat2.size() > 0)
 		{
 			for (auto& copy : mat2)
@@ -1551,11 +1561,14 @@ void gameTick()
 		Capsule silly{ groovy.GetBounding() };
 
 		// Bullet stuff;
-		std::vector<glm::mat4> inactive;
+		std::vector<glm::mat4> inactive, blarg;
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
 				glm::vec3 previous = local.position;
-				local.Update();
+				if (!featureToggle)
+				{
+					local.Update();
+				}
 				Model mupen{ local.position, ForwardDir(local.velocity, local.up) };
 				inactive.push_back(mupen.GetModelMatrix());
 				return previous != local.position;
@@ -1566,25 +1579,35 @@ void gameTick()
 				{
 					return true;
 				}
-				for (const auto& scoob : Level::GetTriangleTree().Search(local.GetAABB()))
+				OBB simp = bulletBox;
+				simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
+				blarg.push_back(simp.GetModelMatrix());
+				blarg.push_back(simp.GetAABB().GetModel().GetModelMatrix());
+				blarg.push_back(local.GetAABB().GetModel().GetModelMatrix());
+				for (const auto& scoob : Level::GetTriangleTree().Search(simp.GetAABB()))
 				{
-					//if (scoob->GetPlane().Facing(local.position) <= 0.f)
-					//glm::mat4 funGames = Model(local.position, ForwardDir(local.velocity)).GetModelMatrix() * bulletBox.GetModelMatrix();
-					OBB simp = bulletBox;
-					simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
-					inactive.push_back(simp.GetModelMatrix());
 					if (DetectCollision::Overlap(simp, *scoob))
 					{
 						//Log("Eliminated bullet");
+						bool over = false;
 						decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
-								simp.Scale(4.f);
-								Decal::GetDecal(simp, Level::GetTriangleTree(), ref);
+								simp.Scale(glm::vec3(1.f, 4.f, 4.f));
+								if (Decal::GetDecal(simp, Level::GetTriangleTree(), ref).size() == 0)
+								{
+									// Possibly helps things, but I'm not completely sure
+									Log("Decal Failed");
+									over = true;
+								}
 							}
 						);
-						return true;
+						if (!over)
+						{
+							return true;
+						}
 					}
+
 				}
 				return false; 
 			}
@@ -1595,6 +1618,7 @@ void gameTick()
 		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		active.Swap(inactive);
+		active2.Swap(blarg);
 
 		tickTockMan.Update();
 		management.Update();
