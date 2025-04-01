@@ -21,7 +21,7 @@ namespace Level
 	StaticOctTree<Triangle>& GetTriangleTree();
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
-	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity);
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up);
 	std::vector<Bullet>& GetBullets();
 	DynamicOctTree<Bullet>& GetBulletTree();
 

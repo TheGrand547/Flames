@@ -12,7 +12,9 @@ class Decal
 {
 public:
 	template<class T> static ArrayBuffer GetDecal(const OBB& box, const StaticOctTree<T>& tree);
-	template<class T> static void GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out);
+
+	// Returns a span to the vertices in case the texture coordinates need to be modified at all.
+	template<class T> static std::span<TextureVertex> GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out);
 
 	// Clips triangles in the 2d plane to the range [-1, 1] x [-1, 1]
 	static std::vector<Triangle> ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale);
@@ -27,7 +29,7 @@ template<> inline ArrayBuffer Decal::GetDecal<OBB>(const OBB& box, const StaticO
 	return buffering;
 }
 
-template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out)
+template<class T> inline std::span<TextureVertex> Decal::GetDecal(const OBB& box, const StaticOctTree<T>& tree, std::vector<TextureVertex>& out)
 {
 	glm::vec3 halfs = box.GetScale();
 	glm::vec3 center = box.GetCenter();
@@ -35,6 +37,7 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 	glm::mat3 inverseView = glm::mat3(box.GetNormalMatrix());
 	glm::mat3 view = glm::transpose(inverseView);
 
+	std::size_t first = out.size();
 	for (const auto& maybeHit : tree.Search(box.GetAABB()))
 	{
 		if (DetectCollision::Overlap(*maybeHit, box))
@@ -56,7 +59,7 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 					glm::mat3 innerLocal = inner.GetPoints();
 					for (glm::length_t i = 0; i < 3; i++)
 					{
-						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.x, halfs.y);
+						glm::vec2 older = glm::vec2(innerLocal[i].z, innerLocal[i].y) / glm::vec2(halfs.y, halfs.z);
 						innerLocal[i] = (inverseView * innerLocal[i]) + center;
 						// Texture coordinates will be (x, y)
 						out.emplace_back<TextureVertex>({ innerLocal[i], older / 2.f + 0.5f });
@@ -65,6 +68,7 @@ template<class T> inline void Decal::GetDecal(const OBB& box, const StaticOctTre
 			}
 		}
 	}
+	return std::span(out.begin() + out.size(), out.end());
 }
 
 

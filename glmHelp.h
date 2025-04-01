@@ -26,7 +26,7 @@
 
 template<typename T> concept IsVec3 = std::same_as<std::remove_cvref_t<T>, glm::vec3>;
 
-glm::mat3 SetForward(const glm::vec3& vec, const glm::vec3& up = glm::vec3(0, 1, 0)) noexcept;
+glm::mat3 SetForward(const glm::vec3& vec, const glm::vec3& up = glm::vec3(0.f, 1.f, 0.f)) noexcept;
 
 glm::vec3 circleRand(const float& radius = 1.f) noexcept;
 glm::vec3 circleRand(const glm::vec3& up, const float& radius = 1.f) noexcept;
@@ -37,9 +37,9 @@ inline glm::quat QuatIdentity() noexcept
 }
 
 // Creates an arbitrary quaternion with the given 'forward' direction
-inline glm::quat ForwardDir(const glm::vec3& forward)
+inline glm::quat ForwardDir(const glm::vec3& forward, glm::vec3 up = glm::vec3(0.f, 1.f, 0.f))
 {
-	return glm::quat(SetForward(forward));
+	return glm::quat(SetForward(forward, up));
 }
 
 #endif // GLM_HELP_H

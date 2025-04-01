@@ -634,14 +634,6 @@ void display()
 		//billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
 	}*/
 
-	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
-	decalShader.SetActiveShader();
-	decalVAO.Bind();
-	decalVAO.BindArrayBuffer(decals);
-	decalShader.SetTextureUnit("textureIn", texture, 0);
-	decalShader.DrawArray<DrawType::Triangle>(decals);
-
-
 	if (debugFlags[DYNAMIC_TREE])
 	{
 		uniform.SetActiveShader();
@@ -786,6 +778,14 @@ void display()
 	ship.DrawElements<DrawType::Triangle>(geometry.indirect);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	EnableGLFeatures<Blending>();
+	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
+	decalShader.SetActiveShader();
+	decalVAO.Bind();
+	decalVAO.BindArrayBuffer(decals);
+	decalShader.SetTextureUnit("textureIn", texture, 0);
+	decalShader.DrawArray<DrawType::Triangle>(decals);
+	DisableGLFeatures<Blending>();
 	/*
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -1556,7 +1556,7 @@ void gameTick()
 			{
 				glm::vec3 previous = local.position;
 				local.Update();
-				Model mupen{ local.position, ForwardDir(local.velocity)};
+				Model mupen{ local.position, ForwardDir(local.velocity, local.up) };
 				inactive.push_back(mupen.GetModelMatrix());
 				return previous != local.position;
 			});
@@ -1571,7 +1571,7 @@ void gameTick()
 					//if (scoob->GetPlane().Facing(local.position) <= 0.f)
 					//glm::mat4 funGames = Model(local.position, ForwardDir(local.velocity)).GetModelMatrix() * bulletBox.GetModelMatrix();
 					OBB simp = bulletBox;
-					simp.Rotate(Model(local.position, ForwardDir(local.velocity)).GetModelMatrix());
+					simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
 					inactive.push_back(simp.GetModelMatrix());
 					if (DetectCollision::Overlap(simp, *scoob))
 					{
@@ -1579,6 +1579,7 @@ void gameTick()
 						decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
+								simp.Scale(4.f);
 								Decal::GetDecal(simp, Level::GetTriangleTree(), ref);
 							}
 						);
@@ -2476,7 +2477,7 @@ void init()
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
 
-	texture.Load("text.png");
+	texture.Load("laserA.png");
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
 	wallTexture.Load("flowed.png");
@@ -2964,6 +2965,7 @@ void init()
 				bulletBox = OBB::MakeOBB(pain);
 			}
 		);
+		std::cout << bulletBox.GetScale() << '\n';
 		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb", 
 			[](const std::span<glm::vec3>& c) 
 			{

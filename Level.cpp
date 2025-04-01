@@ -52,9 +52,9 @@ namespace Level
 		return bulletTree;
 	}
 
-	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity)
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up)
 	{
-		Bullet value(position, velocity);
+		Bullet value(position, velocity, up);
 		return *bulletTree.Insert(value, value.GetAABB());
 	}
 	
