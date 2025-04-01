@@ -28,12 +28,16 @@ static void ClipToPlane(std::vector<Triangle>& in, std::vector<Triangle>& out, c
 
 std::vector<Triangle> Decal::ClipTriangleToUniform(const Triangle& triangle, const glm::vec3& scale)
 {
+	// I don't know if this has any benefit, might poke around this more though
+	// Possibly moving the +/- z to the front because, in theory, they should be minimal
 	const std::array<Plane, 6> Planes = {
 		Plane(glm::vec3( 1.f,  0.f,  0.f), glm::vec3(-scale.x,      0.f,      0.f)),
+		Plane(glm::vec3(0.f,  1.f,  0.f), glm::vec3(0.f, -scale.y,      0.f)),
+		Plane(glm::vec3(0.f,  0.f,  1.f), glm::vec3(0.f,      0.f, -scale.z)),
 		Plane(glm::vec3(-1.f,  0.f,  0.f), glm::vec3( scale.x,      0.f,      0.f)),
-		Plane(glm::vec3( 0.f,  1.f,  0.f), glm::vec3(     0.f, -scale.y,      0.f)),
+		//Plane(glm::vec3( 0.f,  1.f,  0.f), glm::vec3(     0.f, -scale.y,      0.f)),
 		Plane(glm::vec3( 0.f, -1.f,  0.f), glm::vec3(     0.f,  scale.y,      0.f)),
-		Plane(glm::vec3( 0.f,  0.f,  1.f), glm::vec3(     0.f,      0.f, -scale.z)),
+		//Plane(glm::vec3( 0.f,  0.f,  1.f), glm::vec3(     0.f,      0.f, -scale.z)),
 		Plane(glm::vec3( 0.f,  0.f, -1.f), glm::vec3(     0.f,      0.f,  scale.z)),
 	};
 	std::vector<Triangle> currentSet = { triangle };

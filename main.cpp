@@ -1565,7 +1565,7 @@ void gameTick()
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
 				glm::vec3 previous = local.position;
-				if (!featureToggle)
+				if (!featureToggle && local.lifeTime != 6666)
 				{
 					local.Update();
 				}
@@ -1575,6 +1575,16 @@ void gameTick()
 			});
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
+				if (local.lifeTime == 6666)
+				{
+					OBB simp = bulletBox;
+					simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
+					simp.Scale(glm::vec3(1.f, 10.f, 10.f));
+					blarg.push_back(simp.GetModelMatrix());
+					blarg.push_back(simp.GetAABB().GetModel().GetModelMatrix());
+					blarg.push_back(local.GetAABB().GetModel().GetModelMatrix());
+					return false;
+				}
 				if (glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond)
 				{
 					return true;
@@ -1593,8 +1603,12 @@ void gameTick()
 						decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
-								simp.Scale(glm::vec3(1.f, 4.f, 4.f));
-								if (Decal::GetDecal(simp, Level::GetTriangleTree(), ref).size() == 0)
+								OBB blooper(simp);
+								blooper.Scale(glm::vec3(1.f, 10.f, 10.f));
+								float blop = scoob->GetPlane().Facing(blooper.GetCenter());
+								glm::vec3 newCenter = blooper.GetCenter() - scoob->GetNormal() * blop;
+								OBB sigma(Model(newCenter, ForwardDir(newCenter, local.up), bulletBox.GetScale() * glm::vec3(2.f, 5.f, 5.f)));
+								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
@@ -1604,6 +1618,9 @@ void gameTick()
 						);
 						if (!over)
 						{
+							local.velocity = -scoob->GetNormal();
+							local.lifeTime = 6666;
+							//return false;
 							return true;
 						}
 					}
@@ -2501,7 +2518,8 @@ void init()
 	normalMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
 	normalMap.SetAnisotropy(16.f);
 
-	texture.Load("laserA.png");
+	//texture.Load("laserA.png");
+	texture.Load("text.png"); // Temp switching to a properly square decal
 	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
 
 	wallTexture.Load("flowed.png");
