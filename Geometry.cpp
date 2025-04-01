@@ -189,13 +189,14 @@ namespace DetectCollision
 
 
 		const glm::vec3 faceDots = normal * boxAxes;
-		glm::vec3 flubber;
+#ifdef _DEBUG
+		glm::vec3 flubber{};
 		for (glm::mat3::length_type i = 0; i < 3; i++) 
 		{
 			flubber[i] = glm::dot(boxAxes[i], normal);
 			assert(flubber[i] == faceDots[i]);
 		}
-
+#endif // _DEBUG
 		// dotProducts[i][j] is equivalent to dot(boxAxes[i], triEdges[j])
 		const glm::mat3 dotProducts = glm::transpose(triEdges) * boxAxes;
 		for (glm::length_t i = 0; i < 3; i++)

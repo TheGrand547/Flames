@@ -1,6 +1,7 @@
 #include "AABB.h"
 #include "glmHelp.h"
 #include "Sphere.h"
+#include <glm/gtx/matrix_operation.hpp>
 
 AABB& AABB::operator=(const AABB& other) noexcept
 {
@@ -15,6 +16,16 @@ Model AABB::GetModel() const noexcept
 	glm::vec3 transform = this->GetCenter();
 	glm::vec3 scale     = this->Deviation();
 	return Model(transform, glm::vec3(0), scale);
+}
+
+glm::mat4 AABB::GetModelMatrix() const noexcept
+{
+	return glm::translate(glm::diagonal4x4(glm::vec4(this->Deviation(), 1.f)), this->center);
+}
+
+glm::mat4 AABB::GetNormalMatrix() const noexcept
+{
+	return glm::mat4(1.f);
 }
 
 

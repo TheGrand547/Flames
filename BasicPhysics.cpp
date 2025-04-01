@@ -1,5 +1,10 @@
 #include "BasicPhysics.h"
 
+void BasicPhysics::UpdateLinear(glm::vec3& position, glm::vec3 velocity) noexcept
+{
+	position += velocity * Tick::TimeDelta;
+}
+
 void BasicPhysics::Update(glm::vec3& position, glm::vec3& velocity, float mass, const glm::vec3& forces) noexcept
 {
 	float invMass = 1.f / mass;

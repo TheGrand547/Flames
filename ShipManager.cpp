@@ -30,7 +30,7 @@ void ShipManager::Update() noexcept
 				if (bullet->GetAABB().Overlap(bloke.GetAABB()))
 				{
 					Log("Oh shit we got one");
-					bullet->position = glm::vec3(NAN);
+					bullet->transform.position = glm::vec3(NAN);
 					Level::SetExplosion(bloke.GetPos());
 					return true;
 				}

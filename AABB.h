@@ -33,6 +33,8 @@ public:
 	inline AABB& operator-=(const glm::vec3& point) noexcept;
 
 	Model GetModel() const noexcept;
+	glm::mat4 GetModelMatrix() const noexcept;
+	glm::mat4 GetNormalMatrix() const noexcept;
 	
 	inline float Volume() const noexcept;
 
@@ -40,6 +42,7 @@ public:
 
 	// Get the Center of the AABB
 	inline glm::vec3 GetCenter() const noexcept;
+
 	// Get the Half-Lengths of the AABB
 	inline glm::vec3 Deviation() const noexcept;
 

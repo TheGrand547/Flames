@@ -37,7 +37,7 @@ namespace Level
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity)
 	{
-		return Bullets.emplace_back(position, velocity);
+		return Bullets.emplace_back(position, velocity, World::Up);
 	}
 
 	std::vector<Bullet>& GetBullets()

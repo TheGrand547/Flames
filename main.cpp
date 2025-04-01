@@ -386,7 +386,6 @@ MeshData bulletMesh;
 Shader bulletShader;
 ArrayBuffer bulletMats, bulletMats2;
 VAO bulletVAO;
-OBB bulletBox;
 
 //std::vector<glm::mat4> active, inactive;
 BufferSync<std::vector<glm::mat4>> active, active2;
@@ -400,6 +399,8 @@ ClockBrain tickTockMan;
 
 static GLFWwindow* windowPointer = nullptr;
 ArrayBuffer volumetric;
+
+const float BulletDecalScale = 4.f;
 
 void display()
 {
@@ -1498,7 +1499,7 @@ void idle()
 		{
 			for (auto& copy : mat2)
 			{
-				copy = copy * bulletBox.GetModelMatrix();
+				copy = copy * Bullet::Collision.GetModelMatrix();
 			}
 		}
 		bulletMats2.BufferData(mat2);
@@ -1564,63 +1565,47 @@ void gameTick()
 		std::vector<glm::mat4> inactive, blarg;
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
-				glm::vec3 previous = local.position;
-				if (!featureToggle && local.lifeTime != 6666)
+				glm::vec3 previous = local.transform.position;
+				if (!featureToggle)
 				{
 					local.Update();
 				}
-				Model mupen{ local.position, ForwardDir(local.velocity, local.up) };
-				inactive.push_back(mupen.GetModelMatrix());
-				return previous != local.position;
+				inactive.push_back(local.GetModel().GetModelMatrix());
+				return previous != local.transform.position;
 			});
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
-				if (local.lifeTime == 6666)
-				{
-					OBB simp = bulletBox;
-					simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
-					simp.Scale(glm::vec3(1.f, 10.f, 10.f));
-					blarg.push_back(simp.GetModelMatrix());
-					blarg.push_back(simp.GetAABB().GetModel().GetModelMatrix());
-					blarg.push_back(local.GetAABB().GetModel().GetModelMatrix());
-					return false;
-				}
-				if (glm::any(glm::isnan(local.position)) || local.lifeTime > 5 * Tick::PerSecond)
+				if (glm::any(glm::isnan(local.transform.position)) || local.lifeTime > 5 * Tick::PerSecond)
 				{
 					return true;
 				}
-				OBB simp = bulletBox;
-				simp.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
-				blarg.push_back(simp.GetModelMatrix());
-				blarg.push_back(simp.GetAABB().GetModel().GetModelMatrix());
-				blarg.push_back(local.GetAABB().GetModel().GetModelMatrix());
-				for (const auto& scoob : Level::GetTriangleTree().Search(simp.GetAABB()))
+				OBB transformedBox = local.GetOBB();
+				///transformedBox.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
+				blarg.push_back(transformedBox.GetModelMatrix());
+				blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
+				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
 				{
-					if (DetectCollision::Overlap(simp, *scoob))
+					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
 						//Log("Eliminated bullet");
-						bool over = false;
+						bool decalFailed = false;
 						decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
-								OBB blooper(simp);
-								blooper.Scale(glm::vec3(1.f, 10.f, 10.f));
-								float blop = scoob->GetPlane().Facing(blooper.GetCenter());
-								glm::vec3 newCenter = blooper.GetCenter() - scoob->GetNormal() * blop;
-								OBB sigma(Model(newCenter, ForwardDir(newCenter, local.up), bulletBox.GetScale() * glm::vec3(2.f, 5.f, 5.f)));
+								float planeDistance = currentTri->GetPlane().Facing(transformedBox.GetCenter());
+								glm::vec3 newCenter = transformedBox.GetCenter() - currentTri->GetNormal() * planeDistance;
+								OBB sigma(Model(newCenter, ForwardDir(newCenter, local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)), 
+									Bullet::Collision.GetScale() * glm::vec3(2.f, BulletDecalScale, BulletDecalScale)));
 								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
-									over = true;
+									decalFailed = true;
 								}
 							}
 						);
-						if (!over)
+						if (!decalFailed)
 						{
-							local.velocity = -scoob->GetNormal();
-							local.lifeTime = 6666;
-							//return false;
 							return true;
 						}
 					}
@@ -1688,7 +1673,7 @@ void gameTick()
 		}
 		if (Level::NumExplosion() > 0)
 		{
-			for (auto copy : Level::GetExplosion())
+			for (glm::vec3 copy : Level::GetExplosion())
 			{
 				for (int i = 0; i < 20; i++)
 				{
@@ -3004,10 +2989,9 @@ void init()
 			{
 				std::vector<glm::vec3> pain{ c.size() };
 				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
-				bulletBox = OBB::MakeOBB(pain);
+				Bullet::Collision = OBB::MakeOBB(pain);
 			}
 		);
-		std::cout << bulletBox.GetScale() << '\n';
 		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb", 
 			[](const std::span<glm::vec3>& c) 
 			{
