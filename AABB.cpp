@@ -13,14 +13,16 @@ AABB& AABB::operator=(const AABB& other) noexcept
 Model AABB::GetModel() const noexcept
 {
 	// Will return the transform matrix for the unit cube centered at the origin with 2x2x2 dimension
-	glm::vec3 transform = this->GetCenter();
-	glm::vec3 scale     = this->Deviation();
+	glm::vec3 transform = this->center;
+	glm::vec3 scale     = this->halfs;
 	return Model(transform, glm::vec3(0), scale);
 }
 
 glm::mat4 AABB::GetModelMatrix() const noexcept
 {
-	return glm::translate(glm::diagonal4x4(glm::vec4(this->Deviation(), 1.f)), this->center);
+	glm::mat4 local = glm::diagonal4x4(glm::vec4(this->halfs, 1.f));
+	local[3] = glm::vec4(this->center, 1.f);
+	return local;
 }
 
 glm::mat4 AABB::GetNormalMatrix() const noexcept

@@ -781,12 +781,14 @@ void display()
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	EnableGLFeatures<Blending>();
+	DisableDepthBufferWrite();
 	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
 	decalShader.SetActiveShader();
 	decalVAO.Bind();
 	decalVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
 	decalShader.DrawArray<DrawType::Triangle>(decals);
+	EnableDepthBufferWrite();
 	DisableGLFeatures<Blending>();
 	/*
 	{
@@ -1563,6 +1565,7 @@ void gameTick()
 
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
+		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
 				glm::vec3 previous = local.transform.position;
@@ -1580,36 +1583,41 @@ void gameTick()
 					return true;
 				}
 				OBB transformedBox = local.GetOBB();
-				///transformedBox.Rotate(Model(local.position, ForwardDir(local.velocity, local.up)).GetModelMatrix());
-				blarg.push_back(transformedBox.GetModelMatrix());
-				blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
+				//blarg.push_back(transformedBox.GetModelMatrix());
+				//blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
+				bool decalSucceeded = false;
+				bool decalFailed = false;
 				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
 						//Log("Eliminated bullet");
-						bool decalFailed = false;
 						decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
 								float planeDistance = currentTri->GetPlane().Facing(transformedBox.GetCenter());
 								glm::vec3 newCenter = transformedBox.GetCenter() - currentTri->GetNormal() * planeDistance;
-								OBB sigma(Model(newCenter, ForwardDir(newCenter, local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)), 
+								OBB sigma(Model(newCenter, ForwardDir(-currentTri->GetNormal(), 
+									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
 									Bullet::Collision.GetScale() * glm::vec3(2.f, BulletDecalScale, BulletDecalScale)));
+								blarg.push_back(sigma.GetModelMatrix());
 								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
 									decalFailed = true;
 								}
+								else
+								{
+									decalSucceeded = true;
+								}
 							}
 						);
-						if (!decalFailed)
-						{
-							return true;
-						}
 					}
-
+				}
+				if (decalSucceeded && !decalFailed)
+				{
+					return true;
 				}
 				return false; 
 			}
@@ -1620,7 +1628,10 @@ void gameTick()
 		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		active.Swap(inactive);
-		active2.Swap(blarg);
+		if (blarg.size() > 0)
+		{
+			active2.Swap(blarg);
+		}
 
 		tickTockMan.Update();
 		management.Update();
@@ -2504,8 +2515,8 @@ void init()
 	normalMap.SetAnisotropy(16.f);
 
 	//texture.Load("laserA.png");
-	texture.Load("text.png"); // Temp switching to a properly square decal
-	texture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
+	texture.Load("laserC.png"); // Temp switching to a properly square decal
+	texture.SetFilters(LinearLinear, MagLinear, BorderClamp, BorderClamp);
 
 	wallTexture.Load("flowed.png");
 	wallTexture.SetFilters(LinearLinear, MagNearest, Repeat, Repeat);
@@ -2643,7 +2654,7 @@ void init()
 			{
 				AABB boxer{};
 				boxer.SetScale(0.75f);
-				boxer.GetCenter(A->GetPosition());
+				boxer.SetCenter(A->GetPosition());
 				auto temps = Level::Geometry.Search(boxer);
 				if (temps.size() == 0)
 					return false;
