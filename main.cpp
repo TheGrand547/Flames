@@ -533,10 +533,10 @@ void display()
 	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
 	glDisable(GL_STENCIL_TEST);
 	
-	if (debugFlags[DEBUG_PATH])
+	if (debugFlags[DEBUG_PATH] || true)
 	{
 		EnableGLFeatures<Blending>();
-		DisableDepthBufferWrite();
+		//DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(plainCube, 0);
@@ -1585,19 +1585,18 @@ void gameTick()
 				OBB transformedBox = local.GetOBB();
 				//blarg.push_back(transformedBox.GetModelMatrix());
 				//blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
-				bool decalSucceeded = false;
-				bool decalFailed = false;
 				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
-						//Log("Eliminated bullet");
-						decalVertex.ExclusiveOperation([&](auto& ref)
+						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
+						// generating decals also requires a OctTreeSearch, escape the outer one.
+						if (decalVertex.ExclusiveOperation([&](auto& ref)
 							{
 								QuickTimer _time("Decal Generation");
 								float planeDistance = currentTri->GetPlane().Facing(transformedBox.GetCenter());
 								glm::vec3 newCenter = transformedBox.GetCenter() - currentTri->GetNormal() * planeDistance;
-								OBB sigma(Model(newCenter, ForwardDir(-currentTri->GetNormal(), 
+								OBB sigma(Model(newCenter, ForwardDir(-currentTri->GetNormal(),
 									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
 									Bullet::Collision.GetScale() * glm::vec3(2.f, BulletDecalScale, BulletDecalScale)));
 								blarg.push_back(sigma.GetModelMatrix());
@@ -1605,19 +1604,20 @@ void gameTick()
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
-									decalFailed = true;
+									return false;
 								}
 								else
 								{
-									decalSucceeded = true;
+									return true;
 								}
 							}
-						);
+						))
+						{
+							// Decals generated -> must remove the bullet
+							return true;
+						}
+						break;
 					}
-				}
-				if (decalSucceeded && !decalFailed)
-				{
-					return true;
 				}
 				return false; 
 			}
@@ -2563,8 +2563,8 @@ void init()
 
 	plainCube.BufferData(Cube::GetPoints());
 
-	std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
-	pathNodePositions.BufferData(funnys);
+	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
+	//pathNodePositions.BufferData(funnys);
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
@@ -2629,10 +2629,11 @@ void init()
 	instancedModels.emplace_back(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f));
 
 	std::vector<glm::mat4> awfulTemp{};
-	awfulTemp.reserve(instancedModels.size());
+	//awfulTemp.reserve(instancedModels.size());
 	//instancedModels.emplace_back(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f));
 	for (const auto& ref : instancedModels)
 	{
+		break;
 		OBB project(ref);
 		glm::vec3 forawrd = project.Up();
 		if (glm::dot(forawrd, World::Up) > 0.5f)
@@ -2646,6 +2647,7 @@ void init()
 		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({ project, 0 });
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
+	if (false)
 	{
 		QuickTimer _tim("Node Culling");
 		//std::erase_if(Level::AllNodes,
@@ -2670,7 +2672,7 @@ void init()
 			}
 		);
 	}
-	instanceBuffer.BufferData(awfulTemp, StaticDraw);
+	//instanceBuffer.BufferData(awfulTemp, StaticDraw);
 
 	// This sucks
 	// TODO: Put this in Geometry, or something, I don't know
@@ -2700,15 +2702,7 @@ void init()
 	albertBuffer.BufferData(textVert, StaticDraw);
 	CheckError();
 	// Decal stuff
-
-	OBB decalGenerator;
-	decalGenerator.ReCenter(glm::vec3(1, 0.25, 3));
-	decalGenerator.ReScale(glm::vec3(0.5f));
-	decalGenerator.Rotate(glm::eulerAngleYZ(glm::radians(-45.f), glm::radians(-26.f)));
-	{
-		QuickTimer _timer{ "Decal Generation" };
-		decals = Decal::GetDecal(decalGenerator, Level::Geometry);
-	}
+	decals.Generate();
 
 	// SKINNING
 	std::array<float, 3> dummy{ 1.f };
@@ -2811,14 +2805,8 @@ void init()
 	tetragram.BufferData(Tetrahedron::GetPoints());
 	tetragramIndex.BufferData(Tetrahedron::GetTriangleIndex());
 
-	{
-		QUICKTIMER("KdTree Generation");
-		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
-	}
 	// =============================================================
 	// Pathfinding stuff
-	std::vector<glm::vec3> boxingDay{};
-	std::vector<glm::vec3> littleTrolling{};
 
 	{
 		QuickTimer _timer("Node Connections");
@@ -2939,6 +2927,84 @@ void init()
 	}
 
 	{
+		QUICKTIMER("Model Loading");
+		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
+		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
+		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb",
+			{},
+			[&](auto& c)
+			{
+				std::vector<glm::vec3> pain{ c.size() };
+				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
+				Bullet::Collision = OBB::MakeOBB(pain);
+			}
+		);
+		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
+			[](const std::span<glm::vec3>& c)
+			{
+				if (c.size() >= 3)
+				{
+					Triangle local(c[0], c[1], c[2]);
+					Level::AddTri(local);
+					for (auto i = 1; i < 5; i++)
+					{
+						Level::AllNodes.push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
+					}
+				}
+			}
+		);
+	}
+	std::cout << Level::AllNodes.size() << ":\n";
+	{
+		QUICKTIMER("KdTree Generation");
+		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
+	}
+	{
+		QUICKTIMER("Node Connections");
+
+		/*
+		std::for_each(Level::AllNodes.begin(), Level::AllNodes.end(),
+			[](PathNodePtr& current)
+			{
+				for (auto& inner : Level::Tree.neighborsInRange(current->GetPos(), 20.f))
+				{
+					PathNode::addNeighborUnconditional(current, inner);
+				}
+			}
+		);
+		*/
+		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
+		{
+			for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
+			{
+				PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
+					[&](const PathNodePtr& A, const PathNodePtr& B)
+					{
+						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
+						float delta = glm::length(a - b);
+						if (delta > 25.f) // TODO: Constant
+							return false;
+						Ray liota(a, b - a);
+						//countes++;
+						auto temps = Level::GetTriangleTree().Search(AABB::MakeAABB(liota.point, liota.point * liota.dir * 100.f));
+						if (temps.size() == 0)
+							return true;
+						RayCollision fumop{};
+						for (auto& temp : temps)
+						{
+							if (temp->RayCast(liota, fumop) && fumop.depth < delta)
+							{
+								return false;
+							}
+						}
+						return true;
+					}
+				);
+			}
+		}
+	}
+
+	{
 		QUICKTIMER("kdTree");
 		const auto& first = Level::AllNodes.front();
 		PathNodePtr pint = nullptr;
@@ -2961,7 +3027,8 @@ void init()
 			}
 		}
 	}
-
+	std::vector<glm::vec3> boxingDay{};
+	std::vector<glm::vec3> littleTrolling{};
 	for (auto& autod : Level::AllNodes)
 	{
 		boxingDay.push_back(autod->GetPosition());
@@ -2975,7 +3042,7 @@ void init()
 			}
 		}
 	}
-
+	pathNodePositions.Generate();
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);
 
@@ -2990,30 +3057,7 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	{
-		QUICKTIMER("Model Loading");
-		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
-		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
-		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb", 
-			{}, 
-			[&](auto& c)
-			{
-				std::vector<glm::vec3> pain{ c.size() };
-				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
-				Bullet::Collision = OBB::MakeOBB(pain);
-			}
-		);
-		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb", 
-			[](const std::span<glm::vec3>& c) 
-			{
-				if (c.size() >= 3)
-				{
-					Level::AddTri(Triangle(c[0], c[1], c[2]));
-				}
-			}
-		);
-		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb");
-	}
+	/*
 	{
 		QUICKTIMER("OBB Loading");
 		std::vector<glm::vec3> matrixif;
@@ -3026,7 +3070,7 @@ void init()
 			}
 		}
 		volumetric.BufferData(matrixif);
-	}
+	}*/
 
 	//MeshThingy("Models\\Debris.obj");
 

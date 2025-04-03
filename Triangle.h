@@ -26,7 +26,7 @@ public:
 	inline std::array<glm::vec3, 3> GetPointArray() const noexcept;
 
 	inline glm::vec3 GetNormal() const noexcept;
-
+	inline glm::vec3 GetCenter() const noexcept;
 	inline AABB GetAABB() const noexcept;
 
 	bool SplitByPlane(const Plane& plane) const;
@@ -84,6 +84,11 @@ inline std::array<glm::vec3, 3> Triangle::GetPointArray() const noexcept
 inline glm::vec3 Triangle::GetNormal() const noexcept
 {
 	return glm::normalize(glm::cross(this->vertices[1] - this->vertices[0], this->vertices[2] - this->vertices[0]));
+}
+
+inline glm::vec3 Triangle::GetCenter() const noexcept
+{
+	return (this->vertices[0] + this->vertices[1] + this->vertices[2]) / 3.f;
 }
 
 inline AABB Triangle::GetAABB() const noexcept

@@ -14,19 +14,19 @@ protected:
 public:
 	using value_type = T;
 
-	template <typename F> void ExclusiveOperation(F func)
+	template <typename F> inline auto ExclusiveOperation(F func) noexcept
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
-		func(this->data);
+		return func(this->data);
 	}
 
-	template <typename F> void ExclusiveOperation(F func) const
+	template <typename F> inline auto ExclusiveOperation(F func) const noexcept
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
-		func(this->data);
+		return func(this->data);
 	}
 
-	void Swap(T& ref)
+	inline void Swap(T& ref) noexcept
 	{
 		std::lock_guard<std::mutex> lock(this->mutex);
 		std::swap(ref, this->data);

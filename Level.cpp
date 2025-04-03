@@ -20,14 +20,14 @@ namespace Level
 		return Boxes;
 	}
 
-	static StaticOctTree<Triangle> Tris;
+	static GeometryType Tris;
 
 	void AddTri(Triangle triangle)
 	{
 		Tris.Insert(triangle, triangle.GetAABB());
 	}
 
-	StaticOctTree<Triangle>& GetTriangleTree()
+	GeometryType& GetTriangleTree()
 	{
 		return Tris;
 	}

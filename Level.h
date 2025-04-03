@@ -17,12 +17,14 @@ namespace Level
 	void AddOBB(OBB obb);
 	StaticOctTree<OBB>& GetOBBTree();
 
+	using GeometryType = DynamicOctTree<Triangle>;
 	void AddTri(Triangle triangle);
-	StaticOctTree<Triangle>& GetTriangleTree();
+	GeometryType& GetTriangleTree();
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
 	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up);
 	std::vector<Bullet>& GetBullets();
+
 	DynamicOctTree<Bullet>& GetBulletTree();
 
 	// Points of Interest
