@@ -9,7 +9,7 @@
 #include "QuickTimer.h"
 #include "Lines.h"
 
-constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (8);
+constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (15);
 constexpr auto DYNAMIC_OCT_TREE_DIMENSION = (100.f);
 constexpr auto DYNAMIC_OCT_TREE_MIN_VOLUME = (10.f);
 
@@ -211,23 +211,34 @@ protected:
 		{
 			std::vector<Index> hits;
 			this->RayCast(ray, hits);
+			// In case the top level tree isn't hit by the ray, it holds all the remaining elements, so make sure they're targetted
+			if (!this->bounds.FastIntersect(ray) && false)
+			{
+				for (const auto& element : this->objects)
+				{
+					if (element.first.FastIntersect(ray))
+					{
+						hits.push_back(element.second);
+					}
+				}
+			}
 			return hits;
 		}
 
 		void RayCast(Ray ray, std::vector<Index>& out) const noexcept
 		{
-			if (this->bounds.Intersect(ray.point, ray.direction))
+			if (this->bounds.FastIntersect(ray))
 			{
 				for (const auto& element : this->objects)
 				{
-					if (element.first.Intersect(ray.point, ray.direction))
+					if (element.first.FastIntersect(ray))
 					{
 						out.push_back(element.second);
 					}
 				}
 				for (std::size_t i = 0; i < 8; i++)
 				{
-					if (this->members[i])// && this->members[i]->size > 0)
+					if (this->members[i] && this->members[i]->size > 0)
 					{
 						this->members[i]->RayCast(ray, out);
 					}

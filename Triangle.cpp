@@ -2,6 +2,19 @@
 #include <glm/gtx/intersect.hpp>
 #include "Plane.h"
 
+bool Triangle::RayCast(const Ray& ray, RayCollision& collision) const noexcept
+{
+	
+	glm::vec2 barycentric{};
+	bool result = glm::intersectRayTriangle(ray.point, ray.direction, this->vertices[0], this->vertices[1], this->vertices[2], barycentric, collision.depth);
+	if (result)
+	{
+		collision.normal = this->GetNormal();
+		collision.point = ray.point + collision.depth * ray.direction;
+	}
+	return result;
+}
+
 bool Triangle::SplitAndOrientation(const Plane& plane, float& orientation) const
 {
 	glm::vec3 dots = plane.Facing(this->vertices);

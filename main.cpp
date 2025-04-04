@@ -244,7 +244,7 @@ constexpr float ANGLE_DELTA = 4;
 glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 
-float zNear = 0.1f, zFar = 200.f;
+float zNear = 0.1f, zFar = 1000.f;
 
 enum GeometryThing : unsigned short
 {
@@ -1386,7 +1386,7 @@ void idle()
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
-		dynamicTreeBoxes = Level::GetBulletTree().GetBoxes();
+		dynamicTreeBoxes = Level::GetTriangleTree().GetBoxes();
 	}
 	/*
 	for (auto& follow : followers2)
@@ -3007,7 +3007,6 @@ void init()
 		std::vector<glm::vec3> foolish;
 		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 		{
-			break;
 			for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
 			{
 				PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
@@ -3020,42 +3019,40 @@ void init()
 						Ray liota(a, b - a);
 						auto temps = Level::GetTriangleTree().RayCast(liota);
 						if (temps.size() == 0)
+						{
 							return true;
-						Log(std::format("{}", temps.size()));
-						RayCollision fumop{};
+							//return false;
+						}
 						for (auto& temp : temps)
 						{
-							/*
-							RayCollision rays{}, rays2{};
-							temp->GetAABB().Intersect(liota.point, liota.dir, rays, rays2);
-							float x{}, y{};
-							temp->GetAABB().FastIntersect(liota.point, liota.dir, x, y);
-							if (x < 0) std::swap(x, y);
-							if (glm::distance(rays.depth, x) > EPSILON)
+							RayCollision fumop{};
+							if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth <= delta)
 							{
-								Log(std::format("{}:{}", rays.depth, x));
-							}
-							if (glm::distance(rays2.depth, y) > EPSILON)
-							{
-								Log(std::format("{}:{}", rays2.depth, y));
-							}
-							*/
-							if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
-							{
-								Log(std::format("Culled {} {}", i, j));
+								/*
 								for (const auto& p : temp->GetPointArray())
 								{
-									foolish.push_back(p);
+									foolish.push_back(p + temp->GetNormal() * 3.f);
 								}
+								*/
 								return false;
 							}
 						}
 						return true;
+						//return false;
 					}
 				);
 			}
 		}
-		volumetric.BufferData(foolish);
+		/*
+		for (const auto& p : Level::GetTriangleTree())
+		{
+			for (const auto& p2 : p.GetPointArray())
+			{
+				//foolish.push_back(p2);
+			}
+		}
+		*/
+		//volumetric.BufferData(foolish);
 	}
 
 	{
@@ -3112,7 +3109,7 @@ void init()
 	}
 
 	{
-		/*
+		
 		QUICKTIMER("Mesh Loading Loading");
 		std::vector<glm::vec3> matrixif;
 		for (const auto& box : Level::GetTriangleTree())
@@ -3123,8 +3120,8 @@ void init()
 				matrixif.push_back(b);
 			}
 		}
-		*/
-		//volumetric.BufferData(matrixif);
+		
+		volumetric.BufferData(matrixif);
 	}
 
 	//MeshThingy("Models\\Debris.obj");

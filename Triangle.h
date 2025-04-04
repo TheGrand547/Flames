@@ -44,7 +44,7 @@ public:
 	inline bool ContainsPoint(const glm::vec3& point) const noexcept;
 
 	inline bool RayCast(const Ray& ray) const noexcept;
-	inline bool RayCast(const Ray& ray, RayCollision& collision) const noexcept;
+	bool RayCast(const Ray& ray, RayCollision& collision) const noexcept;
 
 	std::vector<Triangle> Split(const Plane& plane, bool cullBack = false) const;
 
@@ -132,18 +132,6 @@ inline bool Triangle::RayCast(const Ray& ray) const noexcept
 {
 	RayCollision dummy{};
 	return this->RayCast(ray, dummy);
-}
-
-inline bool Triangle::RayCast(const Ray& ray, RayCollision& collision) const noexcept
-{
-	glm::vec2 barycentric{};
-	bool result = glm::intersectRayTriangle(ray.point, ray.direction, this->vertices[0], this->vertices[1], this->vertices[2], barycentric, collision.depth);
-	if (result)
-	{
-		collision.normal = this->GetNormal();
-		collision.point = ray.point + collision.depth * ray.direction;
-	}
-	return result;
 }
 
 #endif // TRIANGLE_H

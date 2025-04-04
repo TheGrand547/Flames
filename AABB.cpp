@@ -120,27 +120,10 @@ bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir, float& ne
 		near = glm::max(near, box[bit][i]);
 		far = glm::min(far, box[!bit][i]);
 	}
-	/*
-	near = 0;
-	far = INFINITY;
-
-	glm::vec3 minOp = (this->center - this->halfs - point) * inverse;
-	glm::vec3 maxOp = (this->center + this->halfs - point) * inverse;
-	near = glm::compMax(minOp);
-	far = glm::compMin(maxOp);
 	if (glm::sign(near) < 0.f)
 	{
 		std::swap(near, far);
 	}
-	//near = Rectify(near, -1.f);
-	//far = Rectify(far, -1.f);
-	*/
-	if (glm::sign(near) < 0.f)
-	{
-		std::swap(near, far);
-	}
-	//near = Rectify(near, -1.f);
-	//far = Rectify(far, -1.f);
 	return near <= far;
 }
 
