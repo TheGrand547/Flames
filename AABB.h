@@ -9,13 +9,13 @@
 #include "glmHelp.h"
 #include "Model.h"
 #include "util.h"
+#include "log.h"
+#include "Lines.h"
 
 struct Sphere;
 
 class AABB
 {
-//private:
-//	const static std::array <glm::vec3, 3> Axes = { { glm::vec3(1, 0, 0), glm::vec3(0, 1, 0), glm::vec3(0, 0, 1) } };
 protected:
 	glm::vec3 center, halfs;
 public:
@@ -59,10 +59,17 @@ public:
 	inline bool Overlap(const AABB& other) const noexcept;
 	inline bool Contains(const AABB& other) const noexcept;
 
+	// Don't use these unless you *really* need the collision normals
 	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir) const noexcept;
 	inline bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit) const noexcept;
 	bool Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& nearHit, Collision& farHit) const noexcept;
-	bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept;
+
+	inline bool FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept;
+	bool FastIntersect(const glm::vec3& point, const glm::vec3& dir, float& near, float& far) const noexcept;
+
+	bool FastIntersect(Ray ray) const noexcept;
+	inline bool FastIntersect(LineSegment line) const noexcept;
+	inline bool FastIntersect(Line line) const noexcept;
 
 	inline bool Overlap(const Sphere& other) const noexcept;
 	bool Overlap(const Sphere& other, Collision& collision) const noexcept;
@@ -189,9 +196,9 @@ inline bool AABB::PointInside(const glm::vec3& point) const noexcept
 	bool zInside = negativeBound.z <= point.z && point.z <= positiveBound.z;
 	if (result != (xInside && yInside && zInside))
 	{
-		std::cout << "Shortcut for Point in AABB failed" << std::endl;
+		Log("Shortcut for Point in AABB failed");
+		result = xInside && yInside && zInside;
 	}
-	result = xInside && yInside && zInside;
 #endif // !_DEBUG
 	return result;
 }
@@ -207,9 +214,9 @@ inline bool AABB::Overlap(const AABB& other) const noexcept
 	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
 	if (result != (xInside && yInside && zInside))
 	{
-		std::cout << "Shortcut for AABB overlap AABB failed" << std::endl;
+		Log("Shortcut for AABB overlap AABB failed");
+		result = xInside && yInside && zInside;
 	}
-	result = xInside && yInside && zInside;
 #endif // !_DEBUG
 	return result;
 }
@@ -225,7 +232,7 @@ inline bool AABB::Contains(const AABB& other) const noexcept
 	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
 	if (result != (xInside && yInside && zInside))
 	{
-		std::cout << "Shortcut for AABB inside AABB failed" << std::endl;
+		Log("Shortcut for AABB inside AABB failed");
 	}
 	result = xInside && yInside && zInside;
 #endif // !_DEBUG
@@ -249,6 +256,24 @@ inline bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collis
 {
 	Collision far{};
 	return this->Intersect(point, dir, near, far);
+}
+
+inline bool AABB::FastIntersect(Line line) const noexcept
+{
+	return this->FastIntersect(line.PointA(), line.delta);
+}
+
+inline bool AABB::FastIntersect(LineSegment segment) const noexcept
+{
+	float near = -INFINITY, far = INFINITY;
+	bool result = this->FastIntersect(segment.A, segment.Direction(), near, far);
+	return result && ((far >= 0.f && far <= 1.f) || (near >= 0.f && near <= 1.f));
+}
+
+inline bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
+{
+	float dummyA = 0.f, dummyB = 0.f;
+	return this->FastIntersect(point, dir, dummyA, dummyB);
 }
 
 inline AABB AABB::MakeAABB(const glm::vec3& left, const glm::vec3& right) noexcept

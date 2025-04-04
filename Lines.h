@@ -57,7 +57,7 @@ inline Line::Line(const glm::vec3& point, const glm::vec3& dir) noexcept : point
 struct Ray : public Line
 {
 	inline Ray() noexcept = default;
-	inline Ray(const glm::vec3& a, const glm::vec3& b) noexcept;
+	inline Ray(const glm::vec3& point, const glm::vec3& direction) noexcept;
 	inline Ray(const Ray& other) noexcept;
 
 	inline bool operator==(const Ray& other) const noexcept = default;
@@ -66,7 +66,7 @@ struct Ray : public Line
 	virtual glm::vec3 PointClosestTo(const glm::vec3& point) const noexcept override;
 };
 
-inline Ray::Ray(const glm::vec3& a, const glm::vec3& b) noexcept : Line(a, b) {}
+inline Ray::Ray(const glm::vec3& start, const glm::vec3& direction) noexcept : Line(start, direction) {}
 
 inline Ray::Ray(const Ray& other) noexcept : Line(other.point, other.dir) {}
 

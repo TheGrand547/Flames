@@ -533,7 +533,7 @@ void display()
 	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
 	glDisable(GL_STENCIL_TEST);
 	
-	if (debugFlags[DEBUG_PATH] || true)
+	if (debugFlags[DEBUG_PATH])
 	{
 		EnableGLFeatures<Blending>();
 		//DisableDepthBufferWrite();
@@ -554,6 +554,7 @@ void display()
 
 		EnableDepthBufferWrite();
 	}
+	/*
 	// Visualize the pathfinder guy
 	{
 		EnableGLFeatures<Blending>();
@@ -574,7 +575,7 @@ void display()
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
 		EnableDepthBufferWrite();
-	}
+	}*/
 	
 	//glDisable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_ALWAYS);
@@ -2954,7 +2955,37 @@ void init()
 			}
 		);
 	}
-	std::cout << Level::AllNodes.size() << ":\n";
+	Level::GetTriangleTree().UpdateStructure();
+
+	{
+		QUICKTIMER("AABB Stress test");
+		std::size_t succeed = 0, fails = 0;
+		Level::GetTriangleTree().for_each(
+			[&](auto& ref) 
+			{
+				const glm::vec3 start = ref.GetCenter() + ref.GetNormal() * 2.f;
+				const AABB box = ref.GetAABB();
+				for (auto i = 0; i < 100; i++)
+				{
+					const glm::vec3 direction = glm::sphericalRand(1.f);
+					Ray liota(start, direction);
+					if (box.FastIntersect(liota) == box.Intersect(start, direction))
+					{
+						succeed++;
+					}
+					else
+					{
+						Log(std::boolalpha << box.FastIntersect(liota) << ":" << box.Intersect(start, direction));
+						fails++;
+					}
+
+				}
+				return false; 
+			}
+		);
+		Log(std::format("Pass {} : Fail {}", succeed, fails));
+	}
+
 	{
 		QUICKTIMER("KdTree Generation");
 		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
@@ -2973,8 +3004,10 @@ void init()
 			}
 		);
 		*/
+		std::vector<glm::vec3> foolish;
 		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
 		{
+			break;
 			for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
 			{
 				PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
@@ -2982,18 +3015,38 @@ void init()
 					{
 						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
 						float delta = glm::length(a - b);
-						if (delta > 25.f) // TODO: Constant
+						if (delta > 20.f) // TODO: Constant
 							return false;
 						Ray liota(a, b - a);
-						//countes++;
-						auto temps = Level::GetTriangleTree().Search(AABB::MakeAABB(liota.point, liota.point * liota.dir * 100.f));
+						auto temps = Level::GetTriangleTree().RayCast(liota);
 						if (temps.size() == 0)
 							return true;
+						Log(std::format("{}", temps.size()));
 						RayCollision fumop{};
 						for (auto& temp : temps)
 						{
-							if (temp->RayCast(liota, fumop) && fumop.depth < delta)
+							/*
+							RayCollision rays{}, rays2{};
+							temp->GetAABB().Intersect(liota.point, liota.dir, rays, rays2);
+							float x{}, y{};
+							temp->GetAABB().FastIntersect(liota.point, liota.dir, x, y);
+							if (x < 0) std::swap(x, y);
+							if (glm::distance(rays.depth, x) > EPSILON)
 							{
+								Log(std::format("{}:{}", rays.depth, x));
+							}
+							if (glm::distance(rays2.depth, y) > EPSILON)
+							{
+								Log(std::format("{}:{}", rays2.depth, y));
+							}
+							*/
+							if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
+							{
+								Log(std::format("Culled {} {}", i, j));
+								for (const auto& p : temp->GetPointArray())
+								{
+									foolish.push_back(p);
+								}
 								return false;
 							}
 						}
@@ -3002,6 +3055,7 @@ void init()
 				);
 			}
 		}
+		volumetric.BufferData(foolish);
 	}
 
 	{
@@ -3057,20 +3111,21 @@ void init()
 		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
-	/*
 	{
-		QUICKTIMER("OBB Loading");
+		/*
+		QUICKTIMER("Mesh Loading Loading");
 		std::vector<glm::vec3> matrixif;
 		for (const auto& box : Level::GetTriangleTree())
 		{
 			//matrixif.push_back(box.GetModelMatrix());
-			for (const auto& b : box.GetPointVector())
+			for (const auto& b : box.GetPointArray())
 			{
 				matrixif.push_back(b);
 			}
 		}
-		volumetric.BufferData(matrixif);
-	}*/
+		*/
+		//volumetric.BufferData(matrixif);
+	}
 
 	//MeshThingy("Models\\Debris.obj");
 

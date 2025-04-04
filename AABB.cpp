@@ -104,48 +104,49 @@ bool AABB::Intersect(const glm::vec3& point, const glm::vec3& dir, Collision& ne
 	return true;
 }
 
-// https://tavianator.com/2022/ray_box_boundary.html#signs maybe?
-// TODO: Go through this when you have a better brain
-bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir) const noexcept
+// https://tavianator.com/2022/ray_box_boundary.html#signs
+bool AABB::FastIntersect(const glm::vec3& point, const glm::vec3& dir, float& near, float& far) const noexcept
 {
-	glm::vec3 delta = this->center - point;
-	float nearHit = -std::numeric_limits<float>::infinity(), farHit = std::numeric_limits<float>::infinity();
+	const glm::vec3 inverse = 1.f / dir;
+	near = 0;
+	far = INFINITY;
+	glm::mat2x3 box{ (this->center - this->halfs - point) * inverse, (this->center + this->halfs - point) * inverse};
 	for (auto i = 0; i < 3; i++)
 	{
-		float scale = this->halfs[i];
-		float parallel = delta[i];
-		if (glm::abs(dir[i]) < EPSILON)
-		{
-			if (abs(parallel) > scale)
-			//if (-parallel - scale > 0 || -parallel + scale > 0)
-			{
-				return false;
-			}
-		}
-		float scaling = dir[i];
-		float param0 = (parallel + scale) / scaling;
-		float param1 = (parallel - scale) / scaling;
-
-		if (param0 > param1)
-		{
-			std::swap(param0, param1);
-		}
-		if (param0 > nearHit)
-		{
-			nearHit = param0;
-		}
-		if (param1 < farHit)
-		{
-			farHit = param1;
-		}
-		if (nearHit > farHit)
-		{
-			return false;
-		}
-		if (farHit < 0)
-		{
-			return false;
-		}
+		float inv = inverse[i];
+		bool bit = std::signbit(inv);
+		//near = glm::min(glm::max(box[0][i], near), glm::max(box[1][i], near));
+		//far = glm::max(glm::min(box[0][i], far), glm::min(box[1][i], far));
+		near = glm::max(near, box[bit][i]);
+		far = glm::min(far, box[!bit][i]);
 	}
-	return true;
+	/*
+	near = 0;
+	far = INFINITY;
+
+	glm::vec3 minOp = (this->center - this->halfs - point) * inverse;
+	glm::vec3 maxOp = (this->center + this->halfs - point) * inverse;
+	near = glm::compMax(minOp);
+	far = glm::compMin(maxOp);
+	if (glm::sign(near) < 0.f)
+	{
+		std::swap(near, far);
+	}
+	//near = Rectify(near, -1.f);
+	//far = Rectify(far, -1.f);
+	*/
+	if (glm::sign(near) < 0.f)
+	{
+		std::swap(near, far);
+	}
+	//near = Rectify(near, -1.f);
+	//far = Rectify(far, -1.f);
+	return near <= far;
+}
+
+bool AABB::FastIntersect(Ray ray) const noexcept
+{
+	float near = -INFINITY, far = INFINITY;
+	bool result = this->FastIntersect(ray.point, ray.dir, near, far);
+	return result;
 }

@@ -7,18 +7,11 @@
 #include "AABB.h"
 #include "Log.h"
 #include "QuickTimer.h"
+#include "Lines.h"
 
-#ifndef DYNAMIC_OCT_TREE_MAX_DEPTH
-#define DYNAMIC_OCT_TREE_MAX_DEPTH (8)
-#endif //DYNAMIC_OCT_TREE_MAX_DEPTH
-
-#ifndef DYNAMIC_OCT_TREE_DIMENSION
-#define DYNAMIC_OCT_TREE_DIMENSION (100.f)
-#endif // DYNAMIC_OCT_TREE_DIMENSION
-
-#ifndef DYNAMIC_OCT_TREE_MIN_VOLUME
-#define DYNAMIC_OCT_TREE_MIN_VOLUME (10.f)
-#endif // DYNAMIC_OCT_TREE_MIN_VOLUME
+constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (8);
+constexpr auto DYNAMIC_OCT_TREE_DIMENSION = (100.f);
+constexpr auto DYNAMIC_OCT_TREE_MIN_VOLUME = (10.f);
 
 template<class T> class DynamicOctTree
 {
@@ -213,7 +206,35 @@ protected:
 			}
 			this->objects.erase(iter);
 		}
-	};
+
+		std::vector<Index> RayCast(Ray ray) const noexcept
+		{
+			std::vector<Index> hits;
+			this->RayCast(ray, hits);
+			return hits;
+		}
+
+		void RayCast(Ray ray, std::vector<Index>& out) const noexcept
+		{
+			if (this->bounds.Intersect(ray.point, ray.direction))
+			{
+				for (const auto& element : this->objects)
+				{
+					if (element.first.Intersect(ray.point, ray.direction))
+					{
+						out.push_back(element.second);
+					}
+				}
+				for (std::size_t i = 0; i < 8; i++)
+				{
+					if (this->members[i])// && this->members[i]->size > 0)
+					{
+						this->members[i]->RayCast(ray, out);
+					}
+				}
+			}
+		}
+};
 	
 public: 
 
@@ -464,6 +485,25 @@ public:
 			if (i >= this->elements.size())
 			{
 				Log("Undead member in search results.");
+				continue;
+			}
+			value.push_back(start + i);
+		}
+		return value;
+	}
+
+	std::vector<iterator> RayCast(Ray area) noexcept
+	{
+		std::vector<Index> index = this->root.RayCast(area);
+		std::vector<iterator> value{};
+		value.reserve(index.size());
+		iterator start = this->elements.begin();
+		for (Index i : index)
+		{
+			// Filthly stop-gap due to stupidity
+			if (i >= this->elements.size())
+			{
+				Log("Undead member in Raycast results.");
 				continue;
 			}
 			value.push_back(start + i);
