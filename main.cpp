@@ -376,7 +376,7 @@ Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 bool shiftHeld;
 std::atomic_uchar addExplosion;
 
-DebrisManager trashMan, playerMan;
+DebrisManager trashMan;
 Shader normalDebris;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
@@ -829,7 +829,6 @@ void display()
 	//normalDebris.SetActiveShader();
 	//normalDebris.SetTextureUnit("normalMapIn", normalMap);
 	trashMan.Draw(debris);
-	playerMan.Draw(debris);
 	glLineWidth(1.f);
 
 	basic.SetActiveShader();
@@ -1509,9 +1508,9 @@ void idle()
 		management.UpdateMeshes();
 	}
 
-
 	std::stringstream buffered;
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
+	buffered << "\n" << trashMan.GetSize();
 	//Level::SetInterest(tickTockMan.GetPos());
 	Level::SetInterest(management.GetPos());
 	
@@ -1538,7 +1537,6 @@ void idle()
 	}
 	managedProcess.FillBuffer(exhaustBuffer);
 	trashMan.FillBuffer();
-	playerMan.FillBuffer();
 
 	const auto endTime = std::chrono::high_resolution_clock::now();
 	idleTime = endTime - idleStart;
@@ -1738,24 +1736,9 @@ void gameTick()
 		{
 			Log("Big Jump of " << deltar);
 		}
-		
-		/*
-		playerMan.Add(trashMan.ExtractElements(
-			[&playerModel] (DebrisManager::Debris& bloke)
-			{
-				// Let them drift a bit before they zoom off towards the player
-				if (bloke.ticksAlive < 55)
-				{
-					return true;
-				}
-				//return true;
-				//std::cout << "addewd one\n";
-				bloke.ticksAlive = 0;
-				return false;
-			}
-		));*/
 		float playerSpeed = glm::length(playfield.GetVelocity());
 		const glm::vec3 playerForward = playfield.GetVelocity();
+		/*
 		playerMan.Update([&](DebrisManager::Debris& bloke)
 			{
 				constexpr float MaxAcceleration = 40.f;
@@ -1791,7 +1774,7 @@ void gameTick()
 				}
 				return glm::any(glm::isnan(bloke.transform.position));
 			}
-		);
+		);*/
 		
 
 		groovy.Update();
@@ -2760,11 +2743,11 @@ void init()
 	}
 
 	tickTockMan.Init();
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 350; i++)
 	{
 		management.Make();
 	}
-
+	Parallel::SetStatus(true);
 	struct
 	{
 		std::array<glm::vec4, 32> points{};
@@ -3021,38 +3004,20 @@ void init()
 						if (temps.size() == 0)
 						{
 							return true;
-							//return false;
 						}
 						for (auto& temp : temps)
 						{
 							RayCollision fumop{};
-							if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth <= delta)
+							if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
 							{
-								/*
-								for (const auto& p : temp->GetPointArray())
-								{
-									foolish.push_back(p + temp->GetNormal() * 3.f);
-								}
-								*/
 								return false;
 							}
 						}
 						return true;
-						//return false;
 					}
 				);
 			}
 		}
-		/*
-		for (const auto& p : Level::GetTriangleTree())
-		{
-			for (const auto& p2 : p.GetPointArray())
-			{
-				//foolish.push_back(p2);
-			}
-		}
-		*/
-		//volumetric.BufferData(foolish);
 	}
 
 	{
@@ -3135,6 +3100,7 @@ void init()
 	Font::SetFontDirectory("Fonts");
 	
 	DebrisManager::LoadResources();
+	trashMan.Init();
 	Satelite::LoadResources();
 	// Doing this should not change anything, why does it fix things
 	//trashMan.AddDebris(glm::vec3(5, 5, 0), World::Zero);

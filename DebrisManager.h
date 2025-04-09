@@ -21,25 +21,31 @@ public:
 private:
 
 	// TODO: Maybe an array or circular buffer to cap size, who knows
-	std::vector<Debris> debris;
+	//std::vector<Debris> debris;
+	std::vector<std::vector<Debris>> debris; // I know what I'm doing
 	ArrayBuffer instanceBuffer;
 	DrawIndirectBuffer indirectBuffer;
 	BufferSync<std::vector<MeshMatrix>> buffered;
 	bool dirty = true, superDirty = true;
+	std::size_t elementCount = 0;
 public:
 	DebrisManager() noexcept = default;
 
 	void Update() noexcept;
 	void Draw(Shader& shader) noexcept;
 
+	void Init() noexcept;
+	inline std::size_t GetSize() const noexcept
+	{
+		return this->elementCount;
+	}
+
 	// Similar to ExtractElements, but just runs an update, culling any that return true from the invoking function
 	// Returns the number of elements removed
 	template<typename T> std::size_t Update(T function) noexcept
 	{
-		std::size_t removed = std::erase_if(this->debris, function);
-		this->superDirty |= removed != 0;
-		this->dirty = true;
-		return removed;
+		Log("Deprecated");
+		return 0;
 	}
 
 
@@ -51,15 +57,8 @@ public:
 	// Always invaldiates the index buffer
 	template<typename T> std::vector<Debris> ExtractElements(T function) noexcept
 	{
-		std::vector<Debris> removed;
-		auto iterator = std::remove_copy_if(this->debris.begin(), this->debris.end(), std::back_inserter(removed), function);
-		this->dirty = true;
-		if (removed.size() != 0)
-		{
-			this->debris.erase(this->debris.end() - removed.size(), this->debris.end());
-			this->superDirty = true;
-		}
-		return removed;
+		Log("Deprecated");
+		return 0;
 	}
 
 	void Add(std::vector<Debris>&& local) noexcept;

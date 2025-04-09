@@ -9,6 +9,7 @@ template<typename T, std::size_t N>
 struct CircularBuffer
 {
 protected:
+	// TODO: Switch to vector
 	std::array<T, N> elements{};
 	bool full = false;
 	std::size_t frontIndex = 0;

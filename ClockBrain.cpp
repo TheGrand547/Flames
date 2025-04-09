@@ -31,7 +31,7 @@ void ClockBrain::Update()
 		orient[0] = glm::normalize(this->velocity);
 		orient[1] = glm::cross(current[2], orient[0]);
 		orient[2] = glm::cross(orient[0], orient[1]);
-		this->transform.rotation = glm::quat_cast(orient);
+		this->transform.rotation = glm::normalize(glm::quat_cast(orient));
 	}
 }
 

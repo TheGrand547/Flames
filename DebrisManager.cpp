@@ -6,9 +6,12 @@
 #include "VertexArray.h"
 #include "Model.h"
 #include "ResourceBank.h"
+#include "Input.h"
+#include <ranges>
+#include <execution>
 
 static MeshData meshData;
-static unsigned char debrisTypes = 1;
+static unsigned char DebrisTypes = 1;
 //static VAO instanceVAO;
 
 // Constant speed till 3 seconds after the inciting incident, then a decay for 3 seconds to whatever the final ones are
@@ -25,68 +28,152 @@ static constexpr float MinAngleRotation = Tick::TimeDelta * std::numbers::pi_v<f
 static constexpr float MinSpeed = 0.25f;// *Tick::TimeDelta;
 static constexpr float MaxSpeed = 3.5f;// *Tick::TimeDelta;
 
-// TODO: Migrate to vector of vectors of Debris to remove the need for the stupid sorting and recalculations
-// Might be able to get away with OctTree's instead of vectors but that kind of sounds like a headache of layers
-
 void DebrisManager::Update() noexcept
 {
-	std::vector<MeshMatrix> paringKnife;
-	paringKnife.reserve(this->debris.size());
-	// TODO: Move to parallel once collision and more complicated stuff are done in here
-	// TODO: Maybe this is good but I sure as hell can't tell, poke around numbers y'know
-	std::size_t removedCount = std::erase_if(this->debris, 
-		[&](Debris& ref)
+	// This parallel one is faster for larger groups of them(shocking), will have to do more testing to determine if it's worth it
+	// This is vaguely in the ballpark of successful
+	if (Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) || this->elementCount > 100) 
+	{
+		std::vector<std::vector<MeshMatrix>> evil;
+		for (auto i = 0; i < DebrisTypes; i++)
 		{
-			ref.ticksAlive++;
-			ref.transform.position += ref.delta.position * Tick::TimeDelta;
-			ref.transform.rotation = ref.transform.rotation * ref.delta.rotation;
-			if (ref.ticksAlive == FinalSpeedTime)
-			{
-				float speed = glm::length(ref.delta.position);
-				if (speed > MaxSpeed)
-				{
-					ref.delta.position = glm::normalize(ref.delta.position) * MaxSpeed;
-				}
-			}
-			if (ref.ticksAlive > DecayStart)
-			{
-				if (ref.ticksAlive > DecayEnd)
-				{
-					return true;
-				}
-				ref.scale *= 0.95f;
-			}
-			else if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
-			{
-				// This is overcomplicated
-				float speed = glm::length(ref.delta.position);
-				if (speed > MinSpeed)
-				{
-					ref.delta.position *= DecayConstant;
-				}
-				float angle = glm::angle(ref.delta.rotation);
-				if (angle > MinAngleRotation)
-				{
-					glm::vec3 axis = glm::axis(ref.delta.rotation);
-					ref.delta.rotation = glm::angleAxis(angle * DecayConstant, axis);
-					ref.delta.rotation = glm::normalize(ref.delta.rotation);
-					if (glm::angle(ref.delta.rotation) > angle)
-					{
-						ref.delta.rotation = glm::angleAxis(MinAngleRotation, axis);
-					}
-				}
-			}
-			bool result = glm::any(glm::isnan(ref.transform.position));
-			if (!result)
-			{
-				paringKnife.push_back(Model(ref.transform, ref.scale).GetMatrixPair());
-			}
-			return result;
+			evil.push_back({});
 		}
-	);
-	this->buffered.Swap(paringKnife);
-	this->superDirty |= (removedCount != 0);
-	this->dirty = true;
+		std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(DebrisTypes));
+		std::atomic<std::size_t> removedCount = 0;
+		std::for_each(std::execution::par, viewing.begin(), viewing.end(), [&](size_t i)
+			{
+				removedCount += std::erase_if(this->debris[i],
+					[&](Debris& ref)
+					{
+						ref.ticksAlive++;
+						ref.transform.position += ref.delta.position * Tick::TimeDelta;
+						ref.transform.rotation = ref.transform.rotation * ref.delta.rotation;
+						if (ref.ticksAlive == FinalSpeedTime)
+						{
+							float speed = glm::length(ref.delta.position);
+							if (speed > MaxSpeed)
+							{
+								ref.delta.position = glm::normalize(ref.delta.position) * MaxSpeed;
+							}
+						}
+						if (ref.ticksAlive > DecayStart)
+						{
+							if (ref.ticksAlive > DecayEnd)
+							{
+								//return true;
+							}
+							ref.scale *= 0.95f;
+						}
+						else if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
+						{
+							// This is overcomplicated
+							float speed = glm::length(ref.delta.position);
+							if (speed > MinSpeed)
+							{
+								ref.delta.position *= DecayConstant;
+							}
+							float angle = glm::angle(ref.delta.rotation);
+							if (angle > MinAngleRotation)
+							{
+								glm::vec3 axis = glm::axis(ref.delta.rotation);
+								ref.delta.rotation = glm::angleAxis(angle * DecayConstant, axis);
+								ref.delta.rotation = glm::normalize(ref.delta.rotation);
+								if (glm::angle(ref.delta.rotation) > angle)
+								{
+									ref.delta.rotation = glm::angleAxis(MinAngleRotation, axis);
+								}
+							}
+						}
+						bool result = glm::any(glm::isnan(ref.transform.position));
+						if (!result)
+						{
+							evil[i].push_back(Model(ref.transform, ref.scale).GetMatrixPair());
+						}
+						return result;
+					}
+				);
+			}
+			);
+		this->elementCount -= removedCount;
+		std::vector<MeshMatrix> cluster;
+		cluster.reserve(this->elementCount);
+		for (auto& ref : evil)
+		{
+			std::move(ref.begin(), ref.end(), std::back_inserter(cluster));
+		}
+		this->buffered.Swap(cluster);
+		this->superDirty |= (removedCount != 0);
+		this->dirty = true;
+	}
+	else
+	{
+		std::vector<MeshMatrix> paringKnife;
+		paringKnife.reserve(this->elementCount);
+		// TODO: Move to parallel once collision and more complicated stuff are done in here
+		// TODO: Maybe this is good but I sure as hell can't tell, poke around numbers y'know
+
+
+		std::size_t removedCount = 0;
+
+		for (auto& subArray : this->debris)
+		{
+			removedCount += std::erase_if(subArray,
+				[&](Debris& ref)
+				{
+					ref.ticksAlive++;
+					ref.transform.position += ref.delta.position * Tick::TimeDelta;
+					ref.transform.rotation = ref.transform.rotation * ref.delta.rotation;
+					if (ref.ticksAlive == FinalSpeedTime)
+					{
+						float speed = glm::length(ref.delta.position);
+						if (speed > MaxSpeed)
+						{
+							ref.delta.position = glm::normalize(ref.delta.position) * MaxSpeed;
+						}
+					}
+					if (ref.ticksAlive > DecayStart)
+					{
+						if (ref.ticksAlive > DecayEnd)
+						{
+							//return true;
+						}
+						ref.scale *= 0.95f;
+					}
+					else if (ref.ticksAlive < FinalSpeedTime && ref.ticksAlive > FadeOutTime)
+					{
+						// This is overcomplicated
+						float speed = glm::length(ref.delta.position);
+						if (speed > MinSpeed)
+						{
+							ref.delta.position *= DecayConstant;
+						}
+						float angle = glm::angle(ref.delta.rotation);
+						if (angle > MinAngleRotation)
+						{
+							glm::vec3 axis = glm::axis(ref.delta.rotation);
+							ref.delta.rotation = glm::angleAxis(angle * DecayConstant, axis);
+							ref.delta.rotation = glm::normalize(ref.delta.rotation);
+							if (glm::angle(ref.delta.rotation) > angle)
+							{
+								ref.delta.rotation = glm::angleAxis(MinAngleRotation, axis);
+							}
+						}
+					}
+					bool result = glm::any(glm::isnan(ref.transform.position));
+					if (!result)
+					{
+						paringKnife.push_back(Model(ref.transform, ref.scale).GetMatrixPair());
+					}
+					return result;
+				}
+			);
+		}
+		this->elementCount -= removedCount;
+		this->buffered.Swap(paringKnife);
+		this->superDirty |= (removedCount != 0);
+		this->dirty = true;
+	}
 }
 
 void DebrisManager::Draw(Shader& shader) noexcept
@@ -130,43 +217,31 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	shader.MultiDrawElements(this->indirectBuffer);
 }
 
+void DebrisManager::Init() noexcept
+{
+	this->debris.clear();
+	for (auto i = 0; i < DebrisTypes; i++)
+	{
+		this->debris.push_back({});
+	}
+}
+
 void DebrisManager::FillBuffer() noexcept
 {
 	// Recalculate whole offset dealio
 	if (this->superDirty)
 	{
-		// TODO: stop doing this shit
-		std::sort(this->debris.begin(), this->debris.end(), 
-			[] (const Debris& left, const Debris& right)
-			{
-				return left.drawIndex < right.drawIndex;
-			});
-		std::vector localCopy{ meshData.rawIndirect };
-		// TODO: maybe do this on gpu or something I have no idea man
-		std::vector<std::pair<GLuint, GLuint>> offsets(meshData.rawIndirect.size(), std::make_pair(0, 0));
+		std::vector<DrawIndirect> localCopy = meshData.rawIndirect;
 		if (this->debris.size() > 0)
 		{
-			GLuint previous = this->debris[0].drawIndex, previousIndex = 0;
-			for (GLuint i = 0; i < this->debris.size(); i++)
+			GLuint offset = 0;
+			for (auto i = 0; i < this->debris.size(); i++)
 			{
-				GLuint current = static_cast<GLuint>(this->debris[i].drawIndex);
-				if (current != previous)
-				{
-					offsets[previous] = std::make_pair(i - previousIndex, previousIndex);
-					previousIndex = i;
-					previous = current;
-				}
-				if (static_cast<std::size_t>(i) + 1 == this->debris.size())
-				{
-					offsets[current] = std::make_pair(1 + i - previousIndex, previousIndex);
-				}
+				localCopy[i].instanceCount = static_cast<GLuint>(this->debris[i].size());
+				localCopy[i].instanceOffset = offset;
+				offset += static_cast<GLuint>(this->debris[i].size());
 			}
-			for (std::size_t i = 0; i < meshData.rawIndirect.size(); i++)
-			{
-				auto& current = localCopy[i];
-				current.instanceCount = offsets[i].first;
-				current.instanceOffset = offsets[i].second;
-			}
+			this->elementCount = offset;
 		}
 		if (!this->indirectBuffer.GetBuffer())
 		{
@@ -182,13 +257,6 @@ void DebrisManager::FillBuffer() noexcept
 	if (this->dirty)
 	{
 		// Recalculate buffer
-		/*
-		std::vector<MeshMatrix> matrix;
-		matrix.reserve(this->debris.size());
-		for (const auto& local : this->debris)
-		{
-			matrix.push_back(Model(local.transform, local.scale).GetMatrixPair());
-		}*/
 		this->buffered.ExclusiveOperation([&](std::vector<MeshMatrix>& matrix)
 			{
 				this->instanceBuffer.BufferData(matrix, StreamDraw);
@@ -200,8 +268,9 @@ void DebrisManager::FillBuffer() noexcept
 
 void DebrisManager::AddDebris(glm::vec3 postion, glm::vec3 velocity) noexcept
 {
-	// TODO: Insertion sort based on id to add variety, yknow
-	this->debris.emplace_back(Transform
+	unsigned char index = static_cast<unsigned char>(rand()) % DebrisTypes;
+	this->elementCount += 1;
+	this->debris[index].emplace_back(Transform
 		{
 			postion,
 			glm::quat(glm::sphericalRand(glm::pi<float>()))
@@ -210,7 +279,7 @@ void DebrisManager::AddDebris(glm::vec3 postion, glm::vec3 velocity) noexcept
 			velocity,
 			glm::angleAxis(glm::radians(glm::length(velocity)), glm::sphericalRand(1.f))
 		},
-		static_cast<unsigned char>(rand()) % debrisTypes,
+		index,
 		static_cast<std::uint16_t>(this->debris.size() % 40), // Add some variation to the time out
 		glm::clamp(glm::gaussRand(0.5f, 0.2f), 0.1f, 0.9f)
 	);
@@ -225,7 +294,11 @@ void DebrisManager::Add(std::vector<Debris>&& local) noexcept
 		this->dirty = true;
 		this->superDirty = true;
 	}
-	std::move(local.begin(), local.end(), std::back_inserter(this->debris));
+	this->elementCount += local.size();
+	for (auto& debris : local)
+	{
+		this->debris[debris.drawIndex].push_back(std::move(debris));
+	}
 	local.clear();
 }
 
@@ -236,7 +309,11 @@ void DebrisManager::Add(std::vector<Debris>& local) noexcept
 		this->dirty = true;
 		this->superDirty = true;
 	}
-	std::move(local.begin(), local.end(), std::back_inserter(this->debris));
+	this->elementCount += local.size();
+	for (const auto& debris: local)
+	{
+		this->debris[debris.drawIndex].push_back(debris);
+	}
 	local.clear();
 }
 
@@ -244,6 +321,6 @@ bool DebrisManager::LoadResources() noexcept
 {
 	//meshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Debris.glb");
 	meshData = OBJReader::MeshThingy<MeshVertex>("Models\\Debris.glb");
-	debrisTypes = meshData.indirect.GetElementCount();
-	return debrisTypes > 1;
+	DebrisTypes = meshData.indirect.GetElementCount();
+	return DebrisTypes > 1;
 }
