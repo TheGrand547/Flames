@@ -4,6 +4,7 @@
 #include "Parallel.h"
 #include <ranges>
 #include "Input.h"
+#include "StaticVector.h"
 
 void ShipManager::Update() noexcept
 {
@@ -13,24 +14,26 @@ void ShipManager::Update() noexcept
 	// Arbitrary threshold
 	if (!Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) && this->brainDrain2.size() > 50)
 	{
-		for (auto i = 0; i < this->brainDrain2.size(); i++)
-			this->inactive.push_back({});
+		// I don't know if this is even a good idea
+		StaticVector<MeshMatrix> meshes(this->brainDrain2.size(), MeshMatrix({ 0.f }, { 0.f }));
 		std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(this->brainDrain2.size()));
 		std::for_each(std::execution::par, viewing.begin(), viewing.end(), [&](std::size_t i)
 			{
 				ClockBrain& element = this->brainDrain2[i];
 				glm::vec3 position = element.GetPos();
 				element.Update();
-				this->inactive[i] = (element.GetPair());
+				//this->inactive[i] = (element.GetPair());
+				meshes[i] = (element.GetPair());
 
 				// Keeping this in just in case the issue returns, despite the performance penalty
-				auto& p = this->inactive[i];
+				auto& p = meshes[i];
 				if (glm::any(glm::greaterThanEqual(glm::abs(p.model[0]), glm::vec4(10.f))))
 				{
 					Log("Big Trouble");
 				}
 			}
 		);
+		std::copy(meshes.begin(), meshes.end(), std::back_inserter(this->inactive));
 	}
 	else
 	{

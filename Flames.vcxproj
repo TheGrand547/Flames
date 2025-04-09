@@ -286,6 +286,7 @@
     <ClInclude Include="SimpleShip.h" />
     <ClInclude Include="Sphere.h" />
     <ClInclude Include="StaticOctTree.h" />
+    <ClInclude Include="StaticVector.h" />
     <ClInclude Include="stbWrangler.h" />
     <ClInclude Include="stb_perlin.h" />
     <ClInclude Include="stb_rect_pack.h" />

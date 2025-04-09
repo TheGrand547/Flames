@@ -9,6 +9,7 @@
 #include "Input.h"
 #include <ranges>
 #include <execution>
+#include "StaticVector.h"
 
 static MeshData meshData;
 static unsigned char DebrisTypes = 1;
@@ -34,11 +35,13 @@ void DebrisManager::Update() noexcept
 	// This is vaguely in the ballpark of successful
 	if (Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) || this->elementCount > 100) 
 	{
-		std::vector<std::vector<MeshMatrix>> evil;
+		//std::vector<std::vector<MeshMatrix>> evil;
+		/*
 		for (auto i = 0; i < DebrisTypes; i++)
 		{
 			evil.push_back({});
-		}
+		}*/
+		StaticVector<std::vector<MeshMatrix>> evil(DebrisTypes);
 		std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(DebrisTypes));
 		std::atomic<std::size_t> removedCount = 0;
 		std::for_each(std::execution::par, viewing.begin(), viewing.end(), [&](size_t i)
