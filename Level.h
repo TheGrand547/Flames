@@ -11,7 +11,7 @@ namespace Level
 {
 	static StaticOctTree<OBB> Geometry;
 	static kdTree<PathNodePtr> Tree;
-	static std::vector<PathNodePtr> AllNodes;
+	//static std::vector<PathNodePtr> AllNodes;
 	void Clear() noexcept;
 
 	void AddOBB(OBB obb);
@@ -26,6 +26,7 @@ namespace Level
 	std::vector<Bullet>& GetBullets();
 
 	DynamicOctTree<Bullet>& GetBulletTree();
+	std::vector<PathNodePtr>& AllNodes();
 
 	// Points of Interest
 	std::vector<glm::vec3>& GetPOI();

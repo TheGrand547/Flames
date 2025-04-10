@@ -9,17 +9,17 @@
 void ShipManager::Update() noexcept
 {
 	this->inactive.clear();
-	this->inactive.reserve(this->brainDrain2.size());
+	this->inactive.reserve(this->brainDrain.size());
 
 	// Arbitrary threshold
-	if (!Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) && this->brainDrain2.size() > 50)
+	if (!Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) && this->brainDrain.size() > 50)
 	{
 		// I don't know if this is even a good idea
-		StaticVector<MeshMatrix> meshes(this->brainDrain2.size(), MeshMatrix({ 0.f }, { 0.f }));
-		std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(this->brainDrain2.size()));
+		StaticVector<MeshMatrix> meshes(this->brainDrain.size(), MeshMatrix({ 0.f }, { 0.f }));
+		std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(this->brainDrain.size()));
 		std::for_each(std::execution::par, viewing.begin(), viewing.end(), [&](std::size_t i)
 			{
-				ClockBrain& element = this->brainDrain2[i];
+				ClockBrain& element = this->brainDrain[i];
 				glm::vec3 position = element.GetPos();
 				element.Update();
 				//this->inactive[i] = (element.GetPair());
@@ -37,7 +37,7 @@ void ShipManager::Update() noexcept
 	}
 	else
 	{
-		std::for_each(this->brainDrain2.begin(), this->brainDrain2.end(), [&](ClockBrain& element)
+		std::for_each(this->brainDrain.begin(), this->brainDrain.end(), [&](ClockBrain& element)
 			{
 				glm::vec3 position = element.GetPos();
 				element.Update();
@@ -47,7 +47,7 @@ void ShipManager::Update() noexcept
 	}
 	std::swap(this->active, this->inactive);
 
-	Parallel::erase_if(std::execution::par, this->brainDrain2, 
+	Parallel::erase_if(std::execution::par, this->brainDrain, 
 		[](ClockBrain& bloke)
 		{
 			for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
@@ -75,20 +75,6 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 	data.Bind(VAOBank::Get("instance"));
 	VAOBank::Get("instance").BindArrayBuffer(this->pain, 1);
 	shader.DrawElements(flubber);
-
-	/*
-	for (auto& bloke : this->brainDrain)
-	{
-		bloke.Draw(data, vao, shader);
-	}*/
-	/*
-	this->brainDrain.for_each([&](ClockBrain& guy) 
-		{
-			guy.Draw(std::forward(data), std::forward(vao), std::forward(shader)); 
-			return false; 
-		}
-	);
-	*/
 }
 
 void ShipManager::UpdateMeshes() noexcept

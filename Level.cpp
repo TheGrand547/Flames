@@ -3,10 +3,16 @@
 
 namespace Level
 {
+	std::vector<PathNodePtr> AllTheNodes;
+	std::vector<PathNodePtr>& AllNodes()
+	{
+		return AllTheNodes;
+	}
+
 	void Clear() noexcept
 	{
 		Geometry.Clear();
-		AllNodes.clear();
+		AllNodes().clear();
 		Tree.Clear();
 	}
 

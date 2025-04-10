@@ -303,7 +303,9 @@ struct SimpleBullet
 PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 
-DynamicOctTree<PathFollower> followers{AABB(glm::vec3(-105), glm::vec3(100))};
+DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
+//BufferSync<std::vector<glm::mat4>> followerBuffer;
+//ArrayBuffer followerBuffer;
 
 std::vector<SimpleBullet> bullets;
 ArrayBuffer bulletMatrix;
@@ -587,33 +589,20 @@ void display()
 	//skinner.DrawElements<DrawType::Triangle>(skinArg);
 	
 
-	EnableGLFeatures<FaceCulling>();
+	//EnableGLFeatures<FaceCulling>();
+	//glPolygonMode(GL_BACK, GL_LINE);
 	billboardShader.SetActiveShader();
 	billboardVAO.Bind();
 	billboardVAO.BindArrayBuffer(billboardBuffer, 0);
 	billboardVAO.BindArrayBuffer(billboardMatrix, 1);
-	billboardShader.SetTextureUnit("sampler", texture, 0);
+	billboardShader.SetTextureUnit("sampler", wallTexture, 0);
+	// What?
 	auto yCameraMatrix = glm::eulerAngleY(-cameraRadians.y);
-	//billboardShader.SetMat4("orient", yCameraMatrix);
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
-	billboardMatrix.BufferData(bigData);
 	billboardShader.DrawArrayInstanced<DrawType::TriangleStrip>(billboardBuffer, billboardMatrix);
-	/*
-	for (auto& following : followers)
-	{
-		glm::vec3 billboardPosition = following.first.GetPosition();
-		glm::vec3 billboardDelta = cameraPosition - billboardPosition;
-		glm::vec3 up = glm::vec3(0, 1, 0);
-		glm::vec3 right = glm::normalize(glm::cross(up, billboardDelta));
-		glm::vec3 forward = glm::normalize(glm::cross(right, up));
-		glm::mat4 tempMatrix{ glm::mat3(forward, up, right)};
-		tempMatrix = glm::transpose(tempMatrix);
-		tempMatrix[3] = glm::vec4(billboardPosition, 1);
-		tempMatrix[2] *= 0.5f;
-		billboardShader.SetMat4("orient", tempMatrix);
-		//billboardShader.DrawArray<DrawType::TriangleStrip>(billboardBuffer);
-	}*/
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	EnableGLFeatures<FaceCulling>();
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
@@ -1365,11 +1354,14 @@ void idle()
 	{
 		dynamicTreeBoxes = Level::GetTriangleTree().GetBoxes();
 	}
-	/*
-	for (auto& follow : followers2)
+	std::vector<glm::mat4> matx;
+
+	for (auto& follow : followers)
 	{
-		follow.first.Update(timeDelta, Level::Geometry);
-	}*/
+		follow.Update();
+		matx.push_back(follow.GetModelMatrix());
+	}
+	billboardMatrix.BufferData(matx);
 
 	const Model playerModel = playfield.GetModel();
 	if (lastPoster == glm::vec3(0))
@@ -1566,16 +1558,20 @@ void gameTick()
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
+						// TODO: change this so that the output vector isn't the big list so the actual generation of the decals
+						// can be parallelized, with only the copying needing sequential access
 						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
 						// generating decals also requires a OctTreeSearch, escape the outer one.
 						if (decalVertex.ExclusiveOperation([&](auto& ref)
 							{
-								QuickTimer _time("Decal Generation");
+								//QuickTimer _time("Decal Generation");
+								// TODO: Not completely pleased with this, which triangle is hit first has a big impact on the 
+								// resulting decal, average the normal of all affected tris? I don't know yet
 								float planeDistance = currentTri->GetPlane().Facing(transformedBox.GetCenter());
 								glm::vec3 newCenter = transformedBox.GetCenter() - currentTri->GetNormal() * planeDistance;
 								OBB sigma(Model(newCenter, ForwardDir(-currentTri->GetNormal(),
 									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
-									Bullet::Collision.GetScale() * glm::vec3(2.f, BulletDecalScale, BulletDecalScale)));
+									Bullet::Collision.GetScale() * glm::vec3(1.5f, BulletDecalScale, BulletDecalScale)));
 								blarg.push_back(sigma.GetModelMatrix());
 								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
@@ -1874,6 +1870,11 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_P) 
 		{
 			sigmaTarget = cameraPosition;
+		}
+		if (key == GLFW_KEY_0)
+		{
+			std::vector<TextureVertex> points{};
+			decalVertex.Swap(points);
 		}
 		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
@@ -2600,7 +2601,7 @@ void init()
 		glm::vec3 forawrd = project.Up();
 		if (glm::dot(forawrd, World::Up) > 0.5f)
 		{
-			Level::AllNodes.push_back(PathNode::MakeNode(project.GetCenter() + glm::vec3(0, 1, 0)));
+			Level::AllNodes().push_back(PathNode::MakeNode(project.GetCenter() + glm::vec3(0, 1, 0)));
 		}
 		project.Scale(glm::vec3(1, .0625f, 1));
 		//project.Scale(glm::vec3(1, 0, 1));
@@ -2612,7 +2613,7 @@ void init()
 	{
 		QuickTimer _tim("Node Culling");
 		//std::erase_if(Level::AllNodes,
-		Parallel::erase_if(std::execution::par, Level::AllNodes,
+		Parallel::erase_if(std::execution::par, Level::AllNodes(),
 			[&](const PathNodePtr& A)
 			{
 				AABB boxer{};
@@ -2705,7 +2706,7 @@ void init()
 		glm::vec2 base = glm::diskRand(20.f);
 		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
 		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
-		//followers.Insert(fus, fus.GetAABB());
+		followers.Insert(fus, fus.GetAABB());
 	}
 	PathFollower sc(glm::vec3(-100, 2.5, -100));
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
@@ -2720,7 +2721,7 @@ void init()
 	}
 
 	tickTockMan.Init();
-	for (int i = 0; i < 350; i++)
+	for (int i = 0; i < 10; i++)
 	{
 		management.Make();
 	}
@@ -2828,11 +2829,11 @@ void init()
 		{
 			//QUICKTIMER("Thing B");
 			//std::size_t countes = 0;
-			for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
+			for (std::size_t i = 0; i < Level::AllNodes().size(); i++)
 			{
-				for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
+				for (std::size_t j = i + 1; j < Level::AllNodes().size(); j++)
 				{
-					PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
+					PathNode::addNeighbor(Level::AllNodes()[i], Level::AllNodes()[j],
 						[&](const PathNodePtr& A, const PathNodePtr& B)
 						{
 							glm::vec3 a = A->GetPosition(), b = B->GetPosition();
@@ -2861,11 +2862,11 @@ void init()
 		}
 
 		// TODO: Second order check to remove connections that are "superfluous", ie really similar in an unhelpful manner
-		std::erase_if(Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
+		std::erase_if(Level::AllNodes(), [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
 		//Parallel::erase_if(std::execution::par_unseq, Level::AllNodes, [](const PathNodePtr& A) {return A->neighbors().size() == 0; });
-		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
+		for (std::size_t i = 0; i < Level::AllNodes().size(); i++)
 		{
-			auto& local = Level::AllNodes[i];
+			auto& local = Level::AllNodes()[i];
 			auto localBoys = local->neighbors();
 			for (std::size_t j = 0; j < localBoys.size(); j++)
 			{
@@ -2909,7 +2910,7 @@ void init()
 					Level::AddTri(local);
 					for (auto i = 1; i < 5; i++)
 					{
-						Level::AllNodes.push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
+						Level::AllNodes().push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
 					}
 				}
 			}
@@ -2948,7 +2949,7 @@ void init()
 
 	{
 		QUICKTIMER("KdTree Generation");
-		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes);
+		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes());
 	}
 	{
 		QUICKTIMER("Node Connections");
@@ -2965,11 +2966,11 @@ void init()
 		);
 		*/
 		std::vector<glm::vec3> foolish;
-		for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
+		for (std::size_t i = 0; i < Level::AllNodes().size(); i++)
 		{
-			for (std::size_t j = i + 1; j < Level::AllNodes.size(); j++)
+			for (std::size_t j = i + 1; j < Level::AllNodes().size(); j++)
 			{
-				PathNode::addNeighbor(Level::AllNodes[i], Level::AllNodes[j],
+				PathNode::addNeighbor(Level::AllNodes()[i], Level::AllNodes()[j],
 					[&](const PathNodePtr& A, const PathNodePtr& B)
 					{
 						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
@@ -2999,17 +3000,17 @@ void init()
 
 	{
 		QUICKTIMER("kdTree");
-		const auto& first = Level::AllNodes.front();
+		const auto& first = Level::AllNodes().front();
 		PathNodePtr pint = nullptr;
 		float dist = INFINITY;
 		Level::Tree.nearestNeighbor(first->GetPos());
 	}
 	{
 		QUICKTIMER("Linear");
-		const auto& first = Level::AllNodes.front();
+		const auto& first = Level::AllNodes().front();
 		PathNodePtr pint = nullptr;
 		float dist = INFINITY;
-		for (const auto& b : Level::AllNodes)
+		for (const auto& b : Level::AllNodes())
 		{
 			if (b == first)
 				continue;
@@ -3022,7 +3023,7 @@ void init()
 	}
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
-	for (auto& autod : Level::AllNodes)
+	for (auto& autod : Level::AllNodes())
 	{
 		boxingDay.push_back(autod->GetPosition());
 		for (auto& weak : autod->neighbors())

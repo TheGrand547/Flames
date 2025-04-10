@@ -45,7 +45,7 @@ void PathFollower::Update() noexcept
 		glm::vec3 center = this->capsule.GetCenter();
 		PathNodePtr start = nullptr, end = nullptr;
 		float minDist = INFINITY;
-		for (auto& possible : Level::AllNodes)
+		for (auto& possible : Level::AllNodes())
 		{
 			if (glm::distance(center, possible->GetPosition()) < minDist)
 			{
@@ -55,13 +55,16 @@ void PathFollower::Update() noexcept
 		}
 		if (start)
 		{
-			end = Level::AllNodes[std::rand() % Level::AllNodes.size()];
-			this->path = AStarSearch<PathNode>(start, end,
-				[](const PathNode& a, const PathNode& b)
-				{
-					return glm::distance(a.GetPosition(), b.GetPosition());
-				}
-			);
+			end = Level::AllNodes()[std::rand() % Level::AllNodes().size()];
+			{
+				QUICKTIMER("AStar");
+				this->path = AStarSearch<PathNode>(start, end,
+					[](const PathNode& a, const PathNode& b)
+					{
+						return glm::distance(a.GetPosition(), b.GetPosition());
+					}
+				);
+			}
 			// TODO: Figure out what the hell is happening
 			std::vector<glm::vec3> positions, lines;
 			positions.reserve(this->path.size());
@@ -78,7 +81,7 @@ void PathFollower::Update() noexcept
 	{
 		this->PathUpdate();
 	}
-	this->Collision();
+	//this->Collision();
 }
 
 void PathFollower::Collision() noexcept
@@ -106,7 +109,7 @@ void PathFollower::PathUpdate() noexcept
 	// TODO: Store this with a little offset to not look so rigidly uniform in movement
 	if (glm::distance(this->capsule.ClosestPoint(pos), pos) < this->capsule.GetRadius() / 2.f)
 	{
-		Log(glm::length(this->physics.velocity));
+		//Log(glm::length(this->physics.velocity));
 		// Need to move to the next node
 		this->path.pop_back();
 	}
@@ -124,7 +127,7 @@ void PathFollower::PathUpdate() noexcept
 			direction = targetVelocity;
 		}
 
-		this->physics.ApplyForces(direction * 20.f);
+		this->physics.ApplyForces(direction * 50.f);
 	}
 	this->capsule.SetCenter(this->physics.position);
 	this->box.ReCenter(this->physics.position);

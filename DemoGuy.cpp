@@ -144,7 +144,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 #ifdef DEBUG
 			float minDist = INFINITY, minDist2 = INFINITY;
 			PathNodePtr start2 = nullptr, end2 = nullptr;
-			for (auto& possible : Level::AllNodes)
+			for (auto& possible : Level::AllNodes())
 			{
 				if (glm::distance(center, possible->GetPosition()) < minDist)
 				{
