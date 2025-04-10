@@ -204,7 +204,6 @@ VAO colorVAO;
 
 OBB dumbBox; // rip smartbox
 std::vector<Model> instancedModels;
-std::vector<MaxHeapValue<OBB>> instancedDrawOrder;
 glm::vec3 lastCameraPos;
 
 static unsigned int idleFrameCounter = 0;
@@ -504,28 +503,7 @@ void display()
 	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
 	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
 	instancing.SetInt("newToggle", featureToggle);
-
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	// Maybe move this elsewhere
-	if (idleFrameCounter % 500 == 0 && lastCameraPos != cameraPosition)
-	{
-		lastCameraPos = cameraPosition;
-		QUICKTIMER("DepthSorting");
-		for (auto& p : instancedDrawOrder)
-		{
-			p.value = p.element.SignedDistance(cameraPosition);
-		}
-		std::sort(instancedDrawOrder.begin(), instancedDrawOrder.end());
-		std::vector<glm::mat4> combo;
-		combo.reserve(instancedModels.size());
-		for (auto& p : instancedDrawOrder)
-		{
-			glm::mat4 fumo = p.element.GetModelMatrix();
-			fumo[1] = glm::vec4(p.element[1], 0);
-			combo.push_back(fumo);
-		}
-		instanceBuffer.BufferData(combo, StaticDraw);
-	}
+	
 	instanceVAO.Bind();
 	instanceVAO.BindArrayBuffer(texturedPlane, 0);
 	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
@@ -2628,7 +2606,6 @@ void init()
 		//project.Scale(glm::vec3(1, 0, 1));
 		Level::Geometry.Insert(project, project.GetAABB());
 		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
-		instancedDrawOrder.emplace_back<MaxHeapValue<OBB>>({ project, 0 });
 		//awfulTemp.push_back(ref.GetNormalMatrix());
 	}
 	if (false)

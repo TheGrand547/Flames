@@ -13,24 +13,24 @@ private:
 	std::size_t length;
 public:
 	StaticVector() noexcept = default;
-	StaticVector(std::size_t size) noexcept : pointer(std::make_unique<Type[]>(size)), length(size)
+	StaticVector(std::size_t size) noexcept : pointer(std::make_unique_for_overwrite<Type[]>(size)), length(size)
 	{
 		std::uninitialized_default_construct(this->begin(), this->end());
 	}
 	
 	template<typename Policy>
-	StaticVector(std::size_t size, Policy executionPolicy) noexcept : pointer(std::make_unique<Type[]>(size)), length(size)
+	StaticVector(std::size_t size, Policy executionPolicy) noexcept : pointer(std::make_unique_for_overwrite<Type[]>(size)), length(size)
 	{
 		std::uninitialized_default_construct(executionPolicy, this->begin(), this->end());
 	}
 
-	StaticVector(std::size_t size, Type member) noexcept : pointer(std::make_unique<Type[]>(size)), length(size)
+	StaticVector(std::size_t size, Type member) noexcept : pointer(std::make_unique_for_overwrite<Type[]>(size)), length(size)
 	{
 		std::uninitialized_fill(this->begin(), this->end(), member);
 	}
 
 	template<typename Policy>
-	StaticVector(std::size_t size, Type member, Policy executionPolicy) noexcept : pointer(std::make_unique<Type[]>(size)), length(size)
+	StaticVector(std::size_t size, Type member, Policy executionPolicy) noexcept : pointer(std::make_unique_for_overwrite<Type[]>(size)), length(size)
 	{
 		std::uninitialized_fill(executionPolicy, this->begin(), this->end(), member);
 	}
