@@ -96,6 +96,13 @@ namespace Level
 		return floops;
 	}
 
+	static NavMesh NavigationMesh("foolish");
+
+	NavMesh& GetNavMesh() noexcept
+	{
+		return NavigationMesh;
+	}
+
 	std::size_t NumExplosion()
 	{
 		return explosions.size();

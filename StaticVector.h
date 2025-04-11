@@ -58,12 +58,22 @@ public:
 		return this->pointer.get();
 	}
 
+	inline const Type* begin() const noexcept
+	{
+		return this->pointer.get();
+	}
+
 	inline const Type* cbegin() const noexcept
 	{
 		return this->pointer.get();
 	}
 
 	inline Type* end() noexcept
+	{
+		return this->pointer.get() + this->length;
+	}
+
+	inline const Type* end() const noexcept
 	{
 		return this->pointer.get() + this->length;
 	}
@@ -83,6 +93,7 @@ public:
 	inline void reserve(std::size_t size) noexcept
 	{
 		this->pointer = std::make_unique_for_overwrite<Type[]>(size);
+		this->length = size;
 	}
 };
 

@@ -6,6 +6,7 @@
 #include "DynamicTree.h"
 #include "PathNode.h"
 #include "Bullet.h"
+#include "NavMesh.h"
 
 namespace Level
 {
@@ -36,6 +37,8 @@ namespace Level
 	void SetExplosion(glm::vec3 location);
 	std::size_t NumExplosion();
 	std::vector<glm::vec3> GetExplosion();
+
+	NavMesh& GetNavMesh() noexcept;
 }
 
 

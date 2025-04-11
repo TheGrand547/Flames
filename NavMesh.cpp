@@ -6,6 +6,10 @@
 #include "glmHelp.h"
 #include "log.h"
 #include "QuickTimer.h"
+#include <ranges>
+#include "Parallel.h"
+#include "Pathfinding.h"
+#include <set>
 
 static const std::string basePath = "Levels/";
 static const std::string extension = ".nmbin";
@@ -37,25 +41,37 @@ void NavMesh::Generate(std::span<const glm::vec3> points, std::function<bool(con
 			return { point, 0, {} };
 		}
 	);
+	IndexType connectionCount = 0;
 	std::cout << "Small Nodes: " << this->nodes.size() << '\n';
 	{
 		QUICKTIMER("Node Connections");
 		StaticVector<std::vector<IndexType>> woof(this->nodes.size());
+		std::mutex mut;
 		for (auto i = 0; i < this->nodes.size(); i++)
 		{
 			Node& right = this->nodes[i];
-			for (auto j = i; j < this->nodes.size(); j++)
-			{
-				Node& left = this->nodes[j];
-				if (function(left, right))
+			std::ranges::iota_view viewing(static_cast<std::size_t>(i + 1), static_cast<std::size_t>(this->nodes.size()));
+
+			// Toss up between par and par_unseq, will have to try with bigger datasets
+			Parallel::for_each(std::execution::par_unseq, viewing.begin(), viewing.end(), [&](std::size_t j)
 				{
-					woof[i].push_back(j);
-					woof[j].push_back(i);
+					Node& left = this->nodes[j];
+					if (function(left, right))
+					{
+						woof[j].push_back(i);
+						{
+							connectionCount++;
+							std::lock_guard guard(mut);
+							woof[i].push_back(static_cast<IndexType>(j));
+						}
+					}
 				}
-			}
+			);
 			right.connections.make(woof[i]);
+			std::sort(right.connections.begin(), right.connections.end());
 		}
 	}
+	Log(std::format("Connections Made: {}", connectionCount));
 }
 
 bool NavMesh::Load(std::string filename) noexcept
@@ -91,11 +107,13 @@ bool NavMesh::Load() noexcept
 			IndexType connectionNumber = 0;
 			input.read(reinterpret_cast<char*>(&local.type), sizeof(std::uint16_t));
 			input.read(reinterpret_cast<char*>(&connectionNumber), sizeof(IndexType));
+			//std::cout << connectionNumber << '\n';
 			if (connectionNumber > 0)
 			{
 				local.connections.reserve(connectionNumber);
 				input.read(reinterpret_cast<char*>(local.connections.begin()), sizeof(IndexType) * connectionNumber);
 			}
+			//std::cout << local.connections.size() << "\n\n";
 		}
 		input.close();
 		return true;
@@ -117,6 +135,7 @@ void NavMesh::Export() noexcept
 		Log(std::format("Failed to export structure to file '{}'", this->name + extension));
 		return;
 	}
+	QUICKTIMER("Exporting");
 	output.write(Validation.c_str(), Validation.length());
 	IndexType elementCount = static_cast<IndexType>(nodes.size());
 	output.write(reinterpret_cast<char*>(&elementCount), sizeof(IndexType));
@@ -130,4 +149,74 @@ void NavMesh::Export() noexcept
 		output.write(reinterpret_cast<const char*>(&*current.connections.cbegin()), sizeof(IndexType) * connectionCount);
 	}
 	output.close();
+}
+
+[[nodiscard]] std::vector<glm::vec3> NavMesh::AStar(IndexType start, IndexType target, 
+	std::function<float(const Node&, const Node&)> heuristic) const noexcept
+{
+	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
+	using SmartSearchNode = IndexType;
+	using NodeMap = std::map<SmartSearchNode, SmartSearchNode>;
+	using ScoreMap = std::map<SmartSearchNode, Scoring>;
+
+	std::vector<MinHeapValue<SmartSearchNode>> openSet{ {start, 0.f} };
+	//std::unordered_set<SmartSearchNode> closedSet;
+	std::set<SmartSearchNode> closedSet;
+	QUICKTIMER("A* on NavMesh");
+	NodeMap pathHistory{};
+
+	// gScore
+	ScoreMap cheapestPath{};
+	cheapestPath[start].score = 0;
+
+	std::vector<glm::vec3> finalPath;
+	// fScore
+	ScoreMap bestGuess;
+	bestGuess[start].score = heuristic(this->nodes[start], this->nodes[target]);
+	while (openSet.size() > 0)
+	{
+		std::pop_heap(openSet.begin(), openSet.end());
+		SmartSearchNode current = openSet.back().element;
+		openSet.pop_back();
+		if (closedSet.find(current) != closedSet.end())
+		{
+			continue;
+		}
+		if (current == target)
+		{
+			while (current != start)
+			{
+				finalPath.push_back(this->nodes[current].position);
+				current = pathHistory[current];
+			}
+			// Has to be a better way!
+			//std::reverse(finalPath.begin(), finalPath.end());
+			break;
+		}
+		const Node& normal = this->nodes[current];
+		// Front is removed from open
+		for (auto& neighbor : normal.connections)
+		{
+			const SmartSearchNode& local = neighbor;
+			const Node& ref = this->nodes[local];
+			float tentative = cheapestPath[current].score + normal.distance(ref);
+			if (tentative < cheapestPath[local].score)
+			{
+				float oldGuess = bestGuess[local].score;
+				pathHistory[local] = current;
+
+				float newGuess = tentative + heuristic(ref, this->nodes[target]);
+				cheapestPath[local].score = tentative;
+				bestGuess[local].score = newGuess;
+
+				openSet.push_back({ local, newGuess });
+				std::push_heap(openSet.begin(), openSet.end());
+				// Duplicates *are* inserted, but we hope that they will have a high enough key value to not be sorted towards
+				// The front, simple hash key sort is performed to ensure they aren't re-explored
+			}
+		}
+		closedSet.insert(current);
+	}
+	Log(std::format("Nodes Explored: {}\tPath Length: {}", closedSet.size(), finalPath.size()));
+	return finalPath;
 }

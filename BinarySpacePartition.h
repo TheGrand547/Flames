@@ -2,6 +2,7 @@
 #ifndef BINARY_SPACE_PARITION_H
 #define BINARY_SPACE_PARITION_H
 #include <vector>
+#include <memory>
 #include "CollisionTypes.h"
 #include "glmHelp.h"
 #include "Lines.h"
@@ -11,12 +12,10 @@
 
 class BinarySpacePartition
 {
-using BSP = BinarySpacePartition;
-
 protected:
 	Plane canonical;
 	std::vector<Triangle> collinear; // Likely to be small
-	std::unique_ptr<BSP> front, behind;
+	std::unique_ptr<BinarySpacePartition> front, behind;
 
 	void AddTriangleInternal(const Triangle& triangle, std::vector<Triangle>& front, std::vector<Triangle>& back);
 public:
@@ -35,5 +34,8 @@ public:
 	bool RayCast(const Ray& ray) const;
 	bool RayCast(const Ray& ray, RayCollision& collide) const;
 };
+
+using BSP = BinarySpacePartition;
+
 
 #endif // BINARY_SPACE_PARTITION_H

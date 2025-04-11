@@ -16,9 +16,14 @@ public:
 	// TODO: flag bit things for NodeType
 	struct Node
 	{
-		glm::vec3 position;
-		NodeType type;
+		glm::vec3 position{ 0.f };
+		NodeType type = 0;
 		StaticVector<IndexType> connections;
+
+		inline float distance(const Node& other) const noexcept
+		{
+			return glm::distance(this->position, other.position);
+		}
 	};
 
 	NavMesh(std::string name) noexcept;
@@ -29,6 +34,11 @@ public:
 	bool Load(std::string filename) noexcept;
 	bool Load() noexcept;
 	void Export() noexcept;
+
+	inline auto size() const noexcept
+	{
+		return this->nodes.size();
+	}
 
 	inline auto begin() noexcept
 	{
@@ -49,6 +59,9 @@ public:
 	{
 		return this->nodes.cend();
 	}
+
+	[[nodiscard]] std::vector<glm::vec3> AStar(IndexType start, IndexType end, 
+		std::function<float(const Node&, const Node&)> heuristic) const noexcept;
 
 protected:
 	std::vector<Node> nodes;

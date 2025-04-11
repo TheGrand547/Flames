@@ -3,6 +3,7 @@
 #define PARALLEL_H
 #include <algorithm>
 #include <execution>
+#include <utility>
 
 
 namespace Parallel
@@ -16,11 +17,11 @@ namespace Parallel
 	{
 		if (::Parallel::Enabled())
 		{
-			std::for_each(execution, std::forward(first), std::forward(last), predicate);
+			std::for_each(execution, std::forward<Iterator>(first), std::forward<Iterator>(last), predicate);
 		}
 		else
 		{
-			std::for_each(std::forward(first), std::forward(last), predicate);
+			std::for_each(std::forward<Iterator>(first), std::forward<Iterator>(last), predicate);
 		}
 	}
 
@@ -30,11 +31,11 @@ namespace Parallel
 	{
 		if (::Parallel::Enabled())
 		{
-			return std::remove_if(execution, std::forward(first), std::forward(last), predicate);
+			return std::remove_if(execution, std::forward<Iterator>(first), std::forward<Iterator>(last), predicate);
 		}
 		else
 		{
-			return std::remove_if(std::forward(first), std::forward(last), predicate);
+			return std::remove_if(std::forward<Iterator>(first), std::forward<Iterator>(last), predicate);
 		}
 	}
 

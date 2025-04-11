@@ -57,7 +57,7 @@ void PathFollower::Update() noexcept
 		{
 			end = Level::AllNodes()[std::rand() % Level::AllNodes().size()];
 			{
-				//QUICKTIMER("AStar");
+				QUICKTIMER("AStar");
 				this->path = AStarSearch<PathNode>(start, end,
 					[](const PathNode& a, const PathNode& b)
 					{

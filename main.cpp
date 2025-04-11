@@ -78,6 +78,7 @@
 #include "async/BufferSync.h"
 #include "ResourceBank.h"
 #include "NavMesh.h"
+#include "BinarySpacePartition.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -527,12 +528,18 @@ void display()
 		
 		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, pathNodePositions);
 
+		//EnableGLFeatures<StencilTesting>();
+		//glStencilMask(0xFF);
+		//glStencilFunc(GL_LESS, 0xFF, 0xFF);
+		//glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
 		plainVAO.BindArrayBuffer(pathNodeLines);
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::Lines>(pathNodeLines);
-
+		//plainVAO.BindArrayBuffer(pathNodePositions);
+		//uniform.DrawArray<DrawType::LineStrip>(pathNodePositions);
+		//DisableGLFeatures<StencilTesting>();
 		EnableDepthBufferWrite();
 	}
 	/*
@@ -2890,6 +2897,7 @@ void init()
 	}
 
 	std::vector<glm::vec3> nodePoints;
+	std::vector<Triangle> nodeTri;
 	{
 		QUICKTIMER("Model Loading");
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
@@ -2909,42 +2917,81 @@ void init()
 				if (c.size() >= 3)
 				{
 					Triangle local(c[0], c[1], c[2]);
+					nodeTri.push_back(local);
 					Level::AddTri(local);
 					for (auto i = 1; i < 5; i++)
 					{
-						Level::AllNodes().push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
-						nodePoints.push_back(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i));
+						//Level::AllNodes().push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
+						//nodePoints.push_back(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i));
 					}
 				}
 			}
 		);
 	}
+	BSP bp;
+	{
+		QUICKTIMER("BSP Tree");
+		bp.GenerateBSP(nodeTri);
+	}
 	Level::GetTriangleTree().UpdateStructure();
-	NavMesh goober("oops");
-	goober.Load("oops");
-	goober.Generate(std::span(nodePoints), [](const NavMesh::Node& A, const NavMesh::Node& B)
+	nodePoints.clear();
+	std::size_t remo = 0;
+	int bouncy = 200;
+	for (int i = -bouncy; i <= bouncy; i += 15)
+	{
+		for (int j = -bouncy; j <= bouncy; j += 15)
 		{
-			glm::vec3 a = A.position, b = B.position;
-			float delta = glm::length(a - b);
-			if (delta > 20.f) // TODO: Constant
-				return false;
-			Ray liota(a, b - a);
-			auto temps = Level::GetTriangleTree().RayCast(liota);
-			if (temps.size() == 0)
+			for (int k = -bouncy; k <= bouncy; k += 15)
 			{
-				return true;
-			}
-			for (auto& temp : temps)
-			{
-				RayCollision fumop{};
-				if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
+				glm::vec3 important(static_cast<float>(i), static_cast<float>(j), static_cast<float>(k));
+				if (bp.TestPoint(important))
 				{
-					return false;
+					nodePoints.push_back(important);
+					Level::AllNodes().push_back(PathNode::MakeNode(important));
+				}
+				else
+				{
+					remo++;
 				}
 			}
-			return true;
-		});
-	goober.Export();
+		}
+	}
+	std::cout << "Culled Nodes:" << remo << '\n';
+
+	NavMesh goober("oops");
+	//if (!goober.Load("oops"))
+	{
+		goober.Generate(std::span(nodePoints),
+			[](const NavMesh::Node& A, const NavMesh::Node& B)
+			{
+				glm::vec3 a = A.position, b = B.position;
+				float delta = glm::length(a - b);
+				if (delta > 20.f) // TODO: Constant
+					return false;
+				Ray liota(a, b - a);
+				auto temps = Level::GetTriangleTree().RayCast(liota);
+				if (temps.size() == 0)
+				{
+					return true;
+				}
+				for (auto& temp : temps)
+				{
+					RayCollision fumop{};
+					if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
+					{
+						return false;
+					}
+				}
+				return true;
+			});
+		goober.Export();
+	}
+	std::size_t itemOffset = 105;
+	for (glm::vec3 point : goober.AStar(0ull, goober.size() - itemOffset, [](const auto& a, const auto& b) ->float {return a.distance(b); }))
+	{
+		std::cout << point << '\n';
+	}
+
 	{
 		QUICKTIMER("AABB Stress test");
 		std::size_t succeed = 0, fails = 0;
@@ -3051,19 +3098,31 @@ void init()
 	}
 	std::vector<glm::vec3> boxingDay{};
 	std::vector<glm::vec3> littleTrolling{};
-	for (auto& autod : Level::AllNodes())
+	//for (auto& autod : Level::AllNodes())
+	// Don't need this crap
+	std::size_t lineCount = 0;
+	//boxingDay.push_back((goober.begin() + 0)->position);
+	littleTrolling.push_back((goober.begin() + 0)->position);
+	//boxingDay.push_back((goober.begin() + goober.size() - itemOffset)->position);
+	littleTrolling.push_back((goober.begin() + goober.size() - itemOffset)->position);
+	
+	for (const auto& p : goober)
 	{
-		boxingDay.push_back(autod->GetPosition());
-		for (auto& weak : autod->neighbors())
+		boxingDay.push_back(p.position);
+		/*
+		for (const NavMesh::IndexType& weak : p.connections)
 		{
-			auto weaker = weak.lock();
-			if (weaker)
+			if (weak < boxingDay.size())
 			{
-				littleTrolling.push_back(autod->GetPosition());
-				littleTrolling.push_back(weaker->GetPosition());
+				continue;
 			}
-		}
+			const auto& weaker = goober.begin() + weak;
+			littleTrolling.push_back(p.position);
+			littleTrolling.push_back(weaker->position);
+			lineCount++;
+		}*/
 	}
+	std::cout << "Total Edges: " << lineCount / 2 << '\n';
 	pathNodePositions.Generate();
 	pathNodePositions.BufferData(boxingDay, StaticDraw);
 	pathNodeLines.BufferData(littleTrolling, StaticDraw);

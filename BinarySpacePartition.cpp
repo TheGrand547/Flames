@@ -1,6 +1,6 @@
 #include "BinarySpacePartition.h"
 
-BinarySpacePartition::BinarySpacePartition() : canonical(glm::vec3(1, 0, 0), glm::vec3(0))
+BinarySpacePartition::BinarySpacePartition() : canonical(glm::vec3(1, 0, 0), glm::vec3(0)), front(nullptr), behind(nullptr)
 {
 
 }
@@ -33,7 +33,7 @@ void BinarySpacePartition::ClearBSP()
 	this->collinear.clear();
 	this->front.reset();
 	this->behind.reset();
-	this->canonical = Plane(glm::vec3(1, 0, 0), glm::vec3(0));
+	this->canonical = Plane(glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f));
 }
 
 void BinarySpacePartition::GenerateBSP(std::vector<Triangle>& polygons)
@@ -94,6 +94,7 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 			if (triangle.ContainsPoint(point))
 				return false;
 		}
+		return false;
 	}
 	return true;
 }
