@@ -188,6 +188,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MissileMotion.cpp" />
     <ClCompile Include="Model.cpp" />
+    <ClCompile Include="NavMesh.cpp" />
     <ClCompile Include="OBJReader.cpp" />
     <ClCompile Include="OrientedBoundingBox.cpp" />
     <ClCompile Include="Parallel.cpp" />
@@ -267,6 +268,7 @@
     <ClInclude Include="MagneticAttack.h" />
     <ClInclude Include="MissileMotion.h" />
     <ClInclude Include="Model.h" />
+    <ClInclude Include="NavMesh.h" />
     <ClInclude Include="OBJReader.h" />
     <ClInclude Include="OrientedBoundingBox.h" />
     <ClInclude Include="Parallel.h" />

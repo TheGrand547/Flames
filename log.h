@@ -32,7 +32,7 @@ constexpr std::string LocationFormat(const std::source_location location)
 	std::size_t pos{};
 	if ((pos = file.rfind(FILEPATH_SLASH)) != std::string::npos)
 		file = file.substr(pos + 1);
-	if ((pos = func.rfind(cDecl)) != std::string::npos)
+	while ((pos = func.rfind(cDecl)) != std::string::npos)
 		func = func.erase(pos, length);
 #ifdef CLEANER_FUNCTIONS
 	if ((pos = func.find('(')) != std::string::npos)

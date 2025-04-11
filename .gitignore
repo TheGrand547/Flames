@@ -28,6 +28,7 @@ Models/
 /imgui
 imgui.ini
 /Textures/skybox
+/Levels
 
 # Precompiled Headers
 *.gch

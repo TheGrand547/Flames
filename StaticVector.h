@@ -4,6 +4,7 @@
 
 #include <memory>
 #include <execution>
+#include <span>
 
 template<typename Type>
 class StaticVector
@@ -12,7 +13,9 @@ private:
 	std::unique_ptr<Type[]> pointer;
 	std::size_t length;
 public:
-	StaticVector() noexcept = default;
+	using value_type = Type;
+
+	inline StaticVector() noexcept : pointer(nullptr), length(0) {}
 	StaticVector(std::size_t size) noexcept : pointer(std::make_unique_for_overwrite<Type[]>(size)), length(size)
 	{
 		std::uninitialized_default_construct(this->begin(), this->end());
@@ -68,6 +71,18 @@ public:
 	inline Type* cend() const noexcept
 	{
 		return this->pointer.get() + this->length;
+	}
+
+	inline void make(std::span<Type> data) noexcept
+	{
+		this->length = data.size();
+		this->pointer = std::make_unique_for_overwrite<Type[]>(data.size());
+		std::memcpy(this->pointer.get(), data.data(), data.size_bytes());
+	}
+
+	inline void reserve(std::size_t size) noexcept
+	{
+		this->pointer = std::make_unique_for_overwrite<Type[]>(size);
 	}
 };
 

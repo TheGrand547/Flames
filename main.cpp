@@ -77,6 +77,7 @@
 #include "ShipManager.h"
 #include "async/BufferSync.h"
 #include "ResourceBank.h"
+#include "NavMesh.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -2888,6 +2889,7 @@ void init()
 		}
 	}
 
+	std::vector<glm::vec3> nodePoints;
 	{
 		QUICKTIMER("Model Loading");
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
@@ -2902,7 +2904,7 @@ void init()
 			}
 		);
 		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
-			[](const std::span<glm::vec3>& c)
+			[&](const std::span<glm::vec3>& c)
 			{
 				if (c.size() >= 3)
 				{
@@ -2911,13 +2913,38 @@ void init()
 					for (auto i = 1; i < 5; i++)
 					{
 						Level::AllNodes().push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
+						nodePoints.push_back(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i));
 					}
 				}
 			}
 		);
 	}
 	Level::GetTriangleTree().UpdateStructure();
-
+	NavMesh goober("oops");
+	goober.Load("oops");
+	goober.Generate(std::span(nodePoints), [](const NavMesh::Node& A, const NavMesh::Node& B)
+		{
+			glm::vec3 a = A.position, b = B.position;
+			float delta = glm::length(a - b);
+			if (delta > 20.f) // TODO: Constant
+				return false;
+			Ray liota(a, b - a);
+			auto temps = Level::GetTriangleTree().RayCast(liota);
+			if (temps.size() == 0)
+			{
+				return true;
+			}
+			for (auto& temp : temps)
+			{
+				RayCollision fumop{};
+				if (temp->RayCast(liota, fumop) && fumop.depth > 0 && fumop.depth < delta)
+				{
+					return false;
+				}
+			}
+			return true;
+		});
+	goober.Export();
 	{
 		QUICKTIMER("AABB Stress test");
 		std::size_t succeed = 0, fails = 0;
@@ -2947,6 +2974,7 @@ void init()
 		Log(std::format("Pass {} : Fail {}", succeed, fails));
 	}
 
+	std::cout << "Big Node Size: " << Level::AllNodes().size() << '\n';
 	{
 		QUICKTIMER("KdTree Generation");
 		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes());
@@ -2971,7 +2999,7 @@ void init()
 			for (std::size_t j = i + 1; j < Level::AllNodes().size(); j++)
 			{
 				PathNode::addNeighbor(Level::AllNodes()[i], Level::AllNodes()[j],
-					[&](const PathNodePtr& A, const PathNodePtr& B)
+					[](const PathNodePtr& A, const PathNodePtr& B)
 					{
 						glm::vec3 a = A->GetPosition(), b = B->GetPosition();
 						float delta = glm::length(a - b);
