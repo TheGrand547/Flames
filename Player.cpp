@@ -11,7 +11,7 @@ static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<fl
 static constexpr float PlayerMass = 5.f; // Idk
 
 // TODO: Non "eyeball" tune these
-static constexpr float MaxSpeed = 20.f;
+static constexpr float MaxSpeed = 40.f;
 static constexpr float minTurningRadius = 4.f;
 static constexpr float EngineThrust = 40.f;
 static constexpr float TurningThrust = 30.f;

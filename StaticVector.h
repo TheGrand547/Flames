@@ -78,7 +78,7 @@ public:
 		return this->pointer.get() + this->length;
 	}
 
-	inline Type* cend() const noexcept
+	inline const Type* cend() const noexcept
 	{
 		return this->pointer.get() + this->length;
 	}

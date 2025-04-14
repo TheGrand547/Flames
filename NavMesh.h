@@ -31,6 +31,7 @@ public:
 
 	void Generate(std::span<const glm::vec3> points, std::function<bool(const Node&, const Node&)> function) noexcept;
 
+	void Clear() noexcept;
 	bool Load(std::string filename) noexcept;
 	bool Load() noexcept;
 	void Export() noexcept;

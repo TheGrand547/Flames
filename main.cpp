@@ -537,6 +537,7 @@ void display()
 		plainVAO.BindArrayBuffer(pathNodeLines);
 		glLineWidth(10.f);
 		uniform.DrawArray<DrawType::Lines>(pathNodeLines);
+		uniform.DrawArray<DrawType::LineStrip>(pathNodeLines);
 		//plainVAO.BindArrayBuffer(pathNodePositions);
 		//uniform.DrawArray<DrawType::LineStrip>(pathNodePositions);
 		//DisableGLFeatures<StencilTesting>();
@@ -1246,6 +1247,10 @@ void idle()
 		ImGui::PlotLines("##2", frames.data(), static_cast<int>(frames.size()), 0, "Frame Time", 0.f, 5.f, ImVec2(100, 100));
 		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
 		ImGui::End();
+	}
+	if (timeDelta > 0.01)
+	{
+		Log("SPIKE: " << timeDelta);
 	}
 
 
@@ -2937,11 +2942,12 @@ void init()
 	nodePoints.clear();
 	std::size_t remo = 0;
 	int bouncy = 200;
-	for (int i = -bouncy; i <= bouncy; i += 15)
+	int increment = 25;
+	for (int i = -bouncy; i <= bouncy; i += increment)
 	{
-		for (int j = -bouncy; j <= bouncy; j += 15)
+		for (int j = -bouncy; j <= bouncy; j += increment)
 		{
-			for (int k = -bouncy; k <= bouncy; k += 15)
+			for (int k = -bouncy; k <= bouncy; k += increment)
 			{
 				glm::vec3 important(static_cast<float>(i), static_cast<float>(j), static_cast<float>(k));
 				if (bp.TestPoint(important))
@@ -2958,6 +2964,7 @@ void init()
 	}
 	std::cout << "Culled Nodes:" << remo << '\n';
 
+	std::vector<glm::vec3> littleTrolling{};
 	NavMesh goober("oops");
 	//if (!goober.Load("oops"))
 	{
@@ -2966,7 +2973,7 @@ void init()
 			{
 				glm::vec3 a = A.position, b = B.position;
 				float delta = glm::length(a - b);
-				if (delta > 20.f) // TODO: Constant
+				if (delta > 60.f) // TODO: Constant
 					return false;
 				Ray liota(a, b - a);
 				auto temps = Level::GetTriangleTree().RayCast(liota);
@@ -2986,9 +2993,15 @@ void init()
 			});
 		goober.Export();
 	}
-	std::size_t itemOffset = 105;
-	for (glm::vec3 point : goober.AStar(0ull, goober.size() - itemOffset, [](const auto& a, const auto& b) ->float {return a.distance(b); }))
+	std::size_t itemOffset = 123;
+	for (glm::vec3 point : goober.AStar(0, static_cast<NavMesh::IndexType>(goober.size() / 2), 
+		[](const NavMesh::Node& a, const NavMesh::Node& b) -> float
+		{
+			return a.distance(b); 
+		}
+	))
 	{
+		littleTrolling.push_back(point);
 		std::cout << point << '\n';
 	}
 
@@ -3097,14 +3110,14 @@ void init()
 		}
 	}
 	std::vector<glm::vec3> boxingDay{};
-	std::vector<glm::vec3> littleTrolling{};
+	//std::vector<glm::vec3> littleTrolling{};
 	//for (auto& autod : Level::AllNodes())
 	// Don't need this crap
 	std::size_t lineCount = 0;
 	//boxingDay.push_back((goober.begin() + 0)->position);
-	littleTrolling.push_back((goober.begin() + 0)->position);
+	//littleTrolling.push_back((goober.begin() + 0)->position);
 	//boxingDay.push_back((goober.begin() + goober.size() - itemOffset)->position);
-	littleTrolling.push_back((goober.begin() + goober.size() - itemOffset)->position);
+	//littleTrolling.push_back((goober.begin() + goober.size() - itemOffset)->position);
 	
 	for (const auto& p : goober)
 	{

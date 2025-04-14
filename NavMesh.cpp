@@ -43,6 +43,7 @@ void NavMesh::Generate(std::span<const glm::vec3> points, std::function<bool(con
 	);
 	IndexType connectionCount = 0;
 	std::cout << "Small Nodes: " << this->nodes.size() << '\n';
+	std::size_t average = 0;
 	{
 		QUICKTIMER("Node Connections");
 		StaticVector<std::vector<IndexType>> woof(this->nodes.size());
@@ -69,9 +70,16 @@ void NavMesh::Generate(std::span<const glm::vec3> points, std::function<bool(con
 			);
 			right.connections.make(woof[i]);
 			std::sort(right.connections.begin(), right.connections.end());
+			average += right.connections.size();
 		}
 	}
 	Log(std::format("Connections Made: {}", connectionCount));
+	Log(std::format("Average Neighbor Count: {}", average / this->nodes.size()));
+}
+
+void NavMesh::Clear() noexcept
+{
+	this->nodes.clear();
 }
 
 bool NavMesh::Load(std::string filename) noexcept
@@ -154,10 +162,19 @@ void NavMesh::Export() noexcept
 [[nodiscard]] std::vector<glm::vec3> NavMesh::AStar(IndexType start, IndexType target, 
 	std::function<float(const Node&, const Node&)> heuristic) const noexcept
 {
+	if (start == target)
+	{
+		return { this->nodes[target].position };
+	}
+	if (std::binary_search(this->nodes[start].connections.begin(), this->nodes[start].connections.end(), target))
+	{
+		return { this->nodes[start].position, this->nodes[target].position };
+	}
+	Log(std::format("Distance: {}", this->nodes[start].distance(this->nodes[target])));
 	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
 	using SmartSearchNode = IndexType;
-	using NodeMap = std::map<SmartSearchNode, SmartSearchNode>;
-	using ScoreMap = std::map<SmartSearchNode, Scoring>;
+	using NodeMap = std::unordered_map<SmartSearchNode, SmartSearchNode>;
+	using ScoreMap = std::unordered_map<SmartSearchNode, Scoring>;
 
 	std::vector<MinHeapValue<SmartSearchNode>> openSet{ {start, 0.f} };
 	//std::unordered_set<SmartSearchNode> closedSet;
@@ -165,24 +182,30 @@ void NavMesh::Export() noexcept
 	QUICKTIMER("A* on NavMesh");
 	NodeMap pathHistory{};
 
+	const Node& targetnode = this->nodes[target];
+
 	// gScore
 	ScoreMap cheapestPath{};
 	cheapestPath[start].score = 0;
 
 	std::vector<glm::vec3> finalPath;
+	std::size_t analyzed = 0, inner = 0;
 	// fScore
 	ScoreMap bestGuess;
-	bestGuess[start].score = heuristic(this->nodes[start], this->nodes[target]);
+	bestGuess[start].score = heuristic(this->nodes[start], targetnode);
+	std::mutex smartPants;
 	while (openSet.size() > 0)
 	{
 		std::pop_heap(openSet.begin(), openSet.end());
 		SmartSearchNode current = openSet.back().element;
 		openSet.pop_back();
-		if (closedSet.find(current) != closedSet.end())
+		// This might be messing with things
+		if (closedSet.contains(current))
 		{
 			continue;
 		}
-		if (current == target)
+		if (current == target || false)
+			//std::binary_search(this->nodes[current].connections.begin(), this->nodes[current].connections.end(), target))
 		{
 			while (current != start)
 			{
@@ -195,28 +218,61 @@ void NavMesh::Export() noexcept
 		}
 		const Node& normal = this->nodes[current];
 		// Front is removed from open
-		for (auto& neighbor : normal.connections)
-		{
-			const SmartSearchNode& local = neighbor;
-			const Node& ref = this->nodes[local];
-			float tentative = cheapestPath[current].score + normal.distance(ref);
-			if (tentative < cheapestPath[local].score)
+
+		
+		float currentPathCost = cheapestPath[current].score;
+		// Maybe use std::for_each parallel?
+		for (const auto& neighbor : normal.connections)
+		//Parallel::for_each(std::execution::par, normal.connections.begin(), normal.connections.end(), [&](IndexType neighbor)
 			{
-				float oldGuess = bestGuess[local].score;
-				pathHistory[local] = current;
+				analyzed++;
+				const SmartSearchNode local = neighbor;
+				const Node& ref = this->nodes[local];
+				const float tentative = currentPathCost + ref.distance(normal);
+				//if (cheapestPath.contains(local))
+				if (tentative < cheapestPath[local].score)
+				{
+					inner++;
+					const float hValue = ref.distance(targetnode);// heuristic(ref, targetnode);
 
-				float newGuess = tentative + heuristic(ref, this->nodes[target]);
-				cheapestPath[local].score = tentative;
-				bestGuess[local].score = newGuess;
+					float newGuess = tentative + hValue;//heuristic(ref, targetnode);
+					//float newGuess = tentative + heuristic(ref, targetnode);
+					/*
+					if (std::binary_search(ref.connections.cbegin(), ref.connections.cend(), target))
+					{
+						//Log(std::format("??? {} {}", closedSet.size(), hValue));
+						newGuess += hValue;
+						//newGuess += 0.9f * hValue;
+						//newGuess += hValue - FLT_EPSILON;
+					}
+					else
+					{
+						newGuess += hValue;
+					}
+					*/
+					/*
+					if (!std::binary_search(ref.connections.begin(), ref.connections.end(), target))
+					{
+						//newGuess = tentative + (ref.distance(targetnode));
+						newGuess = tentative + hValue * 1.25f;
+					}*/
 
-				openSet.push_back({ local, newGuess });
-				std::push_heap(openSet.begin(), openSet.end());
-				// Duplicates *are* inserted, but we hope that they will have a high enough key value to not be sorted towards
-				// The front, simple hash key sort is performed to ensure they aren't re-explored
+					{
+						//std::lock_guard mut(smartPants);
+						pathHistory[local] = current;
+						cheapestPath[local].score = tentative;
+						bestGuess[local].score = newGuess;
+
+						openSet.push_back({ local, newGuess });
+						std::push_heap(openSet.begin(), openSet.end());
+					}
+					// Duplicates *are* inserted, but we hope that they will have a high enough key value to not be sorted towards
+					// The front, simple hash key sort is performed to ensure they aren't re-explored
+				}
 			}
-		}
+		//);
 		closedSet.insert(current);
 	}
-	Log(std::format("Nodes Explored: {}\tPath Length: {}", closedSet.size(), finalPath.size()));
+	Log(std::format("Nodes Explored: {}\tNeighbors Tested: {}\tReadjustments: {}\tPath Length: {}", closedSet.size(), analyzed, inner, finalPath.size()));
 	return finalPath;
 }
