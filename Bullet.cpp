@@ -3,8 +3,8 @@
 
 OBB Bullet::Collision{};
 
-Bullet::Bullet(glm::vec3 position, glm::vec3 velocity, glm::vec3 up) noexcept : transform(position, 
-	ForwardDir(velocity, up)), speed(glm::length(velocity))
+Bullet::Bullet(glm::vec3 position, glm::vec3 velocity, glm::vec3 up, unsigned int team) noexcept : transform(position, 
+	ForwardDir(velocity, up)), speed(glm::length(velocity)), team(team)
 {
 }
 

@@ -58,12 +58,12 @@ namespace Level
 		return bulletTree;
 	}
 
-	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up)
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up, unsigned int team)
 	{
-		Bullet value(position, velocity, up);
+		Bullet value(position, velocity, up, team);
 		return *bulletTree.Insert(value, value.GetAABB());
 	}
-	
+
 	static std::vector<glm::vec3> PointsOfInterest;
 
 	std::vector<glm::vec3>& GetPOI()
@@ -103,6 +103,23 @@ namespace Level
 		return NavigationMesh;
 	}
 
+	static std::size_t CurrentTick = 0;
+
+	std::size_t GetCurrentTick() noexcept
+	{
+		return CurrentTick;
+	}
+
+	void ResetCurrentTick() noexcept
+	{
+		CurrentTick = 0;
+	}
+
+	void IncrementCurrentTicK() noexcept
+	{
+		CurrentTick++;
+	}
+
 	std::size_t NumExplosion()
 	{
 		return explosions.size();
@@ -112,4 +129,17 @@ namespace Level
 	{
 		return interesting;
 	}
+
+	static glm::vec3 PlayerPos;
+
+	glm::vec3 GetPlayerPos() noexcept
+	{
+		return PlayerPos;
+	}
+	
+	void SetPlayerPos(glm::vec3 pos) noexcept
+	{
+		PlayerPos = pos;
+	}
+
 }

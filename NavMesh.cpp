@@ -200,9 +200,9 @@ void NavMesh::Export() noexcept
 		SmartSearchNode current = openSet.back().element;
 		openSet.pop_back();
 		// This might be messing with things
-		if (closedSet.contains(current))
+		//if (closedSet.contains(current))
 		{
-			continue;
+			//continue;
 		}
 		if (current == target || false)
 			//std::binary_search(this->nodes[current].connections.begin(), this->nodes[current].connections.end(), target))

@@ -1534,6 +1534,7 @@ void gameTick()
 	constexpr std::chrono::duration<long double> tickInterval = 0x1.p-7s;
 	TimePoint lastStart = std::chrono::steady_clock::now();
 	TimerAverage<300> gameTickTime;
+	Level::ResetCurrentTick();
 	do
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
@@ -1794,6 +1795,8 @@ void gameTick()
 		//std::this_thread::sleep_until<std::chrono::steady_clock>(desired);
 		lastStart = tickStart;
 		gameTicks++;
+		Level::IncrementCurrentTicK();
+		Level::SetPlayerPos(playerModel.translation);
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - balb).count() << std::endl;
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	} while (!shouldClose);
@@ -2966,14 +2969,14 @@ void init()
 
 	std::vector<glm::vec3> littleTrolling{};
 	NavMesh goober("oops");
-	//if (!goober.Load("oops"))
+	if (!goober.Load("oops"))
 	{
 		goober.Generate(std::span(nodePoints),
 			[](const NavMesh::Node& A, const NavMesh::Node& B)
 			{
 				glm::vec3 a = A.position, b = B.position;
 				float delta = glm::length(a - b);
-				if (delta > 60.f) // TODO: Constant
+				if (delta > 36.f) // TODO: Constant
 					return false;
 				Ray liota(a, b - a);
 				auto temps = Level::GetTriangleTree().RayCast(liota);
@@ -3039,6 +3042,7 @@ void init()
 		QUICKTIMER("KdTree Generation");
 		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes());
 	}
+	if (false)
 	{
 		QUICKTIMER("Node Connections");
 

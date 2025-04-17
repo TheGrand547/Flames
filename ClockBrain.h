@@ -12,7 +12,8 @@ class ClockBrain
 protected:
 	Transform transform;
 	glm::vec3 velocity{}, target{};
-
+	glm::i16vec3 home{};
+	int state;
 public:
 	inline ClockBrain() { this->Init(); }
 	void Init();
@@ -21,6 +22,10 @@ public:
 	inline glm::vec3 GetPos() const noexcept
 	{
 		return this->transform.position;
+	}
+	inline glm::vec3 GetHome() const noexcept
+	{
+		return this->home;
 	}
 	inline AABB GetAABB() const noexcept
 	{

@@ -23,7 +23,7 @@ namespace Level
 	GeometryType& GetTriangleTree();
 
 	Bullet& AddBullet(const glm::vec3& position, const glm::vec3& velocity);
-	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up);
+	Bullet& AddBulletTree(const glm::vec3& position, const glm::vec3& velocity, glm::vec3 up, unsigned int team = 0);
 	std::vector<Bullet>& GetBullets();
 
 	DynamicOctTree<Bullet>& GetBulletTree();
@@ -39,6 +39,13 @@ namespace Level
 	std::vector<glm::vec3> GetExplosion();
 
 	NavMesh& GetNavMesh() noexcept;
+
+	std::size_t GetCurrentTick() noexcept;
+	void ResetCurrentTick() noexcept;
+	void IncrementCurrentTicK() noexcept;
+
+	glm::vec3 GetPlayerPos() noexcept;
+	void SetPlayerPos(glm::vec3 vec) noexcept;
 }
 
 

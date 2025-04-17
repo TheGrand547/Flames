@@ -17,10 +17,11 @@ struct Bullet
 	Transform transform;
 	float speed;
 	unsigned int lifeTime = 0;
+	unsigned int team = 0;
 
 	void Update() noexcept;
 
-	Bullet(glm::vec3 position, glm::vec3 velocity, glm::vec3 up) noexcept;
+	Bullet(glm::vec3 position, glm::vec3 velocity, glm::vec3 up, unsigned int team = 0) noexcept;
 	
 	Model GetModel() const noexcept;
 	OBB GetOBB() const noexcept;
