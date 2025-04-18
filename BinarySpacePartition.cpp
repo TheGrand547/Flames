@@ -38,6 +38,10 @@ void BinarySpacePartition::ClearBSP()
 
 void BinarySpacePartition::GenerateBSP(std::vector<Triangle>& polygons)
 {
+	if (polygons.size() == 0)
+	{
+		return;
+	}
 	this->ClearBSP();
 	this->collinear.push_back(polygons[0]);
 	this->canonical = polygons[0].GetPlane();

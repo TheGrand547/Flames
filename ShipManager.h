@@ -4,13 +4,17 @@
 #include "DynamicTree.h"
 #include "ClockBrain.h"
 #include "Buffer.h"
+#include "async/BufferSync.h"
 
 class ShipManager
 {
 protected:
 	std::vector<ClockBrain> brainDrain;
 	ArrayBuffer pain;
+	ArrayBuffer smooth;
+	
 	std::vector<MeshMatrix> active, inactive;
+	BufferSync<std::vector<glm::vec3>> fools;
 	bool dirty = true;
 public:
 	ShipManager() noexcept = default;

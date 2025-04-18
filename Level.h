@@ -44,8 +44,12 @@ namespace Level
 	void ResetCurrentTick() noexcept;
 	void IncrementCurrentTicK() noexcept;
 
+	// TODO: Stop doing this horseshit
 	glm::vec3 GetPlayerPos() noexcept;
 	void SetPlayerPos(glm::vec3 vec) noexcept;
+
+	glm::vec3 GetPlayerVel() noexcept;
+	void SetPlayerVel(glm::vec3 vec) noexcept;
 }
 
 

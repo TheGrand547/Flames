@@ -302,7 +302,7 @@ struct SimpleBullet
 	glm::vec3 position, direction;
 };
 
-PathFollower followed{glm::vec3(0, 0.5f, 0) };
+//PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
@@ -500,7 +500,7 @@ void display()
 	DisableGLFeatures<Blending>();
 	instancing.SetActiveShader();
 	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	instancing.SetVec3("lightPos", followed.GetPosition());
+	//instancing.SetVec3("lightPos", followed.GetPosition());
 	instancing.SetVec3("viewPos", cameraPosition);
 	instancing.SetTextureUnit("textureIn", wallTexture, 0);
 	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
@@ -1052,8 +1052,8 @@ void display()
 
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(movingCapsule);
-	flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
-	flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
+	//flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
+	//flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
 	//flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
 	// Calling with triangle_strip is fucky
 	/*
@@ -1797,6 +1797,7 @@ void gameTick()
 		gameTicks++;
 		Level::IncrementCurrentTicK();
 		Level::SetPlayerPos(playerModel.translation);
+		Level::SetPlayerVel(playfield.GetVelocity());
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - balb).count() << std::endl;
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
 	} while (!shouldClose);
@@ -2396,6 +2397,7 @@ void init()
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
+	ShaderBank::Get("uniform").CompileSimple("uniform");
 	vision.CompileSimple("vision");
 	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
@@ -2423,6 +2425,7 @@ void init()
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("uniform").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
@@ -2454,6 +2457,7 @@ void init()
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 	plainVAO.ArrayFormat<Vertex>(uniform);
+	VAOBank::Get("uniform").ArrayFormat<Vertex>(uniform);
 
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
@@ -2716,13 +2720,13 @@ void init()
 	}
 	billboardBuffer.BufferData(verts);
 	constexpr int followsize = 10;
-	followers.ReserveSize(followsize);
+	//followers.ReserveSize(followsize);
 	for (int i = 0; i < followsize; i++)
 	{
 		glm::vec2 base = glm::diskRand(20.f);
 		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
 		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
-		followers.Insert(fus, fus.GetAABB());
+		//followers.Insert(fus, fus.GetAABB());
 	}
 	PathFollower sc(glm::vec3(-100, 2.5, -100));
 	PathFollower sc2(glm::vec3(-10, 2.5, -10));
@@ -2944,7 +2948,7 @@ void init()
 	Level::GetTriangleTree().UpdateStructure();
 	nodePoints.clear();
 	std::size_t remo = 0;
-	int bouncy = 200;
+	int bouncy = 0;
 	int increment = 25;
 	for (int i = -bouncy; i <= bouncy; i += increment)
 	{
@@ -3090,6 +3094,7 @@ void init()
 		}
 	}
 
+	if (Level::AllNodes().size() > 0)
 	{
 		QUICKTIMER("kdTree");
 		const auto& first = Level::AllNodes().front();
@@ -3097,6 +3102,7 @@ void init()
 		float dist = INFINITY;
 		Level::Tree.nearestNeighbor(first->GetPos());
 	}
+	if (Level::AllNodes().size() > 0) 
 	{
 		QUICKTIMER("Linear");
 		const auto& first = Level::AllNodes().front();

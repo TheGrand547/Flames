@@ -142,4 +142,16 @@ namespace Level
 		PlayerPos = pos;
 	}
 
+
+	static glm::vec3 PlayerVel;
+
+	glm::vec3 GetPlayerVel() noexcept
+	{
+		return PlayerVel;
+	}
+
+	void SetPlayerVel(glm::vec3 pos) noexcept
+	{
+		PlayerVel = pos;
+	}
 }

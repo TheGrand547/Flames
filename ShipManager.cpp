@@ -11,6 +11,7 @@ void ShipManager::Update() noexcept
 	this->inactive.clear();
 	this->inactive.reserve(this->brainDrain.size());
 
+	std::vector<glm::vec3> pointers;
 	// Arbitrary threshold
 	if (!Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) && this->brainDrain.size() > 50)
 	{
@@ -42,11 +43,14 @@ void ShipManager::Update() noexcept
 				glm::vec3 position = element.GetPos();
 				element.Update();
 				this->inactive.push_back(element.GetPair());
+				pointers.push_back(element.GetPos());
+				pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);
+
 			}
 		);
 	}
 	std::swap(this->active, this->inactive);
-
+	this->fools.Swap(pointers);
 	Parallel::erase_if(std::execution::par, this->brainDrain, 
 		[](ClockBrain& bloke)
 		{
@@ -75,9 +79,16 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 	data.Bind(VAOBank::Get("instance"));
 	VAOBank::Get("instance").BindArrayBuffer(this->pain, 1);
 	shader.DrawElements(flubber);
+
+	ShaderBank::Get("uniform").SetActiveShader();
+	VAOBank::Get("uniform").Bind();
+	VAOBank::Get("uniform").BindArrayBuffer(this->smooth);
+	ShaderBank::Get("uniform").SetMat4("Model", glm::mat4(1.f));
+	ShaderBank::Get("uniform").DrawArray<DrawType::Lines>(this->smooth);
 }
 
 void ShipManager::UpdateMeshes() noexcept
 {
 	this->pain.BufferData(this->active);
+	this->fools.ExclusiveOperation([&](std::vector<glm::vec3>& p) {this->smooth.BufferData(p); });
 }

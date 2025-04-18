@@ -17,6 +17,7 @@ void ClockBrain::Init()
 
 void ClockBrain::Update()
 {
+	glm::vec3 thingVelocity{ 0.f };
 	// STATE Thingy
 	// state=0 default, patrol position      <- check player delta every 32 ticks
 	// state=1 transit to somewhere          <- check player delta every  8 ticks
@@ -26,13 +27,19 @@ void ClockBrain::Update()
 
 	// Ensure that not every single enemy does this check every frame
 	const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
-	if (((this->state == 0 || this->state == 3) && modulatedTick % 32 == 0) || 
-		((this->state == 1 || this->state == 2) && modulatedTick % 8 == 0))
+	//if (((this->state == 0 || this->state == 3) && modulatedTick % 32 == 0) || 
+		//((this->state == 1 || this->state == 2) && modulatedTick % 8 == 0))
 	{
 		const glm::vec3 playerPos = Level::GetPlayerPos();
 		const glm::vec3 difference = playerPos - this->transform.position;
 		glm::mat3 current = glm::mat3_cast(this->transform.rotation);
-		if (glm::abs(glm::dot(current[0], glm::normalize(difference))) < glm::cos(glm::pi<float>() / 12.f) &&
+
+		float threshold = glm::pi<float>() / 12.f;
+		if (this->state != 0)
+		{
+			threshold *= 3.f;
+		}
+		if (glm::abs(glm::dot(current[0], glm::normalize(difference))) > glm::cos(threshold) &&
 			glm::length(difference) < 40.f)
 		{
 			// Raycast
@@ -49,12 +56,13 @@ void ClockBrain::Update()
 			}
 			if (clearSight)
 			{
+				thingVelocity = Level::GetPlayerVel();
 				this->target = playerPos;
 				this->state = 1;
 				if (modulatedTick % 256 == 0)
 				{
-					Level::AddBulletTree(this->transform.position, glm::mat3_cast(this->transform.rotation)[0] * 20.f, 
-						glm::mat3_cast(this->transform.rotation)[1], 1);
+					Level::AddBulletTree(this->transform.position, current[0] * 20.f, 
+						current[1], 1);
 				}
 			}
 		}
@@ -104,7 +112,7 @@ void ClockBrain::Update()
 	}
 
 	// Always more towards the target
-	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 20.f, this->target, glm::vec3(0.f));
+	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
 	BasicPhysics::Update(this->transform.position, this->velocity, forced);
 	BasicPhysics::Clamp(this->velocity, 10.f);
 	// Pretend it's non-zero

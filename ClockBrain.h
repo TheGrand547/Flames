@@ -37,6 +37,11 @@ public:
 	{
 		return Model{ this->transform, glm::vec3(2.f)}.GetMatrixPair();
 	}
+
+	inline Transform GetTransform() const noexcept
+	{
+		return this->transform;
+	}
 };
 
 #endif // CLOCK_BRAIN_H
