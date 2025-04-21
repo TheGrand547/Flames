@@ -46,6 +46,9 @@ static AnimationInstance gunA, gunB;
 
 glm::vec3 gunAPos, gunBPos; // You guessed it -- a hack
 
+
+OBB Player::Box;
+
 // TODO: Button to switch between simultaneous and alternating fire
 // TODO: Compute shader for creating vertex positions of the hexagon based on a center and axes
 
@@ -322,7 +325,24 @@ void Player::Update(Input::Keyboard input) noexcept
 			this->velocity -= ImpactResponse * glm::dot(this->velocity, tri->GetNormal()) * tri->GetNormal() * Tick::TimeDelta;
 		}
 	}
-
+	for (auto& buddy : Level::GetBulletTree().Search(playerSphere.GetAABB()))
+	{
+		if (buddy->team != 0)
+		{
+			SlidingCollision collier{};
+			OBB local = Player::Box, other = buddy->GetOBB();
+			local.Rotate(this->GetModel().GetModelMatrix());
+			local.Scale(0.95f);
+			if (other.Overlap(local, collier))
+			{
+				glm::vec3 fun = buddy->GetModel().translation;
+				fun += collier.normal * (other.ProjectionLength(collier.normal) + collier.depth);
+				Level::SetExplosion(fun);
+				// Oh uh get rid of the bullet too
+				buddy->transform.position = glm::vec3(NAN);
+			}
+		}
+	}
 
 	// Hacky
 	if (glm::length(this->velocity) * Tick::TimeDelta < EPSILON * 3)

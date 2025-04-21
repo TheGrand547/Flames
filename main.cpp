@@ -652,41 +652,19 @@ void display()
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Debugging staticBoxes
-	if (debugFlags[TIGHT_BOXES] || debugFlags[WIDE_BOXES])
+	if (debugFlags[TIGHT_BOXES])
 	{
-		uniform.SetActiveShader();
-		glm::vec3 blue(0, 0, 1);
-		plainVAO.Bind();
-		plainVAO.BindArrayBuffer(plainCube);
-
-		OBB placeholder(AABB(glm::vec3(0), glm::vec3(1)));
-		placeholder.Translate(glm::vec3(2, 0.1, 0));
-		placeholder.Rotate(glm::radians(glm::vec3(idleFrameCounter * -2.f, idleFrameCounter * 4.f, idleFrameCounter)));
-		uniform.SetMat4("Model", placeholder.GetModelMatrix());
-		uniform.SetVec3("color", blue);
-
-		float wid = 10;
-		if (debugFlags[TIGHT_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-		uniform.SetMat4("Model", placeholder.GetAABB().GetModel().GetModelMatrix());
-		uniform.SetVec3("color", glm::vec3(0.5f, 0.5f, 0.5f));
-
-		if (debugFlags[WIDE_BOXES]) uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-		for (const auto& box: Level::Geometry)
-		{
-			if (debugFlags[TIGHT_BOXES])
-			{
-				uniform.SetMat4("Model", box.GetModelMatrix());
-				//uniform.DrawElementsMemory<Triangle>(cubeIndicies);
-				uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-				uniform.DrawArray<DrawType::Points>(8);
-			}
-			if (debugFlags[WIDE_BOXES])
-			{
-				uniform.SetMat4("Model", box.GetAABB().GetModel().GetModelMatrix());
-				uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-				//uniform.DrawArray<Points>(8);
-			}
-		}
+		OBB localCopy = Player::Box;
+		localCopy.Rotate(playerModel.GetModelMatrix());
+		uniform.SetMat4("Model", localCopy.GetModelMatrix());
+		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+	}
+	if (debugFlags[WIDE_BOXES])
+	{
+		OBB localCopy = Player::Box;
+		localCopy.Rotate(playerModel.GetModelMatrix());
+		uniform.SetMat4("Model", localCopy.GetAABB().GetModelMatrix());
+		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
 
 	// Cubert
@@ -2915,10 +2893,21 @@ void init()
 
 	std::vector<glm::vec3> nodePoints;
 	std::vector<Triangle> nodeTri;
+	std::vector<glm::vec3> painterly;
+	int onlyFirst = 0;
 	{
 		QUICKTIMER("Model Loading");
 		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
-		playerMesh = OBJReader::MeshThingy("Models\\Player.glb");
+		playerMesh = OBJReader::MeshThingy<MeshVertex>("Models\\Player.glb", {}, 
+			[&](auto& c) -> void
+			{
+				if (onlyFirst++)
+					return;
+				std::ranges::transform(c, std::back_inserter(painterly), [](MeshVertex b) -> glm::vec3 {return b.position; });
+			}
+		);
+		Player::Box = OBB::MakeOBB(painterly);
+		Player::Box.Scale(0.5f);
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb",
 			{},
 			[&](auto& c)

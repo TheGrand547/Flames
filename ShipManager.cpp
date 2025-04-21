@@ -17,8 +17,7 @@ void ShipManager::Update() noexcept
 	{
 		// I don't know if this is even a good idea
 		StaticVector<MeshMatrix> meshes(this->brainDrain.size(), MeshMatrix({ 0.f }, { 0.f }));
-		//std::ranges::iota_view viewing(static_cast<std::size_t>(0), static_cast<std::size_t>(this->brainDrain.size()));
-		//std::for_each(std::execution::par, viewing.begin(), viewing.end(), [&](std::size_t i)
+		
 		Parallel::for_each_index(std::execution::par, this->brainDrain, [&](std::size_t i)
 			{
 				ClockBrain& element = this->brainDrain[i];

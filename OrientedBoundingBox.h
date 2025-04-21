@@ -123,6 +123,10 @@ public:
 	inline void ApplyCollision(const RotationCollision& collision) noexcept;
 
 	static OrientedBoundingBox MakeOBB(const std::span<glm::vec3>& points);
+	inline static OrientedBoundingBox Make(const std::span<glm::vec3>& points)
+	{
+		return MakeOBB(points);
+	}
 };
 
 inline OrientedBoundingBox::OrientedBoundingBox(const AABB& other) noexcept : matrix(glm::vec4(1, 0, 0, 0), glm::vec4(0, 1, 0, 0), glm::vec4(0, 0, 1, 0),

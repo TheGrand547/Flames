@@ -34,10 +34,11 @@ void ClockBrain::Update()
 		const glm::vec3 difference = playerPos - this->transform.position;
 		glm::mat3 current = glm::mat3_cast(this->transform.rotation);
 
-		float threshold = glm::pi<float>() / 12.f;
+		float threshold = glm::pi<float>() / 4.f;
+		// Enemy is more alert if it isn't ambiently patrolling
 		if (this->state != 0)
 		{
-			threshold *= 3.f;
+			threshold *= 2.f;
 		}
 		if (glm::abs(glm::dot(current[0], glm::normalize(difference))) > glm::cos(threshold) &&
 			glm::length(difference) < 40.f)
@@ -56,7 +57,7 @@ void ClockBrain::Update()
 			}
 			if (clearSight)
 			{
-				thingVelocity = Level::GetPlayerVel();
+				//thingVelocity = Level::GetPlayerVel();
 				this->target = playerPos;
 				this->state = 1;
 				if (modulatedTick % 256 == 0)

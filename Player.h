@@ -40,6 +40,7 @@ public:
 		return this->velocity;
 	}
 
+	static OBB Box;
 	void Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model model) const noexcept;
 };
 
