@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <execution>
 #include <utility>
-
+#include <ranges>
 
 namespace Parallel
 {
@@ -22,6 +22,50 @@ namespace Parallel
 		else
 		{
 			std::for_each(std::forward<Iterator>(first), std::forward<Iterator>(last), predicate);
+		}
+	}
+
+	template<typename ExecutionType, typename Container, typename Predicate>
+		requires std::is_execution_policy_v<ExecutionType>
+	void for_each(ExecutionType execution, Container& container, Predicate predicate)
+	{
+		if (::Parallel::Enabled())
+		{
+			std::for_each(execution, container.begin(), container.end(), predicate);
+		}
+		else
+		{
+			std::for_each(container.begin(), container.end(), predicate);
+		}
+	}
+
+	template<typename ExecutionType, typename Iterator, typename Predicate>
+		requires std::is_execution_policy_v<ExecutionType>
+	void for_each_index(ExecutionType execution, Iterator first, Iterator last, Predicate predicate)
+	{
+		std::ranges::iota_view indexRange(static_cast<std::size_t>(0), static_cast<std::size_t>(std::distance(first, last)));
+		if (::Parallel::Enabled())
+		{
+			std::for_each(execution, indexRange.begin(), indexRange.end(), predicate);
+		}
+		else
+		{
+			std::for_each(indexRange.begin(), indexRange.end(), predicate);
+		}
+	}
+
+	template<typename ExecutionType, typename Container, typename Predicate>
+		requires std::is_execution_policy_v<ExecutionType>
+	void for_each_index(ExecutionType execution, Container& container, Predicate predicate)
+	{
+		std::ranges::iota_view indexRange(static_cast<std::size_t>(0), std::size(container));
+		if (::Parallel::Enabled())
+		{
+			std::for_each(execution, indexRange.begin(), indexRange.end(), predicate);
+		}
+		else
+		{
+			std::for_each(indexRange.begin(), indexRange.end(), predicate);
 		}
 	}
 

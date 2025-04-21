@@ -12,8 +12,9 @@ protected:
 	const std::string name;
 	const unsigned int threshold;
 public:
-	QuickTimer(const std::string& named = "", const float& threshold = 0.f, const std::source_location source = std::source_location::current());
-	~QuickTimer();
+	QuickTimer(const std::string& named = "", const float& threshold = 0.f, 
+		const std::source_location source = std::source_location::current()) noexcept;
+	~QuickTimer() noexcept;
 };
 
 #define __QUICKTIMER(x, y) QuickTimer __##y##(x)

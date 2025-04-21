@@ -23,7 +23,7 @@ void ClockBrain::Update()
 	// state=1 transit to somewhere          <- check player delta every  8 ticks
 	// state=2 look for player where spotted <- check player delta every  8 ticks
 	// state=3 return to home                <- check player delta every 32 ticks
-
+	// state=4 I see the player
 
 	// Ensure that not every single enemy does this check every frame
 	const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
@@ -61,7 +61,7 @@ void ClockBrain::Update()
 				this->state = 1;
 				if (modulatedTick % 256 == 0)
 				{
-					Level::AddBulletTree(this->transform.position, current[0] * 20.f, 
+					Level::AddBulletTree(this->transform.position, current[0] * 80.f, 
 						current[1], 1);
 				}
 			}
@@ -127,7 +127,7 @@ void ClockBrain::Update()
 	}
 }
 
-void ClockBrain::Draw(MeshData& data, VAO& vao, Shader& shader)
+void ClockBrain::Draw(MeshData& data, VAO& vao, Shader& shader) const
 {
 	shader.SetActiveShader();
 	vao.Bind();

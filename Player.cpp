@@ -4,6 +4,7 @@
 #include <glm/gtx/orthonormalize.hpp>
 #include "Level.h"
 #include "Animation.h"
+#include "Geometry.h"
 
 static constexpr float TurningModifier = Tick::TimeDelta * std::numbers::pi_v<float>;
 
@@ -20,6 +21,8 @@ static constexpr float MinFiringVelocity = 8.f;
 static constexpr IntervalType FireDelay = 16;
 static constexpr IntervalType FireInterval = 200;
 static constexpr IntervalType WaitingValue = -1;
+
+static constexpr float ImpactResponse = 1.00f; // Maybe tune this a bit
 
 
 static  constexpr float PlayerScale = 0.5f; // HACK
@@ -308,7 +311,21 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	BasicPhysics::Clamp(this->velocity, MaxSpeed);
-	if (glm::length(this->velocity) * Tick::TimeDelta < EPSILON)
+	// Bad constant
+	Sphere playerSphere(this->transform.position, 3.f);
+	for (const auto& tri : Level::GetTriangleTree().Search(playerSphere.GetAABB()))
+	{
+		if (DetectCollision::Overlap(playerSphere, *tri))
+		{
+			float overlap = playerSphere.radius - glm::distance(tri->ClosestPoint(playerSphere.center), playerSphere.center);
+			this->transform.position += tri->GetNormal() * overlap;
+			this->velocity -= ImpactResponse * glm::dot(this->velocity, tri->GetNormal()) * tri->GetNormal() * Tick::TimeDelta;
+		}
+	}
+
+
+	// Hacky
+	if (glm::length(this->velocity) * Tick::TimeDelta < EPSILON * 3)
 	{
 		this->velocity = glm::vec3(0.f);
 	}

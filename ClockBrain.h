@@ -18,7 +18,7 @@ public:
 	inline ClockBrain() { this->Init(); }
 	void Init();
 	void Update();
-	void Draw(MeshData& data, VAO& vao, Shader& shader);
+	void Draw(MeshData& data, VAO& vao, Shader& shader) const;
 	inline glm::vec3 GetPos() const noexcept
 	{
 		return this->transform.position;

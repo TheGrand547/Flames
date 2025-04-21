@@ -1491,6 +1491,8 @@ void idle()
 		management.UpdateMeshes();
 	}
 
+	Parallel::SetStatus(!keyState['P']);
+
 	std::stringstream buffered;
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	buffered << "\n" << trashMan.GetSize();
@@ -1572,6 +1574,9 @@ void gameTick()
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
+						// Don't let enemy decals clog things up 
+						if (local.team != 0)
+							return true;
 						// TODO: change this so that the output vector isn't the big list so the actual generation of the decals
 						// can be parallelized, with only the copying needing sequential access
 						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
@@ -2741,7 +2746,7 @@ void init()
 	}
 
 	tickTockMan.Init();
-	for (int i = 0; i < 10; i++)
+	for (int i = 0; i < 1; i++)
 	{
 		management.Make();
 	}
