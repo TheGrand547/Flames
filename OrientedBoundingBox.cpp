@@ -256,8 +256,8 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 			cardinal += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
 			cardinal += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
 		}
-
-		if (glm::abs(obbProjections - cardinal) > EPSILON)
+		// glm::abs(obbProjections - cardinal) > EPSILON || 
+		if (((obbProjections > deltaProjection) != (cardinal > deltaProjection)))
 		{
 			std::cout << "Error in OBB Optimization: " << i << ":" << axialIndex <<
 				":" << truncatedIndex << ":" << axis << ":" << obbProjections << "\t" << cardinal << std::endl;

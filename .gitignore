@@ -24,6 +24,7 @@ vcpkg_installed/
 !/Models/*.mtl
 *.mtl
 Models/
+Audio/
 
 /imgui
 imgui.ini

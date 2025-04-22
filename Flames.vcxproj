@@ -107,7 +107,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;CLEANER_FUNCTIONS;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS;DEBUG</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\INI-Again</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -129,7 +129,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;;C:\Users\sdfis\Documents\Programming\INI-Again</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -154,6 +154,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
     </ClCompile>
     <ClCompile Include="ArrayObject.cpp" />
+    <ClCompile Include="Audio.cpp" />
     <ClCompile Include="BasicPhysics.cpp" />
     <ClCompile Include="BinarySpacePartition.cpp" />
     <ClCompile Include="Buffer.cpp" />
@@ -227,6 +228,7 @@
     <ClInclude Include="Animation.h" />
     <ClInclude Include="ArrayObject.h" />
     <ClInclude Include="async\BufferSync.h" />
+    <ClInclude Include="Audio.h" />
     <ClInclude Include="BasicPhysics.h" />
     <ClInclude Include="BinarySpacePartition.h" />
     <ClInclude Include="Buffer.h" />

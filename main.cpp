@@ -79,6 +79,7 @@
 #include "ResourceBank.h"
 #include "NavMesh.h"
 #include "BinarySpacePartition.h"
+#include "Audio.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -2213,6 +2214,23 @@ int main(int argc, char** argv)
 {
 	int error = 0;
 	debugFlags.fill(false);
+
+	// Briefly test audio thingy
+	if (false)
+	{
+		ma_result result;
+		ma_engine engine;
+
+		result = ma_engine_init(NULL, &engine);
+		if (result != MA_SUCCESS) {
+			return -1;
+		}
+
+		ma_engine_play_sound(&engine, "Audio\\sine_s16_mono_48000.wav", NULL);
+		system("pause");
+		ma_engine_uninit(&engine);
+	}
+
 
 	windowPointer = nullptr;
 	if (!glfwInit())
