@@ -25,7 +25,7 @@ void ClockBrain::Update()
 	// state=3 return to home                <- check player delta every 32 ticks
 	// state=4 I see the player
 
-	// Ensure that not every single enemy does this check every frame
+	// Ensure that not every single enemy does this check every frames
 	const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
 	//if (((this->state == 0 || this->state == 3) && modulatedTick % 32 == 0) || 
 		//((this->state == 1 || this->state == 2) && modulatedTick % 8 == 0))

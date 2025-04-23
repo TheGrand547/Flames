@@ -206,7 +206,6 @@ VAO colorVAO;
 // Not explicitly tied to OpenGL Globals
 
 OBB dumbBox; // rip smartbox
-std::vector<Model> instancedModels;
 glm::vec3 lastCameraPos;
 
 static unsigned int idleFrameCounter = 0;
@@ -405,6 +404,8 @@ static GLFWwindow* windowPointer = nullptr;
 ArrayBuffer volumetric;
 
 const float BulletDecalScale = 4.f;
+
+ArrayBuffer levelMeshBuffer;
 
 void display()
 {
@@ -723,17 +724,19 @@ void display()
 	playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 
-	ship.SetActiveShader();
-	geometry.Bind(meshVAO);
-	ship.SetMat4("modelMat", glm::mat4(1.f));
-	ship.SetMat4("normalMat", glm::mat4(1.f));
-	ship.SetVec3("shapeColor", glm::vec3(0.7f));
-	DrawIndirect draw = geometry.rawIndirect[0];
-	draw.vertexCount = 3;
-	//ship.DrawElements(draw);
-	//ship.DrawElements(geometry.indirect);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	ship.DrawElements<DrawType::Triangle>(geometry.indirect);
+	//ship.SetActiveShader();
+	{
+		Shader& interzone = ShaderBank::Get("new_mesh");
+		VAO& outerzone = VAOBank::Get("new_mesh");
+		interzone.SetActiveShader();
+		geometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		interzone.SetVec3("lightPos", playerModel.translation);
+		interzone.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
+		interzone.SetInt("featureToggle", featureToggle);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+	}
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	EnableGLFeatures<Blending>();
@@ -1604,8 +1607,8 @@ void gameTick()
 			active2.Swap(blarg);
 		}
 
-		tickTockMan.Update();
-		management.Update();
+		//tickTockMan.Update();
+		//management.Update();
 
 		// Gun animation
 		//if (gameTicks % foobar.Duration() == 0)
@@ -2403,6 +2406,7 @@ void init()
 	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
 
+	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 
 	basic.UniformBlockBinding("Camera", 0);
@@ -2426,6 +2430,7 @@ void init()
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniform").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 
@@ -2464,6 +2469,16 @@ void init()
 		VAO& ref = VAOBank::Get("uniformInstance");
 		ref.ArrayFormat<Vertex>(ShaderBank::Get("uniformInstance"));
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
+	}
+	{
+		VAO& ref = VAOBank::Get("new_mesh");
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal));
+		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent));
+		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent));
+		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture));
+		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
+		ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
@@ -2554,108 +2569,6 @@ void init()
 	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0));
 	rayBuffer.BufferData(rays);
-	// CREATING OF THE PLANES
-
-	for (int i = -5; i <= 5; i++)
-	{
-		if (abs(i) <= 1)
-			continue;
-		if (abs(i) == 3)
-		{
-			GetPlaneSegment(glm::vec3(2 * i, 0, 0), PlusY, instancedModels);
-			GetPlaneSegment(glm::vec3(0, 0, 2 * i), PlusY, instancedModels);
-
-			GetPlaneSegment(glm::vec3(2 * i, 0, 2 * i), PlusY, instancedModels);
-			GetPlaneSegment(glm::vec3(-2 * i, 0, 2 * i), PlusY, instancedModels);
-			for (int x = -2; x <= 2; x++)
-			{
-				if (x == 0)
-					continue;
-				GetHallway(glm::vec3(2 * x, 0, 2 * i), instancedModels, false);
-				GetHallway(glm::vec3(2 * i, 0, 2 * x), instancedModels, true);
-			}
-			continue;
-		}
-		GetHallway(glm::vec3(0, 0, 2 * i), instancedModels, true);
-		GetHallway(glm::vec3(2 * i, 0, 0), instancedModels, false);
-	}
-	for (int i = 0; i < 9; i++)
-	{
-		GetPlaneSegment(glm::vec3(2 * (i % 3 - 1), 0, 2 * (static_cast<int>(i / 3) - 1)), PlusY, instancedModels);
-	}
-	// Diagonal Walls
-	instancedModels.emplace_back(glm::vec3(2, 1.f, -2), glm::vec3(90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-	instancedModels.emplace_back(glm::vec3(2, 1.f, 2), glm::vec3(-90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-	instancedModels.emplace_back(glm::vec3(-2, 1.f, 2), glm::vec3(-90, -45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-	instancedModels.emplace_back(glm::vec3(-2, 1.f, -2), glm::vec3(90, 45, 0), glm::vec3(static_cast<float>(sqrt(2)), 1, 1));
-
-	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, -90.f));
-	instancedModels.emplace_back(glm::vec3(0.5f, 1, 0), glm::vec3(0, 0, 90.f));
-
-
-	constexpr int tileSize = 4;
-	constexpr int minusTileSize = -(tileSize - 1);
-	for (int x = minusTileSize; x < tileSize; x++)
-	{
-		for (int y = minusTileSize; y < tileSize; y++)
-		{
-			float noise = glm::simplex(glm::vec3(x, 0.f, y));
-			//GetPlaneSegment(glm::vec3(x, 3 + noise, y) * 2.f, PlusY, instancedModels);
-		}
-	}
-
-
-
-	// The ramp
-	instancedModels.emplace_back(glm::vec3(3.8f, .25f, 0), glm::vec3(0, 0.f, 15.0f), glm::vec3(1, 1, 1));
-
-	// The weird wall behind the player I think?
-	instancedModels.emplace_back(glm::vec3(14, 1, 0), glm::vec3(0.f), glm::vec3(1.f, 20, 1.f));
-
-	std::vector<glm::mat4> awfulTemp{};
-	//awfulTemp.reserve(instancedModels.size());
-	//instancedModels.emplace_back(glm::vec3(-3.f, 1.5f, 0), glm::vec3(-23.f, 0, -45.f));
-	for (const auto& ref : instancedModels)
-	{
-		break;
-		OBB project(ref);
-		glm::vec3 forawrd = project.Up();
-		if (glm::dot(forawrd, World::Up) > 0.5f)
-		{
-			Level::AllNodes().push_back(PathNode::MakeNode(project.GetCenter() + glm::vec3(0, 1, 0)));
-		}
-		project.Scale(glm::vec3(1, .0625f, 1));
-		//project.Scale(glm::vec3(1, 0, 1));
-		Level::Geometry.Insert(project, project.GetAABB());
-		awfulTemp.push_back(ref.GetModelMatrix()); // Because we're using instancedModels to draw them this doesn't have to be the projection for some reason
-		//awfulTemp.push_back(ref.GetNormalMatrix());
-	}
-	if (false)
-	{
-		QuickTimer _tim("Node Culling");
-		//std::erase_if(Level::AllNodes,
-		Parallel::erase_if(std::execution::par, Level::AllNodes(),
-			[&](const PathNodePtr& A)
-			{
-				AABB boxer{};
-				boxer.SetScale(0.75f);
-				boxer.SetCenter(A->GetPosition());
-				auto temps = Level::Geometry.Search(boxer);
-				if (temps.size() == 0)
-					return false;
-				RayCollision fumop{};
-				for (auto& temp : temps)
-				{
-					if (temp->Overlap(boxer))
-					{
-						return true;
-					}
-				}
-				return false;
-			}
-		);
-	}
-	//instanceBuffer.BufferData(awfulTemp, StaticDraw);
 
 	// This sucks
 	// TODO: Put this in Geometry, or something, I don't know
@@ -2935,8 +2848,9 @@ void init()
 				Bullet::Collision = OBB::MakeOBB(pain);
 			}
 		);
-		geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
-			[&](const std::span<glm::vec3>& c)
+		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
+		geometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe.glb",
+			[&](const auto& c)
 			{
 				if (c.size() >= 3)
 				{
@@ -2952,6 +2866,8 @@ void init()
 			}
 		);
 	}
+	levelMeshBuffer.BufferData(std::to_array({ glm::mat4(1.f), glm::mat4(1.f) }));
+
 	BSP bp;
 	{
 		QUICKTIMER("BSP Tree");
