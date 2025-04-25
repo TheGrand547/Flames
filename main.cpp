@@ -406,6 +406,7 @@ ArrayBuffer volumetric;
 const float BulletDecalScale = 4.f;
 
 ArrayBuffer levelMeshBuffer;
+UniformBuffer globalLighting;
 
 void display()
 {
@@ -730,6 +731,7 @@ void display()
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
 		geometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(geometry.vertex, 0);
 		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
 		interzone.SetVec3("lightPos", playerModel.translation);
 		interzone.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
@@ -1477,7 +1479,7 @@ void idle()
 
 	std::stringstream buffered;
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
-	buffered << "\n" << trashMan.GetSize();
+	buffered << "\n" << playfield.GetModel().translation;
 	//Level::SetInterest(tickTockMan.GetPos());
 	Level::SetInterest(management.GetPos());
 	
@@ -2445,6 +2447,8 @@ void init()
 	normalDebris.UniformBlockBinding("Lighting", 3);
 	ship.UniformBlockBinding("Lighting", 3);
 
+	ShaderBank::Get("new_mesh").UniformBlockBinding("BlockLighting", 4);
+
 	CheckError();
 	// VAO SETUP
 	billboardVAO.ArrayFormat<TextureVertex>(billboardShader);
@@ -2478,7 +2482,19 @@ void init()
 		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent));
 		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture));
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
-		ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+	}
+	{
+		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
+		for (auto i = 0; i < lightingArray.size(); i += 2)
+		{
+			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
+			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
+		}
+		globalLighting.BufferData(lightingArray);
+		globalLighting.SetBindingPoint(4);
+		globalLighting.BindUniform();
 	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
@@ -2564,6 +2580,8 @@ void init()
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
+
+	Bank<ArrayBuffer>::Get("ZooperDan").BufferData(tangents);
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};

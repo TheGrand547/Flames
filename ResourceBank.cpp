@@ -2,9 +2,9 @@
 
 namespace ShaderBank
 {
-    static std::unordered_map<std::string, Shader> stored;
+    static std::unordered_map<std::string_view, Shader> stored;
 
-    Shader& Get(const std::string& name)
+    Shader& Get(const std::string_view& name)
     {
         return stored[name];
     }
@@ -12,9 +12,19 @@ namespace ShaderBank
 
 namespace VAOBank
 {
-    static std::unordered_map<std::string, VAO> stored;
+    static std::unordered_map<std::string_view, VAO> stored;
 
-    VAO& Get(const std::string& name)
+    VAO& Get(const std::string_view& name)
+    {
+        return stored[name];
+    }
+}
+
+namespace BufferBank
+{
+    static std::unordered_map<std::string_view, ArrayBuffer> stored;
+
+    ArrayBuffer& BufferBank::Get(const std::string_view& name)
     {
         return stored[name];
     }
