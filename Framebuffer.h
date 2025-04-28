@@ -72,10 +72,10 @@ public:
 
 	Framebuffer<ColorAttachments, buffers>& operator=(Framebuffer<ColorAttachments, buffers>&& other) noexcept
 	{
-		if constexpr (HasDepth) std::swap(this->depth, other.depth);
-		if constexpr (HasStencil) std::swap(this->stencil, other.stencil);
+		if constexpr (HasDepth)    std::swap(this->depth, other.depth);
+		if constexpr (HasStencil)  std::swap(this->stencil, other.stencil);
 		if constexpr (HasCombined) std::swap(this->depthStencil, other.depthStencil);
-		if constexpr (HasColor) this->colorBuffers = std::move(other.colorBuffers);
+		if constexpr (HasColor)    this->colorBuffers = std::move(other.colorBuffers);
 		std::swap(this->frameBuffer, other.frameBuffer);
 		return *this;
 	}

@@ -594,6 +594,7 @@ void display()
 		geometry.Bind(outerzone);
 		outerzone.BindArrayBuffer(geometry.vertex, 0);
 		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
 		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
 		BindDefaultFrameBuffer();
 		Shader& interzone2 = ShaderBank::Get("fullRender");
@@ -2246,6 +2247,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	deferredBuffer.GetColorBuffer<1>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
 	// Color
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalRGBA8);
+	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
 	deferredBuffer.Assemble();
 	/*
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);

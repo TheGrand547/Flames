@@ -17,9 +17,10 @@ void main()
 {	
 	float ambient = 0.05f;
 	
-	vec3 tempLightColor = vec3(1, 1, 1);
+	vec3 tempLightColor = vec3(1, 0, 0);
 	
-	vec3 fPos       = texture(position, textureCoords).xyz;
+	vec4 rawPos     = texture(position, textureCoords);
+	vec3 fPos       = rawPos.xyz;
 	vec3 normal     = texture(normal, textureCoords).xyz;
 	vec3 shapeColor = texture(color, textureCoords).xyz;
 	
@@ -34,4 +35,5 @@ void main()
 	}
 	vec3 result = ambient * shapeColor + lightOut;
 	fColor = vec4(result, 1.0);
+	gl_FragDepth = rawPos.w;
 }
