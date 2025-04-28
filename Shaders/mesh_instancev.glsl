@@ -1,4 +1,5 @@
 #version 440 core
+#include "camera"
 
 layout(location = 0) in vec3 vPos;
 layout(location = 1) in vec3 vNorm;
@@ -13,12 +14,6 @@ layout(location = 1) out vec2 fTex;
 layout(location = 2) out vec3 transformedLightPos;
 layout(location = 3) out vec3 transformedViewPos;
 layout(location = 4) out vec3 transformedFPos;
-
-layout(std140) uniform Camera
-{
-	mat4 View;
-	mat4 Projection;
-};
 
 layout(std140) uniform Lighting
 {

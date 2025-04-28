@@ -81,6 +81,7 @@ static GLuint CompileShader(GLenum type, std::string data)
 		infoLog[length] = '\0';
 		glGetShaderInfoLog(vertex, length, NULL, infoLog.get());
 		std::cout << "Compilation of Shader failed\n" << std::string(infoLog.get()) << std::endl;
+		std::cout << data << '\n';
 		EXIT;
 		return 0; // Error Code
 	}
@@ -512,7 +513,7 @@ void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std
 		LogF("Already created a mapping with the name '%s'.\n", virtualName.c_str());
 		return;
 	}
-	std::ifstream included(fileName, std::ifstream::in);
+	std::ifstream included(shaderBasePath + fileName, std::ifstream::in);
 	if (included.is_open())
 	{
 		LogF("Including file '%s' in the virtual shader filesystem.\n", fileName.c_str());

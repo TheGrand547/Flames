@@ -408,6 +408,8 @@ const float BulletDecalScale = 4.f;
 ArrayBuffer levelMeshBuffer;
 UniformBuffer globalLighting;
 
+Framebuffer<3, Depth> deferredBuffer;
+
 void display()
 {
 	/*
@@ -568,7 +570,45 @@ void display()
 		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
 		EnableDepthBufferWrite();
 	}*/
-	
+	if (featureToggle)
+	{
+		Shader& interzone = ShaderBank::Get("new_mesh");
+		VAO& outerzone = VAOBank::Get("new_mesh");
+		interzone.SetActiveShader();
+		geometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(geometry.vertex, 0);
+		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		interzone.SetVec3("lightPos", playerModel.translation);
+		interzone.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
+		interzone.SetInt("featureToggle", featureToggle);
+		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+	}
+	else
+	{
+		Shader& interzone = ShaderBank::Get("defer");
+		deferredBuffer.Bind();
+		ClearFramebuffer<ColorBuffer | DepthBuffer>();
+		VAO& outerzone = VAOBank::Get("new_mesh");
+		interzone.SetActiveShader();
+		geometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(geometry.vertex, 0);
+		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+		BindDefaultFrameBuffer();
+		Shader& interzone2 = ShaderBank::Get("fullRender");
+		interzone2.SetActiveShader();
+		interzone2.SetVec3("lightPos", playerModel.translation);
+		interzone2.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
+		interzone2.SetTextureUnit("position", deferredBuffer.GetColorBuffer<0>(), 0);
+		interzone2.SetTextureUnit("normal", deferredBuffer.GetColorBuffer<1>(), 1);
+		interzone2.SetTextureUnit("color", deferredBuffer.GetColorBuffer<2>(), 2);
+		//DisableDepthBufferWrite();
+		//DisableGLFeatures<DepthTesting>();
+		interzone2.DrawArray<DrawType::TriangleStrip>(4);
+		//EnableGLFeatures<DepthTesting>();
+		//EnableDepthBufferWrite();
+	}
 	//glDisable(GL_DEPTH_TEST);
 	//glDepthFunc(GL_ALWAYS);
 	vision.SetActiveShader();
@@ -726,19 +766,6 @@ void display()
 	groovy.Draw(ship);
 
 	//ship.SetActiveShader();
-	{
-		Shader& interzone = ShaderBank::Get("new_mesh");
-		VAO& outerzone = VAOBank::Get("new_mesh");
-		interzone.SetActiveShader();
-		geometry.Bind(outerzone);
-		outerzone.BindArrayBuffer(geometry.vertex, 0);
-		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
-		interzone.SetVec3("lightPos", playerModel.translation);
-		interzone.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
-		interzone.SetInt("featureToggle", featureToggle);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
-	}
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	EnableGLFeatures<Blending>();
@@ -2211,6 +2238,19 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
 	screenSpaceBuffer.BufferSubData(Window::GetOrthogonal());
+
+	// Deferred shading
+	// Position
+	deferredBuffer.GetColorBuffer<0>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	// Normal
+	deferredBuffer.GetColorBuffer<1>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	// Color
+	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalRGBA8);
+	deferredBuffer.Assemble();
+	/*
+	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	deferredBuffer.GetColorBuffer<3>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	*/
 }
 
 void init();
@@ -2376,6 +2416,9 @@ void init()
 
 	// SHADER SETUP
 	Shader::SetBasePath("Shaders");
+	Shader::IncludeInShaderFilesystem("lighting", "lighting.incl");
+	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
+
 	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
 	bulletShader.Compile("color_final", "mesh_final");
@@ -2408,8 +2451,10 @@ void init()
 	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
 
+	ShaderBank::Get("defer").Compile("new_mesh", "deferred");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
+	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2432,8 +2477,9 @@ void init()
 	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("uniform").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
@@ -2448,6 +2494,7 @@ void init()
 	ship.UniformBlockBinding("Lighting", 3);
 
 	ShaderBank::Get("new_mesh").UniformBlockBinding("BlockLighting", 4);
+	ShaderBank::Get("fullRender").UniformBlockBinding("BlockLighting", 4);
 
 	CheckError();
 	// VAO SETUP
@@ -2488,7 +2535,7 @@ void init()
 		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
-			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
+			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
 		}

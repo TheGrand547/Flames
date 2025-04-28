@@ -354,7 +354,6 @@ void Player::Update(Input::Keyboard input) noexcept
 
 void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept
 {
-	std::cout << Bank<ArrayBuffer>::Get("ZooperDan").GetElementCount() << '\n';
 	shader.SetActiveShader();
 	vertex.Bind();
 	vertex.BindArrayBuffer(renderData.vertex);
