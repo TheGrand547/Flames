@@ -146,7 +146,7 @@ static const std::array<GLubyte, 25> tesselationCode = {
 ASCIIFont fonter;
 
 // Buffers
-ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, instanceBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
+ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
 ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
 ArrayBuffer pathNodePositions, pathNodeLines;
 ArrayBuffer decals;
@@ -302,6 +302,12 @@ struct SimpleBullet
 	glm::vec3 position, direction;
 };
 
+struct LightVolume
+{
+	glm::vec4 positionAndRadii;
+	glm::vec3 color;
+};
+
 //PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 
@@ -383,7 +389,7 @@ DebrisManager trashMan;
 Shader normalDebris;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
-MeshData playerMesh;
+MeshData playerMesh, playerMesh2;
 MeshData bulletMesh;
 
 Shader bulletShader;
@@ -501,24 +507,6 @@ void display()
 	glDepthFunc(GL_LEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	//ClearFramebuffer<DepthBuffer>();
-
-	DisableGLFeatures<Blending>();
-	instancing.SetActiveShader();
-	instancing.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	//instancing.SetVec3("lightPos", followed.GetPosition());
-	instancing.SetVec3("viewPos", cameraPosition);
-	instancing.SetTextureUnit("textureIn", wallTexture, 0);
-	instancing.SetTextureUnit("ditherMap", ditherTexture, 1);
-	instancing.SetTextureUnit("normalMapIn", normalMap, 2);
-	instancing.SetTextureUnit("depthMapIn", depthMap, 3);
-	instancing.SetInt("newToggle", featureToggle);
-	
-	instanceVAO.Bind();
-	instanceVAO.BindArrayBuffer(texturedPlane, 0);
-	instanceVAO.BindArrayBuffer(instanceBuffer, 1);
-	instanceVAO.BindArrayBuffer(normalMapBuffer, 2);
-	instancing.DrawArrayInstanced<DrawType::TriangleStrip>(texturedPlane, instanceBuffer);
-	glDisable(GL_STENCIL_TEST);
 	
 	if (debugFlags[DEBUG_PATH])
 	{
@@ -548,28 +536,7 @@ void display()
 		//DisableGLFeatures<StencilTesting>();
 		EnableDepthBufferWrite();
 	}
-	/*
-	// Visualize the pathfinder guy
-	{
-		EnableGLFeatures<Blending>();
-		DisableDepthBufferWrite();
-		pathNodeView.SetActiveShader();
-		pathNodeVAO.Bind();
-		pathNodeVAO.BindArrayBuffer(plainCube, 0);
-		pathNodeVAO.BindArrayBuffer(PathFollower::latestPathBuffer, 1);
-		pathNodeView.SetFloat("Scale", (glm::cos(idleFrameCounter / 200.f) * 0.05f) + 0.3f);
-		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
-
-		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, PathFollower::latestPathBuffer);
-
-		uniform.SetActiveShader();
-		uniform.SetMat4("Model", glm::mat4(1.f));
-		plainVAO.Bind();
-		plainVAO.BindArrayBuffer(PathFollower::latestPathBuffer);
-		glLineWidth(10.f);
-		uniform.DrawArray<DrawType::LineStrip>(PathFollower::latestPathBuffer);
-		EnableDepthBufferWrite();
-	}*/
+	// Switch between forward and deferred rendering
 	if (featureToggle)
 	{
 		Shader& interzone = ShaderBank::Get("new_mesh");
@@ -596,6 +563,16 @@ void display()
 		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
 		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+
+		auto& buf = BufferBank::Get("player");
+		auto meshs2 = playerModel;
+		meshs2.scale *= 0.5f;
+		auto meshs = meshs2.GetMatrixPair();
+		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
+		outerzone.BindArrayBuffer(buf, 1);
+		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
+
+		// Do the actual deferred rendering
 		BindDefaultFrameBuffer();
 		Shader& interzone2 = ShaderBank::Get("fullRender");
 		interzone2.SetActiveShader();
@@ -633,14 +610,6 @@ void display()
 	uniform.DrawElements<DrawType::LineStrip>(stickIndicies);
 
 	DisableGLFeatures<FaceCulling>();
-	skinner.SetActiveShader();
-	skinInstance.Bind();
-	skinInstance.BindArrayBuffer(skinVertex, 0);
-	skinner.SetMat4s("mats", std::span{skinMats});
-	skinner.SetTextureUnit("textureIn", wallTexture, 0);
-	skinArg.BindBuffer();
-	//skinner.DrawElements<DrawType::Triangle>(skinArg);
-	
 
 	//EnableGLFeatures<FaceCulling>();
 	//glPolygonMode(GL_BACK, GL_LINE);
@@ -749,7 +718,7 @@ void display()
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex);
-	//ship.DrawElements(guyMeshData.indirect, 0);
+	ship.DrawElements(guyMeshData.indirect, 0);
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
@@ -762,11 +731,10 @@ void display()
 	// What the heck?
 	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
 	//ship.DrawElements(guyMeshData.indirect, 1);
-	
-	playfield.Draw(ship, meshVAO, playerMesh, playerModel);
+	if (featureToggle)
+		playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 
-	//ship.SetActiveShader();
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	EnableGLFeatures<Blending>();
@@ -794,6 +762,7 @@ void display()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}*/
 
+	// Level outline
 	if (featureToggle)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
@@ -2454,9 +2423,10 @@ void init()
 	widget.CompileSimple("widget");
 
 	ShaderBank::Get("defer").Compile("new_mesh", "deferred");
+	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
+	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
-	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2481,6 +2451,7 @@ void init()
 	vision.UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 
@@ -2517,11 +2488,16 @@ void init()
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 	plainVAO.ArrayFormat<Vertex>(uniform);
 	VAOBank::Get("uniform").ArrayFormat<Vertex>(uniform);
-
+	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>(sphereMesh);
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
 		ref.ArrayFormat<Vertex>(ShaderBank::Get("uniformInstance"));
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
+	}
+	{
+		VAO& ref = VAOBank::Get("lightVolume");
+		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
 	}
 	{
 		VAO& ref = VAOBank::Get("new_mesh");
@@ -2535,15 +2511,20 @@ void init()
 	}
 	{
 		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
+		std::array<LightVolume, 12> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
 			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
+			kipper[i >> 2].positionAndRadii = lightingArray[i];
+			kipper[i >> 2].positionAndRadii.w = 100.f;
+			kipper[i >> 2].color = lightingArray[i + 1];
 		}
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();
+		Bank<ArrayBuffer>::Get("lightVolume").BufferData(kipper);
 	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
@@ -2904,6 +2885,7 @@ void init()
 				std::ranges::transform(c, std::back_inserter(painterly), [](MeshVertex b) -> glm::vec3 {return b.position; });
 			}
 		);
+		playerMesh2 = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Player.glb");
 		Player::Box = OBB::MakeOBB(painterly);
 		Player::Box.Scale(0.5f);
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb",

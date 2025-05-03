@@ -9,11 +9,7 @@ layout(location = 0) out vec3 colorOut;
 uniform mat4 modelMat;
 uniform mat4 normalMat;
 
-layout(std140) uniform Camera
-{
-	mat4 View;
-	mat4 Projection;
-};
+#include "camera"
 
 layout(std140) uniform Lighting
 {
@@ -25,7 +21,6 @@ uniform vec3 shapeColor;
 
 void main()
 {
-	//vec3 fPos = (modelMat * vec4(vPos, 1.0)).xyz;
 	vec3 norm = (normalMat * vec4(vNorm, 0)).xyz;
 	
 	gl_Position = Projection * View * modelMat * vec4(vPos, 1.0);

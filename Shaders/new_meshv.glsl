@@ -1,5 +1,4 @@
 #version 440 core
-#include "camera"
 
 layout(location = 0) in vec3 vPos;
 layout(location = 1) in vec3 vNorm;
@@ -13,6 +12,8 @@ layout(location = 0) out vec3 fPos;
 layout(location = 1) out vec2 fTex;
 layout(location = 2) out mat3 TBNmat;
 
+#include "camera"
+
 void main()
 {
 	mat3 shifted = mat3(normalMat);
@@ -24,6 +25,5 @@ void main()
 	vec3 normal = vNorm;
 	tangent = normalize(tangent - normal * dot(normal, tangent));
 	vec3 biTangent = normalize(cross(normal, tangent));
-	
-	 TBNmat = (mat3(tangent, biTangent, normal));
+	TBNmat = mat3(tangent, biTangent, normal);
 }
