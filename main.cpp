@@ -304,7 +304,7 @@ struct SimpleBullet
 
 struct LightVolume
 {
-	glm::vec4 positionAndRadii;
+	glm::vec4 position;
 	glm::vec3 color;
 };
 
@@ -415,6 +415,9 @@ ArrayBuffer levelMeshBuffer;
 UniformBuffer globalLighting;
 
 Framebuffer<3, Depth> deferredBuffer;
+
+// Could be expanded to have another buffer if necessary
+ColorFrameBuffer pointLightBuffer;
 
 void display()
 {
@@ -539,6 +542,7 @@ void display()
 	// Switch between forward and deferred rendering
 	if (featureToggle)
 	{
+		/*
 		Shader& interzone = ShaderBank::Get("new_mesh");
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
@@ -550,9 +554,7 @@ void display()
 		interzone.SetInt("featureToggle", featureToggle);
 		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
-	}
-	else
-	{
+		*/
 		Shader& interzone = ShaderBank::Get("defer");
 		deferredBuffer.Bind();
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
@@ -576,14 +578,77 @@ void display()
 		BindDefaultFrameBuffer();
 		Shader& interzone2 = ShaderBank::Get("fullRender");
 		interzone2.SetActiveShader();
+		interzone2.SetInt("featureToggle", featureToggle);
 		interzone2.SetVec3("lightPos", playerModel.translation);
 		interzone2.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
 		interzone2.SetTextureUnit("position", deferredBuffer.GetColorBuffer<0>(), 0);
 		interzone2.SetTextureUnit("normal", deferredBuffer.GetColorBuffer<1>(), 1);
 		interzone2.SetTextureUnit("color", deferredBuffer.GetColorBuffer<2>(), 2);
-		//DisableDepthBufferWrite();
-		//DisableGLFeatures<DepthTesting>();
 		interzone2.DrawArray<DrawType::TriangleStrip>(4);
+	}
+	else
+	{
+		Shader& interzone = ShaderBank::Get("defer");
+		deferredBuffer.Bind();
+		ClearFramebuffer<ColorBuffer | DepthBuffer>();
+		VAO& outerzone = VAOBank::Get("new_mesh");
+		interzone.SetActiveShader();
+		geometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(geometry.vertex, 0);
+		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
+		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+
+		auto& buf = BufferBank::Get("player");
+		auto meshs2 = playerModel;
+		meshs2.scale *= 0.5f;
+		auto meshs = meshs2.GetMatrixPair();
+		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
+		outerzone.BindArrayBuffer(buf, 1);
+		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
+		
+		glEnable(GL_BLEND);
+		glDisable(GL_DEPTH_TEST);
+		glEnable(GL_CULL_FACE);
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+		glCullFace(GL_FRONT);
+
+		pointLightBuffer.Bind();
+		ClearFramebuffer<ColorBuffer>();
+
+		Shader& throne = ShaderBank::Get("light_volume_mesh");
+		VAO& shadow = VAOBank::Get("light_volume_mesh");
+		ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
+		throne.SetActiveShader();
+		shadow.Bind();
+		shadow.BindArrayBuffer(sphereBuffer, 0);
+		shadow.BindArrayBuffer(cotillion, 1);
+		sphereIndicies.BindBuffer();
+		throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
+		throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
+
+		throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
+		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
+		//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), Bank<ArrayBuffer>::Get("lightVolume"));
+		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+		glDisable(GL_BLEND);
+		glEnable(GL_DEPTH_TEST);
+		glCullFace(GL_BACK);
+		// Do the actual deferred rendering
+		BindDefaultFrameBuffer();
+
+		Shader& interzone2 = ShaderBank::Get("combinePass");
+		interzone2.SetActiveShader();
+		//interzone2.SetInt("featureToggle", featureToggle);
+		interzone2.SetVec3("lightPos", playerModel.translation);
+		interzone2.SetVec3("lightDir", playerModel.rotation* glm::vec3(1.f, 0.f, 0.f));
+		interzone2.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
+		interzone2.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
+		interzone2.SetTextureUnit("gColor", deferredBuffer.GetColorBuffer<2>(), 2);
+		interzone2.SetTextureUnit("gLighting", pointLightBuffer.GetColor(), 3);
+		interzone2.SetTextureUnit("gDepth", deferredBuffer.GetDepth(), 4);
+		interzone2.DrawArray<DrawType::TriangleStrip>(4);
+
 		//EnableGLFeatures<DepthTesting>();
 		//EnableDepthBufferWrite();
 	}
@@ -2212,12 +2277,18 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	// Deferred shading
 	// Position
 	deferredBuffer.GetColorBuffer<0>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	deferredBuffer.GetColorBuffer<0>().SetFilters({});
 	// Normal
 	deferredBuffer.GetColorBuffer<1>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
+	deferredBuffer.GetColorBuffer<1>().SetFilters({});
 	// Color
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalRGBA8);
+	deferredBuffer.GetColorBuffer<2>().SetFilters({});
 	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
 	deferredBuffer.Assemble();
+
+	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
+	pointLightBuffer.Assemble();
 	/*
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
 	deferredBuffer.GetColorBuffer<3>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
@@ -2427,6 +2498,8 @@ void init()
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
+	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
+	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2454,6 +2527,8 @@ void init()
 	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("combinePass").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
@@ -2495,9 +2570,10 @@ void init()
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
 	}
 	{
-		VAO& ref = VAOBank::Get("lightVolume");
-		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
+		VAO& ref = VAOBank::Get("light_volume_mesh");
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
+		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
+		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume, color));
 	}
 	{
 		VAO& ref = VAOBank::Get("new_mesh");
@@ -2510,21 +2586,22 @@ void init()
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
-		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
-		std::array<LightVolume, 12> kipper{};
+		std::array<glm::vec4, 60> lightingArray{ glm::vec4(0.f) };
+		std::array<LightVolume, lightingArray.size() / 2> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
-			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
+			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
-			kipper[i >> 2].positionAndRadii = lightingArray[i];
-			kipper[i >> 2].positionAndRadii.w = 100.f;
-			kipper[i >> 2].color = lightingArray[i + 1];
+			kipper[i / 2].position = lightingArray[i];
+			kipper[i / 2].position.w = 70.f;
+			kipper[i / 2].color = lightingArray[i + 1];
 		}
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();
-		Bank<ArrayBuffer>::Get("lightVolume").BufferData(kipper);
+		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(kipper);
+		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);

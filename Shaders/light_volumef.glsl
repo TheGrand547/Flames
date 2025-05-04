@@ -59,9 +59,11 @@ void main()
 	vec4 rawPosition = texture(position, textureCoord);
 	
 	// Don't light things if they're too far away
-	if (rawPosition.w > intersectT)
-		discard;
+	//if (rawPosition.w > intersectT)
+		//discard;
 	vec3 worldPosition = rawPosition.xyz;
+	if (length(worldPosition - lightPosition) > inputData.w)
+		discard;
 	vec3 viewDirection = normalize(View[3].xyz - worldPosition);
 	vec3 normal = texture(normals, textureCoord).xyz;
 	

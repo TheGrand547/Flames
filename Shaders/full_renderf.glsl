@@ -12,6 +12,7 @@ layout(location = 2) uniform sampler2D color;
 
 uniform vec3 lightPos;
 uniform vec3 lightDir;
+uniform int featureToggle;
 
 void main()
 {	
@@ -28,10 +29,13 @@ void main()
 	
 	vec3 lightOut = DirectedPointLight(lightPos, -lightDir, tempLightColor, normal, fPos, viewDirection);
 	
-	for (int i = 0; i < 12; i++)
+	//if (featureToggle == 1)
 	{
-		lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
-	
+		for (int i = 0; i < 60; i++)
+		{
+			lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
+		
+		}
 	}
 	vec3 result = ambient * shapeColor + lightOut;
 	fColor = vec4(result, 1.0);
