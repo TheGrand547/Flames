@@ -31,7 +31,7 @@ void main()
 	
 	//if (featureToggle == 1)
 	{
-		for (int i = 0; i < 60; i++)
+		for (int i = 0; i < 12; i++)
 		{
 			//if (length(lightBuffer[i].position.xyz - fPos) > 70.f)
 				//continue;

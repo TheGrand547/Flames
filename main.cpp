@@ -619,7 +619,8 @@ void display()
 		pointLightBuffer.Bind();
 		ClearFramebuffer<ColorBuffer>();
 
-		if (featureToggle)
+		// I don't know man this is too much
+		if (featureToggle && true)
 		{
 			Shader& throne = ShaderBank::Get("light_volume_mesh");
 			VAO& shadow = VAOBank::Get("light_volume_mesh");
@@ -631,7 +632,17 @@ void display()
 			sphereIndicies.BindBuffer();
 			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
 			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
-			throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
+			if (featureToggle)
+			{
+				throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
+			}
+			else
+			{
+				// Possibility of working if locked to camera perspective but unsure
+				shadow.BindArrayBuffer(plainCube, 0);
+				solidCubeIndex.BindBuffer();
+				throne.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, cotillion);
+			}
 		}
 		else
 		{
@@ -2616,7 +2627,7 @@ void init()
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
-		std::array<glm::vec4, 60*2> lightingArray{ glm::vec4(0.f) };
+		std::array<glm::vec4, 12*2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, lightingArray.size() / 2> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{

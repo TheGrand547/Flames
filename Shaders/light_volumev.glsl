@@ -47,14 +47,16 @@ void main()
 	float radius = positionRadius.w;
 	vec3 position = positionRadius.xyz;
 	
-	fTex = positions[gl_VertexID % 10].xy * radius * 2.5f;
+	// Multiplying fTex by higher ratios and not adjusting it later leads to some weird stuff
+	fTex = positions[gl_VertexID % 10].xy * radius * 1.5f;
 	inputData = positionRadius;
 	lightColor = color.xyz;
 	
 	// if the camera is inside the sphere then the imposter covers the whole screen
-	if (length(cameraPosition - position) < radius || dot(normalize(cameraPosition - position), cameraForward) < -radians(45))
+	if (length(cameraPosition - position) < radius && dot(normalize(cameraPosition - position), cameraForward) < -radians(60))
 	{
 		gl_Position = vec4(badPositions[gl_VertexID % 10], 0, 1) * 1.5f;
+		fTex = gl_Position.xy * radius;
 	}
 	else
 	{

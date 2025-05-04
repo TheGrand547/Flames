@@ -16,5 +16,5 @@ void main()
 	lightColor  = color;
 	lightCenter = instancePosition.xyz;
 	lightRadius = radius;
-	gl_Position = Projection * View * vec4(vPos * radius + instancePosition.xyz, 1);
+	gl_Position = Projection * View * vec4(vPos * radius + lightCenter, 1);
 }
