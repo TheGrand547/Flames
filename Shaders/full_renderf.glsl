@@ -33,6 +33,8 @@ void main()
 	{
 		for (int i = 0; i < 60; i++)
 		{
+			//if (length(lightBuffer[i].position.xyz - fPos) > 70.f)
+				//continue;
 			lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
 		
 		}

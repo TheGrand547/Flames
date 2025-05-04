@@ -10,35 +10,56 @@ layout(location = 3) flat out vec3 lightColor;
 
 #include "camera"
 
+/*
 vec2 positions[] = {
 	vec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),
 	vec2(-1.0f,  1.0f), vec2( 1.0f,  1.0f)
 };
+*/
 
-/*
 const float ratio = 1.f / (1.f + sqrt(2));
 
 vec2 positions[] = 
 {
-	vec2(0.f, 0.f) // center
+	vec2(0.f, 0.f), // center
 	vec2(   1.f,  ratio), vec2( ratio,    1.f),
 	vec2(-ratio,    1.f), vec2(  -1.f,  ratio),
 	vec2(  -1.f, -ratio), vec2(-ratio,   -1.f), 
 	vec2( ratio,   -1.f), vec2(   1.f, -ratio), 
 	vec2(   1.f,  ratio) // Needed to close the loop
 };
-*/
 
+vec2 badPositions[] = 
+{
+	vec2(0.f, 0.f), // center
+	vec2( 1.f,  1.f), vec2( 1.f,  1.f),
+	vec2(-1.f,  1.f), vec2(-1.f,  1.f),
+	vec2(-1.f, -1.f), vec2(-1.f, -1.f), 
+	vec2( 1.f, -1.f), vec2( 1.f, -1.f), 
+	vec2( 1.f,  1.f) // Needed to close the loop
+};
+
+uniform vec3 cameraForward;
+uniform vec3 cameraPosition;
 
 void main()
 {
-	fTex = positions[gl_VertexID % 4].xy * 1.5f;
+	float radius = positionRadius.w;
+	vec3 position = positionRadius.xyz;
+	
+	fTex = positions[gl_VertexID % 10].xy * radius * 2.5f;
 	inputData = positionRadius;
 	lightColor = color.xyz;
 	
-	float radius = positionRadius.w;
-	vec3 position = positionRadius.xyz;
-	vec3 adjusted = vec3(fTex * radius, 0) + (View * vec4(position, 1)).xyz;
+	// if the camera is inside the sphere then the imposter covers the whole screen
+	if (length(cameraPosition - position) < radius || dot(normalize(cameraPosition - position), cameraForward) < -radians(45))
+	{
+		gl_Position = vec4(badPositions[gl_VertexID % 10], 0, 1) * 1.5f;
+	}
+	else
+	{
+		vec3 adjusted = vec3(fTex, 0) + (View * vec4(position, 1)).xyz;
+		gl_Position = Projection * vec4(adjusted, 1);
+	}
 	relativePosition = (View * vec4(position, 1)).xyz;
-	gl_Position = Projection * vec4(adjusted, 1);
 }

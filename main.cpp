@@ -216,6 +216,7 @@ constexpr auto TIGHT_BOXES = 1;
 constexpr auto WIDE_BOXES = 2;
 constexpr auto DEBUG_PATH = 3;
 constexpr auto DYNAMIC_TREE = 4;
+constexpr auto FULL_CALCULATIONS = 5;
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
@@ -461,7 +462,9 @@ void display()
 	localCamera += playerModel.translation;
 	localCamera -= velocity / 20.f;
 	//localCamera = playerModel.translation + axes[0] * 0.5f;
-	glm::mat4 view = glm::lookAt(localCamera, playerModel.translation + axes[0] * 10.f, axes[1]);
+	const glm::vec3 cameraFocus = playerModel.translation + axes[0] * 10.f;
+	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
+	glm::mat4 view = glm::lookAt(localCamera, cameraFocus, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	
 
@@ -540,7 +543,7 @@ void display()
 		EnableDepthBufferWrite();
 	}
 	// Switch between forward and deferred rendering
-	if (featureToggle && false)
+	if (debugFlags[FULL_CALCULATIONS])
 	{
 		/*
 		Shader& interzone = ShaderBank::Get("new_mesh");
@@ -639,9 +642,12 @@ void display()
 			throne.SetActiveShader();
 			shadow.Bind();
 			shadow.BindArrayBuffer(cotillion, 0);
+			throne.SetVec3("cameraForward", cameraForward);
+			throne.SetVec3("cameraPosition", localCamera);
 			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
 			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
-			throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
+			//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
+			throne.DrawArrayInstanced<DrawType::TriangleFan>(Bank<ArrayBuffer>::Get("dummy2"), cotillion);
 		}
 
 		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
@@ -812,8 +818,8 @@ void display()
 	// What the heck?
 	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
 	//ship.DrawElements(guyMeshData.indirect, 1);
-	if (featureToggle)
-		playfield.Draw(ship, meshVAO, playerMesh, playerModel);
+	//if (featureToggle)
+		//playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1558,7 +1564,7 @@ void idle()
 	std::stringstream buffered;
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	buffered << "\n" << playfield.GetModel().translation;
-	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle;
+	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle << "\nFull Calculations: " << debugFlags[FULL_CALCULATIONS];
 	//Level::SetInterest(tickTockMan.GetPos());
 	Level::SetInterest(management.GetPos());
 	
@@ -2610,7 +2616,7 @@ void init()
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
-		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
+		std::array<glm::vec4, 60*2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, lightingArray.size() / 2> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
@@ -2626,6 +2632,7 @@ void init()
 		globalLighting.BindUniform();
 		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(kipper);
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
+		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
 
 	texturedVAO.ArrayFormat<TextureVertex>(dither);
@@ -3232,7 +3239,7 @@ void init()
 
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
-		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 30, 30);
+		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 100, 100);
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.75f, 3.25f, 30, 30);
 
 

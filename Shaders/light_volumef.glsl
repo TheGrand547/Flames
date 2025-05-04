@@ -9,8 +9,6 @@ layout(location = 0) out vec4 fColor;
 
 #include "camera"
 
-const float PI = 1.0 / radians(180);
-
 #include "lighting"
 
 layout(location = 0) uniform sampler2D gPosition;
@@ -22,7 +20,7 @@ void main()
 	float radius = inputData.w;
 	
 	// From https://github.com/paroj/gltut/blob/master/Tut%2013%20Impostors/data/GeomImpostor.frag
-	vec3 adjusted = vec3(fTex * radius, 0.0) + relativePosition;
+	vec3 adjusted = vec3(fTex, 0.0) + relativePosition;
 	vec3 ray = normalize(adjusted);
 	
 	float B = 2.0 * dot(ray, -relativePosition);
@@ -32,15 +30,15 @@ void main()
 	if(det < 0.0)
 		discard;
 		
-	float sqrtDet = sqrt(det);
-	float posT = (-B + sqrtDet)/2;
-	float negT = (-B - sqrtDet)/2;
+	//float sqrtDet = sqrt(det);
+	//float posT = (-B + sqrtDet)/2;
+	//float negT = (-B - sqrtDet)/2;
 	
 	// To get near/Far simply replace min/max with min/max respectively
-	float intersectT = min(posT, negT);
+	//float intersectT = min(posT, negT);
 	
 	// Outputs
-	vec3 finalPos = ray * intersectT;
+	//vec3 finalPos = ray * intersectT;
 	
 	
 	vec2 textureCoord = gl_FragCoord.xy / 1000;
@@ -49,14 +47,11 @@ void main()
 	vec4 rawPosition = texture(gPosition, textureCoord);
 	
 	// Don't light things if they're too far away
-	
 	vec3 worldPosition = rawPosition.xyz;
-	/*
-	if (length(worldPosition - lightPosition) > inputData.w)
-		discard;
-	*/
 	vec3 viewDirection = normalize(View[3].xyz - worldPosition);
 	vec3 normal = texture(gNormal, textureCoord).xyz;
+	if (length(worldPosition - lightPosition) > radius)
+		discard;
 	
 	vec3 lightEffect = PointLight(lightPosition, lightColor, normal, worldPosition, viewDirection);
 	fColor = vec4(lightEffect, 1.f);
