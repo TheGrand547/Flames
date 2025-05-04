@@ -540,7 +540,7 @@ void display()
 		EnableDepthBufferWrite();
 	}
 	// Switch between forward and deferred rendering
-	if (featureToggle)
+	if (featureToggle && false)
 	{
 		/*
 		Shader& interzone = ShaderBank::Get("new_mesh");
@@ -616,18 +616,34 @@ void display()
 		pointLightBuffer.Bind();
 		ClearFramebuffer<ColorBuffer>();
 
-		Shader& throne = ShaderBank::Get("light_volume_mesh");
-		VAO& shadow = VAOBank::Get("light_volume_mesh");
-		ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
-		throne.SetActiveShader();
-		shadow.Bind();
-		shadow.BindArrayBuffer(sphereBuffer, 0);
-		shadow.BindArrayBuffer(cotillion, 1);
-		sphereIndicies.BindBuffer();
-		throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
-		throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
+		if (featureToggle)
+		{
+			Shader& throne = ShaderBank::Get("light_volume_mesh");
+			VAO& shadow = VAOBank::Get("light_volume_mesh");
+			ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
+			throne.SetActiveShader();
+			shadow.Bind();
+			shadow.BindArrayBuffer(sphereBuffer, 0);
+			shadow.BindArrayBuffer(cotillion, 1);
+			sphereIndicies.BindBuffer();
+			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
+			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
+			throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
+		}
+		else
+		{
+			glCullFace(GL_BACK);
+			Shader& throne = ShaderBank::Get("light_volume");
+			VAO& shadow = VAOBank::Get("light_volume");
+			ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
+			throne.SetActiveShader();
+			shadow.Bind();
+			shadow.BindArrayBuffer(cotillion, 0);
+			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
+			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
+			throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
+		}
 
-		throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
 		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
 		//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), Bank<ArrayBuffer>::Get("lightVolume"));
 		glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1542,6 +1558,7 @@ void idle()
 	std::stringstream buffered;
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	buffered << "\n" << playfield.GetModel().translation;
+	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle;
 	//Level::SetInterest(tickTockMan.GetPos());
 	Level::SetInterest(management.GetPos());
 	
@@ -2500,6 +2517,7 @@ void init()
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
+	ShaderBank::Get("light_volume").CompileSimple("light_volume");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2529,6 +2547,7 @@ void init()
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("combinePass").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("light_volume").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
@@ -2570,6 +2589,11 @@ void init()
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
 	}
 	{
+		VAO& ref = VAOBank::Get("light_volume");
+		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
+	}
+	{
 		VAO& ref = VAOBank::Get("light_volume_mesh");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
 		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
@@ -2586,7 +2610,7 @@ void init()
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
-		std::array<glm::vec4, 60> lightingArray{ glm::vec4(0.f) };
+		std::array<glm::vec4, 24> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, lightingArray.size() / 2> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
