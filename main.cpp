@@ -420,6 +420,8 @@ Framebuffer<3, Depth> deferredBuffer;
 // Could be expanded to have another buffer if necessary
 ColorFrameBuffer pointLightBuffer;
 
+glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
+
 void display()
 {
 	/*
@@ -448,8 +450,6 @@ void display()
 	const Model playerModel(playfield.GetModel());
 
 	// Camera matrix
-	glm::vec3 cameraRadians = glm::radians(cameraRotation);
-
 	glm::vec3 localCamera = cameraPosition;
 	const glm::mat3 axes(playerModel.rotation);
 	const glm::vec3 velocity = playfield.GetVelocity();
@@ -620,7 +620,7 @@ void display()
 		ClearFramebuffer<ColorBuffer>();
 
 		// I don't know man this is too much
-		if (featureToggle && true)
+		if (featureToggle)
 		{
 			Shader& throne = ShaderBank::Get("light_volume_mesh");
 			VAO& shadow = VAOBank::Get("light_volume_mesh");
@@ -717,7 +717,6 @@ void display()
 	billboardVAO.BindArrayBuffer(billboardMatrix, 1);
 	billboardShader.SetTextureUnit("sampler", wallTexture, 0);
 	// What?
-	auto yCameraMatrix = glm::eulerAngleY(-cameraRadians.y);
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 	billboardShader.DrawArrayInstanced<DrawType::TriangleStrip>(billboardBuffer, billboardMatrix);
@@ -1576,7 +1575,34 @@ void idle()
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	buffered << "\n" << playfield.GetModel().translation;
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle << "\nFull Calculations: " << debugFlags[FULL_CALCULATIONS];
-	//Level::SetInterest(tickTockMan.GetPos());
+	{
+		// Only for debugging lights
+		/*
+		glm::vec3 localCamera = cameraPosition;
+		const glm::mat3 axes(playerModel.rotation);
+		const glm::vec3 velocity = playfield.GetVelocity();
+
+		localCamera = glm::vec3(4.f, -2.5f, 0.f);
+		localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
+		localCamera += playerModel.translation;
+		localCamera -= velocity / 20.f;
+		const glm::vec3 cameraFocus = playerModel.translation + axes[0] * 10.f;
+		const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
+
+		glm::vec3 loc(testCameraPos);
+		glm::vec3 direction = localCamera - loc;
+		float length = glm::length(direction);
+		glm::vec3 unit = glm::normalize(direction);
+		glm::vec3 newPos = loc;
+		buffered << std::format("\nDot: {}\nDistance: {}\n", glm::dot(unit, cameraForward), length);
+		if (glm::dot(unit, cameraForward) > 0)
+		{
+			newPos += (glm::dot(unit, cameraForward) * length * 1.1f) * cameraForward;
+		}
+		glm::vec3 newLoc = localCamera - newPos;
+		buffered << std::format("Dot: {}\nDistance: {}", (glm::dot(glm::normalize(newLoc), cameraForward)), glm::length(newLoc));
+		*/
+	}
 	Level::SetInterest(management.GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
@@ -2628,16 +2654,20 @@ void init()
 	}
 	{
 		std::array<glm::vec4, 12*2> lightingArray{ glm::vec4(0.f) };
-		std::array<LightVolume, lightingArray.size() / 2> kipper{};
+		std::array<LightVolume, 2> kipper{};
 		for (auto i = 0; i < lightingArray.size(); i += 2)
 		{
 			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
-			kipper[i / 2].position = lightingArray[i];
-			kipper[i / 2].position.w = 70.f;
-			kipper[i / 2].color = lightingArray[i + 1];
+			//kipper[i / 2].position = lightingArray[i];
+			//kipper[i / 2].position.w = 70.f;
+			//kipper[i / 2].color = lightingArray[i + 1];
 		}
+		kipper[0].position = glm::vec4(40.f, 0.f, 0.f, 60.f);
+		kipper[0].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+		kipper[1].position = testCameraPos;
+		kipper[1].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();

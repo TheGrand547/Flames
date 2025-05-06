@@ -53,15 +53,22 @@ void main()
 	lightColor = color.xyz;
 	
 	// if the camera is inside the sphere then the imposter covers the whole screen
-	if (length(cameraPosition - position) < radius && dot(normalize(cameraPosition - position), cameraForward) < -radians(60))
+	//if (length(cameraPosition - position) < radius && dot(normalize(cameraPosition - position), cameraForward) < -radians(60))
+	
+	float cameraDistance = length(cameraPosition - position);
+	vec3 cameraDelta = normalize(cameraPosition - position);
+	vec3 shiftedPosition = position;
+	if (dot(cameraDelta, cameraForward) > 0)
 	{
-		gl_Position = vec4(badPositions[gl_VertexID % 10], 0, 1) * 1.5f;
-		fTex = gl_Position.xy * radius;
+		//gl_Position = vec4(badPositions[gl_VertexID % 10], 0, 1) * 1.5f;
+		//fTex = gl_Position.xy * radius;
+		// I *think* this should work
+		shiftedPosition += (dot(cameraDelta, cameraForward) * cameraDistance * 1.1f + 0.1f) * cameraForward;
 	}
-	else
+	//else
 	{
-		vec3 adjusted = vec3(fTex, 0) + (View * vec4(position, 1)).xyz;
+		vec3 adjusted = vec3(fTex, 0) + (View * vec4(shiftedPosition, 1)).xyz;
 		gl_Position = Projection * vec4(adjusted, 1);
 	}
-	relativePosition = (View * vec4(position, 1)).xyz;
+	relativePosition = (View * vec4(shiftedPosition, 1)).xyz;
 }
