@@ -7,6 +7,7 @@
 #include "AABB.h"
 #include "Buffer.h"
 #include "Vertex.h"
+#include "Plane.h"
 
 struct Sphere
 {
@@ -19,6 +20,8 @@ struct Sphere
 	inline void Scale(const float& amount) noexcept;
 
 	inline float SignedDistance(const glm::vec3& point) const noexcept;
+
+	inline bool FrontOrCollide(const Plane& plane) const noexcept;
 
 	glm::mat4 GetModelMatrix() const noexcept;
 	glm::mat4 GetNormalMatrix() const noexcept;
@@ -57,6 +60,11 @@ inline void Sphere::Scale(const float& amount) noexcept
 inline float Sphere::SignedDistance(const glm::vec3& point) const noexcept
 {
 	return glm::length(point - this->center) - this->radius;
+}
+
+inline bool Sphere::FrontOrCollide(const Plane& plane) const noexcept
+{
+	return plane.Facing(this->center) > -this->radius;
 }
 
 inline AABB Sphere::GetAABB() const noexcept

@@ -6,7 +6,6 @@ Plane::Plane(const Plane& other) noexcept
 {
 	this->constant = other.constant;
 	this->normal   = other.normal;
-	this->twoSided = other.twoSided;
 }
 
 bool Plane::TripleIntersect(const Plane& planeA, const Plane& planeB) const noexcept

@@ -16,20 +16,18 @@ private:
 	
 	float constant;
 	glm::vec3 normal;
-	bool twoSided;
 public:
-	Plane(float a, float b, float c, float d, bool twoSided = false) noexcept;
-	Plane(const glm::vec3& vector, float f, bool twoSided = false) noexcept;
-	Plane(const glm::vec3& normal, const glm::vec3& point, bool twoSided = false) noexcept;
+	Plane() noexcept;
+	Plane(float a, float b, float c, float d) noexcept;
+	Plane(const glm::vec3& vector, float f) noexcept;
+	Plane(const glm::vec3& normal, const glm::vec3& point) noexcept;
 
 	~Plane() noexcept = default;
 	Plane(const Plane& other) noexcept;
 	Plane(Plane&& other) noexcept = default;
 
-	inline bool TwoSided() const noexcept;
 	inline float GetConstant() const noexcept;
 	inline glm::vec3 GetNormal() const noexcept;
-	inline void ToggleTwoSided() noexcept;
 
 	inline Plane& operator=(const Plane& other) noexcept;
 
@@ -51,31 +49,25 @@ public:
 	static inline bool TripleIntersect(const Plane& planeA, const Plane& planeB, const Plane& planeC, glm::vec3& result);
 };
 
-inline Plane::Plane(float a, float b, float c, float d, bool twoSided) noexcept : normal(glm::normalize(glm::vec3(a, b, c))), 
-			constant(d / glm::length(glm::vec3(a, b, c))), twoSided(twoSided)
+inline Plane::Plane() noexcept : normal(World::Forward), constant(0.f)
+{
+}
+
+inline Plane::Plane(float a, float b, float c, float d) noexcept : normal(glm::normalize(glm::vec3(a, b, c))),
+			constant(d / glm::length(glm::vec3(a, b, c)))
 {
 	assert(!glm::any(glm::isnan(this->normal)));
 }
 
-inline Plane::Plane(const glm::vec3& vector, float f, bool twoSided) noexcept : normal(glm::normalize(vector)), constant(f / glm::length(vector)), twoSided(twoSided)
+inline Plane::Plane(const glm::vec3& vector, float f) noexcept : normal(glm::normalize(vector)), constant(f / glm::length(vector))
 {
 	assert(!glm::any(glm::isnan(this->normal)));
 }
 
-inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point, bool twoSided) noexcept : normal(glm::normalize(normal)), 
-																			constant(glm::dot(normal, point)), twoSided(twoSided)
+inline Plane::Plane(const glm::vec3& normal, const glm::vec3& point) noexcept : normal(glm::normalize(normal)), 
+																			constant(glm::dot(normal, point))
 {
 	assert(!glm::any(glm::isnan(this->normal)));
-}
-
-inline bool Plane::TwoSided() const noexcept
-{
-	return this->twoSided;
-}
-
-inline void Plane::ToggleTwoSided() noexcept
-{
-	this->twoSided = !this->twoSided;
 }
 
 inline float Plane::GetConstant() const noexcept
@@ -93,7 +85,6 @@ inline Plane& Plane::operator=(const Plane& other) noexcept
 {
 	this->constant = other.constant;
 	this->normal   = other.normal;
-	this->twoSided = other.twoSided;
 	return *this;
 }
 

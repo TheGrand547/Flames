@@ -29,7 +29,19 @@ vec3 PointLight(vec3 lightPos, vec3 lightColor, vec3 fragNormal, vec3 fragPos, v
 	// Hacky but passable thing
 	float fallOff = 1.0 / (1.0 + (1.0 / 30.0) * distance + 0.002 * distance * distance); 
 	return lightColor * (specular + diffuse) * fallOff;
-	//return vec3(fallOff, fallOff, fallOff);
+}
+
+vec3 PointLightConstants(vec3 lightPos, vec3 lightColor, vec3 lightConstants, vec3 fragNormal, vec3 fragPos, vec3 viewDirection)
+{
+	vec3 lightDir  = normalize(lightPos - fragPos);
+	float distance = length(lightPos - fragPos);
+	float diffuse  = max(dot(fragNormal, lightDir), 0.0);
+	vec3 reflected = reflect(-lightDir, fragNormal);
+	float specular = pow(max(dot(viewDirection, reflected), 0.0), 128); 
+
+	// Hacky but passable thing
+	float fallOff = 1.0 / (lightConstants.x + lightConstants.y * distance + lightConstants.z * distance * distance); 
+	return lightColor * (specular + diffuse) * fallOff;
 }
 
 vec3 DirectedPointLight(vec3 lightPos, vec3 lightDirection, vec3 lightColor, vec3 fragNormal, vec3 fragPos, vec3 viewDirection)

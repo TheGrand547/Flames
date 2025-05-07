@@ -80,6 +80,7 @@
 #include "NavMesh.h"
 #include "BinarySpacePartition.h"
 #include "Audio.h"
+#include "Frustum.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -421,6 +422,7 @@ Framebuffer<3, Depth> deferredBuffer;
 ColorFrameBuffer pointLightBuffer;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
+BufferSync<std::vector<LightVolume>> volumes;
 
 void display()
 {
@@ -466,7 +468,7 @@ void display()
 	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
 	glm::mat4 view = glm::lookAt(localCamera, cameraFocus, axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
-	
+	Frustum frutum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 
 	// Demo Sphere drawing
 

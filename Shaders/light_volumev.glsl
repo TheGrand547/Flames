@@ -10,6 +10,16 @@ layout(location = 3) flat out vec3 lightColor;
 
 #include "camera"
 
+struct PointLight
+{
+	vec3  position;
+	vec3  color;
+	vec3  falloff;
+	float radius;
+};
+
+
+// TODO: Do performance comparisons between the square and octagon
 /*
 vec2 positions[] = {
 	vec2(-1.0f, -1.0f), vec2( 1.0f, -1.0f),
@@ -27,16 +37,6 @@ vec2 positions[] =
 	vec2(  -1.f, -ratio), vec2(-ratio,   -1.f), 
 	vec2( ratio,   -1.f), vec2(   1.f, -ratio), 
 	vec2(   1.f,  ratio) // Needed to close the loop
-};
-
-vec2 badPositions[] = 
-{
-	vec2(0.f, 0.f), // center
-	vec2( 1.f,  1.f), vec2( 1.f,  1.f),
-	vec2(-1.f,  1.f), vec2(-1.f,  1.f),
-	vec2(-1.f, -1.f), vec2(-1.f, -1.f), 
-	vec2( 1.f, -1.f), vec2( 1.f, -1.f), 
-	vec2( 1.f,  1.f) // Needed to close the loop
 };
 
 uniform vec3 cameraForward;
