@@ -171,6 +171,7 @@
     <ClCompile Include="ExhaustManager.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
+    <ClCompile Include="Frustum.cpp" />
     <ClCompile Include="GLData.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -248,6 +249,7 @@
     <ClInclude Include="ExhaustManager.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
+    <ClInclude Include="Frustum.h" />
     <ClInclude Include="GLData.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />

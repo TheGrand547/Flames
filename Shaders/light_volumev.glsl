@@ -2,11 +2,13 @@
 
 layout(location = 0) in vec4 positionRadius;
 layout(location = 1) in vec3 color;
+layout(location = 2) in vec3 constants;
 
 layout(location = 0) out vec2 fTex;
 layout(location = 1) flat out vec3 relativePosition;
 layout(location = 2) flat out vec4 inputData;
 layout(location = 3) flat out vec3 lightColor;
+layout(location = 4) flat out vec3 lightConstants;
 
 #include "camera"
 
@@ -51,18 +53,16 @@ void main()
 	fTex = positions[gl_VertexID % 10].xy * radius * 1.5f;
 	inputData = positionRadius;
 	lightColor = color.xyz;
-	
-	// if the camera is inside the sphere then the imposter covers the whole screen
-	//if (length(cameraPosition - position) < radius && dot(normalize(cameraPosition - position), cameraForward) < -radians(60))
+	lightConstants = constants;
 	
 	float cameraDistance = length(cameraPosition - position);
 	vec3 cameraDelta = normalize(cameraPosition - position);
 	vec3 shiftedPosition = position;
+	
+	// If the light source is behind the camera, move it towards(and past) the near plane
 	if (dot(cameraDelta, cameraForward) > 0)
 	{
-		//gl_Position = vec4(badPositions[gl_VertexID % 10], 0, 1) * 1.5f;
-		//fTex = gl_Position.xy * radius;
-		// I *think* this should work
+		// TODO: Integrate near plane cutoff for the constant
 		shiftedPosition += (dot(cameraDelta, cameraForward) * cameraDistance * 1.1f + 0.1f) * cameraForward;
 	}
 	//else

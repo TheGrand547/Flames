@@ -17,7 +17,7 @@ void main()
 	vec3 norm = vec3(0, 0, 1);
 	
 	// Could also store extra information in those unused 1 segments, idk
-	fragmentPosition = vec4(fPos, gl_FragCoord.z);
+	fragmentPosition = vec4(fPos, 1);
 	fragmentNormal = vec4(TBNmat * norm, 1);
 	fragmentColor = vec4(shapeColor, 1);
 }

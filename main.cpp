@@ -214,7 +214,7 @@ static unsigned int idleFrameCounter = 0;
 int lineWidth = 3;
 
 constexpr auto TIGHT_BOXES = 1;
-constexpr auto WIDE_BOXES = 2;
+constexpr auto FREEZE_GAMEPLAY = 2;
 constexpr auto DEBUG_PATH = 3;
 constexpr auto DYNAMIC_TREE = 4;
 constexpr auto FULL_CALCULATIONS = 5;
@@ -310,6 +310,13 @@ struct LightVolume
 	glm::vec3 color;
 };
 
+struct LightVolume2
+{
+	glm::vec4 position;
+	glm::vec3 color;
+	glm::vec3 constants;
+};
+
 //PathFollower followed{glm::vec3(0, 0.5f, 0) };
 
 
@@ -340,15 +347,7 @@ using namespace Input;
 
 bool shouldClose = false;
 
-DemoGuy sigmaTest{ glm::vec3(0.5) };
-std::vector<glm::vec3> pathway;
-glm::vec3 lastPoster;
-
-glm::vec3 sigmaTarget;
-
 int kdTree<PathNodePtr>::counter = 0;
-
-BasicPhysics player;
 
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
@@ -422,7 +421,31 @@ Framebuffer<3, Depth> deferredBuffer;
 ColorFrameBuffer pointLightBuffer;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
-BufferSync<std::vector<LightVolume>> volumes;
+BufferSync<std::vector<LightVolume2>> drawingVolumes;
+std::vector<LightVolume2> constantLights;
+
+glm::vec3 GetCameraFocus(const Model& playerModel)
+{
+	return playerModel.translation + (playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)) * 10.f;
+}
+
+std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerModel)
+{
+	glm::vec3 localCamera = cameraPosition;
+	const glm::vec3 velocity = playfield.GetVelocity();
+	localCamera = (playerModel.rotation * aboutTheShip) * glm::vec3(4.f, -2.5f, 0.f);
+	localCamera += playerModel.translation;
+	localCamera -= velocity / 20.f;
+	const glm::vec3 cameraFocus = GetCameraFocus(playerModel);
+	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
+	return { localCamera, cameraForward };
+}
+
+Frustum GetFrustum(const Model& playerModel)
+{
+	auto cameraPair = CalculateCameraPositionDir(playerModel);
+	return Frustum(cameraPair.first, ForwardDir(cameraPair.second, playerModel.rotation * glm::vec3(0.f, 1.f, 0.f)), glm::vec2(zNear, zFar));
+}
 
 void display()
 {
@@ -452,21 +475,15 @@ void display()
 	const Model playerModel(playfield.GetModel());
 
 	// Camera matrix
-	glm::vec3 localCamera = cameraPosition;
 	const glm::mat3 axes(playerModel.rotation);
 	const glm::vec3 velocity = playfield.GetVelocity();
 
+	
+	std::pair<glm::vec3, glm::vec3> cameraPair = CalculateCameraPositionDir(playerModel);
+	const glm::vec3 localCamera = cameraPair.first;
+	const glm::vec3 cameraForward = cameraPair.second;
 
-	localCamera = glm::vec3(4.f, -2.5f, 0.f);
-	//localCamera.z -= Rectify(glm::dot(glm::normalize(velocity), axes[2])) * glm::length(velocity) / 20.f;
-	// TODO: might be worth changing things around slightly to focus just in front of the ship and stuff
-	localCamera = (playerModel.rotation * aboutTheShip) * localCamera;
-	localCamera += playerModel.translation;
-	localCamera -= velocity / 20.f;
-	//localCamera = playerModel.translation + axes[0] * 0.5f;
-	const glm::vec3 cameraFocus = playerModel.translation + axes[0] * 10.f;
-	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
-	glm::mat4 view = glm::lookAt(localCamera, cameraFocus, axes[1]);
+	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel), axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	Frustum frutum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 
@@ -544,8 +561,9 @@ void display()
 		//DisableGLFeatures<StencilTesting>();
 		EnableDepthBufferWrite();
 	}
+
 	// Switch between forward and deferred rendering
-	if (debugFlags[FULL_CALCULATIONS])
+	if (debugFlags[FULL_CALCULATIONS] && false)
 	{
 		/*
 		Shader& interzone = ShaderBank::Get("new_mesh");
@@ -593,6 +611,11 @@ void display()
 	}
 	else
 	{
+		std::vector<LightVolume2> wasteNot;
+		drawingVolumes.Swap(wasteNot);
+		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(wasteNot);
+		drawingVolumes.Swap(wasteNot);
+
 		Shader& interzone = ShaderBank::Get("defer");
 		deferredBuffer.Bind();
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
@@ -634,7 +657,7 @@ void display()
 			sphereIndicies.BindBuffer();
 			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
 			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
-			if (featureToggle)
+			if (featureToggle || true)
 			{
 				throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
 			}
@@ -676,7 +699,7 @@ void display()
 		interzone2.SetActiveShader();
 		//interzone2.SetInt("featureToggle", featureToggle);
 		interzone2.SetVec3("lightPos", playerModel.translation);
-		interzone2.SetVec3("lightDir", playerModel.rotation* glm::vec3(1.f, 0.f, 0.f));
+		interzone2.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
 		interzone2.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
 		interzone2.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
 		interzone2.SetTextureUnit("gColor", deferredBuffer.GetColorBuffer<2>(), 2);
@@ -771,13 +794,6 @@ void display()
 		uniform.SetMat4("Model", localCopy.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
-	if (debugFlags[WIDE_BOXES])
-	{
-		OBB localCopy = Player::Box;
-		localCopy.Rotate(playerModel.GetModelMatrix());
-		uniform.SetMat4("Model", localCopy.GetAABB().GetModelMatrix());
-		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-	}
 
 	// Cubert
 	uniform.SetActiveShader();
@@ -788,27 +804,12 @@ void display()
 	//uniform.SetMat4("Model", sigmaTest.GetMod());
 	//uniform.DrawElements<DrawType::Triangle>(solidCubeIndex);
 
-	plainVAO.BindArrayBuffer(debugPointing);
-	glm::mat4 tested = sigmaTest.GetMod();
-	//tested[3] = glm::vec4(minorTest, 1);
-	uniform.SetMat4("Model", tested);
-	uniform.DrawArray<DrawType::Triangle>(debugPointing);
-
-	plainVAO.BindArrayBuffer(plainCube);
-	auto dsf = sigmaTest.GetMod();
-	dsf[0] *= 0.5f;
-	dsf[1] *= 0.25f;
-	dsf[2] *= 0.1f;
-	uniform.SetMat4("Model", dsf);
-	//uniform.DrawElementsMemory<DrawType::Lines>(Cube::GetLineIndex());
-
 	ship.SetActiveShader();
 	meshVAO.Bind();
 	//meshVAO.BindArrayBuffer(guyBuffer);
 	meshVAO.BindArrayBuffer(guyMeshData.vertex);
 	guyMeshData.index.BindBuffer();
 
-	// TODO: Change light color over time to add visual variety
 	//Model defaults{ shipPosition , gooberAngles};
 	Model defaults(playerModel);
 	defaults.translation += gooberOffset;
@@ -817,7 +818,7 @@ void display()
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
 	ship.SetTextureUnit("hatching", texture);
 	//ship.DrawElements<DrawType::Triangle>(guyIndex);
-	ship.DrawElements(guyMeshData.indirect, 0);
+	//ship.DrawElements(guyMeshData.indirect, 0);
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
@@ -865,6 +866,7 @@ void display()
 	if (featureToggle)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		DisablePushFlags(DepthTesting | FaceCulling);
 		Shader& shaderRef = uniform;
 		VAO& vaoRef = plainVAO;//VAOBank::Get("uniformInstance");
 		shaderRef.SetActiveShader();
@@ -1457,19 +1459,9 @@ void idle()
 	billboardMatrix.BufferData(matx);
 
 	const Model playerModel = playfield.GetModel();
-	if (lastPoster == glm::vec3(0))
-	{
-		//lastPoster = sigmaTest.GetPosition();
-		lastPoster = playerModel.translation;
-	}
 	static bool flippyFlop = false;
 	if (idleFrameCounter % 10 == 0)
 	{
-		pathway.push_back(lastPoster);
-		pathway.push_back(playerModel.translation);
-		lastPoster = pathway.back();
-
-
 		glm::mat3 playerLocal = static_cast<glm::mat3>(playerModel.rotation);
 		glm::vec3 forward = playerLocal[0];
 		glm::vec3 left = playerLocal[2];
@@ -1490,7 +1482,6 @@ void idle()
 		leftBuffer.BufferData(leftCircle.GetLinear());
 		rightBuffer.BufferData(rightCircle.GetLinear());
 	}
-	rayBuffer.BufferData(pathway);
 
 	std::array<glm::vec3, 4> projectiles{};
 	projectiles.fill(playerModel.translation);
@@ -1649,24 +1640,32 @@ void gameTick()
 	{
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
-		player.position = cameraPosition;
-		cameraPosition = player.ApplyForces({});
-		player.velocity *= 0.99;
-
-
 		Capsule silly{ groovy.GetBounding() };
+
+		const Frustum localFrust = GetFrustum(playfield.GetModel());
 
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
+
+		std::vector<LightVolume2> volumes{ constantLights };
 		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
 				glm::vec3 previous = local.transform.position;
-				if (!featureToggle)
+				if (!debugFlags[FREEZE_GAMEPLAY])
 				{
 					local.Update();
 				}
-				inactive.push_back(local.GetModel().GetModelMatrix());
+				const AABB endState = local.GetAABB();
+
+				if (!localFrust.Overlaps(Sphere(endState.GetCenter(), glm::compMax(endState.Deviation()))))
+				{
+					inactive.push_back(local.GetModel().GetModelMatrix());
+					if (local.lifeTime > 10)
+					{
+						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec3(1.f, 1.f, 0.f), glm::vec3(1.f, 0.f, 0.05f) });
+					}
+				}
 				return previous != local.transform.position;
 			});
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
@@ -1732,6 +1731,8 @@ void gameTick()
 		{
 			active2.Swap(blarg);
 		}
+
+		drawingVolumes.Swap(volumes);
 
 		//tickTockMan.Update();
 		//management.Update();
@@ -1996,10 +1997,6 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			pointUniformBuffer.BufferData(point_temp, StaticDraw);
 			pointUniformBuffer.SetBindingPoint(2);
 			pointUniformBuffer.BindUniform();
-		}
-		if (key == GLFW_KEY_P) 
-		{
-			sigmaTarget = cameraPosition;
 		}
 		if (key == GLFW_KEY_0)
 		{
@@ -2346,7 +2343,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	// Color
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalRGBA8);
 	deferredBuffer.GetColorBuffer<2>().SetFilters({});
-	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
+	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth32);
 	deferredBuffer.Assemble();
 
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
@@ -2636,13 +2633,15 @@ void init()
 	{
 		VAO& ref = VAOBank::Get("light_volume");
 		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume2, color));
+		ref.ArrayFormatOverride<glm::vec3>(2, 0, 1, offsetof(LightVolume2, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("light_volume_mesh");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
 		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume2, color));
+		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, offsetof(LightVolume2, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("new_mesh");
@@ -2657,19 +2656,21 @@ void init()
 	{
 		std::array<glm::vec4, 12*2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, 2> kipper{};
-		for (auto i = 0; i < lightingArray.size(); i += 2)
+		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
 			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
+			constantLights.push_back({lightingArray[i], glm::vec3(lightingArray[i + 1]), glm::vec3(1.f, 1.f / 30.f, 0.002f)});
+			constantLights.back().position.w = 60.f;
 			//kipper[i / 2].position = lightingArray[i];
 			//kipper[i / 2].position.w = 70.f;
 			//kipper[i / 2].color = lightingArray[i + 1];
 		}
-		kipper[0].position = glm::vec4(40.f, 0.f, 0.f, 60.f);
-		kipper[0].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
-		kipper[1].position = testCameraPos;
-		kipper[1].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+		//kipper[0].position = glm::vec4(40.f, 0.f, 0.f, 60.f);
+		//kipper[0].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+		//kipper[1].position = testCameraPos;
+		//kipper[1].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();

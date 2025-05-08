@@ -208,7 +208,7 @@ void DebrisManager::Draw(Shader& shader) noexcept
 	{
 		this->indirectBuffer.BufferData(meshData.rawIndirect, StreamDraw);
 	}
-	if (this->debris.size() == 0)
+	if (this->elementCount == 0)
 	{
 		return;
 	}

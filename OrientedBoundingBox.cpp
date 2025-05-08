@@ -20,8 +20,7 @@ bool OrientedBoundingBox::Intersection(const Plane& plane, Collision& collision)
 	float delta = plane.Facing(this->GetCenter());
 	collision.normal = plane.GetNormal();
 
-	// Ensure that the box can always go from out to inbounds
-	if (!plane.TwoSided() && (delta < 0 || delta > glm::length(this->halfs)))
+	if (delta < 0 || delta > glm::length(this->halfs))
 		return false;
 
 	float projected = 0.f;

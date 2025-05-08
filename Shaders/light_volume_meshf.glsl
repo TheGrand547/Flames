@@ -3,6 +3,7 @@
 layout(location = 0) in vec3 lightColor;
 layout(location = 1) in vec3 lightCenter;
 layout(location = 2) in float lightRadius;
+layout(location = 3) in vec3 lightConstant;
 
 layout(location = 0) out vec4 fColor;
 
@@ -26,7 +27,7 @@ void main()
 		discard;
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);
-	vec3 lightOut = PointLight(lightCenter, lightColor, normal, fPos, viewDirection);
+	vec3 lightOut = PointLightConstants(lightCenter, lightColor, lightConstant, normal, fPos, viewDirection);
 	fColor = vec4(lightOut, 1.0);
 	//fColor = vec4(textureCoords, lightOut.z, 1.0);
 }

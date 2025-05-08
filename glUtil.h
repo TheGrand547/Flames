@@ -131,5 +131,36 @@ inline void EnableDepthBufferWrite()
     glDepthMask(GL_TRUE);
 }
 
+template<GLFeatureFlags flags, bool enable = true> struct FeatureFlagPush
+{
+    inline FeatureFlagPush() noexcept
+    {
+        if constexpr (enable)
+        {
+            EnableGLFeatures<flags>();
+        }
+        else
+        {
+            DisableGLFeatures<flags>();
+        }
+    }
+
+    inline ~FeatureFlagPush() noexcept
+    {
+        if constexpr (enable)
+        {
+            DisableGLFeatures<flags>();
+        }
+        else
+        {
+            EnableGLFeatures<flags>();
+        }
+    }
+};
+
+#define __GL_FLAG_PUSH(x, y, z) FeatureFlagPush<x, z> __##y##{}
+#define __GL_FLAG_PUSH2(x, y, z) __GL_FLAG_PUSH(x, y, z)
+#define EnablePushFlags(x) __GL_FLAG_PUSH2(x, __LINE__, true)
+#define DisablePushFlags(x) __GL_FLAG_PUSH2(x, __LINE__, false)
 
 #endif // GL_UTIL_H

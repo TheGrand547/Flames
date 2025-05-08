@@ -33,5 +33,4 @@ void main()
 	
 	vec3 result = ambient * shapeColor + lightOut;
 	fColor = vec4(result, 1.0);
-	gl_FragDepth = rawPos.w;
 }

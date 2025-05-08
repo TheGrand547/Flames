@@ -4,6 +4,7 @@ layout(location = 0) in vec2 fTex;
 layout(location = 1) flat in vec3 relativePosition;
 layout(location = 2) flat in vec4 inputData;
 layout(location = 3) flat in vec3 lightColor;
+layout(location = 4) flat in vec3 lightConstants;
 
 layout(location = 0) out vec4 fColor;
 
@@ -29,17 +30,6 @@ void main()
 	float det = (B * B) - (4 * C);
 	if(det < 0.0)
 		discard;
-		
-	//float sqrtDet = sqrt(det);
-	//float posT = (-B + sqrtDet)/2;
-	//float negT = (-B - sqrtDet)/2;
-	
-	// To get near/Far simply replace min/max with min/max respectively
-	//float intersectT = min(posT, negT);
-	
-	// Outputs
-	//vec3 finalPos = ray * intersectT;
-	
 	
 	vec2 textureCoord = gl_FragCoord.xy / 1000;
 	
@@ -53,7 +43,6 @@ void main()
 	if (length(worldPosition - lightPosition) > radius)
 		discard;
 	
-	vec3 lightEffect = PointLight(lightPosition, lightColor, normal, worldPosition, viewDirection);
+	vec3 lightEffect = PointLightConstants(lightPosition, lightColor, lightConstants, normal, worldPosition, viewDirection);
 	fColor = vec4(lightEffect, 1.f);
-	//fColor = vec4(1, 0, 0.5, 1);
 }
