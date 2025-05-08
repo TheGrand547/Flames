@@ -140,8 +140,7 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	glGenTextures(1, &this->texture);
 	glBindTexture(GL_TEXTURE_2D, this->texture);
 	GLenum internalFormat = type, pixelType = GL_RGBA;
-	// TODO: Remove these I don't think they're necessary
-	// Everything is wrong
+
 	switch (type)
 	{
 	case InternalStencil:
@@ -204,8 +203,9 @@ void Texture2D::CreateEmpty(std::size_t width, std::size_t height, TextureFormat
 	{
 		clamped[i] = static_cast<unsigned char>(color[i] * 255);
 	}
-	// TODO: Eventually figure this garbage out. Pretty sure the error is from the wrong function but who knows man
-	glClearTexImage(this->texture, level, pixelType, GL_FLOAT, glm::value_ptr(color));
+	// A mess, but it finally doesn't yet at me every time, yay!
+	glClearTexImage(this->texture, level, (type == GL_DEPTH_STENCIL) ? GL_DEPTH_STENCIL : pixelType, 
+		(type == GL_DEPTH_STENCIL) ? GL_UNSIGNED_INT_24_8_EXT : GL_FLOAT, glm::value_ptr(color));
 	//glClearTexImage(this->texture, level, pixelType, GL_UNSIGNED_BYTE, glm::value_ptr(clamped));
 	this->internalFormat = internalFormat;
 	this->channels = Texture::GetColorChannels(type);

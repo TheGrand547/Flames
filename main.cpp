@@ -1156,6 +1156,7 @@ void display()
 
 
 
+	/*
 	DisableGLFeatures<DepthTesting>();
 	EnableGLFeatures<Blending>();
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
@@ -1182,7 +1183,7 @@ void display()
 	nineSliced.Bind();
 	nineSliced.BindArrayBuffer(ui_tester_buffer);
 	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
-
+	*/
 
 	uiRectTexture.SetActiveShader();
 	auto& colored = playerTextEntry.GetColor();
@@ -2302,15 +2303,14 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	glm::mat4 projection = Window::GetPerspective(zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
-	CheckError();
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
 	experiment.GetColor().CreateEmpty(Window::GetSize() / 2);
 	experiment.GetColor().SetFilters(screenFilters);
 	experiment.GetDepthStencil().CreateEmpty(Window::GetSize() / 2, InternalDepthStencil);
 	experiment.GetDepthStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	experiment.Assemble();
-	CheckError();
 
+	/*
 	depthed.GetColorBuffer<0>().CreateEmpty(Window::GetSize());
 	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
 	depthed.GetColorBuffer<1>().CreateEmpty(Window::GetSize());
@@ -2323,6 +2323,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	// Doing NearestNearest is super messed up
 	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
 	depthed.Assemble();
+	*/
 
 	scratchSpace.GetColorBuffer().CreateEmpty(Window::GetSize(), InternalRGBA);
 	scratchSpace.GetColorBuffer().SetFilters(screenFilters);
@@ -2336,14 +2337,14 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	// Deferred shading
 	// Position
 	deferredBuffer.GetColorBuffer<0>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
-	deferredBuffer.GetColorBuffer<0>().SetFilters({});
+	deferredBuffer.GetColorBuffer<0>().SetFilters();
 	// Normal
 	deferredBuffer.GetColorBuffer<1>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
-	deferredBuffer.GetColorBuffer<1>().SetFilters({});
+	deferredBuffer.GetColorBuffer<1>().SetFilters();
 	// Color
 	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalRGBA8);
-	deferredBuffer.GetColorBuffer<2>().SetFilters({});
-	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth32);
+	deferredBuffer.GetColorBuffer<2>().SetFilters();
+	deferredBuffer.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
 	deferredBuffer.Assemble();
 
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
