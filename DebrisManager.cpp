@@ -14,7 +14,6 @@
 
 static MeshData meshData;
 static unsigned char DebrisTypes = 1;
-//static VAO instanceVAO;
 
 // Constant speed till 3 seconds after the inciting incident, then a decay for 3 seconds to whatever the final ones are
 static constexpr std::uint16_t FadeOutTime     = static_cast<std::uint16_t>(Tick::PerSecond * 2.5);

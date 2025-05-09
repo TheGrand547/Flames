@@ -112,7 +112,7 @@ protected:
 		}
 	}
 
-	static int counter;
+	static inline int counter;
 
 	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius)
 	{

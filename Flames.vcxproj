@@ -245,6 +245,7 @@
     <ClInclude Include="Decal.h" />
     <ClInclude Include="DemoGuy.h" />
     <ClInclude Include="DrawStruct.h" />
+    <ClInclude Include="DummyArrays.h" />
     <ClInclude Include="DynamicTree.h" />
     <ClInclude Include="ExhaustManager.h" />
     <ClInclude Include="Font.h" />

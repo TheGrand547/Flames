@@ -81,6 +81,7 @@
 #include "BinarySpacePartition.h"
 #include "Audio.h"
 #include "Frustum.h"
+#include "DummyArrays.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -95,93 +96,29 @@
 // Animations and such are locked to this "grid"
 // TODO: Stencil buffer for vision cones and things
 
-std::array<glm::vec3, 10> stick{
-	{
-		{0,   0, -.5},
-		{0,   0,  .5},
-		{0, .85,   0},
-		{0, 1.7,   0},
-		{0, 1.5,   0},
-		{0, 1.2, -.5},
-		{0, 1.2,  .5},
-		{0, 1.9,   0},
-		{0, 1.8, -.2},
-		{0, 1.8,  .2},
-	}
-};
-
-std::array<GLubyte, 14> stickDex = { 0, 2, 1, 2, 4, 5, 4, 6, 4, 3, 8, 7, 9, 3 };
-
-static const std::array<GLubyte, 16 * 16> dither16 = {
-{
-	0,   191,  48, 239,  12, 203,  60, 251,   3, 194,  51, 242,  15, 206,  63, 254,
-	127,  64, 175, 112, 139,  76, 187, 124, 130,  67, 178, 115, 142,  79, 190, 127,
-	 32, 223,  16, 207,  44, 235,  28, 219,  35, 226,  19, 210,  47, 238,  31, 222,
-	159,  96, 143,  80, 171, 108, 155,  92, 162,  99, 146,  83, 174, 111, 158,  95,
-	  8, 199,  56, 247,   4, 195,  52, 243,  11, 202,  59, 250,   7, 198,  55, 246,
-	135,  72, 183, 120, 131,  68, 179, 116, 138,  75, 186, 123, 134,  71, 182, 119,
-	 40, 231,  24, 215,  36, 227,  20, 211,  43, 234,  27, 218,  39, 230,  23, 214,
-	167, 104, 151,  88, 163, 100, 147,  84, 170, 107, 154,  91, 166, 103, 150,  87,
-	  2, 193,  50, 241,  14, 205,  62, 253,   1, 192,  49, 240,  13, 204,  61, 252,
-	129,  66, 177, 114, 141,  78, 189, 126, 128,  65, 176, 113, 140,  77, 188, 125,
-	 34, 225,  18, 209,  46, 237,  30, 221,  33, 224,  17, 208,  45, 236,  29, 220,
-	161,  98, 145,  82, 173, 110, 157,  94, 160,  97, 144,  81, 172, 109, 156,  93,
-	 10, 201,  58, 249,   6, 197,  54, 245,   9, 200,  57, 248,   5, 196,  53, 244,
-	137,  74, 185, 122, 133,  70, 181, 118, 136,  73, 184, 121, 132,  69, 180, 117,
-	 42, 233,  26, 217,  38, 229,  22, 213,  41, 232,  25, 216,  37, 228,  21, 212,
-	169, 106, 153,  90, 165, 102, 149,  86, 168, 105, 152,  89, 164, 101, 148,  85
-} };
-
-const int ditherSize = 16;
-
-static const std::array<GLubyte, 25> tesselationCode = { 
-	{
-		0xFF, 0x80, 0xFF, 0x20, 0x40,
-		0x88, 0x00, 0x80, 0x43, 0xFC,
-		0xFF, 0x80, 0xFF, 0xF0, 0xC0,
-		0x80, 0x00, 0x8F, 0x90, 0xCF,
-		0xD0, 0x80, 0xDF, 0xF0, 0xA0,
-	}
-};
-
 ASCIIFont fonter;
 
 // Buffers
-ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, plainCube, planeBO, rayBuffer, sphereBuffer, stickBuffer, texturedPlane;
-ArrayBuffer cubeMesh, movingCapsule, normalMapBuffer;
-ArrayBuffer pathNodePositions, pathNodeLines;
+ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, rayBuffer, sphereBuffer, stickBuffer;
 ArrayBuffer decals;
-ArrayBuffer debugPointing;
-ArrayBuffer tetragram;
-ArrayBuffer instances, dummyEngine;
 ArrayBuffer exhaustBuffer;
 ArrayBuffer leftBuffer, rightBuffer;
 
 MeshData guyMeshData;
 
-ElementArray capsuleIndex, cubeOutlineIndex, movingCapsuleIndex, solidCubeIndex, sphereIndicies, stickIndicies;
-ElementArray tetragramIndex;
+ElementArray capsuleIndex, cubeOutlineIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, pointUniformBuffer, screenSpaceBuffer;
 
 // TODO: TODO: TODO: make it not vec4's and use not std140 layout
 UniformBuffer lightingBuffer;
 
-// Framebuffer
-Framebuffer<2, DepthAndStencil> depthed;
-ColorFrameBuffer scratchSpace;
-
-Framebuffer<1, DepthStencil> experiment;
-
 // Shaders
-Shader dither, expand, finalResult, flatLighting, fontShader, frameShader, ground, instancing, uiRect, uiRectTexture, uniform, sphereMesh, widget;
-Shader triColor, decalShader;
+Shader fontShader, uiRect, uiRectTexture, uniform, widget;
+Shader decalShader;
 Shader pathNodeView, stencilTest;
 Shader nineSlicer;
-Shader skinner;
 Shader billboardShader;
-Shader voronoi;
-Shader lighting;
 Shader vision;
 Shader ship;
 Shader basic;
@@ -191,16 +128,13 @@ Shader trails;
 Shader debris;
 
 // Textures
-Texture2D depthMap, ditherTexture, hatching, normalMap, tessMap, texture, wallTexture;
-Texture2D buttonA, buttonB, nineSlice, mapping;
-CubeMap mapper;
+Texture2D ditherTexture, hatching, normalMap, texture, wallTexture;
+Texture2D buttonA, buttonB, nineSlice;
 CubeMap sky;
-CubeMap noise;
 
 // Vertex Array Objects
-VAO decalVAO, fontVAO, instanceVAO, pathNodeVAO, meshVAO, normalVAO, normalMapVAO, plainVAO, texturedVAO;
+VAO fontVAO, pathNodeVAO, meshVAO, plainVAO, texturedVAO;
 VAO nineSliced, billboardVAO;
-VAO skinInstance;
 VAO engineInstance;
 VAO colorVAO;
 
@@ -210,8 +144,6 @@ OBB dumbBox; // rip smartbox
 glm::vec3 lastCameraPos;
 
 static unsigned int idleFrameCounter = 0;
-
-int lineWidth = 3;
 
 constexpr auto TIGHT_BOXES = 1;
 constexpr auto FREEZE_GAMEPLAY = 2;
@@ -249,83 +181,21 @@ glm::vec3 cameraRotation(0, 0, 0);
 
 float zNear = 0.1f, zFar = 1000.f;
 
-enum GeometryThing : unsigned short
-{
-	PlusX  = 1 << 0,
-	MinusX = 1 << 1,
-	PlusZ  = 1 << 2,
-	MinusZ = 1 << 3,
-	PlusY  = 1 << 4,
-	MinusY = 1 << 5,
-	WallX  = PlusX | MinusX,
-	WallZ  = PlusZ | MinusZ,
-	HallwayZ = PlusX | MinusX | PlusY,
-	HallwayX = PlusZ | MinusZ | PlusY,
-	All = 0xFF,
-};
-
-void GetPlaneSegment(const glm::vec3& base, GeometryThing flags, std::vector<Model>& results)
-{
-	if (flags & PlusX)  results.emplace_back(base + glm::vec3(-1, 1,  0), glm::vec3(  0, 0, -90.f), glm::vec3(1, 1, 1));
-	if (flags & MinusX) results.emplace_back(base + glm::vec3( 1, 1,  0), glm::vec3(  0, 0,  90.f), glm::vec3(1, 1, 1));
-	if (flags & PlusZ)  results.emplace_back(base + glm::vec3( 0, 1, -1), glm::vec3( 90, 0,     0), glm::vec3(1, 1, 1));
-	if (flags & MinusZ) results.emplace_back(base + glm::vec3( 0, 1,  1), glm::vec3(-90, 0,     0), glm::vec3(1, 1, 1));
-	if (flags & PlusY)  results.emplace_back(base + glm::vec3( 0, 0,  0), glm::vec3(  0, 0,     0), glm::vec3(1, 1, 1));
-	if (flags & MinusY) results.emplace_back(base + glm::vec3( 0, 2,  0), glm::vec3(180, 0,     0), glm::vec3(1, 1, 1));
-}
-
-void GetHallway(const glm::vec3& base, std::vector<Model>& results, bool openZ = true)
-{
-	GetPlaneSegment(base, (openZ) ? HallwayZ : HallwayX, results);
-}
-
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << std::endl; });
 
-
-Sphere visionSphere{ 2 };
-
-// TODO: Line Shader with width, all the math being on gpu (given the endpoints and the width then do the orthogonal to the screen kinda thing)
-// TODO: Move cube stuff into a shader or something I don't know
-
-OBB pointingCapsule;
-
-OBB moveable;
-
-int tessAmount = 5;
-
 bool featureToggle = false;
 std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 
-constexpr float BulletRadius = 0.05f;
-struct SimpleBullet
-{
-	glm::vec3 position, direction;
-};
-
 struct LightVolume
-{
-	glm::vec4 position;
-	glm::vec3 color;
-};
-
-struct LightVolume2
 {
 	glm::vec4 position;
 	glm::vec3 color;
 	glm::vec3 constants;
 };
 
-//PathFollower followed{glm::vec3(0, 0.5f, 0) };
-
-
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
-//BufferSync<std::vector<glm::mat4>> followerBuffer;
-//ArrayBuffer followerBuffer;
-
-std::vector<SimpleBullet> bullets;
-ArrayBuffer bulletMatrix;
 
 // TODO: Semaphore version of buffersync
 BufferSync<std::vector<TextureVertex>> decalVertex;
@@ -333,28 +203,16 @@ BufferSync<std::vector<TextureVertex>> decalVertex;
 std::array<ScreenRect, 9> ui_tester;
 ArrayBuffer ui_tester_buffer;
 
-std::array<glm::mat4, 2> skinMats;
-ArrayBuffer skinBuf;
-ArrayBuffer skinVertex;
-ElementArray skinArg;
-
-std::vector<glm::mat4> bigData;
-ArrayBuffer billboardBuffer;
-ArrayBuffer billboardMatrix;
+ArrayBuffer billboardBuffer, billboardMatrix;
 
 std::vector<AABB> dynamicTreeBoxes;
 using namespace Input;
 
 bool shouldClose = false;
 
-int kdTree<PathNodePtr>::counter = 0;
-
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
 static std::size_t gameTicks = 0;
-
-glm::vec3 weaponOffset{ 0 }, gooberOffset(0);
-glm::quat gooberAngles{};
 
 SimpleAnimation foobar{ {glm::vec3(-0.025, 0, 0)}, 32, Easing::Quintic,
 						{glm::vec3(-0.25, 0, 0)}, 80, Easing::Linear };
@@ -371,7 +229,6 @@ Animation flubber = make_animation( Transform(),
 );
 
 ExhaustManager managedProcess;
-glm::vec3 shipPosition{ 0, 3, 0 };
 BasicPhysics shipPhysics;
 
 Player playfield(glm::vec3(0.f, 3.f, 0.f));
@@ -380,8 +237,6 @@ Input::Keyboard boardState;
 // TODO: Proper start/reset value
 glm::quat aboutTheShip(0.f, 0.f, 0.f, 1.f);
 
-ArrayBuffer projectileBuffer;
-std::vector<MeshPair> satelitePairs;
 Satelite groovy{ glm::vec3(10.f, 10.f, 0) };
 bool shiftHeld;
 std::atomic_uchar addExplosion;
@@ -393,26 +248,21 @@ MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh, playerMesh2;
 MeshData bulletMesh;
 
-Shader bulletShader;
-ArrayBuffer bulletMats, bulletMats2;
+ArrayBuffer bulletMats;
 VAO bulletVAO;
 
-//std::vector<glm::mat4> active, inactive;
-BufferSync<std::vector<glm::mat4>> active, active2;
-ArrayBuffer visual2;
+BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletImpacts;
 
-MeshData geometry;
-//DynamicOctTree<Bullet> bullets;
+MeshData levelGeometry;
 ShipManager management;
 
 ClockBrain tickTockMan;
 
 static GLFWwindow* windowPointer = nullptr;
-ArrayBuffer volumetric;
+ArrayBuffer levelOutline;
 
 const float BulletDecalScale = 4.f;
 
-ArrayBuffer levelMeshBuffer;
 UniformBuffer globalLighting;
 
 Framebuffer<3, Depth> deferredBuffer;
@@ -421,8 +271,8 @@ Framebuffer<3, Depth> deferredBuffer;
 ColorFrameBuffer pointLightBuffer;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
-BufferSync<std::vector<LightVolume2>> drawingVolumes;
-std::vector<LightVolume2> constantLights;
+BufferSync<std::vector<LightVolume>> drawingVolumes;
+std::vector<LightVolume> constantLights;
 
 glm::vec3 GetCameraFocus(const Model& playerModel)
 {
@@ -449,6 +299,7 @@ Frustum GetFrustum(const Model& playerModel)
 
 void display()
 {
+	// Some kind of framerate limiter?
 	/*
 	static std::size_t lastRenderTick = 0;
 	if (lastRenderTick == gameTicks)
@@ -460,7 +311,6 @@ void display()
 
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	//depthed.Bind();
 	Window::Viewport();
 	glClearColor(0, 0, 0, 1);
 
@@ -477,7 +327,6 @@ void display()
 	// Camera matrix
 	const glm::mat3 axes(playerModel.rotation);
 	const glm::vec3 velocity = playfield.GetVelocity();
-
 	
 	std::pair<glm::vec3, glm::vec3> cameraPair = CalculateCameraPositionDir(playerModel);
 	const glm::vec3 localCamera = cameraPair.first;
@@ -485,53 +334,11 @@ void display()
 
 	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel), axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
-	Frustum frutum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
+	Frustum frustum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 
-	// Demo Sphere drawing
-
-	// Possibly replace by rendering a quad in view space that gets the depth penetration of that given pixel in world space
-	// of the sphere it would represent
-	//flatLighting.SetActiveShader();
-	glDisable(GL_CULL_FACE);
-	//glCullFace(GL_FRONT);
-	//glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	//glDepthFunc(GL_GEQUAL);
-	visionSphere.center = glm::vec3(0, 3, 0);
-	visionSphere.radius = 1;
-
-	vision.SetActiveShader();
-	vision.SetVec3("position", visionSphere.center);
-	vision.SetFloat("radius", visionSphere.radius);
-	//vision.DrawArray<DrawType::TriangleStrip>(4);
-	
-
-	flatLighting.SetActiveShader();
-	meshVAO.Bind();
-	meshVAO.BindArrayBuffer(sphereBuffer);
-	Model visionModel{ visionSphere.center, glm::vec3(), glm::vec3(visionSphere.radius)};
-
-	visionModel.rotation = 9.f * glm::vec3(gameTicks / 120.f, gameTicks / 420.f, gameTicks / 80.f);
-	flatLighting.SetVec3("lightColor", glm::vec3(1.f));
-	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
-	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
-	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
-	//glDisable(GL_DEPTH_TEST);
-	//glDepthMask(GL_FALSE);
-	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	//flatLighting.DrawElements<DrawType::Lines>(sphereIndicies);
-	glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
-	//glEnable(GL_DEPTH_TEST);
-	//glDepthMask(GL_TRUE);
-	visionModel.translation = cameraPosition;
-	visionModel.scale = glm::vec3(5);
-	flatLighting.SetMat4("modelMat", visionModel.GetModelMatrix());
-	flatLighting.SetMat4("normMat", visionModel.GetNormalMatrix());
-	//flatLighting.DrawElements<DrawType::Triangle>(sphereIndicies);
-	// TODO: Calculate the value of the default field of view range and fill the depth buffer with that to save a *ton* of overdraw
 	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	//ClearFramebuffer<DepthBuffer>();
 	
 	if (debugFlags[DEBUG_PATH])
 	{
@@ -539,23 +346,19 @@ void display()
 		//DisableDepthBufferWrite();
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.Bind();
-		pathNodeVAO.BindArrayBuffer(plainCube, 0);
-		pathNodeVAO.BindArrayBuffer(pathNodePositions, 1);
+		pathNodeVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
+		pathNodeVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("nodePositions"), 1);
 		pathNodeView.SetFloat("Scale", (glm::cos(idleFrameCounter / 200.f) * 0.05f) + 0.3f);
 		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
 		
-		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, pathNodePositions);
+		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, Bank<ArrayBuffer>::Get("nodeLinePositions"));
 
-		//EnableGLFeatures<StencilTesting>();
-		//glStencilMask(0xFF);
-		//glStencilFunc(GL_LESS, 0xFF, 0xFF);
-		//glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 		uniform.SetActiveShader();
 		uniform.SetMat4("Model", glm::mat4(1.f));
-		plainVAO.BindArrayBuffer(pathNodeLines);
+		plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("nodeLinePositions"));
 		glLineWidth(10.f);
-		uniform.DrawArray<DrawType::Lines>(pathNodeLines);
-		uniform.DrawArray<DrawType::LineStrip>(pathNodeLines);
+		uniform.DrawArray<DrawType::Lines>(Bank<ArrayBuffer>::Get("nodeLinePositions"));
+		uniform.DrawArray<DrawType::LineStrip>(Bank<ArrayBuffer>::Get("nodeLinePositions"));
 		//plainVAO.BindArrayBuffer(pathNodePositions);
 		//uniform.DrawArray<DrawType::LineStrip>(pathNodePositions);
 		//DisableGLFeatures<StencilTesting>();
@@ -565,29 +368,16 @@ void display()
 	// Switch between forward and deferred rendering
 	if (debugFlags[FULL_CALCULATIONS] && false)
 	{
-		/*
-		Shader& interzone = ShaderBank::Get("new_mesh");
-		VAO& outerzone = VAOBank::Get("new_mesh");
-		interzone.SetActiveShader();
-		geometry.Bind(outerzone);
-		outerzone.BindArrayBuffer(geometry.vertex, 0);
-		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
-		interzone.SetVec3("lightPos", playerModel.translation);
-		interzone.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
-		interzone.SetInt("featureToggle", featureToggle);
-		//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
-		*/
 		Shader& interzone = ShaderBank::Get("defer");
 		deferredBuffer.Bind();
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
-		geometry.Bind(outerzone);
-		outerzone.BindArrayBuffer(geometry.vertex, 0);
-		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		levelGeometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
+		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
@@ -611,7 +401,7 @@ void display()
 	}
 	else
 	{
-		std::vector<LightVolume2> wasteNot;
+		std::vector<LightVolume> wasteNot;
 		drawingVolumes.Swap(wasteNot);
 		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(wasteNot);
 		drawingVolumes.Swap(wasteNot);
@@ -621,11 +411,11 @@ void display()
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
-		geometry.Bind(outerzone);
-		outerzone.BindArrayBuffer(geometry.vertex, 0);
-		outerzone.BindArrayBuffer(levelMeshBuffer, 1);
+		levelGeometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
+		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements<DrawType::Triangle>(geometry.indirect);
+		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
@@ -664,7 +454,7 @@ void display()
 			else
 			{
 				// Possibility of working if locked to camera perspective but unsure
-				shadow.BindArrayBuffer(plainCube, 0);
+				shadow.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 				solidCubeIndex.BindBuffer();
 				throne.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, cotillion);
 			}
@@ -710,16 +500,6 @@ void display()
 		//EnableGLFeatures<DepthTesting>();
 		//EnableDepthBufferWrite();
 	}
-	//glDisable(GL_DEPTH_TEST);
-	//glDepthFunc(GL_ALWAYS);
-	vision.SetActiveShader();
-	vision.SetVec3("position", visionSphere.center);
-	vision.SetFloat("radius", visionSphere.radius * (1.f +EPSILON));
-	vision.SetInt("featureToggle", featureToggle);
-	vision.SetTextureUnit("demo", depthMap, 0);
-	//vision.DrawArray<DrawType::TriangleStrip>(4);
-	//glDepthFunc(GL_LEQUAL);
-	//glEnable(GL_DEPTH_TEST);
 
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -735,7 +515,6 @@ void display()
 	DisableGLFeatures<FaceCulling>();
 
 	//EnableGLFeatures<FaceCulling>();
-	//glPolygonMode(GL_BACK, GL_LINE);
 	billboardShader.SetActiveShader();
 	billboardVAO.Bind();
 	billboardVAO.BindArrayBuffer(billboardBuffer, 0);
@@ -745,7 +524,6 @@ void display()
 	glm::vec3 radians = -glm::radians(cameraRotation);
 	glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
 	billboardShader.DrawArrayInstanced<DrawType::TriangleStrip>(billboardBuffer, billboardMatrix);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
 	if (debugFlags[DYNAMIC_TREE])
@@ -753,7 +531,7 @@ void display()
 		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
 		plainVAO.Bind();
-		plainVAO.BindArrayBuffer(plainCube);
+		plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
 		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
 		for (auto& box : dynamicTreeBoxes)
 		{
@@ -766,10 +544,9 @@ void display()
 
 	const glm::mat3 axes22 = glm::mat3_cast(playerModel.rotation);
 	uniform.SetActiveShader();
-	glm::vec3 blue(0, 0, 1);
 	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(plainCube);
-	uniform.SetVec3("color", blue);
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
+	uniform.SetVec3("color", glm::vec3(0.f, 0.f, 1.f));
 	glLineWidth(1.f);
 	glm::vec3 bulletPath = glm::normalize(axes22[0] * 100.f + playfield.GetVelocity());
 	glm::vec3 position = playerModel.translation + bulletPath * 10.f;
@@ -798,10 +575,8 @@ void display()
 	// Cubert
 	uniform.SetActiveShader();
 	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(plainCube);
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
 	//uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	
-	//uniform.SetMat4("Model", sigmaTest.GetMod());
 	//uniform.DrawElements<DrawType::Triangle>(solidCubeIndex);
 
 	ship.SetActiveShader();
@@ -810,29 +585,13 @@ void display()
 	meshVAO.BindArrayBuffer(guyMeshData.vertex);
 	guyMeshData.index.BindBuffer();
 
-	//Model defaults{ shipPosition , gooberAngles};
 	Model defaults(playerModel);
-	defaults.translation += gooberOffset;
-	ship.SetVec3("shapeColor", glm::vec3(1.f, 0.25f, 0.5f));
-	ship.SetMat4("modelMat", defaults.GetModelMatrix());
-	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
-	ship.SetTextureUnit("hatching", texture);
-	//ship.DrawElements<DrawType::Triangle>(guyIndex);
-	//ship.DrawElements(guyMeshData.indirect, 0);
 
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
 	defaults.scale = glm::vec3(0.5f);
 	ship.SetMat4("modelMat", defaults.GetModelMatrix());
 	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
-
-	Model defaulter{ weaponOffset };
-
-	// What the heck?
-	ship.SetMat4("modelMat", defaults.GetModelMatrix() * defaulter.GetModelMatrix());
-	//ship.DrawElements(guyMeshData.indirect, 1);
-	//if (featureToggle)
-		//playfield.Draw(ship, meshVAO, playerMesh, playerModel);
 	groovy.Draw(ship);
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -841,8 +600,8 @@ void display()
 	DisableDepthBufferWrite();
 	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
 	decalShader.SetActiveShader();
-	decalVAO.Bind();
-	decalVAO.BindArrayBuffer(decals);
+	texturedVAO.Bind();
+	texturedVAO.BindArrayBuffer(decals);
 	decalShader.SetTextureUnit("textureIn", texture, 0);
 	decalShader.DrawArray<DrawType::Triangle>(decals);
 	EnableDepthBufferWrite();
@@ -855,7 +614,7 @@ void display()
 		shaderRef.SetActiveShader();
 		vaoRef.Bind();
 		vaoRef.BindArrayBuffer(plainCube, 0);
-		//vaoRef.BindArrayBuffer(volumetric, 1);
+		//vaoRef.BindArrayBuffer(levelOutline, 1);
 		//shaderRef.SetMat4("Model2", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f)));
 		shaderRef.SetMat4("Model", bulletBox.GetModelMatrix());
 		shaderRef.DrawElements<DrawType::Triangle>(solidCubeIndex);
@@ -871,18 +630,17 @@ void display()
 		VAO& vaoRef = plainVAO;//VAOBank::Get("uniformInstance");
 		shaderRef.SetActiveShader();
 		vaoRef.Bind();
-		vaoRef.BindArrayBuffer(volumetric, 0);
-		//vaoRef.BindArrayBuffer(volumetric, 1);
+		vaoRef.BindArrayBuffer(levelOutline, 0);
+		//vaoRef.BindArrayBuffer(levelOutline, 1);
 		//shaderRef.SetMat4("Model2", glm::translate(glm::mat4(1.f), glm::vec3(0.f, 10.f, 0.f)));
 		shaderRef.SetMat4("Model", glm::mat4(1.f));
-		shaderRef.DrawArray<DrawType::Triangle>(volumetric);
-		//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, volumetric);
-		//shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, volumetric);
+		shaderRef.DrawArray<DrawType::Triangle>(levelOutline);
+		//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, levelOutline);
+		//shaderRef.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, levelOutline);
 	}
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
-	//ship.DrawElements<DrawType::Triangle>(guyIndex2);
-
+	CheckError();
 
 	//normalDebris.SetActiveShader();
 	//normalDebris.SetTextureUnit("normalMapIn", normalMap);
@@ -893,42 +651,37 @@ void display()
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	sphereIndicies.BindBuffer();
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	basic.SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
 	basic.SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
 	basic.DrawElements<DrawType::Lines>(sphereIndicies);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	glDepthMask(GL_TRUE);
-	uniform.SetVec3("color", glm::vec3(1, 1, 1));
-	moveable.ReScale(glm::vec3(0, 1, 1));
-
-	//glDepthMask(GL_FALSE)
 	// Albert
-	
 	//glPatchParameteri(GL_PATCH_VERTICES, 3);
 	texturedVAO.Bind();
 	texturedVAO.BindArrayBuffer(albertBuffer);
-	dither.SetActiveShader();
-	dither.SetTextureUnit("ditherMap", wallTexture, 1);
-	dither.SetTextureUnit("textureIn", texture, 0);
-	dither.SetMat4("Model", dumbBox.GetModelMatrix());
-	dither.SetVec3("color", glm::vec3(0, 1, 0));
-	dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
-	dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	dither.SetVec3("viewPos", cameraPosition);
-	//dither.DrawArray<DrawType::Triangle>(36);
-	//dither.DrawArray<DrawType::Patches>(albertBuffer);
+	{
+		Shader& dither = ShaderBank::Get("dither");
+		dither.SetActiveShader();
+		dither.SetTextureUnit("ditherMap", wallTexture, 1);
+		dither.SetTextureUnit("textureIn", texture, 0);
+		dither.SetMat4("Model", dumbBox.GetModelMatrix());
+		dither.SetVec3("color", glm::vec3(0, 1, 0));
+		dither.SetVec3("lightColor", glm::vec3(1.f, 1.f, 1.f));
+		dither.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
+		dither.SetVec3("viewPos", cameraPosition);
+		//dither.DrawArray<DrawType::Triangle>(36);
+		//dither.DrawArray<DrawType::Patches>(albertBuffer);
+	}
 
 
 	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(plainCube);
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
 	uniform.SetActiveShader();
 	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Drawing of the rays
-	//DisableGLFeatures<DepthTesting>();
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
@@ -941,21 +694,13 @@ void display()
 	EnableGLFeatures<Blending>();
 
 	trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
-	//plainVAO.BindArrayBuffer(leftBuffer);
 	colorVAO.BindArrayBuffer(leftBuffer);
 	trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
-	//plainVAO.BindArrayBuffer(rightBuffer);
 	colorVAO.BindArrayBuffer(rightBuffer);
 	trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
 	EnableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
 
-	if (projectileBuffer.Size() > 0)
-	{
-		uniform.SetActiveShader();
-		plainVAO.BindArrayBuffer(projectileBuffer);
-		uniform.DrawArray<DrawType::Lines>(projectileBuffer);
-	}
 	glLineWidth(1.f);
 
 	tickTockMan.Draw(guyMeshData, meshVAO, ship);
@@ -964,42 +709,17 @@ void display()
 
 	engine.SetActiveShader();
 	engineInstance.Bind();
-	engineInstance.BindArrayBuffer(instances);
+	engineInstance.BindArrayBuffer(exhaustBuffer);
 	engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
 	engine.SetUnsignedInt("Period", 150);
-	engine.DrawArrayInstanced<DrawType::Triangle>(dummyEngine, instances);
-
-	engineInstance.BindArrayBuffer(exhaustBuffer);
-	engine.DrawArrayInstanced<DrawType::Triangle>(dummyEngine, exhaustBuffer);
+	engine.DrawArrayInstanced<DrawType::Triangle>(Bank<ArrayBuffer>::Get("dummyEngine"), exhaustBuffer);
 	//EnableGLFeatures<DepthTesting>();
 
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	flatLighting.SetActiveShader();
-
-	normalVAO.Bind();
-	normalVAO.BindArrayBuffer(sphereBuffer);
-
-	Model sphereModel(glm::vec3(6.5f, 5.5f, 0.f));
-	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(idleFrameCounter * 0.5f)) * 0.25f;
-	sphereModel.scale = glm::vec3(1.5f);
-	//sphereModel.rotation += glm::vec3(0.5f, 0.25, 0.125) * (float) frameCounter;
-	//sphereModel.rotation += glm::vec3(0, 0.25, 0) * (float) frameCounter;
-
-	// Doing this while letting the normal be the color will create a cool effect
-	
-	sphereMesh.SetActiveShader();
-	meshVAO.Bind();
-	meshVAO.BindArrayBuffer(sphereBuffer);
-	sphereMesh.SetMat4("modelMat", sphereModel.GetModelMatrix());
-	sphereMesh.SetMat4("normalMat", sphereModel.GetNormalMatrix());
-	sphereMesh.SetTextureUnit("textureIn", texture, 0);
-	//mapper.BindTexture(0);
-	//sphereMesh.SetTextureUnit("textureIn", 0);
-	//sphereMesh.DrawElements<DrawType::Triangle>(sphereIndicies);
-	
 	if (bulletMesh.rawIndirect[0].instanceCount > 0)
 	{
+		Shader& bulletShader = ShaderBank::Get("bulletShader");
 		bulletShader.SetActiveShader();
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
@@ -1011,18 +731,18 @@ void display()
 			shaderRef.SetActiveShader();
 			vaoRef.Bind();
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			vaoRef.BindArrayBuffer(plainCube, 0);
-			vaoRef.BindArrayBuffer(bulletMats2, 1);
+			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
+			vaoRef.BindArrayBuffer(bulletMats, 1);
 			shaderRef.SetMat4("Model2", glm::mat4(1.f));
 			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
 
-			vaoRef.BindArrayBuffer(visual2, 1);
-			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, visual2);
+			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("bulletImpacts"), 1);
+			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, Bank<ArrayBuffer>::Get("bulletImpacts"));
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 			
 		}
 	}
-
+	Model sphereModel{};
 	sphereModel.scale = glm::vec3(4.f, 4.f, 4.f);
 	sphereModel.translation = glm::vec3(0, 0, 0);
 	Model lightModel;
@@ -1121,16 +841,7 @@ void display()
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 	skyBox.SetTextureUnit("skyBox", sky);
-	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
-
-	uniform.SetActiveShader();
-	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
-	uniform.SetMat4("Model", glm::mat4(1.f));
-	glPointSize(10.f);
-	uniform.DrawArray<DrawType::Points>(plainCube);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
 
@@ -1185,9 +896,6 @@ void display()
 
 	DisableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
-	voronoi.SetActiveShader();
-	voronoi.SetInt("mode", 0);
-	//voronoi.DrawArray<DrawType::TriangleStrip>(4);
 
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
@@ -1206,16 +914,7 @@ void display()
 	//scratchSpace.Bind();
 	//glClearColor(0, 0, 0, 1);
 	//glClear(GL_COLOR_BUFFER_BIT);
-
-	// TODO: Uniformly lit shader with a "sky" light type of thing to provide better things idk
 	
-	EnableGLFeatures<Blending>();
-	lighting.SetActiveShader();
-	experiment.GetDepthStencil().SetStencilSample();
-	lighting.SetTextureUnit("stencil", experiment.GetDepthStencil());
-	lighting.SetTextureUnit("rainbow", mapping, 1);
-	//lighting.DrawArray<DrawType::TriangleStrip>(4);
-	DisableGLFeatures<Blending>();
 	/*
 	frameShader.SetActiveShader();
 	frameShader.SetTextureUnit("normal", depthed.GetColorBuffer<1>(), 0);
@@ -1224,26 +923,6 @@ void display()
 	frameShader.SetFloat("zFar", zFar);
 	frameShader.SetInt("zoop", 0);
 	frameShader.DrawArray<TriangleStrip>(4);
-	*/
-	/*
-	BindDefaultFrameBuffer();
-	glClearColor(1, 0.5, 0.25, 1);
-	ClearFramebuffer<DepthBuffer | StencilBuffer | ColorBuffer>();
-
-	DisableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
-
-	glStencilMask(0x00);
-	glStencilFunc(GL_ALWAYS, GL_KEEP, GL_KEEP);
-
-	expand.SetActiveShader();
-	expand.SetTextureUnit("screen", depthed.GetColorBuffer<0>(), 0);
-	expand.SetTextureUnit("edges", depthed.GetColorBuffer<1>(), 1);
-	expand.SetTextureUnit("depths", depthed.GetDepth(), 2);
-	expand.SetTextureUnit("stencil", depthed.GetStencil(), 3);
-	expand.SetInt("depth", 5);
-	expand.SetInt("flag", featureToggle);
-	expand.SetInt("flag", false);
-	expand.DrawArray<DrawType::TriangleStrip>(4);
 	*/
 	glStencilMask(0xFF);
 
@@ -1263,10 +942,6 @@ void display()
 	end = std::chrono::high_resolution_clock::now();
 	renderDelay = end - displayStartTime;
 }
-
-OBB* capsuleHit;
-glm::vec3 capsuleNormal, capsuleAcceleration, capsuleVelocity;
-int shift = 2;
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
 // Like it's a bit pliable
@@ -1315,20 +990,6 @@ void idle()
 		Log("SPIKE: " << timeDelta);
 	}
 
-
-	float speed = 4 * timeDelta;
-	float turnSpeed = 100 * timeDelta;
-
-	glm::vec3 forward = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
-	const glm::vec3 unit = glm::eulerAngleY(glm::radians(-cameraRotation.y)) * glm::vec4(1, 0, 0, 0);
-	glm::vec3 right = glm::normalize(glm::cross(forward, glm::vec3(0, 1, 0)));
-	forward = speed * glm::normalize(forward);
-	right = speed * glm::normalize(right);
-	glm::vec3 previous = cameraPosition;
-	
-	float tilt = 0.f;
-
-
 	// "Proper" input handling
 	// These functions should be moved to the gametick loop, don't want to over-poll the input device and get weird
 	Gamepad::Update();
@@ -1340,6 +1001,7 @@ void idle()
 	Input::DisplayInput();
 	if (!Input::ControllerActive())
 	{
+		float tilt = 0.f;
 		if (keyState['Q'] && !keyState['E']) tilt = 1.f;
 		if (keyState['E'] && !keyState['Q']) tilt = -1.f;
 		targetAngles.z = tilt * 0.5f;
@@ -1463,24 +1125,6 @@ void idle()
 		rightBuffer.BufferData(rightCircle.GetLinear());
 	}
 
-	std::array<glm::vec3, 4> projectiles{};
-	projectiles.fill(playerModel.translation);
-	glm::mat3 playerLocal2 = static_cast<glm::mat3>(playerModel.rotation);
-	/*
-	projectiles[0] += glm::normalize(playerLocal2[0]) * 5.f;
-	projectiles[2] += glm::normalize(playfield.GetVelocity()) * 5.f;
-	
-	projectileBuffer.BufferData(projectiles);
-	*/
-
-	auto local = gameTicks % 128;
-	float timeA = 1 - (((local + 25) % 128) / 128.f),
-		timeB = 1 - (((local + 74) % 128) / 128.f),
-		timeC = 1 - (((local + 100) % 128) / 128.f);
-	std::array<glm::vec4, 3> engineEffect = { glm::vec4(0, 6, 0, Easing::EaseOutCubic(timeA)),
-		glm::vec4(2, 6, 0, Easing::EaseOutQuintic(timeB)), glm::vec4(-2, 6, 0, Easing::EaseOutQuintic(timeC)) };
-	instances.BufferData(engineEffect);
-
 	static glm::vec3 lastCheckedPos = glm::vec3(0.f, 3.f, 0.f);
 	static float lastCheckedDistance = 99;
 	static std::size_t lastCheckedTick = 0;
@@ -1512,33 +1156,22 @@ void idle()
 	{
 		lco += rayLocal.translation + localSpace[1];
 	}
-	//rayBuffer.BufferData(rays);
 
 	// Better bullet drawing
 	{
-		std::vector<glm::mat4> mat2{};
-		active.ExclusiveOperation([&](std::vector<glm::mat4>& mats) 
+		bulletMatricies.ExclusiveOperation([&](std::vector<glm::mat4>& mats) 
 			{
 				bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(mats.size());
 				bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
-				std::copy(mats.begin(), mats.end(), std::back_inserter(mat2));
 				bulletMats.BufferData(mats);
 			}
 		);
 
-		active2.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
+		bulletImpacts.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
 			{
-				visual2.BufferData(mats);
+				Bank<ArrayBuffer>::Get("bulletImpacts").BufferData(mats);
 			}
 		);
-		if (mat2.size() > 0)
-		{
-			for (auto& copy : mat2)
-			{
-				copy = copy * Bullet::Collision.GetModelMatrix();
-			}
-		}
-		bulletMats2.BufferData(mat2);
 		management.UpdateMeshes();
 	}
 
@@ -1593,12 +1226,6 @@ void idle()
 			decals.BufferData(ref, StaticDraw);
 		}
 	);
-
-	if (keyState['B'])
-	{
-		managedProcess.AddExhaust(cameraPosition + unit, unit * 2.f, 256);
-		//std::cout << cameraPosition + forward << std::endl;
-	}
 	managedProcess.FillBuffer(exhaustBuffer);
 	trashMan.FillBuffer();
 
@@ -1607,7 +1234,6 @@ void idle()
 	lastIdleStart = idleStart;
 }
 
-glm::vec3 oldPos;
 // *Must* be in a separate thread
 void gameTick()
 {
@@ -1627,7 +1253,7 @@ void gameTick()
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
 
-		std::vector<LightVolume2> volumes{ constantLights };
+		std::vector<LightVolume> volumes{ constantLights };
 		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
@@ -1706,63 +1332,24 @@ void gameTick()
 			Level::GetBulletTree().UpdateStructure();
 		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
-		active.Swap(inactive);
+		bulletMatricies.Swap(inactive);
 		if (blarg.size() > 0)
 		{
-			active2.Swap(blarg);
+			bulletImpacts.Swap(blarg);
 		}
 
 		drawingVolumes.Swap(volumes);
 
-		//tickTockMan.Update();
 		//management.Update();
 
 		// Gun animation
-		//if (gameTicks % foobar.Duration() == 0)
-		
-		float tickRad = 2.f * glm::radians(static_cast<float>(gameTicks));
-		//shipPosition.x += 3 * glm::cos(tickRad) * Tick::TimeDelta;
-		//shipPosition.y += 3 * glm::sin(tickRad) * Tick::TimeDelta;
-		glm::vec3 shipDelta = glm::normalize(glm::vec3(0.f, 4.f, 0.f) - shipPosition);
-		shipPhysics.position = shipPosition;
-		shipPhysics.ApplyForces(4.f * shipDelta);
-		shipPosition = shipPhysics.position;
-
-		glm::mat3 angles(shipPhysics.velocity, shipDelta, glm::cross(shipPhysics.velocity, shipDelta));
-		angles = glm::orthonormalize(angles);
-
-		gooberAngles = glm::normalize(glm::quat(angles));
-		
 		if (flubber.IsFinished())
 		{
 			flubber.Start(gameTicks);
 		}
-		oldPos = gooberOffset;
-		auto _temp = flubber.Get(gameTicks);
-		gooberOffset = _temp.position;
-		//gooberAngles = _temp.rotation;
-		float deltar = glm::distance(oldPos, gooberOffset);
-
+		
 		playfield.Update(boardState);
 		const Model playerModel = playfield.GetModel();
-		static bool gasFlag = false;
-
-		if (gameTicks % 24 == 0)
-		{
-			gooberAngles = playerModel.rotation;
-			glm::vec3 forward = glm::mat3_cast(gooberAngles) * glm::vec3(1.f, 0.f, 0.f);
-			glm::vec3 left = glm::mat3_cast(gooberAngles) * glm::vec3(0.f, 0.f, 1.f);
-			left *= 0.25f;
-			glm::vec3 local = gooberOffset + playerModel.translation;
-			local -= forward * 0.65f;
-			/*
-			if (gasFlag)
-				managedProcess.AddExhaust(local + left, -4.f * forward, 128);
-			else
-				managedProcess.AddExhaust(local - left, -4.f * forward, 128);
-				*/
-			gasFlag = !gasFlag;
-		}
 		if (Level::NumExplosion() > 0)
 		{
 			for (glm::vec3 copy : Level::GetExplosion())
@@ -1806,18 +1393,12 @@ void gameTick()
 		}
 		trashMan.Update();
 
+		// Tick the animation??
 		if (foobarInstance.IsFinished())
 		{
-			glm::vec3 forward = glm::mat4_cast(gooberAngles) * glm::vec4(1.f, 0.f, 0.f, 1.f);
 			foobar.Start(foobarInstance);
-			//bullets.emplace_back<SimpleBullet>({ weaponOffset + gooberOffset + shipPosition, glm::normalize(forward)});
 		}
-		weaponOffset = foobar.Get(foobarInstance).position;
-
-		if (deltar > 1)
-		{
-			Log("Big Jump of " << deltar);
-		}
+		foobar.Get(foobarInstance).position;
 		float playerSpeed = glm::length(playfield.GetVelocity());
 		const glm::vec3 playerForward = playfield.GetVelocity();
 		/*
@@ -1983,11 +1564,8 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 			std::vector<TextureVertex> points{};
 			decalVertex.Swap(points);
 		}
-		if (key == GLFW_KEY_K) shift++;
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
-		if (key == GLFW_KEY_LEFT_BRACKET) tessAmount -= 1;
-		if (key == GLFW_KEY_RIGHT_BRACKET) tessAmount += 1;
 		if (key == GLFW_KEY_ESCAPE) 
 		{
 			shouldClose = true;
@@ -2054,17 +1632,8 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	return Ray(cameraPosition, faced);
 }
 
-void ButtonExample(std::size_t id)
-{
-	buttonToggle = !buttonToggle;
-}
-
-Button testButton{ buttonRect, ButtonExample };
-Context contextul;
-
 void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 {
-	contextul.AddButton<BasicButton>(buttonRect, ButtonExample);
 	// Set bit (button) in mouseStatus.buttons
 	//mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button)) | ((action == GLFW_PRESS) << button);
 	Mouse::SetButton(static_cast<Mouse::Button>(button & 0xFF), action == GLFW_PRESS);
@@ -2104,11 +1673,9 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 		//pointingCapsule.Translate(pointingCapsule.Forward() * (0.3f + rayLength / 2.f));
 		//pointingCapsule.Rotate(glm::vec3(0, 0, 90.f));
 		//pointingCapsule.ReScale(glm::vec3((rayLength - 0.5f) / 2.f, 0.1f, 0.1f));
-		bullets.emplace_back<SimpleBullet>({cameraPosition, liota.delta});
 
 		//player.ApplyForces(liota.delta * 5.f, 1.f); // Impulse force
 	}
-	testButton.MouseUpdate();
 	if (button == GLFW_MOUSE_BUTTON_LEFT && action == GLFW_PRESS && userPortion.Contains(Mouse::GetPosition()))
 	{
 		userPortion.z -= 25;
@@ -2176,99 +1743,6 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	{
 		buttonToggle = buttonRect.Contains(x, y);
 	}
-	if (Mouse::CheckButton(Mouse::ButtonLeft))
-	{
-		glm::mat4 __unused{};
-		Ray liota(GetMouseProjection(glm::vec2(x, y), __unused));
-		RayCollision rayd{};
-		if (moveable.Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0)
-		{
-			// Maybe take derivative of the circle the view makes?
-			// Could just do the simple thing of "attaching" the object to the mouse then moving or something idfk this is stupid
-			glm::length_t hitSide = 0;
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				if (rayd.normal == moveable[i])
-				{
-					hitSide = i;
-					break;
-				}
-			}
-			glm::length_t otherA, otherB;
-			if (hitSide == 0) { otherA = 1; otherB = 2; }
-			if (hitSide == 1) { otherA = 0; otherB = 2; }
-			if (hitSide == 2) { otherA = 0; otherB = 1; }
-
-			// We Hit it!
-			//I still don't understand why it has to be like this
-			glm::vec3 radians = -glm::radians(cameraRotation);
-			glm::mat4 cameraOrientation = glm::eulerAngleXYZ(radians.z, radians.y, radians.x);
-			float xDif = x - oldPos.x;
-			float yDif = y - oldPos.y;
-			float yDelta = (xDif * ANGLE_DELTA) / Window::Width;
-			float zDelta = -(yDif * ANGLE_DELTA) / Window::Height;
-
-
-			// Temporarily turned backwards
-			glm::vec3 camUp = glm::vec3(cameraOrientation[2]), camOrth = glm::vec3(cameraOrientation[0]);
-			glm::vec3 targetAxisA = moveable[otherA], targetAxisB = moveable[otherB];
-
-
-
-			float minDot = -INFINITY, maxDot = -INFINITY;
-			glm::length_t minDotI = 0, maxDotI = 0;
-			for (glm::length_t i = 0; i < 3; i++)
-			{
-				float local = glm::abs(glm::dot(moveable[i], camUp));
-				float local2 = glm::abs(glm::dot(moveable[i], camOrth));
-				if (local > minDot)
-				{
-					minDot = local;
-					minDotI = i;
-				}
-				if (local2 > maxDot)
-				{
-					maxDot = local2;
-					maxDotI = i;
-				}
-			}
-
-			glm::vec3 delta = moveable[minDotI] * glm::sign(glm::dot(moveable[minDotI], camUp)) * yDelta + 
-				moveable[maxDotI] * glm::sign(glm::dot(moveable[maxDotI], camOrth)) * zDelta;
-			//std::cout << moveable[maxDotI] << ":" << glm::sign(glm::dot(moveable[maxDotI], camUp)) << ":" << zDelta << std::endl;
-			moveable.Translate(delta);
-			/*auto fum = moveable.GetAABB();
-			SlidingCollision slider{};
-			for (auto& foobar : Level::Geometry.Search(fum))
-			{
-				if (foobar->box.Overlap(moveable, slider))
-				{
-					moveable.ApplyCollision(slider);
-				}
-			}*/
-		}
-	}
-	// Vision Cone thingy
-	glm::mat4 cameraOrientation{};
-	Ray liota = GetMouseProjection(Mouse::GetPosition(), cameraOrientation);
-	float rayLength = 50.f;
-
-	RayCollision rayd{};
-	OBB* point = nullptr;
-	glm::vec3 hitPoint = glm::vec3(0);
-	for (auto& item : Level::Geometry.RayCast(liota))
-	{
-		if (item->Intersect(liota.initial, liota.delta, rayd) && rayd.depth > 0.f && rayd.depth < rayLength)
-		{
-			rayLength = rayd.depth;
-			point = &(*item);
-			hitPoint = rayd.point;
-		}
-	}
-	if (point)
-	{
-		visionSphere.center = hitPoint;
-	}
 }
 
 void window_size_callback(GLFWwindow* window, int width, int height)
@@ -2283,37 +1757,13 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
-	experiment.GetColor().CreateEmpty(Window::GetSize() / 2);
-	experiment.GetColor().SetFilters(screenFilters);
-	experiment.GetDepthStencil().CreateEmpty(Window::GetSize() / 2, InternalDepthStencil);
-	experiment.GetDepthStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-	experiment.Assemble();
-
-	/*
-	depthed.GetColorBuffer<0>().CreateEmpty(Window::GetSize());
-	depthed.GetColorBuffer<0>().SetFilters(screenFilters);
-	depthed.GetColorBuffer<1>().CreateEmpty(Window::GetSize());
-	depthed.GetColorBuffer<1>().SetFilters(screenFilters);
-
-	depthed.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth);
-	depthed.GetDepth().SetFilters(screenFilters);
-
-	depthed.GetStencil().CreateEmpty(Window::GetSize(), InternalStencil);
-	// Doing NearestNearest is super messed up
-	depthed.GetStencil().SetFilters(MinNearest, MagNearest, BorderClamp, BorderClamp);
-	depthed.Assemble();
-	*/
-
-	scratchSpace.GetColorBuffer().CreateEmpty(Window::GetSize(), InternalRGBA);
-	scratchSpace.GetColorBuffer().SetFilters(screenFilters);
-	scratchSpace.Assemble();
 
 	screenSpaceBuffer.Generate(StaticRead, sizeof(glm::mat4));
 	screenSpaceBuffer.SetBindingPoint(1);
 	screenSpaceBuffer.BindUniform();
 	screenSpaceBuffer.BufferSubData(Window::GetOrthogonal());
 
-	// Deferred shading
+	// Deferred shading buffers
 	// Position
 	deferredBuffer.GetColorBuffer<0>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
 	deferredBuffer.GetColorBuffer<0>().SetFilters();
@@ -2328,10 +1778,6 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
 	pointLightBuffer.Assemble();
-	/*
-	deferredBuffer.GetColorBuffer<2>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
-	deferredBuffer.GetColorBuffer<3>().CreateEmpty(Window::GetSize(), InternalFloatRGBA16);
-	*/
 }
 
 void init();
@@ -2502,37 +1948,29 @@ void init()
 
 	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
-	bulletShader.Compile("color_final", "mesh_final");
+	ShaderBank::Get("bulletShader").Compile("color_final", "mesh_final");
 	debris.Compile("mesh_final_instance", "mesh_final");
 	decalShader.CompileSimple("decal");
-	dither.CompileSimple("light_text_dither");
+	
 	engine.CompileSimple("engine");
-	expand.Compile("framebuffer", "expand");
-	flatLighting.CompileSimple("lightflat");
 	fontShader.CompileSimple("font");
-	frameShader.CompileSimple("framebuffer");
-	ground.CompileSimple("ground_");
-	instancing.CompileSimple("instance");
-	lighting.Compile("framebuffer", "funky_test");
 	nineSlicer.CompileSimple("ui_nine");
 	normalDebris.CompileSimple("mesh_instance");
 	pathNodeView.CompileSimple("path_node");
 	ship.CompileSimple("mesh_final");
-	skinner.CompileSimple("skin");
 	skyBox.CompileSimple("sky");
-	sphereMesh.CompileSimple("mesh");
 	stencilTest.CompileSimple("stencil_");
 	trails.CompileSimple("trail");
-	triColor.CompileSimple("tri_color");
 	uiRect.CompileSimple("ui_rect");
 	uiRectTexture.CompileSimple("ui_rect_texture");
 	uniform.CompileSimple("uniform");
 	ShaderBank::Get("uniform").CompileSimple("uniform");
 	vision.CompileSimple("vision");
-	voronoi.Compile("framebuffer", "voronoi");
 	widget.CompileSimple("widget");
-
+	
 	ShaderBank::Get("defer").Compile("new_mesh", "deferred");
+	ShaderBank::Get("dither").CompileSimple("light_text_dither");
+	ShaderBank::Get("expand").Compile("framebuffer", "expand");
 	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
@@ -2543,26 +1981,22 @@ void init()
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
-	bulletShader.UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("bulletShader").UniformBlockBinding("Camera", 0);
 	debris.UniformBlockBinding("Camera", 0);
 	decalShader.UniformBlockBinding("Camera", 0);
-	dither.UniformBlockBinding("Camera", 0);
+	
 	engine.UniformBlockBinding("Camera", 0);
-	flatLighting.UniformBlockBinding("Camera", 0);
-	ground.UniformBlockBinding("Camera", 0);
-	instancing.UniformBlockBinding("Camera", 0);
 	normalDebris.UniformBlockBinding("Camera", 0);
 	pathNodeView.UniformBlockBinding("Camera", 0);
 	ship.UniformBlockBinding("Camera", 0);
-	skinner.UniformBlockBinding("Camera", 0);
 	skyBox.UniformBlockBinding("Camera", 0);
-	sphereMesh.UniformBlockBinding("Camera", 0);
 	stencilTest.UniformBlockBinding("Camera", 0);
 	trails.UniformBlockBinding("Camera", 0);
-	triColor.UniformBlockBinding("Camera", 0);
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
+
 	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("dither").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
@@ -2576,8 +2010,6 @@ void init()
 	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
 	fontShader.UniformBlockBinding("ScreenSpace", 1);
 
-	voronoi.UniformBlockBinding("Points", 2);
-
 	debris.UniformBlockBinding("Lighting", 3);
 	normalDebris.UniformBlockBinding("Lighting", 3);
 	ship.UniformBlockBinding("Lighting", 3);
@@ -2590,21 +2022,16 @@ void init()
 	billboardVAO.ArrayFormat<TextureVertex>(billboardShader);
 	billboardVAO.ArrayFormatM<glm::mat4>(billboardShader, 1, 1, "Orient");
 
-	decalVAO.ArrayFormat<TextureVertex>(decalShader);
 	fontVAO.ArrayFormat<UIVertex>(fontShader);
-	instanceVAO.ArrayFormat<TextureVertex>(instancing, 0);
-	instanceVAO.ArrayFormatM<glm::mat4>(instancing, 1, 1);
-	instanceVAO.ArrayFormat<TangentVertex>(instancing, 2);
-	meshVAO.ArrayFormat<MeshVertex>(sphereMesh);
+	meshVAO.ArrayFormat<MeshVertex>(ship);
 
 	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
-	normalVAO.ArrayFormat<NormalVertex>(flatLighting);
 	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
 	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
 	plainVAO.ArrayFormat<Vertex>(uniform);
 	VAOBank::Get("uniform").ArrayFormat<Vertex>(uniform);
-	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>(sphereMesh);
+	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>(ship);
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
 		ref.ArrayFormat<Vertex>(ShaderBank::Get("uniformInstance"));
@@ -2613,15 +2040,15 @@ void init()
 	{
 		VAO& ref = VAOBank::Get("light_volume");
 		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume2, color));
-		ref.ArrayFormatOverride<glm::vec3>(2, 0, 1, offsetof(LightVolume2, constants));
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec3>(2, 0, 1, offsetof(LightVolume, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("light_volume_mesh");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
 		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume2, color));
-		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, offsetof(LightVolume2, constants));
+		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, offsetof(LightVolume, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("new_mesh");
@@ -2659,7 +2086,7 @@ void init()
 		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
 
-	texturedVAO.ArrayFormat<TextureVertex>(dither);
+	texturedVAO.ArrayFormat<TextureVertex>(ShaderBank::Get("dither"));
 
 	colorVAO.ArrayFormat<ColoredVertex>(trails);
 
@@ -2673,18 +2100,11 @@ void init()
 	// These two textures from https://opengameart.org/content/stylized-mossy-stone-pbr-texture-set, do a better credit
 	Texture::SetBasePath("Textures");
 
-	depthMap.Load("depth.png");
-	depthMap.SetFilters(LinearLinear, MagLinear, MirroredRepeat, MirroredRepeat);
-	depthMap.SetAnisotropy(16.f);
-
-	ditherTexture.Load(dither16, InternalRed, FormatRed, DataUnsignedByte);
+	ditherTexture.Load(Dummy::dither16, InternalRed, FormatRed, DataUnsignedByte);
 	ditherTexture.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
 
 	hatching.Load("hatching.png");
 	hatching.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
-
-	mapping.Load("gradient.png");
-	mapping.SetFilters();
 
 	//normalMap.Load("bear_nm.png");
 	normalMap.Load("normal.png");
@@ -2705,46 +2125,20 @@ void init()
 	nineSlice.SetFilters();
 
 	// TODO: Use glm::noise::perlin
-	tessMap.Load(tesselationCode, InternalRed, FormatRed, DataUnsignedByte);
-	tessMap.SetFilters(LinearLinear, MagLinear);
 
-	/*
-	mapper.Generate({ "Textures/skybox/right.jpg", "Textures/skybox/left.jpg", "Textures/skybox/top.jpg",
-		"Textures/skybox/bottom.jpg", "Textures/skybox/front.jpg", "Textures/skybox/back.jpg" });
-	*/
-
-	std::array<glm::vec4, 3> engineEffect = { };
-	instances.BufferData(engineEffect);
-	engineInstance.ArrayFormatOverride<glm::vec4>("Position", engine, 0, 1);
-	engineInstance.BufferBindingPointDivisor(0, 1);
-	std::array<unsigned int, 36> fillibuster{};
-	dummyEngine.BufferData(fillibuster);
+	Bank<ArrayBuffer>::Get("dummyEngine").BufferData(std::array<unsigned int, 36>{});
 
 	decals.Generate();
-	stickBuffer.BufferData(stick);
+	stickBuffer.BufferData(Dummy::stick);
 	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
-
-	std::array<glm::vec3, 3> pointingV{ glm::vec3(-0.5f, 0, -0.5f), glm::vec3(0.5f, 0, 0), glm::vec3(-0.5f, 0, 0.5f) };
-	debugPointing.BufferData(pointingV);
 
 	shipPhysics.velocity = glm::vec3(2.f, 0.f, 0.f);
 
-	std::array<TangentVertex, 4> tangents{};
-	tangents.fill({ glm::vec3(1, 0, 0), glm::vec3(0, 0, 1) });
-
-	normalMapBuffer.BufferData(tangents);
-
-	texturedPlane.BufferData(Planes::GetUVPoints());
-
-	planeBO.BufferData(Planes::GetPoints());
 	glLineWidth(100.f);
-	plainCube.BufferData(Cube::GetPoints());
 	Bank<ArrayBuffer>::Get("plainCube").BufferData(Cube::GetPoints());
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
-
-	Bank<ArrayBuffer>::Get("ZooperDan").BufferData(tangents);
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
@@ -2780,32 +2174,6 @@ void init()
 	CheckError();
 	// Decal stuff
 	decals.Generate();
-
-	// SKINNING
-	std::array<float, 3> dummy{ 1.f };
-	skinBuf.BufferData(dummy, StaticDraw);
-	skinInstance.ArrayFormat<TextureVertex>(skinner);
-	std::vector<GLuint> grs = {
-		0, 1, 2, 1, 2, 3,
-		2, 3, 4, 3, 4, 5,
-		4, 5, 6, 5, 6, 7,
-	};
-	//std::vector<GLuint> grs = { 0, 2, 3, 1, 0, 3 };
-	std::vector<TextureVertex> bosp;
-	std::vector<glm::vec3> pogd = {
-		glm::vec3(1, 0, 1),
-		glm::vec3(1, 0, -1),
-		glm::vec3(-1, 0, 1),
-		glm::vec3(-1, 0, -1),
-		glm::vec3(-3, 0,  1),
-		glm::vec3(-3, 0, -1),
-		glm::vec3(-5, 0, 1),
-		glm::vec3(-5, 0, -1),
-	};
-	for (auto& a : pogd) { bosp.push_back({ a, glm::vec2() }); }
-	skinVertex.BufferData(bosp);
-
-	skinArg.BufferData(grs);
 
 	auto verts = Planes::GetUVPoints();
 	for (auto& point : verts)
@@ -2855,33 +2223,6 @@ void init()
 	pointUniformBuffer.SetBindingPoint(2);
 	pointUniformBuffer.BindUniform();
 
-	int maxSize = 0;
-	glGetIntegerv(GL_MAX_TEXTURE_SIZE, &maxSize);
-	// Shenanigans
-	depthMap.CreateEmptyWithFilters({ 1024, 1024 }, InternalRed16, { MinNearest, MagNearest, Repeat, Repeat }, { 0.f, 1.f, 1.f, 1.f });
-	//depthMap.Load("depth.png");
-	ColorFrameBuffer _t;
-	_t.GetColor().MakeAliasOf(depthMap);
-	_t.Assemble();
-	_t.Bind();
-	depthMap.SetViewport();
-	voronoi.SetActiveShader();
-	voronoi.SetInt("mode", 2);
-	voronoi.DrawArray<DrawType::TriangleStrip>(4);
-	BindDefaultFrameBuffer();
-	depthMap.BindTexture();
-	depthMap.SetAnisotropy(16.f);
-
-	/*
-	HeightToNormal(depthMap, normalMap);
-	normalMap.BindTexture();
-	normalMap.SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
-	normalMap.SetAnisotropy(16.f);
-	*/
-
-	tetragram.BufferData(Tetrahedron::GetPoints());
-	tetragramIndex.BufferData(Tetrahedron::GetTriangleIndex());
-
 	// =============================================================
 	// Pathfinding stuff
 
@@ -2892,54 +2233,6 @@ void init()
 		// TODO: Investigate with better optimized kdtree stuff
 
 		// TODO: hash pair collide thingy so nodes don't have to recalculate the raycast
-		/*
-		{
-			QUICKTIMER("Thing A");
-			std::size_t countes = 0;
-			TimePoint b = std::chrono::steady_clock::now();
-			std::vector<PathNodePtr> storage{ 10 };
-			for (std::size_t i = 0; i < Level::AllNodes.size(); i++)
-			{
-				PathNodePtr& local = Level::AllNodes[i];
-				{
-					//QUICKTIMER("Sloow");
-					//auto loopy = PathFollower::Tree.neighborsInRange(local->GetPos(), 5.f);
-					Level::Tree.neighborsInRange(storage, local->GetPos(), 5.f);
-				}
-				//std::cout << loopy.size() << "\n";
-				//std::cout << loopy.size() << std::endl;
-
-				for (auto& ref : storage)
-				{
-					//PathNode::addNeighborUnconditional(local, ref);
-					if (ref == local) continue;
-					if (ref->contains(local) || local->contains(ref)) continue;
-					PathNode::addNeighbor(local, ref,
-						[&](const PathNodePtr& A, const PathNodePtr& B)
-						{
-							glm::vec3 a = A->GetPosition(), b = B->GetPosition();
-							float delta = glm::length(a - b);
-							Ray liota(a, b - a);
-							countes++;
-							auto temps = Level::Geometry.RayCast(liota);
-							if (temps.size() == 0)
-								return true;
-							RayCollision fumop{};
-							for (auto& temp : temps)
-							{
-								if (temp->Intersect(liota.initial, liota.direction, fumop) && fumop.depth < delta)
-								{
-									return false;
-								}
-							}
-							return true;
-						}
-					);
-
-				}
-			}
-			std::cout << "Count: " << countes << std::endl;
-		}*/
 
 		{
 			//QUICKTIMER("Thing B");
@@ -3031,7 +2324,7 @@ void init()
 			}
 		);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
-		geometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe.glb",
+		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe.glb",
 			[&](const auto& c)
 			{
 				if (c.size() >= 3)
@@ -3048,7 +2341,7 @@ void init()
 			}
 		);
 	}
-	levelMeshBuffer.BufferData(std::to_array({ glm::mat4(1.f), glm::mat4(1.f) }));
+	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array({glm::mat4(1.f), glm::mat4(1.f)}));
 
 	BSP bp;
 	{
@@ -3230,14 +2523,9 @@ void init()
 		}
 	}
 	std::vector<glm::vec3> boxingDay{};
-	//std::vector<glm::vec3> littleTrolling{};
-	//for (auto& autod : Level::AllNodes())
 	// Don't need this crap
 	std::size_t lineCount = 0;
-	//boxingDay.push_back((goober.begin() + 0)->position);
-	//littleTrolling.push_back((goober.begin() + 0)->position);
-	//boxingDay.push_back((goober.begin() + goober.size() - itemOffset)->position);
-	//littleTrolling.push_back((goober.begin() + goober.size() - itemOffset)->position);
+	
 	
 	for (const auto& p : goober)
 	{
@@ -3256,9 +2544,8 @@ void init()
 		}*/
 	}
 	std::cout << "Total Edges: " << lineCount / 2 << '\n';
-	pathNodePositions.Generate();
-	pathNodePositions.BufferData(boxingDay, StaticDraw);
-	pathNodeLines.BufferData(littleTrolling, StaticDraw);
+	Bank<ArrayBuffer>::Get("nodePositions").BufferData(boxingDay, StaticDraw);
+	Bank<ArrayBuffer>::Get("nodeLinePositions").BufferData(littleTrolling, StaticDraw);
 
 	// =============================================================
 
@@ -3266,32 +2553,27 @@ void init()
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
 		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 100, 100);
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.75f, 3.25f, 30, 30);
-
-
-		Capsule::GenerateMesh(movingCapsule, movingCapsuleIndex, 0.25f, 0.5f, 30, 30);
 	}
 
 	{
-		
-		QUICKTIMER("Mesh Loading Loading");
+		QUICKTIMER("Level Triangle Allocation");
 		std::vector<glm::vec3> matrixif;
-		for (const auto& box : Level::GetTriangleTree())
+		for (const auto& tri : Level::GetTriangleTree())
 		{
-			//matrixif.push_back(box.GetModelMatrix());
-			for (const auto& b : box.GetPointArray())
+			for (const auto& point : tri.GetPointArray())
 			{
-				matrixif.push_back(b);
+				matrixif.push_back(point);
 			}
 		}
 		
-		volumetric.BufferData(matrixif);
+		levelOutline.BufferData(matrixif);
 	}
 
 	//MeshThingy("Models\\Debris.obj");
 
 	bulletVAO.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
 	bulletVAO.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(ColoredVertex, color));
-	bulletVAO.ArrayFormatOverride<glm::mat4>("modelMat", bulletShader, 1, 1, 0, sizeof(glm::mat4));
+	bulletVAO.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("bulletShader"), 1, 1, 0, sizeof(glm::mat4));
 
 	// TODO: Figure out why std::move(readobj) has the wrong number of elements
 	//std::cout << satelitePairs.size() << ":\n";
@@ -3315,23 +2597,13 @@ void init()
 	rightCircle.Fill({playfield.GetModel().translation, glm::vec3(0.f)});
 	leftBuffer.BufferData(leftCircle.Get());
 	rightBuffer.BufferData(rightCircle.Get());
-	stickIndicies.BufferData(stickDex, StaticDraw);
+	stickIndicies.BufferData(Dummy::stickDex, StaticDraw);
 
 	cubeOutlineIndex.BufferData(Cube::GetLineIndex());
 
 	dumbBox.ReCenter(glm::vec3(0, 1.f, -2));
 	dumbBox.Scale(glm::vec3(1.f));
 	dumbBox.Rotate(glm::vec3(0, -90, 0));
-
-	moveable.ReCenter(glm::vec3(0, .25, 0));
-	moveable.Scale(0.25f);
-
-	pointingCapsule.ReCenter(glm::vec3(0, 5, 0));
-	pointingCapsule.ReOrient(glm::vec3(0.f, 0, 90.f));
-	//Level::Geometry.Insert({ dumbBox, false }, dumbBox.GetAABB());
-	//Log("Doing it");
-	//windowResize(1000, 1000);
-	Button buttonMan({ 0, 0, 20, 20 }, Dumber);
 	
 	std::array<std::string, 2> buttonText{ "Soft", "Not" };
 
