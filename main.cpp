@@ -1115,43 +1115,22 @@ void display()
 	//EnableGLFeatures<DepthTesting>();
 	glDepthMask(GL_TRUE);
 
-	flatLighting.SetActiveShader();
-	meshVAO.Bind();
-	meshVAO.BindArrayBuffer(capsuleBuffer);
-	flatLighting.SetVec3("lightColor", glm::vec3(1.f, 0.f, 0.f));
-	flatLighting.SetVec3("lightPos", glm::vec3(5.f, 1.5f, 0.f));
-	flatLighting.SetVec3("viewPos", glm::vec3(0.f));
-
-
-	Model current{ glm::vec3(10.f, 10.f, 0.f) };
-	current.rotation = glm::quat(glm::radians(glm::vec3(90.f, 0.f, 0.f)));
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	flatLighting.SetMat4("modelMat", current.GetModelMatrix());
-	flatLighting.SetMat4("normalMat", current.GetNormalMatrix());
-	flatLighting.SetVec3("shapeColor", glm::vec3(0.f, 0.f, 0.8f));
-	//flatLighting.DrawElements<DrawType::Triangle>(capsuleIndex);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-
-	meshVAO.Bind();
-	meshVAO.BindArrayBuffer(movingCapsule);
-	//flatLighting.SetMat4("modelMat", followed.GetNormalMatrix());
-	//flatLighting.SetMat4("normalMat", followed.GetNormalMatrix());
-	//flatLighting.DrawElements<DrawType::Triangle>(movingCapsuleIndex);
-	// Calling with triangle_strip is fucky
-	/*
-	flatLighting.DrawElements(Triangle, sphereIndicies);
-	flatLighting.SetMat4("modelMat", sphereModel.GetModelMatrix());
-	flatLighting.SetMat4("normMat", sphereModel.GetNormalMatrix());
-	flatLighting.DrawElements(Triangle, sphereIndicies);
-	*/
-
 	DisableGLFeatures<FaceCulling>();
 	glDepthFunc(GL_LEQUAL);
 	skyBox.SetActiveShader();
 	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(plainCube);
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 	skyBox.SetTextureUnit("skyBox", sky);
+	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+
+	uniform.SetActiveShader();
+	plainVAO.Bind();
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
+	uniform.SetMat4("Model", glm::mat4(1.f));
+	glPointSize(10.f);
+	uniform.DrawArray<DrawType::Points>(plainCube);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	EnableGLFeatures<FaceCulling>();
 
 
@@ -2758,8 +2737,9 @@ void init()
 	texturedPlane.BufferData(Planes::GetUVPoints());
 
 	planeBO.BufferData(Planes::GetPoints());
-
+	glLineWidth(100.f);
 	plainCube.BufferData(Cube::GetPoints());
+	Bank<ArrayBuffer>::Get("plainCube").BufferData(Cube::GetPoints());
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);

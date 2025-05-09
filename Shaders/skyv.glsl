@@ -4,16 +4,12 @@ layout(location = 0) in vec3 vPos;
 
 layout(location = 0) out vec3 fTex;
 
-layout(std140, binding = 0) uniform Camera
-{
-	mat4 View;
-	mat4 Projection;
-};
+#include "camera"
 
 void main()
 {
 	fTex = vPos;
 	
-	vec4 temp = Projection * vec4(mat3(View) * vPos, 1);
+	vec4 temp = Projection * View * vec4(vPos, 0);
 	gl_Position = temp.xyww;
 }

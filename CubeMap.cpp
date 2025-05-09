@@ -76,7 +76,7 @@ void CubeMap::Generate(const std::array<std::string, 6> files)
 		if (data)
 		{
 			glTexImage2D(GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(i),
-				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data
+				0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, static_cast<const void*>(data)
 			);
 		}
 		else
