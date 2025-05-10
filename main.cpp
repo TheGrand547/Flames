@@ -135,7 +135,6 @@ CubeMap sky;
 // Vertex Array Objects
 VAO fontVAO, pathNodeVAO, meshVAO, plainVAO, texturedVAO;
 VAO nineSliced, billboardVAO;
-VAO engineInstance;
 VAO colorVAO;
 
 // Not explicitly tied to OpenGL Globals
@@ -335,7 +334,7 @@ void display()
 	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel), axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	Frustum frustum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
-
+	CheckError();
 	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
@@ -500,7 +499,7 @@ void display()
 		//EnableGLFeatures<DepthTesting>();
 		//EnableDepthBufferWrite();
 	}
-
+	CheckError();
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
 	plainVAO.Bind();
@@ -585,6 +584,8 @@ void display()
 	meshVAO.BindArrayBuffer(guyMeshData.vertex);
 	guyMeshData.index.BindBuffer();
 
+	CheckError();
+
 	Model defaults(playerModel);
 
 	defaults.translation = glm::vec3(10, 10, 0);
@@ -654,7 +655,7 @@ void display()
 	basic.SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
 	basic.SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
 	basic.DrawElements<DrawType::Lines>(sphereIndicies);
-
+	CheckError();
 	glDepthMask(GL_TRUE);
 	// Albert
 	//glPatchParameteri(GL_PATCH_VERTICES, 3);
@@ -707,14 +708,16 @@ void display()
 	debris.SetActiveShader();
 	management.Draw(guyMeshData, meshVAO, debris);
 
+	CheckError();
+
 	engine.SetActiveShader();
-	engineInstance.Bind();
-	engineInstance.BindArrayBuffer(exhaustBuffer);
+	VAOBank::Get("engineInstance").Bind();
+	VAOBank::Get("engineInstance").BindArrayBuffer(exhaustBuffer);
 	engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
 	engine.SetUnsignedInt("Period", 150);
 	engine.DrawArrayInstanced<DrawType::Triangle>(Bank<ArrayBuffer>::Get("dummyEngine"), exhaustBuffer);
 	//EnableGLFeatures<DepthTesting>();
-
+	CheckError();
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	if (bulletMesh.rawIndirect[0].instanceCount > 0)
@@ -813,7 +816,7 @@ void display()
 	//////  Shadow volume End
 	BindDefaultFrameBuffer();
 	*/
-
+	CheckError();
 	//GL_ARB_shader_stencil_export
 	// TODO: Figure this out
 	EnableGLFeatures<Blending>();
@@ -845,7 +848,7 @@ void display()
 	EnableGLFeatures<FaceCulling>();
 
 
-
+	CheckError();
 	/*
 	DisableGLFeatures<DepthTesting>();
 	EnableGLFeatures<Blending>();
@@ -893,7 +896,7 @@ void display()
 	uiRectTexture.SetTextureUnit("image", normalMap);
 	uiRectTexture.SetVec4("rectangle", { 0, 0, normalMap.GetSize()});
 	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
-
+	CheckError();
 	DisableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
 
@@ -2017,24 +2020,28 @@ void init()
 	ShaderBank::Get("new_mesh").UniformBlockBinding("BlockLighting", 4);
 	ShaderBank::Get("fullRender").UniformBlockBinding("BlockLighting", 4);
 
-	CheckError();
 	// VAO SETUP
-	billboardVAO.ArrayFormat<TextureVertex>(billboardShader);
+	billboardVAO.ArrayFormat<TextureVertex>();
 	billboardVAO.ArrayFormatM<glm::mat4>(billboardShader, 1, 1, "Orient");
 
-	fontVAO.ArrayFormat<UIVertex>(fontShader);
-	meshVAO.ArrayFormat<MeshVertex>(ship);
+	fontVAO.ArrayFormat<UIVertex>();
+
+	meshVAO.ArrayFormat<MeshVertex>();
 
 	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
-	pathNodeVAO.ArrayFormat<Vertex>(pathNodeView, 0);
+
+	pathNodeVAO.ArrayFormat<Vertex>(0);
 	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
-	//normalMapVAO.ArrayFormat<TangentVertex>(instancing, 2);
-	plainVAO.ArrayFormat<Vertex>(uniform);
-	VAOBank::Get("uniform").ArrayFormat<Vertex>(uniform);
-	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>(ship);
+
+	plainVAO.ArrayFormat<Vertex>();
+	VAOBank::Get("uniform").ArrayFormat<Vertex>();
+	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>();
+
+	VAOBank::Get("engineInstance").ArrayFormatOverride<glm::vec4>(0, 0, 1);
+
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
-		ref.ArrayFormat<Vertex>(ShaderBank::Get("uniformInstance"));
+		ref.ArrayFormat<Vertex>();
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
 	}
 	{
@@ -2060,6 +2067,7 @@ void init()
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
+	CheckError();
 	{
 		std::array<glm::vec4, 12*2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, 2> kipper{};
@@ -2086,9 +2094,9 @@ void init()
 		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
 
-	texturedVAO.ArrayFormat<TextureVertex>(ShaderBank::Get("dither"));
+	texturedVAO.ArrayFormat<TextureVertex>();
 
-	colorVAO.ArrayFormat<ColoredVertex>(trails);
+	colorVAO.ArrayFormat<ColoredVertex>();
 
 	lightingBuffer.Generate(DynamicDraw, sizeof(glm::vec4) * 2);
 	std::array<glm::vec4, 2> locals{ glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f), glm::vec4(0.15f, 1.f, 0.15f, 0.f) };

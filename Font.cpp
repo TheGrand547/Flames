@@ -33,7 +33,7 @@ namespace Font
 		shader.CompileEmbedded(fontVertex.c_str(), fontFragment.c_str());
 		identity.CompileEmbedded(identityVertex.c_str(), identityFragment.c_str());
 		vao.Generate();
-		vao.ArrayFormat<UIVertex>(shader);
+		vao.ArrayFormat<UIVertex>();
 	}
 
 	static std::string basePath = "/";

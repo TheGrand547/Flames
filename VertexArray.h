@@ -33,7 +33,7 @@ public:
 
 	inline void BindArrayBuffer(const ArrayBuffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
-	template<class V> inline void ArrayFormat(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
+	template<class V> inline void ArrayFormat(GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 	template<class V> inline void ArrayFormatM(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0, std::string name = "Model");
 
 	template<class V> inline void ArrayFormatOverride(const std::string& name, Shader& shader, GLuint bindingPoint = 0, 
@@ -75,32 +75,34 @@ inline void VertexArray::BindArrayBuffer(const ArrayBuffer& buffer, GLuint bindi
 }
 
 // NOTE TO FUTURE READERS, IF ONE OF THESE IS THROWING AN ERROR, SOME VERTEX ATTRIBUTE WAS OPTIMIZED OUT
-template<> inline void VertexArray::ArrayFormat<Vertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<Vertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
+	glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribBinding(0, bindingPoint);
+	glEnableVertexAttribArray(0);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(Vertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<UIVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<UIVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 2, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(UIVertex, uv));
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
-	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexAttribFormat(0, 2, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(1, 2, GL_FLOAT, GL_FALSE, offsetof(UIVertex, uv));
+	glVertexAttribBinding(0, bindingPoint);
+	glVertexAttribBinding(1, bindingPoint);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(UIVertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<TangentVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+// This should not be used
+/*
+template<> inline void VertexArray::ArrayFormat<TangentVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
@@ -112,63 +114,63 @@ template<> inline void VertexArray::ArrayFormat<TangentVertex>(Shader& shader, G
 	glEnableVertexAttribArray(shader.Index("vBtn"));
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(TangentVertex);
-}
+}*/
 
-template<> inline void VertexArray::ArrayFormat<TextureVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<TextureVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(TextureVertex, uvs));
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
-	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(1, 2, GL_FLOAT, GL_FALSE, offsetof(TextureVertex, uvs));
+	glVertexAttribBinding(0, bindingPoint);
+	glVertexAttribBinding(1, bindingPoint);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(TextureVertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<ColoredVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<ColoredVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vColor"), 3, GL_FLOAT, GL_FALSE, offsetof(ColoredVertex, color));
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vColor"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
-	glEnableVertexAttribArray(shader.Index("vColor"));
+	glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, offsetof(ColoredVertex, color));
+	glVertexAttribBinding(0, bindingPoint);
+	glVertexAttribBinding(1, bindingPoint);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(ColoredVertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<NormalVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<NormalVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE, offsetof(NormalVertex, normal));
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vNorm"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
-	glEnableVertexAttribArray(shader.Index("vNorm"));
+	glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE, offsetof(NormalVertex, normal));
+	glVertexAttribBinding(0, bindingPoint);
+	glVertexAttribBinding(1, bindingPoint);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(NormalVertex);
 }
 
-template<> inline void VertexArray::ArrayFormat<MeshVertex>(Shader& shader, GLuint bindingPoint, GLuint bindingDivisor)
+template<> inline void VertexArray::ArrayFormat<MeshVertex>(GLuint bindingPoint, GLuint bindingDivisor)
 {
 	if (!this->array) this->Generate();
 	glBindVertexArray(this->array);
-	glVertexAttribFormat(shader.Index("vPos"), 3, GL_FLOAT, GL_FALSE, 0);
-	glVertexAttribFormat(shader.Index("vNorm"), 3, GL_FLOAT, GL_FALSE,  offsetof(MeshVertex, normal));
-	glVertexAttribFormat(shader.Index("vTex"), 2, GL_FLOAT, GL_FALSE, offsetof(MeshVertex, texture));
-	glVertexAttribBinding(shader.Index("vPos"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vNorm"), bindingPoint);
-	glVertexAttribBinding(shader.Index("vTex"), bindingPoint);
-	glEnableVertexAttribArray(shader.Index("vPos"));
-	glEnableVertexAttribArray(shader.Index("vNorm"));
-	glEnableVertexAttribArray(shader.Index("vTex"));
+	glVertexAttribFormat(0, 3, GL_FLOAT, GL_FALSE, 0);
+	glVertexAttribFormat(1, 3, GL_FLOAT, GL_FALSE,  offsetof(MeshVertex, normal));
+	glVertexAttribFormat(2, 2, GL_FLOAT, GL_FALSE, offsetof(MeshVertex, texture));
+	glVertexAttribBinding(0, bindingPoint);
+	glVertexAttribBinding(1, bindingPoint);
+	glVertexAttribBinding(2, bindingPoint);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
 	glVertexBindingDivisor(bindingPoint, bindingDivisor);
 	this->strides[bindingPoint] = sizeof(MeshVertex);
 }

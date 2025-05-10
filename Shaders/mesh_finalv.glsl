@@ -5,6 +5,7 @@ layout(location = 1) in vec3 vNorm;
 layout(location = 2) in vec2 vTex;
 
 layout(location = 0) out vec3 colorOut;
+layout(location = 1) out vec2 fTex;
 
 uniform mat4 modelMat;
 uniform mat4 normalMat;
@@ -28,4 +29,5 @@ void main()
 	float ambient = 0.45f;
 	float diffuse = max(dot(norm, lightDirection.xyz), 0.0);
 	colorOut = shapeColor * (ambient + diffuse)* lightColor.xyz;
+	fTex = vTex;
 }
