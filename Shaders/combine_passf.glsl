@@ -18,7 +18,7 @@ void main()
 {	
 	float ambient = 0.05f;
 	
-	vec3 tempLightColor = vec3(1, 0, 0);
+	vec3 tempLightColor = vec3(1, 1, 1);
 	
 	vec4 rawPos     = texture(gPosition, textureCoords);
 	vec3 normal     = texture(gNormal, textureCoords).xyz;

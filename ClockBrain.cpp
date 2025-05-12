@@ -133,9 +133,16 @@ void ClockBrain::Draw(MeshData& data, VAO& vao, Shader& shader) const
 	shader.SetActiveShader();
 	vao.Bind();
 	vao.BindArrayBuffer(data.vertex);
-	data.index.BindBuffer();
+	shader.SetVec3("shapeColor", glm::vec3(1.f));
 	Model model{ this->transform };
 	shader.SetMat4("modelMat", model.GetModelMatrix());
 	shader.SetMat4("normalMat", model.GetNormalMatrix());
-	shader.DrawElements(data.indirect);
+	shader.DrawElements<DrawType::Lines>(data.index);
+	data.index.BindBuffer();
+	//glDrawElements(GL_TRIANGLES, data.index.GetElementCount(), GL_UNSIGNED_INT, static_cast<const void*>(nullptr));
+	model.translation += glm::vec3(0.f, 10.f, 0.f);
+	shader.SetMat4("modelMat", model.GetModelMatrix());
+	shader.SetMat4("normalMat", model.GetNormalMatrix());
+	shader.DrawArray(data.vertex);
+	//glDrawArrays(GL_TRIANGLES, 0, data.vertex.GetElementCount());
 }

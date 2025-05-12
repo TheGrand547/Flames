@@ -70,25 +70,32 @@ void ShipManager::Update() noexcept
 	);
 }
 
-void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
+void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
 {
-	DrawIndirect flubber = data.rawIndirect[0];
+	if (this->pain.GetElementCount() == 0)
+		return;
+	data.rawIndirect[0].instanceCount = this->pain.GetElementCount();
+	Shader& shader = ShaderBank::Get("defer");
 	shader.SetActiveShader();
 	shader.SetVec3("shapeColor", glm::vec3(0.8f));
-	flubber.instanceCount = this->pain.GetElementCount();
-	data.Bind(VAOBank::Get("instance"));
-	VAOBank::Get("instance").BindArrayBuffer(this->pain, 1);
-	shader.DrawElements(flubber);
 
+	VAO& truth = VAOBank::Get("new_mesh");
+	data.Bind(truth);
+	truth.Bind();
+	truth.BindArrayBuffer(this->pain, 1);
+	data.indirect.BufferSubData(data.rawIndirect, 0);
+	shader.MultiDrawElements(data.indirect);
+	/*
 	ShaderBank::Get("uniform").SetActiveShader();
 	VAOBank::Get("uniform").Bind();
 	VAOBank::Get("uniform").BindArrayBuffer(this->smooth);
 	ShaderBank::Get("uniform").SetMat4("Model", glm::mat4(1.f));
 	ShaderBank::Get("uniform").DrawArray<DrawType::Lines>(this->smooth);
+	*/
 }
 
 void ShipManager::UpdateMeshes() noexcept
 {
-	this->pain.BufferData(this->active);
-	this->fools.ExclusiveOperation([&](std::vector<glm::vec3>& p) {this->smooth.BufferData(p); });
+	this->pain.BufferData(this->active, DynamicDraw);
+	this->fools.ExclusiveOperation([&](std::vector<glm::vec3>& p) {this->smooth.BufferData(p, DynamicDraw); });
 }

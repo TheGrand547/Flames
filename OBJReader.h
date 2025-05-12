@@ -39,6 +39,27 @@ struct MeshData
 		vao.BindArrayBuffer(this->vertex);
 		this->index.BindBuffer();
 	}
+	inline MeshData() noexcept = default;
+
+	inline MeshData(MeshData&& other) noexcept
+	{
+		this->vertex = std::move(other.vertex);
+		this->index = std::move(other.index);
+		this->indirect = std::move(other.indirect);
+		std::swap(this->rawIndirect, other.rawIndirect);
+	}
+
+	MeshData& operator=(const MeshData& other) = delete;
+
+	inline MeshData& operator=(MeshData&& other) noexcept
+	{
+		std::swap(this->rawIndirect, other.rawIndirect);
+		this->vertex = std::move(other.vertex);
+		this->index = std::move(other.index);
+		this->indirect = std::move(other.indirect);
+
+		return *this;
+	}
 };
 
 struct OBJReader
@@ -215,6 +236,7 @@ struct OBJReader
 		ExtractSceneNodeData(scene, root, vertex, index, result.rawIndirect, aiVector3D(0.), faceFunc, meshFunc);
 		result.vertex.BufferData(vertex);
 		result.index.BufferData(index);
+		assert(result.index.GetElementType() == GL_UNSIGNED_INT);
 		result.indirect.BufferData(result.rawIndirect);
 		return result;
 	}

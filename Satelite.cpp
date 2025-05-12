@@ -11,7 +11,6 @@
 // 3. Antenna
 // 4. Solar Panel -X
 static MeshData datum;
-static MeshData datum2;
 
 static VAO VertexFormat;
 
@@ -24,28 +23,28 @@ void Satelite::Draw(Shader& shader) const noexcept
 {
 	if (!VertexFormat.GetArray())
 	{
-		VertexFormat.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
-		VertexFormat.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal),  sizeof(MeshVertex));
-		VertexFormat.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture), sizeof(MeshVertex));
+		VertexFormat.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(NormalMeshVertex));
+		VertexFormat.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal),  sizeof(NormalMeshVertex));
+		VertexFormat.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
 	}
 	//DisableGLFeatures<FaceCulling>();
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-	Model drawModel(this->transform, SateliteSize);
+	Model drawModel(this->transform, SateliteSize * 2.f);
 	shader.SetActiveShader();
-	datum2.Bind(VertexFormat);
-	VertexFormat.BindArrayBuffer(datum2.vertex, 1);
-	datum2.index.BindBuffer();
-	datum2.indirect.BindBuffer();
+	datum.Bind(VertexFormat);
+	VertexFormat.BindArrayBuffer(datum.vertex, 1);
+	datum.index.BindBuffer();
+	datum.indirect.BindBuffer();
 	shader.SetVec3("shapeColor", glm::vec3(1.f, 0.f, 0.f));
 	shader.SetMat4("modelMat", drawModel.GetModelMatrix());
 	shader.SetMat4("normalMat", drawModel.GetNormalMatrix());
 	//shader.DrawElements(datum.indirect, 1);
-	shader.MultiDrawElements(datum2.indirect, 2);
+	shader.MultiDrawElements(datum.indirect, 2);
 
 	drawModel.rotation = drawModel.rotation * glm::angleAxis(this->solarAngle, glm::vec3(1.f, 0.f, 0.f));
 	shader.SetMat4("modelMat", drawModel.GetModelMatrix());
 	shader.SetMat4("normalMat", drawModel.GetNormalMatrix());
-	shader.MultiDrawElements(datum2.indirect, 2, 2);
+	shader.MultiDrawElements(datum.indirect, 2, 2);
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//EnableGLFeatures<FaceCulling>();
 }
@@ -65,12 +64,6 @@ Capsule Satelite::GetBounding() const noexcept
 
 bool Satelite::LoadResources() noexcept
 {
-	datum = OBJReader::MeshThingy<MeshVertex>("Models\\Satelite.glb");
-	datum2 = OBJReader::MeshThingy<MeshVertex>("Models\\Satelite.glb");
-	//Log(datum.vertex.GetElementCount());
-	//Log(datum.index.GetElementCount());
-	//Log(datum.index.GetBuffer());
-	//Log(datum.vertex.GetBuffer());
-	//datum.indirect.BufferSubData(datum.rawIndirect);
+	datum = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Satelite.glb");
 	return datum.indirect.GetElementCount() == 4;
 }

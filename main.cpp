@@ -252,7 +252,7 @@ VAO bulletVAO;
 
 BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletImpacts;
 
-MeshData levelGeometry;
+MeshData levelGeometry, levelGeometry2;
 ShipManager management;
 
 ClockBrain tickTockMan;
@@ -372,11 +372,11 @@ void display()
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
-		levelGeometry.Bind(outerzone);
-		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
+		levelGeometry2.Bind(outerzone);
+		outerzone.BindArrayBuffer(levelGeometry2.vertex, 0);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
+		interzone.DrawElements<DrawType::Triangle>(levelGeometry2.indirect);
 
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
@@ -400,10 +400,8 @@ void display()
 	}
 	else
 	{
-		std::vector<LightVolume> wasteNot;
-		drawingVolumes.Swap(wasteNot);
-		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(wasteNot);
-		drawingVolumes.Swap(wasteNot);
+		glDepthFunc(GL_LEQUAL);
+		//drawingVolumes.ExclusiveOperation([](auto& data) {Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(data, DynamicDraw); });
 
 		Shader& interzone = ShaderBank::Get("defer");
 		deferredBuffer.Bind();
@@ -411,11 +409,17 @@ void display()
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
 		levelGeometry.Bind(outerzone);
+		outerzone.Bind();
 		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
+		interzone.DrawElements(levelGeometry.index);
 
+		//tickTockMan.Draw(guyMeshData, VAOBank::Get("new_mesh_single"), ShaderBank::Get("new_mesh_single"));
+		management.Draw(guyMeshData, outerzone, interzone);
+
+		interzone.SetActiveShader();
+		outerzone.Bind();
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
 		meshs2.scale *= 0.5f;
@@ -432,9 +436,9 @@ void display()
 
 		pointLightBuffer.Bind();
 		ClearFramebuffer<ColorBuffer>();
-
+		drawingVolumes.ExclusiveOperation([](auto& data) {Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(data, DynamicDraw); });
 		// I don't know man this is too much
-		if (featureToggle)
+		if (featureToggle && false)
 		{
 			Shader& throne = ShaderBank::Get("light_volume_mesh");
 			VAO& shadow = VAOBank::Get("light_volume_mesh");
@@ -581,8 +585,8 @@ void display()
 	ship.SetActiveShader();
 	meshVAO.Bind();
 	//meshVAO.BindArrayBuffer(guyBuffer);
-	meshVAO.BindArrayBuffer(guyMeshData.vertex);
-	guyMeshData.index.BindBuffer();
+	//meshVAO.BindArrayBuffer(guyMeshData.vertex);
+	//guyMeshData.index.BindBuffer();
 
 	CheckError();
 
@@ -704,9 +708,9 @@ void display()
 
 	glLineWidth(1.f);
 
-	tickTockMan.Draw(guyMeshData, meshVAO, ship);
-	debris.SetActiveShader();
-	management.Draw(guyMeshData, meshVAO, debris);
+	//tickTockMan.Draw(guyMeshData, VAOBank::Get("new_mesh"), ShaderBank::Get("new_mesh"));
+	//debris.SetActiveShader();
+	//management.Draw(guyMeshData, meshVAO, debris);
 
 	CheckError();
 
@@ -844,8 +848,15 @@ void display()
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 	skyBox.SetTextureUnit("skyBox", sky);
-	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+	//skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
 	EnableGLFeatures<FaceCulling>();
+
+	basic.SetActiveShader();
+	VAOBank::Get("muscle").Bind();
+	VAOBank::Get("muscle").BindArrayBuffer(guyMeshData.vertex);
+	basic.SetMat4("Model", glm::mat4(1.f));
+	basic.SetVec4("Color", glm::vec4(1.f));
+	//basic.DrawArray<DrawType::Points>(guyMeshData.vertex);
 
 
 	CheckError();
@@ -1343,7 +1354,7 @@ void gameTick()
 
 		drawingVolumes.Swap(volumes);
 
-		//management.Update();
+		management.Update();
 
 		// Gun animation
 		if (flubber.IsFinished())
@@ -1977,6 +1988,7 @@ void init()
 	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
+	ShaderBank::Get("new_mesh_single").Compile("new_mesh_single", "deferred");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
@@ -2003,6 +2015,7 @@ void init()
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("new_mesh_single").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("combinePass").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
@@ -2038,7 +2051,7 @@ void init()
 	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>();
 
 	VAOBank::Get("engineInstance").ArrayFormatOverride<glm::vec4>(0, 0, 1);
-
+	VAOBank::Get("muscle").ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, 56);
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
 		ref.ArrayFormat<Vertex>();
@@ -2058,12 +2071,21 @@ void init()
 		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, offsetof(LightVolume, constants));
 	}
 	{
+		VAO& ref = VAOBank::Get("new_mesh_single");
+		//ref.ArrayFormat<NormalMeshVertex>();
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, offsetof(NormalMeshVertex, position), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
+	}
+	{
 		VAO& ref = VAOBank::Get("new_mesh");
-		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0);
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal));
-		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent));
-		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent));
-		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture));
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
+		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
@@ -2078,14 +2100,7 @@ void init()
 			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
 			constantLights.push_back({lightingArray[i], glm::vec3(lightingArray[i + 1]), glm::vec3(1.f, 1.f / 30.f, 0.002f)});
 			constantLights.back().position.w = 60.f;
-			//kipper[i / 2].position = lightingArray[i];
-			//kipper[i / 2].position.w = 70.f;
-			//kipper[i / 2].color = lightingArray[i + 1];
 		}
-		//kipper[0].position = glm::vec4(40.f, 0.f, 0.f, 60.f);
-		//kipper[0].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
-		//kipper[1].position = testCameraPos;
-		//kipper[1].color = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();
@@ -2212,7 +2227,7 @@ void init()
 	}
 
 	tickTockMan.Init();
-	for (int i = 0; i < 1; i++)
+	for (int i = 0; i < 5; i++)
 	{
 		management.Make();
 	}
@@ -2310,7 +2325,7 @@ void init()
 	int onlyFirst = 0;
 	{
 		QUICKTIMER("Model Loading");
-		guyMeshData = OBJReader::MeshThingy("Models\\bloke6.obj");
+		guyMeshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\bloke6.obj");
 		playerMesh = OBJReader::MeshThingy<MeshVertex>("Models\\Player.glb", {}, 
 			[&](auto& c) -> void
 			{
@@ -2319,6 +2334,7 @@ void init()
 				std::ranges::transform(c, std::back_inserter(painterly), [](MeshVertex b) -> glm::vec3 {return b.position; });
 			}
 		);
+		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 		playerMesh2 = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Player.glb");
 		Player::Box = OBB::MakeOBB(painterly);
 		Player::Box.Scale(0.5f);
@@ -2340,16 +2356,11 @@ void init()
 					Triangle local(c[0], c[1], c[2]);
 					nodeTri.push_back(local);
 					Level::AddTri(local);
-					for (auto i = 1; i < 5; i++)
-					{
-						//Level::AllNodes().push_back(PathNode::MakeNode(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i)));
-						//nodePoints.push_back(local.GetCenter() + local.GetNormal() * static_cast<float>(10 * i));
-					}
 				}
 			}
 		);
 	}
-	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array({glm::mat4(1.f), glm::mat4(1.f)}));
+	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array<MeshMatrix>({ {glm::mat4(1.f), glm::mat4(1.f)} }));
 
 	BSP bp;
 	{
