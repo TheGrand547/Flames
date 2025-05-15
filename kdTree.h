@@ -17,6 +17,12 @@ constexpr Axes next(const Axes axis) noexcept
 	return static_cast<Axes>((static_cast<unsigned char>(axis) + 1) % 3);
 }
 
+template<typename F> concept HasPosition = requires(const F& f)
+{
+	f.position;
+	{ f.position } -> std::convertible_to<glm::vec3>;
+};
+
 // TODO: Make median function customizable
 
 // TODO: *require* this to be a pointer and have a GetPos() function
@@ -32,9 +38,21 @@ protected:
 	std::unique_ptr<kdTree> left = nullptr, right = nullptr;
 	std::size_t count;
 
+	template<typename F> static inline glm::vec3 GetPos(const F& f) noexcept
+		requires (HasPosition<F>)
+	{
+		return f.position;
+	}
+
+	template<typename F> static inline glm::vec3 GetPos(const F& f) noexcept
+	{
+		return f->GetPos();
+	}
+
+	// ????
 	//void PropogateSubtree(std::span<T> elements, std::size_t start, Axes axis = Axes::X) noexcept
 
-	kdTree(T element, Axes axis) noexcept : element(element), pivot(element->GetPos()), axis(axis), count(1) {}
+	kdTree(T element, Axes axis) noexcept : element(element), pivot(GetPos<T>(element)), axis(axis), count(1) {}
 
 	// TODO: ITERATOR
 	/*
@@ -52,7 +70,7 @@ protected:
 		}
 	};
 	*/
-	void nearestNeightborInternal(const glm::vec3& point, float& smallestDistance, T*& currentBest, float minimumRadius) noexcept
+	void nearestNeightborInternal(const glm::vec3& point, float& smallestDistance, T const *& currentBest, float minimumRadius) const noexcept
 	{
 		float myDistance = glm::distance2(point, this->pivot);
 		// This is a leaf node
@@ -112,12 +130,8 @@ protected:
 		}
 	}
 
-	static inline int counter;
-
-	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius)
+	void neighborsInRangeInternal(const glm::vec3& center, std::vector<T>& elements, float outerRadius, float innerRadius) const noexcept
 	{
-		//std::cout << counter++ << std::endl;
-		counter++;
 		float myDistance = glm::distance2(center, this->pivot);
 		if (innerRadius < myDistance && myDistance < outerRadius)
 		{
@@ -192,11 +206,12 @@ public:
 		if (elements.size() > 1)
 		{
 			// TODO: Figure out if doing nth element thing will be sufficient
-			std::size_t size = elements.size();
-			std::nth_element(elements.begin(), elements.begin() + (size / 2), elements.end(),
+			const std::size_t size = elements.size();
+			const std::size_t half = size / 2;
+			std::nth_element(elements.begin(), elements.begin() + half, elements.end(),
 				[axis](const T& left, const T& right)
 				{
-					return left->GetPos()[static_cast<unsigned char>(axis)] < right->GetPos()[static_cast<unsigned char>(axis)];
+					return GetPos<T>(left)[static_cast<unsigned char>(axis)] < GetPos<T>(right)[static_cast<unsigned char>(axis)];
 				}
 			);
 			// [000]1[000] 
@@ -214,11 +229,11 @@ public:
 			// ceil(8 / 2) - 1 => 3 is the number of elements in the second subspan
 			// This is the median
 
-			this->element = elements[size / 2];
-			this->pivot = elements[size / 2]->GetPos();
+			this->element = elements[half];
+			this->pivot = GetPos<T>(elements[half]);
 
-			std::span<T> left = elements.subspan(0, size / 2);
-			std::span<T> right = elements.subspan(size / 2 + 1, size - (size / 2 + 1));
+			std::span<T> left  = elements.subspan(0, half);
+			std::span<T> right = elements.subspan(half + 1, size - (half + 1));
 			this->count = size;
 			if (!left.empty()) 
 			{
@@ -232,7 +247,7 @@ public:
 		}
 		else if (elements.size() == 1)
 		{
-			this->pivot = elements.front()->GetPos();
+			this->pivot = GetPos<T>(elements.front());
 			this->element = elements.front();
 		}
 	}
@@ -292,17 +307,17 @@ public:
 	}
 
 	// TODO: Determine if given the implied use case of shared_ptr the extra indirection is unhelpful
-	T& nearestNeighbor(const glm::vec3& point) noexcept
+	const T& nearestNeighbor(const glm::vec3& point) const noexcept
 	{
-		T* currentBest = &this->element;
+		T const* currentBest = &this->element;
 		float currentDistance = INFINITY;
 		this->nearestNeightborInternal(point, currentDistance, currentBest, -INFINITY);
 		return *currentBest;
 	}
 
-	T* nearestNeighbor(const glm::vec3& point, float minimumDistance) noexcept
+	T const * nearestNeighbor(const glm::vec3& point, float minimumDistance) const noexcept
 	{
-		T* currentBest = &this->element;
+		T const * currentBest = &this->element;
 		float currentDistance = INFINITY;
 		this->nearestNeightborInternal(point, currentDistance, currentBest, glm::abs(minimumDistance * minimumDistance));
 		if (currentDistance < minimumDistance)
@@ -310,24 +325,22 @@ public:
 		return currentBest;
 	}
 
-	void neighborsInRange(std::vector<T>& output, const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
+	void neighborsInRange(std::vector<T>& output, const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY) const noexcept
 	{
 		output.clear();
 		this->neighborsInRangeInternal(center, output, glm::abs(outerRadius * outerRadius), glm::abs(innerRadius) * innerRadius);
 	}
 
-	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY)
+	std::vector<T> neighborsInRange(const glm::vec3& center, float outerRadius, float innerRadius = -INFINITY) const noexcept
 	{
-		kdTree<T>::counter = 0;
 		std::vector<T> results;
 		this->neighborsInRange(results, center, outerRadius, innerRadius);
-		//std::cout << counter << ":" << this->size() << "\n";
 		return results;
 	}
 
 	void insert(T&& element) noexcept
 	{
-		glm::vec3 point = element->GetPos();
+		glm::vec3 point = GetPos<T>(element);
 		float myComponent = this->pivot[static_cast<unsigned char>(this->axis)];
 		float pointComponent = point[static_cast<unsigned char>(this->axis)];
 

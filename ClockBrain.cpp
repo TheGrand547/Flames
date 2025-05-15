@@ -4,6 +4,9 @@
 #include "BasicPhysics.h"
 #include "MissileMotion.h"
 #include "log.h"
+#include "Interpolation.h"
+
+static constexpr float InfluenceRadius = 15.f;
 
 void ClockBrain::Init()
 {
@@ -11,11 +14,11 @@ void ClockBrain::Init()
 	this->transform.rotation = glm::angleAxis(glm::gaussRand(glm::pi<float>(), glm::pi<float>()), glm::sphericalRand(1.f));
 	this->velocity = this->transform.rotation * glm::vec3(1.f, 0, 0);
 	this->target = this->transform.position;
-	this->home = glm::i16vec3(this->target);
+	this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
 	this->state = 0;
 }
 
-void ClockBrain::Update()
+void ClockBrain::Update(const kdTree<Transform>& transforms)
 {
 	glm::vec3 thingVelocity{ 0.f };
 	// STATE Thingy
@@ -126,6 +129,104 @@ void ClockBrain::Update()
 		orient[2] = glm::cross(orient[0], orient[1]);
 		this->transform.rotation = glm::normalize(glm::quat_cast(orient));
 	}
+}
+
+static constexpr float CohesionForce   = 5.f;
+static constexpr float AlignmentForce  = 5.f;
+static constexpr float SeparationForce = 20.f;
+static constexpr float WanderForce = 8.f;
+
+static constexpr float ReturnForceMax = 50.f;
+static constexpr float ReturnForceMinRadius = 20.f;
+static constexpr float ReturnForceMaxRadius = 70.f;
+
+glm::vec3 wander(glm::vec3& in, glm::vec3 forward)
+{
+	in.x += Tick::TimeDelta * glm::linearRand(-2 * glm::pi<float>(), 2 * glm::pi<float>());
+	//std::cout << in.x << '\n';
+	glm::vec3 randomPoint = glm::vec3(glm::cos(in.x),0, glm::sin(in.x));
+	glm::vec3 pointAhead = glm::normalize(forward * 5.f + randomPoint);
+	return pointAhead * (WanderForce);
+}
+
+glm::vec3 drifer(glm::vec3 pos, glm::vec3 target)
+{
+	glm::vec3 forcing{};
+	float dist = glm::length(target - pos);
+	float constant = glm::pow(glm::max(0.f, (dist - ReturnForceMinRadius) / ReturnForceMaxRadius), 2.f);
+	forcing = glm::normalize(target - pos) * constant * ReturnForceMax;
+	return forcing;
+}
+
+void ClockBrain::Update2(const kdTree<Transform>& transforms)
+{
+	glm::vec3 direction = this->IndirectUpdate(transforms);
+	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 10.f, glm::vec3(0.f), glm::vec3(0.f));
+	forced = drifer(this->transform.position, this->home);
+	forced += wander(this->target, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
+	forced += direction;
+	BasicPhysics::Update(this->transform.position, this->velocity, forced);
+	BasicPhysics::Clamp(this->velocity, 10.f);
+	// Pretend it's non-zero
+	if (glm::length(this->velocity) > EPSILON)
+	{
+		glm::mat3 orient{};
+		glm::mat3 current = glm::mat3_cast(this->transform.rotation);
+		orient[0] = glm::normalize(this->velocity);
+		orient[1] = glm::cross(current[2], orient[0]);
+		orient[2] = glm::cross(orient[0], orient[1]);
+		this->transform.rotation = glm::normalize(glm::quat_cast(orient));
+	}
+}
+
+
+glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexcept
+{
+	std::vector<Transform> withinRadius = transforms.neighborsInRange(this->transform.position, InfluenceRadius);
+	//std::cout << withinRadius.size() << '\n';
+	glm::vec3 forward = this->transform.rotation * glm::vec3(1.f, 0.f, 0.f);
+	glm::vec3 cohesion{}, separation{}, alignment{};
+	glm::vec3 positionAverage{ }, forwardAverage{ }, separationTotal{};
+	const float inverse = 1.f / static_cast<float>(withinRadius.size());
+	for (const Transform& element : withinRadius)
+	{
+		//if (glm::length(this->transform.position - element.position) < 5.f)
+		{
+			glm::vec3 delta = this->transform.position - element.position;
+			float scalar = glm::length(delta);
+			if (scalar > EPSILON)
+			{
+				separationTotal += glm::normalize(delta) * SeparationForce / scalar;
+			}
+		}
+		positionAverage += element.position * inverse;
+		forwardAverage  += element.rotation * glm::vec3(1.f, 0.f, 0.f) * inverse;
+	}
+	// TODO: Collision avoidance factor
+	// Ensure NAN doesn't propogate
+	if (glm::length(positionAverage - this->transform.position) > EPSILON)
+	{
+		cohesion = glm::normalize(positionAverage - this->transform.position) * CohesionForce;
+	}
+	if (glm::length(forwardAverage - forward) > EPSILON)
+	{
+		alignment = glm::normalize(forwardAverage - forward) * AlignmentForce;
+	}
+	if (glm::length(separationTotal) > EPSILON)
+	{
+		float respulsion = glm::length(separationTotal);
+		//std::cout << respulsion << '\n';
+		if (respulsion < SeparationForce)
+		{
+			separation = glm::normalize(separationTotal) * SeparationForce;
+		}
+		else
+		{
+			separation = separationTotal;
+		}
+		separation = separationTotal;
+	}
+	return alignment + cohesion + separation;
 }
 
 void ClockBrain::Draw(MeshData& data, VAO& vao, Shader& shader) const

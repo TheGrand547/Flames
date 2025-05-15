@@ -10,6 +10,11 @@ void ShipManager::Update() noexcept
 {
 	this->inactive.clear();
 	this->inactive.reserve(this->brainDrain.size());
+	std::vector<Transform> transformers;
+	std::transform(this->brainDrain.begin(), this->brainDrain.end(), std::back_inserter(transformers), 
+		[](const ClockBrain& brain) {return brain.GetTransform(); });
+
+	kdTree<Transform> bigboys = kdTree<Transform>::Generate(transformers);
 
 	std::vector<glm::vec3> pointers;
 	// Arbitrary threshold
@@ -22,7 +27,7 @@ void ShipManager::Update() noexcept
 			{
 				ClockBrain& element = this->brainDrain[i];
 				glm::vec3 position = element.GetPos();
-				element.Update();
+				element.Update2(bigboys);
 				//this->inactive[i] = (element.GetPair());
 				meshes[i] = (element.GetPair());
 
@@ -41,7 +46,7 @@ void ShipManager::Update() noexcept
 		std::for_each(this->brainDrain.begin(), this->brainDrain.end(), [&](ClockBrain& element)
 			{
 				glm::vec3 position = element.GetPos();
-				element.Update();
+				element.Update2(bigboys);
 				this->inactive.push_back(element.GetPair());
 				pointers.push_back(element.GetPos());
 				pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);

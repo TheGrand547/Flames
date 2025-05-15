@@ -5,6 +5,7 @@
 #include "OBJReader.h"
 #include "VertexArray.h"
 #include "AABB.h"
+#include "kdTree.h"
 
 // TODO: Batching and shit
 class ClockBrain
@@ -17,7 +18,9 @@ protected:
 public:
 	inline ClockBrain() { this->Init(); }
 	void Init();
-	void Update();
+	void Update(const kdTree<Transform>& transforms);
+	void Update2(const kdTree<Transform>& transforms);
+	glm::vec3 IndirectUpdate(const kdTree<Transform>& transforms) noexcept;
 	void Draw(MeshData& data, VAO& vao, Shader& shader) const;
 	inline glm::vec3 GetPos() const noexcept
 	{

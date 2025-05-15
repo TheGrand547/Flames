@@ -26,7 +26,6 @@ void main()
 	vec3 lightOut   = texture(gLighting, textureCoords).xyz;
 	gl_FragDepth    = texture(gDepth, textureCoords).r;
 	
-	
 	vec3 fragmentPosition = rawPos.xyz;
 	vec3 viewDirection = normalize(View[3].xyz - fragmentPosition);
 	lightOut += DirectedPointLight(lightPos, -lightDir, tempLightColor, normal, fragmentPosition, viewDirection);

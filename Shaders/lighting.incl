@@ -53,8 +53,8 @@ vec3 DirectedPointLight(vec3 lightPos, vec3 lightDirection, vec3 lightColor, vec
 	float specular = pow(max(dot(viewDirection, reflected), 0.0), 1000); // TODO: Specular setting
 	
 	// Check how aligned the "primary" direction of the light is, with the light hitting this fragment
-	float directed = abs(dot(lightDir, lightDirection));
-	
+	float directed = abs(max(dot(lightDir, lightDirection), 0));
+		
 	float constant = cos(radians(25));
 	// If the alignment is less than 25 degrees(arbitrary constant), the light has no effect
 	
