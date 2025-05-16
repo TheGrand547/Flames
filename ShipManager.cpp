@@ -27,7 +27,7 @@ void ShipManager::Update() noexcept
 			{
 				ClockBrain& element = this->brainDrain[i];
 				glm::vec3 position = element.GetPos();
-				element.Update2(bigboys);
+				element.Update(bigboys);
 				//this->inactive[i] = (element.GetPair());
 				meshes[i] = (element.GetPair());
 
@@ -46,7 +46,7 @@ void ShipManager::Update() noexcept
 		std::for_each(this->brainDrain.begin(), this->brainDrain.end(), [&](ClockBrain& element)
 			{
 				glm::vec3 position = element.GetPos();
-				element.Update2(bigboys);
+				element.Update(bigboys);
 				this->inactive.push_back(element.GetPair());
 				pointers.push_back(element.GetPos());
 				pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);
@@ -80,6 +80,7 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
 	if (this->pain.GetElementCount() == 0)
 		return;
 	data.rawIndirect[0].instanceCount = this->pain.GetElementCount();
+	data.rawIndirect[1].instanceCount = this->pain.GetElementCount();
 	Shader& shader = ShaderBank::Get("defer");
 	shader.SetActiveShader();
 	shader.SetVec3("shapeColor", glm::vec3(0.8f));

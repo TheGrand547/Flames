@@ -82,6 +82,7 @@
 #include "Audio.h"
 #include "Frustum.h"
 #include "DummyArrays.h"
+#include "Door.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -273,6 +274,8 @@ glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
 BufferSync<std::vector<LightVolume>> drawingVolumes;
 std::vector<LightVolume> constantLights;
 
+Door heWhoSleeps(glm::vec3(0.f));
+
 glm::vec3 GetCameraFocus(const Model& playerModel)
 {
 	return playerModel.translation + (playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)) * 10.f;
@@ -428,6 +431,9 @@ void display()
 		outerzone.BindArrayBuffer(buf, 1);
 		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 		
+
+		heWhoSleeps.Draw();
+
 		glEnable(GL_BLEND);
 		glDisable(GL_DEPTH_TEST);
 		glEnable(GL_CULL_FACE);
@@ -478,6 +484,7 @@ void display()
 			//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
 			throne.DrawArrayInstanced<DrawType::TriangleFan>(Bank<ArrayBuffer>::Get("dummy2"), cotillion);
 		}
+
 
 		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
 		//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), Bank<ArrayBuffer>::Get("lightVolume"));
@@ -1355,6 +1362,7 @@ void gameTick()
 		drawingVolumes.Swap(volumes);
 
 		management.Update();
+		heWhoSleeps.Update();
 
 		// Gun animation
 		if (flubber.IsFinished())
@@ -2168,6 +2176,8 @@ void init()
 	rays.fill(glm::vec3(0));
 	rayBuffer.BufferData(rays);
 
+	heWhoSleeps.Setup();
+
 	// This sucks
 	// TODO: Put this in Geometry, or something, I don't know
 	std::array<TextureVertex, 36> textVert{};
@@ -2348,7 +2358,7 @@ void init()
 			}
 		);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
-		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe.glb",
+		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe6.glb",
 			[&](const auto& c)
 			{
 				if (c.size() >= 3)

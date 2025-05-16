@@ -14,6 +14,7 @@ protected:
 	Transform transform;
 	glm::vec3 velocity{}, target{};
 	glm::i16vec3 home{};
+	float wander;
 	int state;
 public:
 	inline ClockBrain() { this->Init(); }

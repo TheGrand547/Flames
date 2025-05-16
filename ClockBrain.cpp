@@ -7,6 +7,31 @@
 #include "Interpolation.h"
 
 static constexpr float InfluenceRadius = 15.f;
+static constexpr float CohesionForce = 5.f;
+static constexpr float AlignmentForce = 5.f;
+static constexpr float SeparationForce = 20.f;
+static constexpr float WanderForce = 8.f;
+
+static constexpr float ReturnForceMax = 50.f;
+static constexpr float ReturnForceMinRadius = 20.f;
+static constexpr float ReturnForceMaxRadius = 70.f;
+
+glm::vec3 wandering(float& in, glm::vec3 forward)
+{
+	in += Tick::TimeDelta * glm::linearRand(-2 * glm::pi<float>(), 2 * glm::pi<float>());
+	glm::vec3 randomPoint = glm::vec3(glm::cos(in), 0, glm::sin(in));
+	glm::vec3 pointAhead = glm::normalize(forward * 5.f + randomPoint);
+	return pointAhead * (WanderForce);
+}
+
+glm::vec3 drifer(glm::vec3 pos, glm::vec3 target)
+{
+	glm::vec3 forcing{};
+	float dist = glm::length(target - pos);
+	float constant = glm::pow(glm::max(0.f, (dist - ReturnForceMinRadius) / ReturnForceMaxRadius), 2.f);
+	forcing = glm::normalize(target - pos) * constant * ReturnForceMax;
+	return forcing;
+}
 
 void ClockBrain::Init()
 {
@@ -20,6 +45,7 @@ void ClockBrain::Init()
 
 void ClockBrain::Update(const kdTree<Transform>& transforms)
 {
+	return;
 	glm::vec3 thingVelocity{ 0.f };
 	// STATE Thingy
 	// state=0 default, patrol position      <- check player delta every 32 ticks
@@ -117,6 +143,14 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 
 	// Always more towards the target
 	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
+
+	glm::vec3 direction = this->IndirectUpdate(transforms);
+	forced += drifer(this->transform.position, this->home);
+	forced += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
+	forced += direction;
+	// TODO: screm
+
+
 	BasicPhysics::Update(this->transform.position, this->velocity, forced);
 	BasicPhysics::Clamp(this->velocity, 10.f);
 	// Pretend it's non-zero
@@ -131,39 +165,12 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	}
 }
 
-static constexpr float CohesionForce   = 5.f;
-static constexpr float AlignmentForce  = 5.f;
-static constexpr float SeparationForce = 20.f;
-static constexpr float WanderForce = 8.f;
-
-static constexpr float ReturnForceMax = 50.f;
-static constexpr float ReturnForceMinRadius = 20.f;
-static constexpr float ReturnForceMaxRadius = 70.f;
-
-glm::vec3 wander(glm::vec3& in, glm::vec3 forward)
-{
-	in.x += Tick::TimeDelta * glm::linearRand(-2 * glm::pi<float>(), 2 * glm::pi<float>());
-	//std::cout << in.x << '\n';
-	glm::vec3 randomPoint = glm::vec3(glm::cos(in.x),0, glm::sin(in.x));
-	glm::vec3 pointAhead = glm::normalize(forward * 5.f + randomPoint);
-	return pointAhead * (WanderForce);
-}
-
-glm::vec3 drifer(glm::vec3 pos, glm::vec3 target)
-{
-	glm::vec3 forcing{};
-	float dist = glm::length(target - pos);
-	float constant = glm::pow(glm::max(0.f, (dist - ReturnForceMinRadius) / ReturnForceMaxRadius), 2.f);
-	forcing = glm::normalize(target - pos) * constant * ReturnForceMax;
-	return forcing;
-}
-
 void ClockBrain::Update2(const kdTree<Transform>& transforms)
 {
 	glm::vec3 direction = this->IndirectUpdate(transforms);
 	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 10.f, glm::vec3(0.f), glm::vec3(0.f));
 	forced = drifer(this->transform.position, this->home);
-	forced += wander(this->target, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
+	forced += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
 	forced += direction;
 	BasicPhysics::Update(this->transform.position, this->velocity, forced);
 	BasicPhysics::Clamp(this->velocity, 10.f);

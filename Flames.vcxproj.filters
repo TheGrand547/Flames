@@ -216,6 +216,9 @@
     <ClCompile Include="Frustum.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Door.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -480,6 +483,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DummyArrays.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Door.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
