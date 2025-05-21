@@ -36,7 +36,15 @@ void main()
 	{
 		adjusted.x = mix(signFlip, -signFlip, multiplier.x);
 		//fTex = (adjusted + 1) / 2;
-		fTex.x = 1;
+		if (modulo <= 2)
+		{
+			fTex.x = 1;
+		}
+		else
+		{
+			//fTex.x = 1 - multiplier.x;
+			//fTex.y = 1 - multiplier.x;
+		}
 		//fTex.x = 1 - multiplier.x;
 		//fTex.y = multiplier.x;
 	}
@@ -44,15 +52,33 @@ void main()
 	{
 		//fTex.x = multiplier.x;
 		//fTex.y = (mix(signFlip, -signFlip, multiplier.x) + 1) / 2;
-		fTex.x = multiplier.x;
+		if (modulo <= 2)
+		{
+			fTex.x = multiplier.x;
+		}
+		else
+		{
+			fTex.x = 1 - multiplier.x;
+		}
 	}	
 	else if (otherMod == 2)
 	{
 		adjusted.y = mix(signFlip, -signFlip, multiplier.x);
 		//fTex = (adjusted + 1) / 2;
-		fTex.x = multiplier.x;
-		fTex.y = 1 - multiplier.x;
+		if (modulo <= 2)
+		{
+			fTex.x = multiplier.x;
+			fTex.y = 1 - multiplier.x;
+		}
+		else
+		{
+			fTex.y = multiplier.x;
+			fTex.x = 1 - multiplier.x;
+			//fTex.y = 1;
+			//fTex.y = 1 - multiplier.x;
+		}
 	}
+
 
 	/*
 	// Square receding door

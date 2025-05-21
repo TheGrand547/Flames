@@ -111,7 +111,7 @@ void Door::Draw() noexcept
 	vao.BindArrayBuffer(data);
 	shader.SetVec3("shapeColor", glm::vec3(1.f, 1.f, 0.f));
 	shader.SetTextureUnit("textureColor", Bank<Texture2D>::Get(ResourceName), 0);
-	shader.DrawArray(3);
+	shader.DrawArray(6);
 }
 
 void Door::Setup()
