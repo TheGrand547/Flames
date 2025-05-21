@@ -862,8 +862,7 @@ void display()
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	{
-		heWhoSleeps.model.scale = glm::vec3(4.f);
-		heWhoSleeps.model.rotation = ForwardDir(glm::vec3(0.f, 1.f, 0.f), glm::vec3(-1.f, 0.f, 0.f));
+		//heWhoSleeps.model.rotation = ForwardDir(glm::vec3(0.f, 1.f, 0.f), glm::vec3(-1.f, 0.f, 0.f));
 		std::vector<glm::vec3> fdso;
 		auto sd = heWhoSleeps.GetTris();
 		for (auto p : sd)
@@ -2199,7 +2198,7 @@ void init()
 	//heWhoSleeps.openState = Door::Opening;
 	//heWhoSleeps.openTicks = 125;
 	heWhoSleeps.model.scale = glm::vec3(4.f);
-	heWhoSleeps.model.rotation = ForwardDir(glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	//heWhoSleeps.model.rotation = ForwardDir(glm::sphericalRand(1.f), glm::vec3(0.f, 1.f, 0.f));
 	heWhoSleeps.model.rotation = QuatIdentity();
 	std::vector<glm::vec3> fdso;
 	auto sd = heWhoSleeps.GetTris();

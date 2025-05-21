@@ -144,8 +144,8 @@ std::array<Triangle, 2> Door::GetTris() const noexcept
 		const glm::vec3 center = this->model.translation;
 		const glm::vec3 scale = this->model.scale;
 
-		const glm::vec3 axisA = axes[1];
-		const glm::vec3 axisB = axes[2];
+		const glm::vec3 axisA = -axes[2];
+		const glm::vec3 axisB = axes[1];
 
 		float progress = std::clamp(static_cast<float>(this->openTicks) / this->closingDuration, 0.f, 1.f);
 		glm::vec3 C = center + axisA * scale[1] + axisB * scale[2];
@@ -166,11 +166,12 @@ std::array<Triangle, 2> Door::GetTris() const noexcept
 		}
 		else
 		{
-			progress = 1.f - progress;
+			progress = -1.f + 2.f * progress;
+			//progress = 1.f - progress;
 			glm::vec3 C2 = center + progress * axisA * scale[1] + axisB * scale[2];
 			glm::vec3 A2 = center - axisA * scale[1] - progress * axisB * scale[2];
 
-			progress = 1.f - progress;
+			//progress = 1.f - progress;
 			glm::vec3 C3 = center + axisA * scale[1] + progress * axisB * scale[2];
 			glm::vec3 A3 = center - progress * axisA * scale[1] - axisB * scale[2];
 			return std::to_array({ Triangle(B, A2, C2), Triangle(C3,A3, D) });
