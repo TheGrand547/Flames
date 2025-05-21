@@ -15,8 +15,10 @@ struct Door
 		Locked, Unlocked
 	} lockedState;
 	glm::vec3 position;
+
+	// If openTicks >= closingDuration then the door is closed
 	int openTicks = 0;
-	int openTime = 256;
+	int closingDuration = 256;
 
 
 	Door(glm::vec3 position, State state = Open, Status status = Unlocked) noexcept;

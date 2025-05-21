@@ -23,7 +23,7 @@ void Door::Update() noexcept
 	else if (this->openState == Door::Closing)
 	{
 		this->openTicks++;
-		if (this->openTicks >= this->openTime)
+		if (this->openTicks >= this->closingDuration)
 		{
 			this->openState = Door::Closed;
 		}
@@ -31,7 +31,7 @@ void Door::Update() noexcept
 	// Hacked in for it too loop
 	if (this->openState == Door::Open)
 	{
-		if (this->openTicks < -this->openTime)
+		if (this->openTicks < -this->closingDuration)
 		{
 			this->openTicks = 0;
 			this->openState = Door::Closing;
@@ -43,9 +43,9 @@ void Door::Update() noexcept
 	}
 	if (this->openState == Door::Closed)
 	{
-		if (this->openTicks > 2 * this->openTime)
+		if (this->openTicks > 2 * this->closingDuration)
 		{
-			this->openTicks = this->openTime;
+			this->openTicks = this->closingDuration;
 			this->openState = Door::Opening;
 		}
 		else
@@ -69,7 +69,7 @@ void Door::Draw() noexcept
 	}
 	else // Opening/closing
 	{
-		float progress = static_cast<float>(this->openTicks) / this->openTime;
+		float progress = static_cast<float>(this->openTicks) / this->closingDuration;
 		// Apply easing to progress
 		// Could have different styles of doors, but thinking of the 'trivial' triangle one mainly
 		// Wait the basic quad one is easier
@@ -86,13 +86,16 @@ void Door::Draw() noexcept
 	gimble.model = glm::scale(glm::mat4(1.f), glm::vec3(4.f));
 	if (this->openState == Door::Closed)
 	{
-		gimble.layout = glm::vec2(0.f);
+		gimble.layout = glm::vec2(1.f);
 	}
 	else
 	{
-		float progress = std::clamp(static_cast<float>(this->openTicks) / this->openTime, 0.f, 1.f);
+		float progress = std::clamp(static_cast<float>(this->openTicks) / this->closingDuration, 0.f, 1.f);
 		// Logic depending upon major axis
-		gimble.layout = glm::vec2(1.f - progress, 1.f - progress);
+
+		// Progress == 1, => door is closed
+		// Progress == 0, => door is open
+		gimble.layout = glm::vec2(progress, 1.f);
 	}
 
 	if (data.GetBuffer() == 0)
@@ -107,7 +110,8 @@ void Door::Draw() noexcept
 	vao.Bind();
 	vao.BindArrayBuffer(data);
 	shader.SetVec3("shapeColor", glm::vec3(1.f, 1.f, 0.f));
-	shader.DrawArray(6);
+	shader.SetTextureUnit("textureColor", Bank<Texture2D>::Get(ResourceName), 0);
+	shader.DrawArray(3);
 }
 
 void Door::Setup()
@@ -123,5 +127,10 @@ void Door::Setup()
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", shaderRef, 0, 1, 0, 136ull);
 		ref.ArrayFormatOverride<glm::mat4>("normalMat", shaderRef, 0, 1, sizeof(glm::mat4), 136ull);
 		ref.ArrayFormatOverride<glm::vec2>("multiplier", shaderRef, 0, 1, 2 * sizeof(glm::mat4), 136ull);
+	}
+	{
+		Texture2D& ref = Bank<Texture2D>::Get(ResourceName);
+		ref.Load("text.png");
+		ref.SetFilters();
 	}
 }

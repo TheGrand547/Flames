@@ -21,15 +21,15 @@ void main()
 	vec3 tempLightColor = vec3(1, 1, 1);
 	
 	vec4 rawPos     = texture(gPosition, textureCoords);
-	vec3 normal     = texture(gNormal, textureCoords).xyz;
-	vec3 shapeColor = texture(gColor, textureCoords).xyz;
+	vec3 normal     = texture(gNormal,   textureCoords).xyz;
+	vec3 shapeColor = texture(gColor,    textureCoords).xyz;
 	vec3 lightOut   = texture(gLighting, textureCoords).xyz;
-	gl_FragDepth    = texture(gDepth, textureCoords).r;
+	gl_FragDepth    = texture(gDepth,    textureCoords).r;
 	
 	vec3 fragmentPosition = rawPos.xyz;
 	vec3 viewDirection = normalize(View[3].xyz - fragmentPosition);
 	lightOut += DirectedPointLight(lightPos, -lightDir, tempLightColor, normal, fragmentPosition, viewDirection);
 	
-	vec3 result = ambient * shapeColor + lightOut;
+	vec3 result =  shapeColor * (ambient + lightOut);
 	fColor = vec4(result, 1.0);
 }

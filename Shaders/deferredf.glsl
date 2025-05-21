@@ -8,6 +8,8 @@ layout(location = 0) out vec4 fragmentPosition;
 layout(location = 1) out vec4 fragmentNormal;
 layout(location = 2) out vec4 fragmentColor;
 
+layout(location = 0) uniform sampler2D textureColor;
+
 uniform vec3 shapeColor;
 void main()
 {
@@ -19,5 +21,12 @@ void main()
 	// Could also store extra information in those unused 1 segments, idk
 	fragmentPosition = vec4(fPos, 1);
 	fragmentNormal = vec4(TBNmat * norm, 1);
+	
+	vec4 sampled = texture(textureColor, fTex);
+	
 	fragmentColor = vec4(shapeColor, 1);
+	if (sampled.r != 0)
+	{
+		fragmentColor = sampled;
+	}
 }
