@@ -24,58 +24,51 @@ void main()
 {
 	int modulo = gl_VertexID % 6;
 	int otherMod = gl_VertexID % 3;
-	int halves = int(floor(modulo / 2)) * 3;
 	vec2 adjusted = positions[modulo].xy;
 
 	float signFlip = (modulo > 2) ? -1.f : 1.f;
 
+	float openProgress = 1 - multiplier.x;
+	
 	// First tri moves in the -x direction when opening, second tri +x
 	fTex = (adjusted + 1) / 2;
 	//Proper 'receding triangles' door
 	if (otherMod == 0)
 	{
-		adjusted.x = mix(signFlip, -signFlip, multiplier.x);
-		//fTex = (adjusted + 1) / 2;
+		adjusted.x = mix(signFlip, -signFlip, openProgress);
 		if (modulo <= 2)
 		{
 			fTex.x = 1;
 		}
 		else
 		{
-			//fTex.x = 1 - multiplier.x;
-			//fTex.y = 1 - multiplier.x;
+			//fTex.x = 1 - openProgress;
+			//fTex.y = 1 - openProgress;
 		}
-		//fTex.x = 1 - multiplier.x;
-		//fTex.y = multiplier.x;
 	}
 	else if (otherMod == 1)
 	{
-		//fTex.x = multiplier.x;
-		//fTex.y = (mix(signFlip, -signFlip, multiplier.x) + 1) / 2;
 		if (modulo <= 2)
 		{
-			fTex.x = multiplier.x;
+			fTex.x = openProgress;
 		}
 		else
 		{
-			fTex.x = 1 - multiplier.x;
+			fTex.x = 1 - openProgress;
 		}
 	}	
 	else if (otherMod == 2)
 	{
-		adjusted.y = mix(signFlip, -signFlip, multiplier.x);
-		//fTex = (adjusted + 1) / 2;
+		adjusted.y = mix(signFlip, -signFlip, openProgress);
 		if (modulo <= 2)
 		{
-			fTex.x = multiplier.x;
-			fTex.y = 1 - multiplier.x;
+			fTex.x = openProgress;
+			fTex.y = 1 - openProgress;
 		}
 		else
 		{
-			fTex.y = multiplier.x;
-			fTex.x = 1 - multiplier.x;
-			//fTex.y = 1;
-			//fTex.y = 1 - multiplier.x;
+			fTex.y = openProgress;
+			fTex.x = 1 - openProgress;
 		}
 	}
 
@@ -84,7 +77,7 @@ void main()
 	// Square receding door
 	if (adjusted.x == 1.f)
 	{
-		adjusted.x -= adjusted.x * 2 * multiplier.x;
+		adjusted.x -= adjusted.x * 2 * openProgress;
 	}
 	*/
 	

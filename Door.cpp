@@ -2,6 +2,7 @@
 #include "Shader.h"
 #include "ResourceBank.h"
 #include "VertexArray.h"
+#include "imgui/imgui.h"
 
 static constexpr std::string_view ResourceName = "door_shader";
 
@@ -83,6 +84,7 @@ void Door::Draw() noexcept
 		glm::mat4 model{ 1.f }, normal{ 1.f };
 		glm::vec2 layout{};
 	} gimble;
+	// I hate how screwed up this crap is, fix it and standardize it ffs
 	gimble.model = glm::scale(glm::mat4(1.f), glm::vec3(4.f));
 	if (this->openState == Door::Closed)
 	{
@@ -97,6 +99,13 @@ void Door::Draw() noexcept
 		// Progress == 0, => door is open
 		gimble.layout = glm::vec2(progress, 1.f);
 	}
+	/*
+	static float doorOpen = 0.5f;
+	ImGui::Begin("Door");
+	ImGui::SliderFloat("Door", &doorOpen, 0.f, 1.f);
+	ImGui::End();
+	gimble.layout.x = 1.f - doorOpen;
+	*/
 
 	if (data.GetBuffer() == 0)
 	{
