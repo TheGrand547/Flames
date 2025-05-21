@@ -32,54 +32,62 @@ void main()
 	
 	// First tri moves in the -x direction when opening, second tri +x
 	fTex = (adjusted + 1) / 2;
+	
 	//Proper 'receding triangles' door
-	if (otherMod == 0)
+	if (multiplier.y == 1.f)
 	{
-		adjusted.x = mix(signFlip, -signFlip, openProgress);
-		if (modulo <= 2)
+		if (otherMod == 0)
 		{
-			fTex.x = 1;
+			adjusted.x = mix(signFlip, -signFlip, openProgress);
+			if (modulo <= 2)
+			{
+				fTex.x = 1;
+			}
+			else
+			{
+				//fTex.x = 1 - openProgress;
+				//fTex.y = 1 - openProgress;
+			}
 		}
-		else
+		else if (otherMod == 1)
 		{
-			//fTex.x = 1 - openProgress;
-			//fTex.y = 1 - openProgress;
+			if (modulo <= 2)
+			{
+				fTex.x = openProgress;
+			}
+			else
+			{
+				fTex.x = 1 - openProgress;
+			}
+		}	
+		else if (otherMod == 2)
+		{
+			adjusted.y = mix(signFlip, -signFlip, openProgress);
+			if (modulo <= 2)
+			{
+				fTex.x = openProgress;
+				fTex.y = 1 - openProgress;
+			}
+			else
+			{
+				fTex.y = openProgress;
+				fTex.x = 1 - openProgress;
+			}
 		}
 	}
-	else if (otherMod == 1)
+	else
 	{
-		if (modulo <= 2)
+		// Square receding door
+		if (adjusted.x < 0)
 		{
 			fTex.x = openProgress;
 		}
-		else
+		if (adjusted.x == 1.f)
 		{
-			fTex.x = 1 - openProgress;
-		}
-	}	
-	else if (otherMod == 2)
-	{
-		adjusted.y = mix(signFlip, -signFlip, openProgress);
-		if (modulo <= 2)
-		{
-			fTex.x = openProgress;
-			fTex.y = 1 - openProgress;
-		}
-		else
-		{
-			fTex.y = openProgress;
-			fTex.x = 1 - openProgress;
+			
+			adjusted.x -= adjusted.x * 2 * openProgress;
 		}
 	}
-
-
-	/*
-	// Square receding door
-	if (adjusted.x == 1.f)
-	{
-		adjusted.x -= adjusted.x * 2 * openProgress;
-	}
-	*/
 	
 	vec4 modelPos = modelMat * vec4(adjusted.x, 0, adjusted.y, 1);
 	fPos = modelPos.xyz;

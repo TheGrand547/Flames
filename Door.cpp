@@ -99,13 +99,15 @@ void Door::Draw() noexcept
 		// Progress == 0, => door is open
 		gimble.layout = glm::vec2(progress, 1.f);
 	}
-	/*
-	static float doorOpen = 0.5f;
+	
+	//static float doorOpen = 0.5f;
+	static bool button = false;
 	ImGui::Begin("Door");
-	ImGui::SliderFloat("Door", &doorOpen, 0.f, 1.f);
+	//ImGui::SliderFloat("Door", &doorOpen, 0.f, 1.f);
+	ImGui::Checkbox("Door", &button);
 	ImGui::End();
-	gimble.layout.x = 1.f - doorOpen;
-	*/
+	gimble.layout.y = (button) ? 1.f : 0.f;
+	
 
 	if (data.GetBuffer() == 0)
 	{
