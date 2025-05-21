@@ -863,6 +863,9 @@ void display()
 
 	{
 		//heWhoSleeps.model.rotation = ForwardDir(glm::vec3(0.f, 1.f, 0.f), glm::vec3(-1.f, 0.f, 0.f));
+		heWhoSleeps.openStyle = Door::Type::Square;
+		heWhoSleeps.model.rotation = glm::quat(glm::vec3(glm::sin(glm::radians((float)gameTicks)), 0.f, 
+			glm::cos(glm::radians((float)gameTicks * 3.2f))));
 		std::vector<glm::vec3> fdso;
 		auto sd = heWhoSleeps.GetTris();
 		for (auto p : sd)

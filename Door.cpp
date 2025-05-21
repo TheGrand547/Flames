@@ -159,10 +159,13 @@ std::array<Triangle, 2> Door::GetTris() const noexcept
 		}
 		if (this->openStyle == Type::Square)
 		{
-			progress = 1.f + -2.f * progress;
+			progress = -1.f + 2.f * progress;
 			glm::vec3 CD = center - progress * axisA * scale[1] + axisB * scale[2];
 			glm::vec3 DC = center - progress * axisA * scale[1] - axisB * scale[2];
-			return std::to_array({ Triangle(B, A, CD), Triangle(CD, A, DC) });
+
+			glm::vec3 AB = center - progress * axisA * scale[1] - axisB * scale[2];
+			glm::vec3 BA = center - progress * axisA * scale[1] + axisB * scale[2];
+			return std::to_array({ Triangle(BA, AB, C), Triangle(C, AB, D) });
 		}
 		else
 		{
