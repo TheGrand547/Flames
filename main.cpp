@@ -859,10 +859,28 @@ void display()
 	EnableGLFeatures<FaceCulling>();
 
 	basic.SetActiveShader();
-	VAOBank::Get("muscle").Bind();
-	VAOBank::Get("muscle").BindArrayBuffer(guyMeshData.vertex);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+
+	{
+		heWhoSleeps.model.scale = glm::vec3(4.f);
+		heWhoSleeps.model.rotation = ForwardDir(glm::vec3(0.f, 1.f, 0.f), glm::vec3(-1.f, 0.f, 0.f));
+		std::vector<glm::vec3> fdso;
+		auto sd = heWhoSleeps.GetTris();
+		for (auto p : sd)
+		{
+			for (auto sdf : p.GetPointArray())
+				fdso.push_back(sdf);
+		}
+		rayBuffer.BufferSubData(fdso);
+	}
+	plainVAO.Bind();
+	plainVAO.BindArrayBuffer(rayBuffer);
+	//VAOBank::Get("muscle").Bind();
+	//VAOBank::Get("muscle").BindArrayBuffer(guyMeshData.vertex);
 	basic.SetMat4("Model", glm::mat4(1.f));
 	basic.SetVec4("Color", glm::vec4(1.f));
+	basic.DrawArray(rayBuffer);
+	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//basic.DrawArray<DrawType::Points>(guyMeshData.vertex);
 
 
@@ -2177,6 +2195,20 @@ void init()
 	rayBuffer.BufferData(rays);
 
 	heWhoSleeps.Setup();
+	heWhoSleeps.openStyle = Door::Type::Triangle;
+	//heWhoSleeps.openState = Door::Opening;
+	//heWhoSleeps.openTicks = 125;
+	heWhoSleeps.model.scale = glm::vec3(4.f);
+	heWhoSleeps.model.rotation = ForwardDir(glm::vec3(1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
+	heWhoSleeps.model.rotation = QuatIdentity();
+	std::vector<glm::vec3> fdso;
+	auto sd = heWhoSleeps.GetTris();
+	for (auto p : sd)
+	{
+		for (auto sdf : p.GetPointArray())
+			fdso.push_back(sdf);
+	}
+	rayBuffer.BufferData(fdso);
 
 	// This sucks
 	// TODO: Put this in Geometry, or something, I don't know

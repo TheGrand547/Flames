@@ -89,13 +89,13 @@ void main()
 		}
 	}
 	
-	vec4 modelPos = modelMat * vec4(adjusted.x, 0, adjusted.y, 1);
+	vec4 modelPos = modelMat * vec4(0, adjusted.y, adjusted.x, 1);
 	fPos = modelPos.xyz;
 	gl_Position = Projection * View * modelPos;
 	
 	
 	vec3 tangent = normalize(mat3(normalMat) * vec3(1.f, 0.f, 0.f));
-	vec3 normal = mat3(normalMat) * vec3(0.f, 1.f, 0.f);
+	vec3 normal = mat3(normalMat) * vec3(1.f, 0.f, 0.f);
 	tangent = normalize(tangent - normal * dot(normal, tangent));
 	vec3 biTangent = normalize(cross(normal, tangent));
 	TBNmat = mat3(tangent, biTangent, normal);

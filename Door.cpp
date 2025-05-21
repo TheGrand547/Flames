@@ -58,37 +58,29 @@ void Door::Update() noexcept
 
 void Door::Draw() noexcept
 {
-	if (this->openState == Door::Closed)
-	{
-		// Trivial, draw the door as normal
-		//ArrayBuffer& data = Bank<ArrayBuffer>::Get("door_shader");
-	}
-	else if (this->openState == Door::Open)
+	// Could also return/not return the struct for instancing
+	if (this->openState == Door::Open)
 	{
 		// Trivial, don't draw the door
 		return;
 	}
-	else // Opening/closing
-	{
-		float progress = static_cast<float>(this->openTicks) / this->closingDuration;
-		// Apply easing to progress
-		// Could have different styles of doors, but thinking of the 'trivial' triangle one mainly
-		// Wait the basic quad one is easier
-		// Don't have to do all this logic, just get the progress and multiply vertices 2/3 x or y by it
-	}
-
-
 	ArrayBuffer& data = Bank<ArrayBuffer>::Get(ResourceName);
 	struct local
 	{
 		glm::mat4 model{ 1.f }, normal{ 1.f };
 		glm::vec2 layout{};
 	} gimble;
-	// I hate how screwed up this crap is, fix it and standardize it ffs
-	gimble.model = glm::scale(glm::mat4(1.f), glm::vec3(4.f));
+	// Layout is {Progress, Type}
+	// Progress == 1, => door is closed
+	// Progress == 0, => door is open
+	// Type == 1.f    => door is a triangle door
+	// Type != 1.f    => door is a square door
+	//gimble.model = glm::scale(glm::mat4(1.f), glm::vec3(4.f));
+	gimble.model = this->model.GetModelMatrix();
+	gimble.normal = this->model.GetNormalMatrix();
 	if (this->openState == Door::Closed)
 	{
-		gimble.layout = glm::vec2(1.f);
+		gimble.layout.x = 1.;
 	}
 	else
 	{
@@ -97,17 +89,9 @@ void Door::Draw() noexcept
 
 		// Progress == 1, => door is closed
 		// Progress == 0, => door is open
-		gimble.layout = glm::vec2(progress, 1.f);
+		gimble.layout.x = progress;
 	}
-	
-	//static float doorOpen = 0.5f;
-	static bool button = false;
-	ImGui::Begin("Door");
-	//ImGui::SliderFloat("Door", &doorOpen, 0.f, 1.f);
-	ImGui::Checkbox("Door", &button);
-	ImGui::End();
-	gimble.layout.y = (button) ? 1.f : 0.f;
-	
+	gimble.layout.y = (this->openStyle == Type::Triangle) ? 1.f : 0.f;
 
 	if (data.GetBuffer() == 0)
 	{
@@ -145,3 +129,53 @@ void Door::Setup()
 		ref.SetFilters();
 	}
 }
+
+// Colossal mess
+std::array<Triangle, 2> Door::GetTris() const noexcept
+{
+	if (this->openState == Door::Open)
+	{
+		return std::to_array({Triangle(glm::mat3(-1000000.f)), Triangle(glm::mat3(-1000000.f))});
+	}
+	else 
+	{
+		// We're pretending that +x in the model axis corresponds to +y in 'real' space, will apply the transformation elsewhere
+		const glm::mat3 axes = glm::mat3_cast(this->model.rotation);
+		const glm::vec3 center = this->model.translation;
+		const glm::vec3 scale = this->model.scale;
+
+		const glm::vec3 axisA = axes[1];
+		const glm::vec3 axisB = axes[2];
+
+		float progress = std::clamp(static_cast<float>(this->openTicks) / this->closingDuration, 0.f, 1.f);
+		glm::vec3 C = center + axisA * scale[1] + axisB * scale[2];
+		glm::vec3 D = center + axisA * scale[1] - axisB * scale[2];
+
+		glm::vec3 B = center - axisA * scale[1] + axisB * scale[2];
+		glm::vec3 A = center - axisA * scale[1] - axisB * scale[2];
+		if (this->openState == Door::Closed)
+		{
+			return std::to_array({ Triangle(B, A, C), Triangle(C,A, D) });
+		}
+		if (this->openStyle == Type::Square)
+		{
+			progress = 1.f + -2.f * progress;
+			glm::vec3 CD = center - progress * axisA * scale[1] + axisB * scale[2];
+			glm::vec3 DC = center - progress * axisA * scale[1] - axisB * scale[2];
+			return std::to_array({ Triangle(B, A, CD), Triangle(CD, A, DC) });
+		}
+		else
+		{
+			progress = 1.f - progress;
+			glm::vec3 C2 = center + progress * axisA * scale[1] + axisB * scale[2];
+			glm::vec3 A2 = center - axisA * scale[1] - progress * axisB * scale[2];
+
+			progress = 1.f - progress;
+			glm::vec3 C3 = center + axisA * scale[1] + progress * axisB * scale[2];
+			glm::vec3 A3 = center - progress * axisA * scale[1] - axisB * scale[2];
+			return std::to_array({ Triangle(B, A2, C2), Triangle(C3,A3, D) });
+		}
+	}
+}
+
+
