@@ -863,9 +863,11 @@ void display()
 
 	{
 		//heWhoSleeps.model.rotation = ForwardDir(glm::vec3(0.f, 1.f, 0.f), glm::vec3(-1.f, 0.f, 0.f));
-		heWhoSleeps.openStyle = Door::Type::Square;
+		//heWhoSleeps.openStyle = Door::Type::Square;
+		/*
 		heWhoSleeps.model.rotation = glm::quat(glm::vec3(glm::sin(glm::radians((float)gameTicks)), 0.f, 
 			glm::cos(glm::radians((float)gameTicks * 3.2f))));
+		*/
 		std::vector<glm::vec3> fdso;
 		auto sd = heWhoSleeps.GetTris();
 		for (auto p : sd)
@@ -873,6 +875,7 @@ void display()
 			for (auto sdf : p.GetPointArray())
 				fdso.push_back(sdf);
 		}
+		
 		rayBuffer.BufferSubData(fdso);
 	}
 	plainVAO.Bind();
@@ -1315,6 +1318,8 @@ void gameTick()
 				}
 				return previous != local.transform.position;
 			});
+		auto doorBop = heWhoSleeps.GetTris();
+		Sphere broadPass = heWhoSleeps.GetBroad();
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
 				if (glm::any(glm::isnan(local.transform.position)) || local.lifeTime > 5 * Tick::PerSecond)
@@ -1322,8 +1327,21 @@ void gameTick()
 					return true;
 				}
 				OBB transformedBox = local.GetOBB();
+				if (transformedBox.GetAABB().Overlap(broadPass))
+				{
+					for (auto& watcher : doorBop)
+					{
+						if (DetectCollision::Overlap(transformedBox, watcher) && heWhoSleeps.openState != Door::Open)
+						{
+							//heWhoSleeps.openState = Door::Opening;
+							heWhoSleeps.StartOpening();
+							return true;
+						}
+					}
+				}
 				//blarg.push_back(transformedBox.GetModelMatrix());
 				//blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
+				
 				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
@@ -2198,6 +2216,8 @@ void init()
 
 	heWhoSleeps.Setup();
 	heWhoSleeps.openStyle = Door::Type::Triangle;
+	heWhoSleeps.openState = Door::Closed;
+	heWhoSleeps.openTicks = heWhoSleeps.closingDuration;
 	//heWhoSleeps.openState = Door::Opening;
 	//heWhoSleeps.openTicks = 125;
 	heWhoSleeps.model.scale = glm::vec3(4.f);

@@ -17,10 +17,13 @@ void main()
 	//vec3 norm = texture(normalMapIn, samplePoint).rgb;
 	//norm = 2 * norm - 1;
 	vec3 norm = vec3(0, 0, 1);
+	vec3 mod = (gl_FrontFacing) ? vec3(1.f) : vec3(-1.f);
 	
 	// Could also store extra information in those unused 1 segments, idk
 	fragmentPosition = vec4(fPos, 1);
-	fragmentNormal = vec4(TBNmat * norm, 1);
+	
+	// This is a hack, but for some reason gl_FrontFacing won't work otherwise. Need to work on this
+	fragmentNormal = vec4(TBNmat * norm * mod, 1);
 	
 	vec4 sampled = texture(textureColor, fTex);
 	

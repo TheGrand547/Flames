@@ -3,10 +3,20 @@
 #include "ResourceBank.h"
 #include "VertexArray.h"
 #include "imgui/imgui.h"
+#include "util.h"
 
 static constexpr std::string_view ResourceName = "door_shader";
 
-Door::Door(glm::vec3 position, State state, Status status) noexcept  : position(position), openState(state), lockedState(status) 
+void Door::StartOpening() noexcept
+{
+	this->openState = Door::Opening;
+	if (this->openTicks < 0)
+	{
+		this->openTicks = 0;
+	}
+}
+
+Door::Door(glm::vec3 position, State state, Status status) noexcept  : position(position), openState(state), lockedState(status)
 {
 
 }
@@ -29,6 +39,19 @@ void Door::Update() noexcept
 			this->openState = Door::Closed;
 		}
 	}
+	else if (this->openState == Door::Open)
+	{
+		if (this->openTicks < -this->closingDuration)
+		{
+			this->openTicks = 0;
+			this->openState = Door::Closing;
+		}
+		else
+		{
+			this->openTicks--;
+		}
+	}
+	/*
 	// Hacked in for it too loop
 	if (this->openState == Door::Open)
 	{
@@ -53,7 +76,7 @@ void Door::Update() noexcept
 		{
 			this->openTicks++;
 		}
-	}
+	}*/
 }
 
 void Door::Draw() noexcept
@@ -97,7 +120,7 @@ void Door::Draw() noexcept
 	{
 		data.BufferData(gimble);
 	}
-
+	glDisable(GL_CULL_FACE);
 	data.BufferSubData(gimble);
 	Shader& shader = ShaderBank::Get(ResourceName);
 	VAO& vao = VAOBank::Get(ResourceName);
@@ -107,6 +130,16 @@ void Door::Draw() noexcept
 	shader.SetVec3("shapeColor", glm::vec3(1.f, 1.f, 0.f));
 	shader.SetTextureUnit("textureColor", Bank<Texture2D>::Get(ResourceName), 0);
 	shader.DrawArray(6);
+	glEnable(GL_CULL_FACE);
+	/*
+	Model temp = this->model;
+	temp.rotation = ForwardDir(temp.rotation * glm::vec3(-1.f, 0.f, 0.f), temp.rotation * glm::vec3(0.f, 1.f, 0.f));
+	gimble.model = temp.GetModelMatrix();
+	gimble.normal = temp.GetNormalMatrix();
+	data.BufferSubData(gimble);
+	vao.BindArrayBuffer(data);
+	shader.DrawArray(6);
+	*/
 }
 
 void Door::Setup()
@@ -180,6 +213,11 @@ std::array<Triangle, 2> Door::GetTris() const noexcept
 			return std::to_array({ Triangle(B, A2, C2), Triangle(C3,A3, D) });
 		}
 	}
+}
+
+Sphere Door::GetBroad() const noexcept
+{
+	return Sphere(this->model.translation, glm::compMax(this->model.scale));
 }
 
 

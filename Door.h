@@ -3,6 +3,7 @@
 #define DOOR_H
 #include "glmHelp.h"
 #include "Triangle.h"
+#include "Sphere.h"
 #include "Model.h"
 
 // TODO: BSP on doors for navigation 
@@ -28,6 +29,7 @@ struct Door
 	int openTicks = 0;
 	int closingDuration = 256;
 
+	void StartOpening() noexcept;
 
 	Door(glm::vec3 position, State state = Open, Status status = Unlocked) noexcept;
 
@@ -36,6 +38,7 @@ struct Door
 	void Setup();
 
 	std::array<Triangle, 2> GetTris() const noexcept;
+	Sphere GetBroad() const noexcept;
 };
 
 

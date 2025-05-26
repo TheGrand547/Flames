@@ -186,7 +186,7 @@ namespace DetectCollision
 		const glm::mat3 triDeltas(delta, triPoints[1] - box.GetCenter(), triPoints[2] - box.GetCenter());
 		const glm::vec3 normal = glm::normalize(glm::cross(edgeA, edgeB));
 		const glm::mat3 boxAxes(box.Forward(), box.Up(), box.Cross());
-
+		// TODO: NaN check normal
 
 		const glm::vec3 faceDots = normal * boxAxes;
 #ifdef _DEBUG
