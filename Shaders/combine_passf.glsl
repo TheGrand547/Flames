@@ -16,7 +16,7 @@ uniform vec3 lightDir;
 
 void main()
 {	
-	float ambient = 0.05f;
+	float ambient = 0.15f;
 	
 	vec3 tempLightColor = vec3(1, 1, 1);
 	

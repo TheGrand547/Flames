@@ -78,7 +78,9 @@ void ShipManager::Update() noexcept
 void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
 {
 	if (this->pain.GetElementCount() == 0)
+	{
 		return;
+	}
 	data.rawIndirect[0].instanceCount = this->pain.GetElementCount();
 	data.rawIndirect[1].instanceCount = this->pain.GetElementCount();
 	Shader& shader = ShaderBank::Get("defer");

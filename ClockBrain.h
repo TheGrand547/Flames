@@ -16,6 +16,7 @@ protected:
 	glm::i16vec3 home{};
 	float wander;
 	int state;
+	std::uint8_t tickOffset;
 public:
 	inline ClockBrain() { this->Init(); }
 	void Init();

@@ -189,6 +189,7 @@
     <ClCompile Include="log.cpp" />
     <ClCompile Include="MagneticAttack.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="MapLoader.cpp" />
     <ClCompile Include="MissileMotion.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="NavMesh.cpp" />

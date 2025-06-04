@@ -10,7 +10,10 @@ layout(location = 2) out vec4 fragmentColor;
 
 layout(location = 0) uniform sampler2D textureColor;
 
-uniform vec3 shapeColor;
+
+layout(location = 1) uniform vec3 shapeColor;
+layout(location = 2) uniform int checkUVs;
+
 void main()
 {
 	// TODO: Texture reads for maps and stuff
@@ -27,9 +30,12 @@ void main()
 	
 	vec4 sampled = texture(textureColor, fTex);
 	
-	fragmentColor = vec4(shapeColor, 1);
-	if (sampled.r != 0)
+	if (checkUVs == 1)
 	{
-		fragmentColor = sampled;
+		vec2 big = floor(fTex * 10);
+		bool flip = (int(big.x) % 2 == 0) ^^ (int(big.y) % 2 == 0);
+		float mult = (flip) ? 1.f : 0.5f;
+		sampled.xyz *= mult;
 	}
+	fragmentColor = vec4(shapeColor * sampled.xyz, 1);
 }

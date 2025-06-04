@@ -187,6 +187,11 @@ namespace DetectCollision
 		const glm::vec3 normal = glm::normalize(glm::cross(edgeA, edgeB));
 		const glm::mat3 boxAxes(box.Forward(), box.Up(), box.Cross());
 		// TODO: NaN check normal
+		if (glm::any(glm::isnan(normal)))
+		{
+			Log("Invalid normal");
+			return false;
+		}
 
 		const glm::vec3 faceDots = normal * boxAxes;
 #ifdef _DEBUG

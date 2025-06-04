@@ -11,10 +11,15 @@ static constexpr float CohesionForce = 5.f;
 static constexpr float AlignmentForce = 5.f;
 static constexpr float SeparationForce = 20.f;
 static constexpr float WanderForce = 8.f;
+static constexpr float PlayerSightForce = 12.f;
+static constexpr float CollisionAvoidForce = 12.f;
 
 static constexpr float ReturnForceMax = 50.f;
 static constexpr float ReturnForceMinRadius = 20.f;
 static constexpr float ReturnForceMaxRadius = 70.f;
+
+
+static constexpr float MaxClockSpeed = 15.f;
 
 glm::vec3 wandering(float& in, glm::vec3 forward)
 {
@@ -41,12 +46,13 @@ void ClockBrain::Init()
 	this->target = this->transform.position;
 	this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
 	this->state = 0;
+	this->tickOffset = rand() % 256;
 }
 
 void ClockBrain::Update(const kdTree<Transform>& transforms)
 {
-	return;
 	glm::vec3 thingVelocity{ 0.f };
+	bool playerSpotted = false;
 	// STATE Thingy
 	// state=0 default, patrol position      <- check player delta every 32 ticks
 	// state=1 transit to somewhere          <- check player delta every  8 ticks
@@ -55,7 +61,8 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	// state=4 I see the player
 
 	// Ensure that not every single enemy does this check every frames
-	const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
+	//const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
+	const std::size_t modulatedTick = Level::GetCurrentTick() + this->tickOffset;
 	//if (((this->state == 0 || this->state == 3) && modulatedTick % 32 == 0) || 
 		//((this->state == 1 || this->state == 2) && modulatedTick % 8 == 0))
 	{
@@ -86,10 +93,13 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 			}
 			if (clearSight)
 			{
+				playerSpotted = true;
 				//thingVelocity = Level::GetPlayerVel();
+				
+				// REVERT, I am testing their avoidance of obstacles
 				this->target = playerPos;
 				this->state = 1;
-				if (modulatedTick % 256 == 0)
+				if (modulatedTick % 128 == 0)
 				{
 					Level::AddBulletTree(this->transform.position, current[0] * 80.f, 
 						current[1], 1);
@@ -148,11 +158,14 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	forced += drifer(this->transform.position, this->home);
 	forced += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
 	forced += direction;
-	// TODO: screm
-
+	// I'm not sure why it's one?
+	if (playerSpotted) // Player is in sight
+	{
+		//forced += glm::normalize(Level::GetPlayerPos() - this->transform.position) * PlayerSightForce;
+	}
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forced);
-	BasicPhysics::Clamp(this->velocity, 10.f);
+	BasicPhysics::Clamp(this->velocity, MaxClockSpeed);
 	// Pretend it's non-zero
 	if (glm::length(this->velocity) > EPSILON)
 	{
@@ -233,7 +246,28 @@ glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexce
 		}
 		separation = separationTotal;
 	}
-	return alignment + cohesion + separation;
+	glm::vec3 avoidance{};
+	{
+		glm::vec3 avoid{};
+		AABB bigBound{ glm::vec3(std::min(glm::length(this->velocity), 5.f)) };
+		bigBound.SetCenter(this->transform.position);
+		Ray liota(this->transform.position, glm::normalize(this->velocity));
+		//for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
+		for (const auto& tri : Level::GetTriangleTree().Search(bigBound))
+		{
+			glm::vec3 center = tri->GetCenter();
+			glm::vec3 delta = center - this->transform.position;
+			if (glm::length(delta) < InfluenceRadius)
+			{
+				avoid += tri->GetNormal() / glm::length(delta);
+			}
+		}
+		if (glm::length(avoid) > EPSILON)
+		{
+			avoidance = glm::min(CollisionAvoidForce, glm::length(avoid)) * glm::normalize(avoid);
+		}
+	}
+	return alignment + cohesion + separation + avoidance;
 }
 
 void ClockBrain::Draw(MeshData& data, VAO& vao, Shader& shader) const

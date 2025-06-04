@@ -141,15 +141,14 @@ VAO colorVAO;
 // Not explicitly tied to OpenGL Globals
 
 OBB dumbBox; // rip smartbox
-glm::vec3 lastCameraPos;
-
 static unsigned int idleFrameCounter = 0;
 
-constexpr auto TIGHT_BOXES = 1;
-constexpr auto FREEZE_GAMEPLAY = 2;
-constexpr auto DEBUG_PATH = 3;
-constexpr auto DYNAMIC_TREE = 4;
+constexpr auto TIGHT_BOXES = 2;
+constexpr auto FREEZE_GAMEPLAY = 1;
+constexpr auto DEBUG_PATH = 4;
+constexpr auto DYNAMIC_TREE = 5;
 constexpr auto FULL_CALCULATIONS = 5;
+constexpr auto CHECK_UVS = 3;
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
@@ -253,7 +252,7 @@ VAO bulletVAO;
 
 BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletImpacts;
 
-MeshData levelGeometry, levelGeometry2;
+MeshData levelGeometry;
 ShipManager management;
 
 ClockBrain tickTockMan;
@@ -274,7 +273,7 @@ glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
 BufferSync<std::vector<LightVolume>> drawingVolumes;
 std::vector<LightVolume> constantLights;
 
-Door heWhoSleeps(glm::vec3(0.f));
+Door heWhoSleeps(glm::vec3(97.244f, 17.102f, 0));
 
 glm::vec3 GetCameraFocus(const Model& playerModel)
 {
@@ -285,7 +284,9 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 {
 	glm::vec3 localCamera = cameraPosition;
 	const glm::vec3 velocity = playfield.GetVelocity();
-	localCamera = (playerModel.rotation * aboutTheShip) * glm::vec3(4.f, -2.5f, 0.f);
+	glm::vec3 basePoint = glm::vec3(4.f, -2.5f, 0.f);
+	
+	localCamera = (playerModel.rotation * aboutTheShip) * basePoint;
 	localCamera += playerModel.translation;
 	localCamera -= velocity / 20.f;
 	const glm::vec3 cameraFocus = GetCameraFocus(playerModel);
@@ -375,11 +376,11 @@ void display()
 		ClearFramebuffer<ColorBuffer | DepthBuffer>();
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
-		levelGeometry2.Bind(outerzone);
-		outerzone.BindArrayBuffer(levelGeometry2.vertex, 0);
+		levelGeometry.Bind(outerzone);
+		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements<DrawType::Triangle>(levelGeometry2.indirect);
+		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
@@ -416,7 +417,10 @@ void display()
 		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-		interzone.DrawElements(levelGeometry.index);
+		interzone.SetInt("checkUVs", debugFlags[CHECK_UVS]);
+		interzone.SetTextureUnit("textureColor", Bank<Texture2D>::Get("blankTexture"), 0);
+		//interzone.DrawElements(levelGeometry.index);
+		interzone.MultiDrawElements(levelGeometry.indirect);
 
 		//tickTockMan.Draw(guyMeshData, VAOBank::Get("new_mesh_single"), ShaderBank::Get("new_mesh_single"));
 		management.Draw(guyMeshData, outerzone, interzone);
@@ -870,9 +874,9 @@ void display()
 		*/
 		std::vector<glm::vec3> fdso;
 		auto sd = heWhoSleeps.GetTris();
-		for (auto p : sd)
+		for (const Triangle& p : sd)
 		{
-			for (auto sdf : p.GetPointArray())
+			for (const auto& sdf : p.GetPointArray())
 				fdso.push_back(sdf);
 		}
 		
@@ -919,13 +923,15 @@ void display()
 	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 	*/
 
+	/*
 	uiRectTexture.SetActiveShader();
+	
 	auto& colored = playerTextEntry.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
 		colored.GetWidth(), colored.GetHeight()));
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
-
+	
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
@@ -940,6 +946,7 @@ void display()
 	CheckError();
 	DisableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
+	*/
 
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
@@ -2137,13 +2144,13 @@ void init()
 	}
 	CheckError();
 	{
-		std::array<glm::vec4, 12*2> lightingArray{ glm::vec4(0.f) };
+		std::array<glm::vec4, 40*2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, 2> kipper{};
 		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
-			lightingArray[i] = glm::vec4(glm::ballRand(100.f), 0.f);
+			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
-			std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
+			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
 			constantLights.push_back({lightingArray[i], glm::vec3(lightingArray[i + 1]), glm::vec3(1.f, 1.f / 30.f, 0.002f)});
 			constantLights.back().position.w = 60.f;
 		}
@@ -2206,6 +2213,9 @@ void init()
 	glLineWidth(100.f);
 	Bank<ArrayBuffer>::Get("plainCube").BufferData(Cube::GetPoints());
 
+	Bank<Texture2D>::Get("blankTexture").CreateEmpty(1, 1, InternalRGBA8, glm::vec4(1.f));
+	Bank<Texture2D>::Get("blankTexture").SetFilters();
+
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
 
@@ -2220,14 +2230,15 @@ void init()
 	heWhoSleeps.openTicks = heWhoSleeps.closingDuration;
 	//heWhoSleeps.openState = Door::Opening;
 	//heWhoSleeps.openTicks = 125;
-	heWhoSleeps.model.scale = glm::vec3(4.f);
-	//heWhoSleeps.model.rotation = ForwardDir(glm::sphericalRand(1.f), glm::vec3(0.f, 1.f, 0.f));
+	heWhoSleeps.model.scale = glm::vec3(17.5f);
+	heWhoSleeps.model.rotation = ForwardDir(glm::vec3(-1.f, 0.f, 0.f), glm::vec3(0.f, 1.f, 0.f));
 	heWhoSleeps.model.rotation = QuatIdentity();
+	heWhoSleeps.model.translation = glm::vec3(97.244f, 17.102f, 0);
 	std::vector<glm::vec3> fdso;
 	auto sd = heWhoSleeps.GetTris();
-	for (auto p : sd)
+	for (const Triangle& p : sd)
 	{
-		for (auto sdf : p.GetPointArray())
+		for (const glm::vec3& sdf : p.GetPointArray())
 			fdso.push_back(sdf);
 	}
 	rayBuffer.BufferData(fdso);
@@ -2412,7 +2423,8 @@ void init()
 			}
 		);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
-		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe6.glb",
+		//levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe2.glb",
+		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\big.obj",
 			[&](const auto& c)
 			{
 				if (c.size() >= 3)
@@ -2423,6 +2435,10 @@ void init()
 				}
 			}
 		);
+		//levelGeometry.rawIndirect[0].vertexCount = levelGeometry.index.GetElementCount();
+		//levelGeometry.indirect.BufferData(levelGeometry.rawIndirect[0]);
+		std::cout << levelGeometry.index.GetElementCount() << '\n';
+		std::cout << levelGeometry.vertex.GetElementCount() << '\n';
 	}
 	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array<MeshMatrix>({ {glm::mat4(1.f), glm::mat4(1.f)} }));
 
