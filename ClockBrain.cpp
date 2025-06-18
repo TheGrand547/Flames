@@ -5,6 +5,7 @@
 #include "MissileMotion.h"
 #include "log.h"
 #include "Interpolation.h"
+#include "Geometry.h"
 
 static constexpr float InfluenceRadius = 15.f;
 static constexpr float CohesionForce = 5.f;
@@ -176,6 +177,20 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 		orient[2] = glm::cross(orient[0], orient[1]);
 		this->transform.rotation = glm::normalize(glm::quat_cast(orient));
 	}
+	if (modulatedTick % 2 == 0)
+	{
+		OBB tight = ClockBrain::Collision;
+		tight.Rotate(this->GetPair().model);
+		const AABB broad = this->GetAABB();
+		for (const auto& tri : Level::GetTriangleTree().Search(broad))
+		{
+			// TODO: Collision detection that actually gives you the overlap? Why didn't you do this beforehand
+			if (DetectCollision::Overlap(*tri, tight))
+			{
+				this->velocity += 2.f * glm::dot(this->velocity, tri->GetNormal()) * tri->GetNormal();
+			}
+		}
+	}
 }
 
 void ClockBrain::Update2(const kdTree<Transform>& transforms)
@@ -247,6 +262,7 @@ glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexce
 		separation = separationTotal;
 	}
 	glm::vec3 avoidance{};
+	if (false)
 	{
 		glm::vec3 avoid{};
 		AABB bigBound{ glm::vec3(std::min(glm::length(this->velocity), 5.f)) };

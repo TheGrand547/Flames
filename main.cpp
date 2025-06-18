@@ -228,7 +228,6 @@ Animation flubber = make_animation( Transform(),
 );
 
 ExhaustManager managedProcess;
-BasicPhysics shipPhysics;
 
 Player playfield(glm::vec3(0.f, 3.f, 0.f));
 float playerSpeedControl = 0.1f;
@@ -275,9 +274,9 @@ std::vector<LightVolume> constantLights;
 
 Door heWhoSleeps(glm::vec3(97.244f, 17.102f, 0));
 
-glm::vec3 GetCameraFocus(const Model& playerModel)
+glm::vec3 GetCameraFocus(const Model& playerModel, const glm::vec3& velocity)
 {
-	return playerModel.translation + (playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)) * 10.f;
+	return playerModel.translation + (playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)) * (10.f + Rectify(glm::length(velocity)) / 2.f);
 }
 
 std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerModel)
@@ -289,7 +288,7 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 	localCamera = (playerModel.rotation * aboutTheShip) * basePoint;
 	localCamera += playerModel.translation;
 	localCamera -= velocity / 20.f;
-	const glm::vec3 cameraFocus = GetCameraFocus(playerModel);
+	const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
 	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
 	return { localCamera, cameraForward };
 }
@@ -335,7 +334,7 @@ void display()
 	const glm::vec3 localCamera = cameraPair.first;
 	const glm::vec3 cameraForward = cameraPair.second;
 
-	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel), axes[1]);
+	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel, velocity), axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	Frustum frustum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 	CheckError();
@@ -1070,6 +1069,8 @@ void idle()
 		boardState.movement.z += -1.f * keyState['A'];
 		boardState.movement.z +=  1.f * keyState['D'];
 		boardState.rotation = glm::yzw(boardState.heading);
+
+		boardState.zoomZoom = keyState['R']; // Make this shift
 	}
 	else
 	{
@@ -2208,8 +2209,6 @@ void init()
 	stickBuffer.BufferData(Dummy::stick);
 	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
 
-	shipPhysics.velocity = glm::vec3(2.f, 0.f, 0.f);
-
 	glLineWidth(100.f);
 	Bank<ArrayBuffer>::Get("plainCube").BufferData(Cube::GetPoints());
 
@@ -2400,7 +2399,14 @@ void init()
 	int onlyFirst = 0;
 	{
 		QUICKTIMER("Model Loading");
-		guyMeshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\bloke6.obj");
+		std::vector<glm::vec3> badBoxes;
+		guyMeshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\bloke6.obj", {}, 
+			[&](auto& c)
+			{ 
+				std::ranges::transform(c, std::back_inserter(badBoxes), [](NormalMeshVertex b) -> glm::vec3 {return b.position; });
+			}
+		);
+		ClockBrain::Collision = OBB::MakeOBB(badBoxes);
 		playerMesh = OBJReader::MeshThingy<MeshVertex>("Models\\Player.glb", {}, 
 			[&](auto& c) -> void
 			{
@@ -2449,6 +2455,7 @@ void init()
 	}
 	Level::GetTriangleTree().UpdateStructure();
 	nodePoints.clear();
+	/*
 	std::size_t remo = 0;
 	int bouncy = 0;
 	int increment = 25;
@@ -2512,7 +2519,7 @@ void init()
 	{
 		littleTrolling.push_back(point);
 		std::cout << point << '\n';
-	}
+	}*/
 
 	{
 		QUICKTIMER("AABB Stress test");
@@ -2626,9 +2633,9 @@ void init()
 	std::size_t lineCount = 0;
 	
 	
-	for (const auto& p : goober)
+	//for (const auto& p : goober)
 	{
-		boxingDay.push_back(p.position);
+		//boxingDay.push_back(p.position);
 		/*
 		for (const NavMesh::IndexType& weak : p.connections)
 		{
@@ -2643,8 +2650,8 @@ void init()
 		}*/
 	}
 	std::cout << "Total Edges: " << lineCount / 2 << '\n';
-	Bank<ArrayBuffer>::Get("nodePositions").BufferData(boxingDay, StaticDraw);
-	Bank<ArrayBuffer>::Get("nodeLinePositions").BufferData(littleTrolling, StaticDraw);
+	//Bank<ArrayBuffer>::Get("nodePositions").BufferData(boxingDay, StaticDraw);
+	//Bank<ArrayBuffer>::Get("nodeLinePositions").BufferData(littleTrolling, StaticDraw);
 
 	// =============================================================
 

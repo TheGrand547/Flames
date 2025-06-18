@@ -22,7 +22,6 @@ public:
 
 	inline glm::vec3 ApplyForces(const glm::vec3& forces, const float& timeStep = Tick::TimeDelta) noexcept
 	{
-		// TODO: Set max speed somewhere
 		// InvMass * timeStep will be a constant so it could be factored out but idk
 		this->velocity += forces * this->invMass * timeStep;
 		this->position += this->velocity * timeStep;

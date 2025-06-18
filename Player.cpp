@@ -314,7 +314,10 @@ void Player::Update(Input::Keyboard input) noexcept
 	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
-	BasicPhysics::Clamp(this->velocity, MaxSpeed);
+	//if (!input.zoomZoom)
+	{
+		BasicPhysics::Clamp(this->velocity, MaxSpeed);
+	}
 	// Bad constant
 	Sphere playerSphere(this->transform.position, 3.f);
 	for (const auto& tri : Level::GetTriangleTree().Search(playerSphere.GetAABB()))

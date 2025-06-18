@@ -40,6 +40,7 @@ namespace DetectCollision
 		return Overlap(sphere, triangle);
 	}
 	bool Overlap(OBB box, Triangle triangle) noexcept;
+	bool Overlap(OBB box, Triangle triangle, Collision& out) noexcept;
 	inline bool Overlap(Triangle triangle, OBB box) noexcept
 	{
 		return Overlap(box, triangle);

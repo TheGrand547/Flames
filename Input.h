@@ -143,6 +143,7 @@ namespace Input
 		bool fireButton;
 		bool popcornFire;
 		bool cruiseControl;
+		bool zoomZoom;
 	};
 	
 	bool ControllerActive();

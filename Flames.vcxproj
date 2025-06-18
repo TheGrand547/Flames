@@ -110,12 +110,14 @@
       <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <IntrinsicFunctions>false</IntrinsicFunctions>
+      <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);glew32.lib;freeglut.lib;opengl32.lib;glu32.lib;glfw3.lib;glfw3dll.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\x64;C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>/NODEFAULTLIB:MSVCRT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <AdditionalOptions>/NODEFAULTLIB:MSVCRT %(AdditionalOptions)</AdditionalOptions>
@@ -143,7 +145,7 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>%(AdditionalDependencies);glew32.lib;freeglut.lib;opengl32.lib;glu32.lib;glfw3.lib;glfw3dll.lib</AdditionalDependencies>
-      <AdditionalLibraryDirectories>C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>C:\Program Files (x86)\Windows Kits\10\Lib\10.0.19041.0\um\x64;C:\glfw\lib-vc2022;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>/NODEFAULTLIB:MSVCRT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
     </Link>

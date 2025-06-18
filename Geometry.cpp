@@ -175,8 +175,15 @@ namespace DetectCollision
 		return glm::distance(sphere.center, triangle.ClosestPoint(sphere.center)) < sphere.radius;
 	}
 
-	// Once again, based on the incredible paper https://www.geometrictools.com/Documentation/DynamicCollisionDetection.pdf
 	bool Overlap(OBB box, Triangle triangle) noexcept
+	{
+		Collision dummy{};
+		return DetectCollision::Overlap(box, triangle, dummy);
+	}
+
+
+	// Once again, based on the incredible paper https://www.geometrictools.com/Documentation/DynamicCollisionDetection.pdf
+	bool Overlap(OBB box, Triangle triangle, Collision& out) noexcept
 	{
 		const glm::mat3 triPoints = triangle.GetPoints();
 		const glm::vec3 delta = (triPoints[0] - box.GetCenter());
@@ -247,7 +254,7 @@ namespace DetectCollision
 			}
 			else // Box face normal cross edge
 			{
-				glm::mat3::length_type j = i - 4;
+				glm::mat3::length_type    j = i - 4;
 				glm::mat3::length_type face = j / 3;
 				glm::mat3::length_type edge = j % 3;
 				const glm::vec3 axis = glm::normalize(glm::cross(boxAxes[face], triEdges[edge]));
@@ -268,7 +275,7 @@ namespace DetectCollision
 					boxProjection += glm::abs(dotProducts[0][face]) * boxSides[1];
 				}
 			}
-			float low = glm::compMin(triProjections);
+			float low  = glm::compMin(triProjections);
 			float high = glm::compMax(triProjections);
 			
 			// Triangle covers interval [low,high], box [-BoxProjection,+BoxProjection]

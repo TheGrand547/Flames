@@ -47,6 +47,8 @@ public:
 	{
 		return this->transform;
 	}
+
+	static inline OBB Collision;
 };
 
 #endif // CLOCK_BRAIN_H
