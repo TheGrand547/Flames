@@ -34,8 +34,16 @@ public:
 	}
 	inline AABB GetAABB() const noexcept
 	{
-		// Probably should make this a constant or something idk
-		return AABB(this->transform.position - (2.5f), this->transform.position +(2.5f));
+		return this->GetOBB().GetAABB();
+	}
+
+	inline OBB GetOBB() const noexcept
+	{
+		OBB tight = ClockBrain::Collision;
+		tight.Rotate(this->GetPair().normal);
+		tight.Scale(2.f);
+		tight.ReCenter(this->transform.position);
+		return tight;
 	}
 
 	inline MeshMatrix GetPair() const noexcept

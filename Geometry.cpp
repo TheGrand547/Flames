@@ -185,6 +185,8 @@ namespace DetectCollision
 	// Once again, based on the incredible paper https://www.geometrictools.com/Documentation/DynamicCollisionDetection.pdf
 	bool Overlap(OBB box, Triangle triangle, Collision& out) noexcept
 	{
+		out.Clear();
+		out.distance = std::numeric_limits<float>::infinity();
 		const glm::mat3 triPoints = triangle.GetPoints();
 		const glm::vec3 delta = (triPoints[0] - box.GetCenter());
 		const glm::vec3 edgeA = (triPoints[1] - triPoints[0]), edgeB = (triPoints[2] - triPoints[0]),
@@ -227,8 +229,11 @@ namespace DetectCollision
 		{
 			glm::vec3 triProjections{ 0.f };
 			float boxProjection = 0.f;
+			glm::vec3 outerAxis{};
+
 			if (i == 0) // Triangle normal
 			{
+				outerAxis = normal;
 				triProjections = glm::vec3(glm::dot(delta, normal));
 				boxProjection = glm::dot(glm::abs(normal * boxAxes), boxSides);
 			}
@@ -239,14 +244,17 @@ namespace DetectCollision
 				triProjections = glm::vec3(glm::dot(delta, boxAxes[face]));
 				triProjections.y += dotProducts[face][0];
 				triProjections.z += dotProducts[face][1];
+				outerAxis = boxAxes[face];
 #ifdef _DEBUG
 				glm::vec3 triProjections2{ 0.f };
 				triProjections2.x = glm::dot(boxAxes[face], triDeltas[0]);
 				triProjections2.y = glm::dot(boxAxes[face], triDeltas[1]);
 				triProjections2.z = glm::dot(boxAxes[face], triDeltas[2]);
-				if (glm::distance(triProjections, triProjections2) > EPSILON)
+				// TODO: Return to this
+				if (glm::any(glm::epsilonNotEqual(triProjections, triProjections2, EPSILON)))
 				{
-					Log("Optimization failed");
+					float lome = glm::distance(triProjections, triProjections2);
+					//Log("Optimization failed");
 					triProjections = triProjections2;
 				}
 #endif // _DEBUG
@@ -274,16 +282,39 @@ namespace DetectCollision
 					boxProjection += glm::abs(dotProducts[1][face]) * boxSides[0];
 					boxProjection += glm::abs(dotProducts[0][face]) * boxSides[1];
 				}
+				outerAxis = axis;
 			}
 			float low  = glm::compMin(triProjections);
 			float high = glm::compMax(triProjections);
 			
+			float overlap = glm::abs(glm::min(high, boxProjection) - glm::max(low, -boxProjection));
+			bool firstTest = (low > boxProjection) || (high < -boxProjection);
 			// Triangle covers interval [low,high], box [-BoxProjection,+BoxProjection]
 			if (low > boxProjection || high < -boxProjection)
 			{
 				return false;
 			}
+			if (overlap < out.distance)
+			{
+				if (glm::epsilonEqual(low, high, EPSILON))
+				{
+					if (high < 0)
+					{
+						//overlap = glm::abs(high - boxProjection);
+					}
+					else
+					{
+						//overlap = glm::abs(high - boxProjection * 2.f);
+					}
+					//float centerProj = glm::dot(outerAxis, box.GetCenter());
+					//overlap = glm::abs(glm::abs(centerProj - high) - boxProjection);
+				}
+				out.distance = overlap;
+				out.axis = outerAxis;
+			}
+
 		}
+		out.point = out.distance * out.axis;
 		return true;
 	}
 }

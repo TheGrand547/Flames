@@ -13,7 +13,8 @@ static constexpr float AlignmentForce = 5.f;
 static constexpr float SeparationForce = 20.f;
 static constexpr float WanderForce = 8.f;
 static constexpr float PlayerSightForce = 12.f;
-static constexpr float CollisionAvoidForce = 12.f;
+// Since it's only once every three frames, triple the strength -- might look jerky but who cares
+static constexpr float CollisionAvoidForce = 36.f;
 
 static constexpr float ReturnForceMax = 50.f;
 static constexpr float ReturnForceMinRadius = 20.f;
@@ -46,6 +47,7 @@ void ClockBrain::Init()
 	this->velocity = this->transform.rotation * glm::vec3(1.f, 0, 0);
 	this->target = this->transform.position;
 	this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
+	this->home = glm::i16vec3(this->target);
 	this->state = 0;
 	this->tickOffset = rand() % 256;
 }
@@ -179,15 +181,16 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	}
 	if (modulatedTick % 2 == 0)
 	{
-		OBB tight = ClockBrain::Collision;
-		tight.Rotate(this->GetPair().model);
-		const AABB broad = this->GetAABB();
+		OBB tight = this->GetOBB();
+		const AABB broad = tight.GetAABB();
 		for (const auto& tri : Level::GetTriangleTree().Search(broad))
 		{
+			::Collision range{};
 			// TODO: Collision detection that actually gives you the overlap? Why didn't you do this beforehand
-			if (DetectCollision::Overlap(*tri, tight))
+			if (DetectCollision::Overlap(tight, *tri, range))
 			{
-				this->velocity += 2.f * glm::dot(this->velocity, tri->GetNormal()) * tri->GetNormal();
+				this->velocity += 2.f * glm::abs(glm::dot(this->velocity, range.axis)) * range.axis;
+				this->transform.position += range.axis * range.depth;
 			}
 		}
 	}
@@ -262,25 +265,35 @@ glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexce
 		separation = separationTotal;
 	}
 	glm::vec3 avoidance{};
-	if (false)
+	const std::size_t modulatedTick = Level::GetCurrentTick() + this->tickOffset;
+	if ((modulatedTick & 3) == 3)
 	{
 		glm::vec3 avoid{};
-		AABB bigBound{ glm::vec3(std::min(glm::length(this->velocity), 5.f)) };
-		bigBound.SetCenter(this->transform.position);
-		Ray liota(this->transform.position, glm::normalize(this->velocity));
-		//for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
-		for (const auto& tri : Level::GetTriangleTree().Search(bigBound))
+		OBB forward = this->GetOBB();
+		glm::vec3 sizes = forward.GetScale();
+		// Look for things up to two seconds ahead of our bloke
+		constexpr float LookAheadTime = 1.5f;
+		
+		const float forwardLength = Rectify(glm::length(this->velocity));
+
+		// So original forward is x, we want to scale it in place 
+		// (sizes[0] + Rectify(length)) / sizes[0]
+		float proper = (sizes[0] + forwardLength * LookAheadTime) / sizes[0];
+
+		forward.Scale(glm::vec3(proper, 1.f, 1.f));
+		forward.Translate(proper * sizes[0] * forward.Forward()); // So dang sketchy
+		for (const auto& tri : Level::GetTriangleTree().Search(forward.GetAABB()))
 		{
-			glm::vec3 center = tri->GetCenter();
-			glm::vec3 delta = center - this->transform.position;
-			if (glm::length(delta) < InfluenceRadius)
+			::Collision range{};
+			if (DetectCollision::Overlap(forward, *tri, range))
 			{
-				avoid += tri->GetNormal() / glm::length(delta);
+				glm::vec3 tempy = tri->GetNormal();
+				avoid += range.axis;
 			}
 		}
-		if (glm::length(avoid) > EPSILON)
+		if (Rectify(glm::length(avoid)) > EPSILON)
 		{
-			avoidance = glm::min(CollisionAvoidForce, glm::length(avoid)) * glm::normalize(avoid);
+			avoidance = glm::min(CollisionAvoidForce, CollisionAvoidForce) * glm::normalize(avoid);
 		}
 	}
 	return alignment + cohesion + separation + avoidance;
