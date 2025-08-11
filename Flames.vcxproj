@@ -171,6 +171,7 @@
     <ClCompile Include="Decal.cpp" />
     <ClCompile Include="DemoGuy.cpp" />
     <ClCompile Include="Door.cpp" />
+    <ClCompile Include="entities\ShieldGenerator.cpp" />
     <ClCompile Include="ExhaustManager.cpp" />
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
@@ -252,6 +253,7 @@
     <ClInclude Include="DrawStruct.h" />
     <ClInclude Include="DummyArrays.h" />
     <ClInclude Include="DynamicTree.h" />
+    <ClInclude Include="entities\ShieldGenerator.h" />
     <ClInclude Include="ExhaustManager.h" />
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />

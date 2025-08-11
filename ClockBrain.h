@@ -56,6 +56,11 @@ public:
 		return this->transform;
 	}
 
+	inline std::size_t GetModulatedTick() const noexcept
+	{
+		return Level::GetCurrentTick() + this->tickOffset;
+	}
+
 	static inline OBB Collision;
 };
 

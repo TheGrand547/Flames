@@ -222,6 +222,9 @@
     <ClCompile Include="MapLoader.cpp">
       <Filter>Header Files</Filter>
     </ClCompile>
+    <ClCompile Include="entities\ShieldGenerator.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -489,6 +492,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Door.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="entities\ShieldGenerator.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

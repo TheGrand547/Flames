@@ -83,6 +83,7 @@
 #include "Frustum.h"
 #include "DummyArrays.h"
 #include "Door.h"
+#include "entities/ShieldGenerator.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -229,7 +230,8 @@ Animation flubber = make_animation( Transform(),
 
 ExhaustManager managedProcess;
 
-Player playfield(glm::vec3(0.f, 3.f, 0.f));
+//Player playfield(glm::vec3(-40.f, 60.f, 0.f));
+Player playfield(glm::vec3(0.f));
 float playerSpeedControl = 0.1f;
 Input::Keyboard boardState; 
 // TODO: Proper start/reset value
@@ -298,6 +300,8 @@ Frustum GetFrustum(const Model& playerModel)
 	auto cameraPair = CalculateCameraPositionDir(playerModel);
 	return Frustum(cameraPair.first, ForwardDir(cameraPair.second, playerModel.rotation * glm::vec3(0.f, 1.f, 0.f)), glm::vec2(zNear, zFar));
 }
+
+ShieldGenerator bobert;
 
 void display()
 {
@@ -433,7 +437,7 @@ void display()
 		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 		outerzone.BindArrayBuffer(buf, 1);
 		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
-		
+		bobert.Draw();
 
 		heWhoSleeps.Draw();
 
@@ -487,7 +491,6 @@ void display()
 			//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
 			throne.DrawArrayInstanced<DrawType::TriangleFan>(Bank<ArrayBuffer>::Get("dummy2"), cotillion);
 		}
-
 
 		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
 		//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), Bank<ArrayBuffer>::Get("lightVolume"));
@@ -554,6 +557,13 @@ void display()
 			uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		}
 	}
+	uniform.SetActiveShader();
+	plainVAO.Bind();
+	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
+	uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
+	const OBB& target = Bank<OBB>::Get("NoGoZone");
+	uniform.SetMat4("Model", target.GetModelMatrix());
+	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	const glm::mat3 axes22 = glm::mat3_cast(playerModel.rotation);
 	uniform.SetActiveShader();
@@ -2301,10 +2311,6 @@ void init()
 	}
 
 	tickTockMan.Init();
-	for (int i = 0; i < 20; i++)
-	{
-		management.Make();
-	}
 	Parallel::SetStatus(true);
 	struct
 	{
@@ -2430,7 +2436,7 @@ void init()
 		);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
 		//levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe2.glb",
-		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\big.obj",
+		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\big_box.obj",
 			[&](const auto& c)
 			{
 				if (c.size() >= 3)
@@ -2441,6 +2447,8 @@ void init()
 				}
 			}
 		);
+
+		Bank<OBB>::Get("NoGoZone") = OBB(AABB(glm::vec3(30.f)));
 		//levelGeometry.rawIndirect[0].vertexCount = levelGeometry.index.GetElementCount();
 		//levelGeometry.indirect.BufferData(levelGeometry.rawIndirect[0]);
 		std::cout << levelGeometry.index.GetElementCount() << '\n';
@@ -2448,11 +2456,18 @@ void init()
 	}
 	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array<MeshMatrix>({ {glm::mat4(1.f), glm::mat4(1.f)} }));
 
-	BSP bp;
+	ShieldGenerator::Setup();
+
+	BSP& bp = Bank<BSP>::Get("Fellas");
 	{
 		QUICKTIMER("BSP Tree");
 		bp.GenerateBSP(nodeTri);
 	}
+	for (int i = 0; i < 1; i++)
+	{
+		management.Make();
+	}
+
 	Level::GetTriangleTree().UpdateStructure();
 	nodePoints.clear();
 	/*

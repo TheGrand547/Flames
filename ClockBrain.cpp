@@ -6,6 +6,8 @@
 #include "log.h"
 #include "Interpolation.h"
 #include "Geometry.h"
+#include "BinarySpacePartition.h"
+#include "ResourceBank.h"
 
 static constexpr float InfluenceRadius = 15.f;
 static constexpr float CohesionForce = 5.f;
@@ -35,18 +37,40 @@ glm::vec3 drifer(glm::vec3 pos, glm::vec3 target)
 {
 	glm::vec3 forcing{};
 	float dist = glm::length(target - pos);
+	if (dist < 1)
+	{
+		return glm::vec3(0.f);
+	}
 	float constant = glm::pow(glm::max(0.f, (dist - ReturnForceMinRadius) / ReturnForceMaxRadius), 2.f);
 	forcing = glm::normalize(target - pos) * constant * ReturnForceMax;
 	return forcing;
 }
 
+bool ValidPOsition(const glm::vec3& vec)
+{
+	return Bank<BSP>::Get("Fellas").TestPoint(vec);
+}
+
 void ClockBrain::Init()
 {
-	this->transform.position = glm::ballRand(50.f);
+
+	do {
+		this->transform.position = glm::ballRand(50.f);
+	} while (!ValidPOsition(this->transform.position));
+	do
+	{
+		this->home = glm::i16vec3(this->transform.position + glm::ballRand(10.f));
+	} while (!ValidPOsition(this->home));
+	this->transform.position = glm::vec3(0.f, 60.f, 0.f);
+
 	this->transform.rotation = glm::angleAxis(glm::gaussRand(glm::pi<float>(), glm::pi<float>()), glm::sphericalRand(1.f));
+	this->transform.rotation = ForwardDir(glm::vec3(0.f, -1.f, 0.f), glm::vec3(1.f, 0.f, 0.f));
+
 	this->velocity = this->transform.rotation * glm::vec3(1.f, 0, 0);
 	this->target = this->transform.position;
 	this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
+
+
 	this->home = glm::i16vec3(this->target);
 	this->state = 0;
 	this->tickOffset = rand() % 256;
@@ -65,7 +89,7 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 
 	// Ensure that not every single enemy does this check every frames
 	//const std::size_t modulatedTick = Level::GetCurrentTick() + (std::bit_cast<std::size_t>(this) >> 6) & 0b111111;
-	const std::size_t modulatedTick = Level::GetCurrentTick() + this->tickOffset;
+	const std::size_t modulatedTick = this->GetModulatedTick();
 	//if (((this->state == 0 || this->state == 3) && modulatedTick % 32 == 0) || 
 		//((this->state == 1 || this->state == 2) && modulatedTick % 8 == 0))
 	{
@@ -155,8 +179,8 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	}
 
 	// Always more towards the target
-	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
-
+	//glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
+	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, Level::GetPlayerPos(), thingVelocity);
 	glm::vec3 direction = this->IndirectUpdate(transforms);
 	forced += drifer(this->transform.position, this->home);
 	forced += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
@@ -181,6 +205,7 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	}
 	if (modulatedTick % 2 == 0)
 	{
+		/*
 		OBB tight = this->GetOBB();
 		const AABB broad = tight.GetAABB();
 		for (const auto& tri : Level::GetTriangleTree().Search(broad))
@@ -189,10 +214,12 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 			// TODO: Collision detection that actually gives you the overlap? Why didn't you do this beforehand
 			if (DetectCollision::Overlap(tight, *tri, range))
 			{
-				this->velocity += 2.f * glm::abs(glm::dot(this->velocity, range.axis)) * range.axis;
+				float alignment = glm::dot(this->velocity, range.axis);
+				this->velocity -= 2 * alignment * range.axis;
 				this->transform.position += range.axis * range.depth;
 			}
 		}
+		*/
 	}
 }
 
@@ -265,9 +292,10 @@ glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexce
 		separation = separationTotal;
 	}
 	glm::vec3 avoidance{};
-	const std::size_t modulatedTick = Level::GetCurrentTick() + this->tickOffset;
-	if ((modulatedTick & 3) == 3)
+	const std::size_t modulatedTick = this->GetModulatedTick();
+	if ((modulatedTick & 3) == 3 || true)
 	{
+		/*
 		glm::vec3 avoid{};
 		OBB forward = this->GetOBB();
 		glm::vec3 sizes = forward.GetScale();
@@ -294,6 +322,15 @@ glm::vec3 ClockBrain::IndirectUpdate(const kdTree<Transform>& transforms) noexce
 		if (Rectify(glm::length(avoid)) > EPSILON)
 		{
 			avoidance = glm::min(CollisionAvoidForce, CollisionAvoidForce) * glm::normalize(avoid);
+		}
+		*/
+		glm::vec3 start = this->transform.position;
+		glm::vec3 direction = glm::normalize(this->velocity);
+		const OBB& target = Bank<OBB>::Get("NoGoZone");
+		RayCollision rayman{};
+		if (target.Intersect(start, direction, rayman) && rayman.distance < glm::length(this->velocity) * 1.5f)
+		{
+			avoidance = (CollisionAvoidForce * 1.5f) * rayman.normal;
 		}
 	}
 	return alignment + cohesion + separation + avoidance;

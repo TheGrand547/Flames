@@ -7,6 +7,9 @@
 struct MeshMatrix
 {
 	glm::mat4 model, normal;
+
+	inline MeshMatrix() noexcept : model(1.f), normal(1.f) {}
+	inline MeshMatrix(const glm::mat4& a, const glm::mat4& b) noexcept : model(a), normal(b) {}
 };
 
 struct Model

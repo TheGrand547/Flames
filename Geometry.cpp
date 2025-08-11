@@ -314,6 +314,7 @@ namespace DetectCollision
 			}
 
 		}
+		out.axis = out.axis * -glm::sign(glm::dot(out.axis, delta));
 		out.point = out.distance * out.axis;
 		return true;
 	}
