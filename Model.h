@@ -29,6 +29,9 @@ struct Model
 
 	void Translate(const glm::vec3& distance) noexcept;
 
+	// Apply a 'parent' transform to the current model, and return it
+	Model ApplyParent(const Model& parent) noexcept;
+
 	glm::mat4 GetModelMatrix() const noexcept;
 	glm::mat4 GetNormalMatrix() const noexcept;
 	MeshMatrix GetMatrixPair() const noexcept;

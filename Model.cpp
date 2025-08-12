@@ -4,6 +4,16 @@
 #include <glm/gtx/euler_angles.hpp>
 
 
+Model Model::ApplyParent(const Model& parent) noexcept
+{
+    Model temp{ *this };
+    temp.scale *= parent.scale;
+    temp.rotation = parent.rotation * temp.rotation;
+    //temp.rotation = temp.rotation * parent.rotation;
+    temp.translation = parent.translation + temp.rotation * temp.translation;
+    return temp;
+}
+
 glm::mat4 Model::GetModelMatrix() const noexcept
 {
     return glm::scale(glm::translate(glm::mat4(1.f), this->translation) * glm::mat4_cast(this->rotation), this->scale);

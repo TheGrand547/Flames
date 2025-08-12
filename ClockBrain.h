@@ -37,18 +37,20 @@ public:
 		return this->GetOBB().GetAABB();
 	}
 
+	inline Model GetModel() const noexcept
+	{
+		return Model{ this->transform, glm::vec3(2.f) };
+	}
+
 	inline OBB GetOBB() const noexcept
 	{
-		OBB tight = ClockBrain::Collision;
-		tight.Rotate(this->GetPair().normal);
-		tight.Scale(2.f);
-		tight.ReCenter(this->transform.position);
-		return tight;
+		Model temp = ClockBrain::Collision.GetModel().ApplyParent(this->GetModel());
+		return OBB(temp);
 	}
 
 	inline MeshMatrix GetPair() const noexcept
 	{
-		return Model{ this->transform, glm::vec3(2.f)}.GetMatrixPair();
+		return this->GetModel().GetMatrixPair();
 	}
 
 	inline Transform GetTransform() const noexcept

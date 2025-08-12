@@ -31,8 +31,9 @@ inline Transform Transform::Normalized() const noexcept
 inline Transform Transform::Append(const Transform& other) const noexcept
 {
 	// TODO:
+	Transform temp{ *this };
 
-	return {};
+	return temp;
 }
 
 #endif // TRANSFORM_H
