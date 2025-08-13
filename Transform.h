@@ -14,7 +14,7 @@ struct Transform
 	inline void Normalize() noexcept;
 	inline Transform Normalized() const noexcept;
 
-	// Apply this transform to the given one, and return it
+	// Apply the parent transform to this, then return the resulting transformation
 	inline Transform Append(const Transform& other) const noexcept;
 };
 
@@ -28,11 +28,11 @@ inline Transform Transform::Normalized() const noexcept
 	return { this->position, glm::normalize(this->rotation) };
 }
 
-inline Transform Transform::Append(const Transform& other) const noexcept
+inline Transform Transform::Append(const Transform& parent) const noexcept
 {
-	// TODO:
 	Transform temp{ *this };
-
+	temp.rotation = parent.rotation * temp.rotation;
+	temp.position = parent.position + temp.rotation * temp.position;
 	return temp;
 }
 

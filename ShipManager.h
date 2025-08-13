@@ -45,6 +45,15 @@ public:
 		}
 		return AABB();
 	}
+	inline OBB GetOBB()
+	{
+		if (this->brainDrain.size() > 0)
+		{
+			//return this->brainDrain.begin()->GetAABB();
+			return this->brainDrain[0].GetOBB();
+		}
+		return OBB();
+	}
 };
 
 #endif // SHIP_MANAGER_H

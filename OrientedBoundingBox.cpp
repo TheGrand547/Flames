@@ -585,7 +585,6 @@ std::array<double, 3> GetEigenValues(glm::dmat3 precise)
 OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& points)
 {
 	const double weight = 1. / static_cast<double>(points.size());
-	//const double covarianceWeight = 3. / static_cast<double>(points.size());
 	glm::dvec3 center{ 0. };
 	for (const glm::vec3& point : points)
 	{
@@ -603,15 +602,9 @@ OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& poi
 			}
 		}
 	}
-	if (points.size() > 2)
-	{
-		Triangle t(points[0], points[1], points[2]);
-		//std::cout <<"Normal:" << t.GetNormal() << "\n";
-	}
 	std::array<double, 3> eigens = GetEigenValues(covariance);
 	glm::dmat3 basis{};
 	const glm::dmat3 original(covariance);
-	//std::cout << eigens[0] << ":" << eigens[1] << ":" << eigens[2] << "\n";
  	for (glm::dmat3::length_type i = 0; i < 3; i++)
 	{
 		const glm::dmat3 whoops = (original - glm::dmat3(eigens[(i + 1) % 3])) * (original - glm::dmat3(eigens[(i + 2) % 3]));
@@ -634,7 +627,11 @@ OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& poi
 			//break;
 		}
 	}
-	//std::cout << basis << "\n";
+	// Could also do this unchecked, but think it's fine for the time being. 
+	if (glm::distance(glm::cross(basis[0], basis[1]), basis[2]) > EPSILON)
+	{
+		basis[2] = glm::normalize(glm::cross(basis[0], basis[1]));
+	}
 	glm::dmat3 inverse = glm::transpose(basis);
 	glm::dvec3 max{ -std::numeric_limits<double>::infinity() }, min{ std::numeric_limits<double>::infinity() };
 	glm::dvec3 newAverage(center);
@@ -646,10 +643,10 @@ OrientedBoundingBox OrientedBoundingBox::MakeOBB(const std::span<glm::vec3>& poi
 		newAverage += doublePoint * weight;
 	}
 	center = (basis * ((min + max) / 2.)) + center;
-	//auto bd = glm::orthonormalize(basis);
 	OBB zoomer{};
 	zoomer.ReCenter(glm::vec3(center));
 	zoomer.ReScale(glm::vec3(max - min) / 2.f);
 	zoomer.ReOrient(glm::mat3(basis));
+	
 	return zoomer;
 }

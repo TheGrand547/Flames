@@ -123,7 +123,7 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 				playerSpotted = true;
 				//thingVelocity = Level::GetPlayerVel();
 				
-				// REVERT, I am testing their avoidance of obstacles
+				// TODO: REVERT, I am testing their avoidance of obstacles
 				this->target = playerPos;
 				this->state = 1;
 				if (modulatedTick % 128 == 0)
@@ -179,19 +179,22 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	}
 
 	// Always more towards the target
-	//glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
-	glm::vec3 forced = MakePrediction(this->transform.position, this->velocity, 40.f, Level::GetPlayerPos(), thingVelocity);
-	glm::vec3 direction = this->IndirectUpdate(transforms);
-	forced += drifer(this->transform.position, this->home);
-	forced += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
-	forced += direction;
+	//glm::vec3 acceleration = MakePrediction(this->transform.position, this->velocity, 40.f, this->target, thingVelocity);
+	glm::vec3 acceleration = MakePrediction(this->transform.position, this->velocity, 40.f, Level::GetPlayerPos(), thingVelocity);
+	glm::vec3 flockingForces = this->IndirectUpdate(transforms);
+	acceleration += drifer(this->transform.position, this->home);
+	if (!playerSpotted)
+	{
+		acceleration += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
+	}
+	acceleration += flockingForces;
 	// I'm not sure why it's one?
 	if (playerSpotted) // Player is in sight
 	{
-		//forced += glm::normalize(Level::GetPlayerPos() - this->transform.position) * PlayerSightForce;
+		//acceleration += glm::normalize(Level::GetPlayerPos() - this->transform.position) * PlayerSightForce;
 	}
 
-	BasicPhysics::Update(this->transform.position, this->velocity, forced);
+	BasicPhysics::Update(this->transform.position, this->velocity, acceleration);
 	BasicPhysics::Clamp(this->velocity, MaxClockSpeed);
 	// Pretend it's non-zero
 	if (glm::length(this->velocity) > EPSILON)

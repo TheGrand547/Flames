@@ -583,7 +583,7 @@ void display()
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
-	uniform.SetMat4("Model", management.GetAABB().GetModel().GetModelMatrix());
+	uniform.SetMat4("Model", management.GetOBB().GetModelMatrix());
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	// Debugging staticBoxes

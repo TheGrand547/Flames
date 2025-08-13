@@ -45,6 +45,7 @@ public:
 	inline OBB GetOBB() const noexcept
 	{
 		Model temp = ClockBrain::Collision.GetModel().ApplyParent(this->GetModel());
+		//Model temp = this->GetModel().ApplyParent(ClockBrain::Collision.GetModel());
 		return OBB(temp);
 	}
 
