@@ -16,6 +16,9 @@ struct Transform
 
 	// Apply the parent transform to this, then return the resulting transformation
 	inline Transform Append(const Transform& other) const noexcept;
+
+	// Apply the parent transform to this, interpreting *this.position as a global offset
+	inline Transform AppendWorld(const Transform& other) const noexcept;
 };
 
 inline void Transform::Normalize() noexcept
@@ -33,6 +36,14 @@ inline Transform Transform::Append(const Transform& parent) const noexcept
 	Transform temp{ *this };
 	temp.rotation = parent.rotation * temp.rotation;
 	temp.position = parent.position + temp.rotation * temp.position;
+	return temp;
+}
+
+inline Transform Transform::AppendWorld(const Transform& parent) const noexcept
+{
+	Transform temp{ *this };
+	temp.rotation = parent.rotation * temp.rotation;
+	temp.position = parent.position + temp.position;
 	return temp;
 }
 

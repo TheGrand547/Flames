@@ -84,6 +84,7 @@
 #include "DummyArrays.h"
 #include "Door.h"
 #include "entities/ShieldGenerator.h"
+#include <semaphore>
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -1012,6 +1013,8 @@ static glm::vec3 targetAngles{0.f};
 
 CircularBuffer<ColoredVertex, 256> leftCircle, rightCircle;
 
+std::binary_semaphore setPosSemaphore{ 0 };
+
 // This function *is* allowed to touch OpenGL memory, as it is on the same thread. If another one does it then OpenGL breaks
 void idle()
 {
@@ -1549,7 +1552,10 @@ void gameTick()
 		lastStart = tickStart;
 		gameTicks++;
 		Level::IncrementCurrentTicK();
-		Level::SetPlayerPos(playerModel.translation);
+		if (setPosSemaphore.try_acquire())
+		{
+			Level::SetPlayerPos(playerModel.translation);
+		}
 		Level::SetPlayerVel(playfield.GetVelocity());
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(std::chrono::steady_clock::now() - balb).count() << std::endl;
 		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(tickInterval).count() << std::endl;
@@ -1641,6 +1647,10 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		{
 			std::vector<TextureVertex> points{};
 			decalVertex.Swap(points);
+		}
+		if (key == GLFW_KEY_G)
+		{
+			setPosSemaphore.release();
 		}
 		if (key == GLFW_KEY_M) cameraPosition.y += 3;
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
@@ -2463,9 +2473,10 @@ void init()
 		QUICKTIMER("BSP Tree");
 		bp.GenerateBSP(nodeTri);
 	}
-	for (int i = 0; i < 1; i++)
+	
+	for (int i = 0; i < 10; i++)
 	{
-		management.Make();
+		management.Make().Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
 	}
 
 	Level::GetTriangleTree().UpdateStructure();

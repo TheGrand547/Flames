@@ -51,29 +51,35 @@ bool ValidPOsition(const glm::vec3& vec)
 	return Bank<BSP>::Get("Fellas").TestPoint(vec);
 }
 
-void ClockBrain::Init()
+void ClockBrain::Init(glm::vec3 init)
 {
-
-	do {
-		this->transform.position = glm::ballRand(50.f);
-	} while (!ValidPOsition(this->transform.position));
-	do
-	{
-		this->home = glm::i16vec3(this->transform.position + glm::ballRand(10.f));
-	} while (!ValidPOsition(this->home));
-	this->transform.position = glm::vec3(0.f, 60.f, 0.f);
-
 	this->transform.rotation = glm::angleAxis(glm::gaussRand(glm::pi<float>(), glm::pi<float>()), glm::sphericalRand(1.f));
 	this->transform.rotation = ForwardDir(glm::vec3(0.f, -1.f, 0.f), glm::vec3(1.f, 0.f, 0.f));
 
 	this->velocity = this->transform.rotation * glm::vec3(1.f, 0, 0);
-	this->target = this->transform.position;
-	this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
-
-
-	this->home = glm::i16vec3(this->target);
 	this->state = 0;
 	this->tickOffset = rand() % 256;
+	if (init != glm::vec3(0.f))
+	{
+		this->transform.position = glm::ballRand(10.f) + init;
+	}
+	else
+	{
+		do {
+			this->transform.position = glm::ballRand(50.f);
+		} while (!ValidPOsition(this->transform.position));
+		do
+		{
+			this->home = glm::i16vec3(this->transform.position + glm::ballRand(10.f));
+		} while (!ValidPOsition(this->home));
+		this->transform.position = glm::vec3(0.f, 60.f, 0.f);
+	}
+	this->target = this->transform.position;
+
+	// ???
+	//this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
+
+	this->home = glm::i16vec3(this->target);
 }
 
 void ClockBrain::Update(const kdTree<Transform>& transforms)
@@ -110,13 +116,23 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 			Ray liota(this->transform.position, difference);
 			RayCollision range{};
 			bool clearSight = true;
-			for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
+
+			// The nogo zone blocks vision, as a simplified model of the 'ship'
+			const OBB& target = Bank<OBB>::Get("NoGoZone");
+			if (!target.FastIntersect(liota.point, liota.dir))
 			{
-				if (tri->RayCast(liota, range) && range.depth < glm::length(difference))
+				for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
 				{
-					clearSight = false;
-					break;
+					if (tri->RayCast(liota, range) && range.depth < glm::length(difference))
+					{
+						clearSight = false;
+						break;
+					}
 				}
+			}
+			else
+			{
+				clearSight = false;
 			}
 			if (clearSight)
 			{
@@ -183,7 +199,7 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 	glm::vec3 acceleration = MakePrediction(this->transform.position, this->velocity, 40.f, Level::GetPlayerPos(), thingVelocity);
 	glm::vec3 flockingForces = this->IndirectUpdate(transforms);
 	acceleration += drifer(this->transform.position, this->home);
-	if (!playerSpotted)
+	//if (!playerSpotted)
 	{
 		acceleration += wandering(this->wander, this->transform.rotation * glm::vec3(1.f, 0.f, 0.f));
 	}

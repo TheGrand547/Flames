@@ -19,7 +19,8 @@ protected:
 	std::uint8_t tickOffset;
 public:
 	inline ClockBrain() { this->Init(); }
-	void Init();
+	// Everything about this is a horrific hack
+	void Init(glm::vec3 init = glm::vec3(0.f));
 	void Update(const kdTree<Transform>& transforms);
 	void Update2(const kdTree<Transform>& transforms);
 	glm::vec3 IndirectUpdate(const kdTree<Transform>& transforms) noexcept;
