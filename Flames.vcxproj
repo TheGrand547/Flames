@@ -193,6 +193,7 @@
     <ClCompile Include="MagneticAttack.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="MapLoader.cpp" />
+    <ClCompile Include="misc\ExternalShaders.cpp" />
     <ClCompile Include="MissileMotion.cpp" />
     <ClCompile Include="Model.cpp" />
     <ClCompile Include="NavMesh.cpp" />
@@ -278,6 +279,7 @@
     <ClInclude Include="Lines.h" />
     <ClInclude Include="log.h" />
     <ClInclude Include="MagneticAttack.h" />
+    <ClInclude Include="misc\ExternalShaders.h" />
     <ClInclude Include="MissileMotion.h" />
     <ClInclude Include="Model.h" />
     <ClInclude Include="NavMesh.h" />

@@ -516,7 +516,7 @@ void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std
 	std::ifstream included(shaderBasePath + fileName, std::ifstream::in);
 	if (included.is_open())
 	{
-		LogF("Including file '%s' in the virtual shader filesystem.\n", fileName.c_str());
+		//LogF("Including file '%s' in the virtual shader filesystem.\n", fileName.c_str());
 		std::string text(std::istreambuf_iterator<char>{included}, {});
 		shaderIncludeMapping[virtualName] = text;
 	}

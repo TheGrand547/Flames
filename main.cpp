@@ -84,6 +84,7 @@
 #include "DummyArrays.h"
 #include "Door.h"
 #include "entities/ShieldGenerator.h"
+#include "misc/ExternalShaders.h"
 #include <semaphore>
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
@@ -232,7 +233,7 @@ Animation flubber = make_animation( Transform(),
 ExhaustManager managedProcess;
 
 //Player playfield(glm::vec3(-40.f, 60.f, 0.f));
-Player playfield(glm::vec3(0.f));
+Player playfield(glm::vec3(0.f, 50.f, 0.f));
 float playerSpeedControl = 0.1f;
 Input::Keyboard boardState; 
 // TODO: Proper start/reset value
@@ -869,7 +870,7 @@ void display()
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 	skyBox.SetTextureUnit("skyBox", sky);
-	//skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
 	EnableGLFeatures<FaceCulling>();
 
 	basic.SetActiveShader();
@@ -2033,6 +2034,7 @@ void init()
 	Shader::SetBasePath("Shaders");
 	Shader::IncludeInShaderFilesystem("lighting", "lighting.incl");
 	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
+	ExternalShaders::Setup();
 
 	basic.CompileSimple("basic");
 	billboardShader.CompileSimple("texture");
@@ -2055,6 +2057,10 @@ void init()
 	ShaderBank::Get("uniform").CompileSimple("uniform");
 	vision.CompileSimple("vision");
 	widget.CompileSimple("widget");
+
+	ShaderBank::Get("ShieldTexture").Compile(
+		"framebuffer", "shield_texture"
+	);
 	
 	ShaderBank::Get("defer").Compile("new_mesh", "deferred");
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
@@ -2446,7 +2452,8 @@ void init()
 		);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
 		//levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe2.glb",
-		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\big_box.obj",
+		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\mothership.glb",
+		//levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\big_box.obj",
 			[&](const auto& c)
 			{
 				if (c.size() >= 3)

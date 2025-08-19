@@ -30,6 +30,7 @@ Audio/
 imgui.ini
 /Textures/skybox
 /Levels
+/Shaders/external
 
 # Precompiled Headers
 *.gch
