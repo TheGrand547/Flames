@@ -304,7 +304,7 @@ Frustum GetFrustum(const Model& playerModel)
 }
 
 ShieldGenerator bobert;
-
+ColorFrameBuffer buffet;
 void display()
 {
 	// Some kind of framerate limiter?
@@ -329,6 +329,26 @@ void display()
 	glClearDepth(1);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	DisableGLFeatures<StencilTesting>();
+
+	{
+		if (buffet.GetColor().GetGLTexture() == 0)
+		{
+			buffet.GetColor().CreateEmpty(glm::ivec2(256), InternalRed16);
+			buffet.Assemble();
+			buffet.Bind();
+		}
+		else
+		{
+			buffet.Bind();
+			ClearFramebuffer<ColorBuffer>();
+		}
+		FeatureFlagPush<FaceCulling | DepthTesting, false> pushed;
+		Shader& local = ShaderBank::Get("ShieldTexture");
+		local.SetActiveShader();
+		local.SetFloat("FrameTime", gameTicks * Tick::TimeDelta);
+		local.DrawArray<DrawType::TriangleStrip>(4);
+		BindDefaultFrameBuffer();
+	}
 	
 	const Model playerModel(playfield.GetModel());
 
@@ -424,6 +444,7 @@ void display()
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
 		interzone.SetInt("checkUVs", debugFlags[CHECK_UVS]);
 		interzone.SetTextureUnit("textureColor", Bank<Texture2D>::Get("blankTexture"), 0);
+		//interzone.SetTextureUnit("textureColor", buffet.GetColor(), 0);
 		//interzone.DrawElements(levelGeometry.index);
 		interzone.MultiDrawElements(levelGeometry.indirect);
 
@@ -611,6 +632,25 @@ void display()
 	//guyMeshData.index.BindBuffer();
 
 	CheckError();
+
+	{
+		FeatureFlagPush<Blending> _blend;
+		FeatureFlagPush<FaceCulling, false> _blend2;
+		DisableDepthBufferWrite();
+		Shader& foolish = ShaderBank::Get("Shielding");
+		foolish.SetActiveShader();
+		meshVAO.Bind();
+		sphereBuffer.BindBuffer();
+		sphereIndicies.BindBuffer();
+		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
+		Model maudlin;
+		maudlin.translation = glm::vec3(0, 60.f, 0.f);
+		maudlin.scale = glm::vec3(10.f);
+		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
+		foolish.SetMat4("normalMat", glm::mat4(1.f));
+		foolish.DrawElements(sphereIndicies);
+		EnableDepthBufferWrite();
+	}
 
 	Model defaults(playerModel);
 
@@ -934,15 +974,15 @@ void display()
 	//nineSlicer.DrawArrayInstanced<DrawType::TriangleStrip>(4, 9);
 	*/
 
-	/*
+	
 	uiRectTexture.SetActiveShader();
 	
-	auto& colored = playerTextEntry.GetColor();
+	auto& colored = buffet.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
 	uiRectTexture.SetVec4("rectangle", glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
 		colored.GetWidth(), colored.GetHeight()));
-	uiRect.DrawArray<DrawType::TriangleStrip>(4);
-	
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	/*
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
 	uiRect.DrawArray<DrawType::TriangleStrip>(4);
@@ -958,7 +998,6 @@ void display()
 	DisableGLFeatures<FaceCulling>();
 	DisableGLFeatures<Blending>();
 	*/
-
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
 	fontShader.SetActiveShader();
@@ -2073,6 +2112,7 @@ void init()
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
 	ShaderBank::Get("light_volume").CompileSimple("light_volume");
+	ShaderBank::Get("Shielding").CompileSimple("shield");
 
 	basic.UniformBlockBinding("Camera", 0);
 	billboardShader.UniformBlockBinding("Camera", 0);
@@ -2100,6 +2140,7 @@ void init()
 	ShaderBank::Get("combinePass").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("light_volume").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("Shields").UniformBlockBinding("Camera", 0);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);

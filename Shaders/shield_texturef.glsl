@@ -22,19 +22,17 @@ vec2 multiNoise(vec4 pos, vec4 scale, float phase, vec2 seed);
 
 
 layout(location = 0) in vec2 textureCoords;
-layout(location = 0) out float fColor;
+layout(location = 0) out vec4 fColor;
 
 uniform float FrameTime;
 
 void main()
 {
-	fColor = 1.f;
-/*
-	fColor = perlinNoiseWarp(textureCoords, vec2(6), 
+	// 20 works best for scale(parameter 2), poking around to determine if this is causing problems elsewhere
+	fColor = vec4(perlinNoiseWarp(textureCoords, vec2(20), 
 		0.05, // Controls blob size
-		1. + 2. * FrameTime, // Controls speed of development
+		1. + 0.5 * FrameTime, // Controls speed of development
 		1.0f, // just don't touch this
 		0.05, // controls blob size, again, but in a different way
-		1.f); // I don't know
-		*/
+		1.f)); // I don't know
 }
