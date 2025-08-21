@@ -29,10 +29,10 @@ uniform float FrameTime;
 void main()
 {
 	// 20 works best for scale(parameter 2), poking around to determine if this is causing problems elsewhere
-	fColor = vec4(perlinNoiseWarp(textureCoords, vec2(20), 
+	fColor = vec4(sqrt(perlinNoiseWarp(textureCoords, vec2(6), 
 		0.05, // Controls blob size
 		1. + 0.5 * FrameTime, // Controls speed of development
 		1.0f, // just don't touch this
 		0.05, // controls blob size, again, but in a different way
-		1.f)); // I don't know
+		1.f))); // I don't know
 }

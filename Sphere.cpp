@@ -1,4 +1,5 @@
 #include "Sphere.h"
+#include <glm/gtx/compatibility.hpp>
 #include <numbers>
 #include <vector>
 #include "glmHelp.h"
@@ -117,11 +118,17 @@ void Sphere::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 			vertex.y = height;
 			vertex.z = width * sin(miniAngle);
 			glm::vec3 fool = -glm::normalize(vertex);
+			// DON'T TRUST ANY OF THESE UVS
 			glm::vec2 uvs = { (float)j / latitudeSlices, (float)i / longitudeSlices };
 			//glm::vec2 uvs = { vertex.x / (1 - vertex.y), vertex.z / (1 - vertex.y) }; // Recusively bad mapping
-			//glm::vec2 uvs = { 0.5f + glm::atan(fool.z, fool.x) / glm::two_pi<float>(), 0.5f + glm::asin(fool.y) / glm::pi<float>()}; // Recusively bad mapping
 			
-			points.push_back({ vertex, vertex, uvs});
+			glm::vec2 uvs2 = glm::vec2(std::atan2(fool.z, fool.x) / 2.f, std::asin(fool.y))/ glm::pi<float>() 
+				+ glm::vec2(0.5f); // Recusively bad mapping
+			if (j == latitudeSlices)
+			{
+				uvs2.x = 1 - uvs2.x;
+			}
+			points.push_back({ vertex, vertex, uvs2});
 		}
 	}
 	for (GLuint i = 0; i < longitudeSlices; i++)
@@ -130,6 +137,8 @@ void Sphere::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 		GLuint last = first + (latitudeSlices + 1);
 		for (GLuint j = 0; j < latitudeSlices; j++, first++, last++)
 		{
+			//if (j + 1 != latitudeSlices)
+				//continue;
 			if (i != 0)
 			{
 				index.push_back(first + 1);

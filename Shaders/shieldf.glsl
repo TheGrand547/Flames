@@ -10,5 +10,6 @@ uniform sampler2D textureIn;
 
 void main()
 {
-	colorOut = vec4(120,204,226, 255) / 255 * sqrt(texture(textureIn, fTex).r);
+	// Hairy ball says this is the best we got. Screm
+	colorOut = vec4(120,204,226, 255) / 255 * (texture(textureIn, fTex).r);
 }

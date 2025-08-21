@@ -234,6 +234,10 @@ public:
 		{
 			glDrawBuffers(ColorAttachments, drawBufferMacro.data());
 		}
+		if constexpr (SingleColor)
+		{
+			glViewport(0, 0, this->GetColor().GetWidth(), this->GetColor().GetHeight());
+		}
 	}
 
 	inline void BindDraw()

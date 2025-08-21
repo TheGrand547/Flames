@@ -334,6 +334,8 @@ void display()
 		if (buffet.GetColor().GetGLTexture() == 0)
 		{
 			buffet.GetColor().CreateEmpty(glm::ivec2(256), InternalRed16);
+			buffet.GetColor().SetFilters(LinearLinear, MagLinear, Repeat, Repeat);
+			buffet.GetColor().GenerateMipmap();
 			buffet.Assemble();
 			buffet.Bind();
 		}
@@ -349,6 +351,7 @@ void display()
 		local.DrawArray<DrawType::TriangleStrip>(4);
 		BindDefaultFrameBuffer();
 	}
+	Window::Viewport();
 	
 	const Model playerModel(playfield.GetModel());
 
@@ -643,6 +646,7 @@ void display()
 		sphereBuffer.BindBuffer();
 		sphereIndicies.BindBuffer();
 		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
+		//foolish.SetTextureUnit("textureIn", Bank<Texture2D>::Get("flma"), 0);
 		Model maudlin;
 		maudlin.translation = glm::vec3(0, 60.f, 0.f);
 		maudlin.scale = glm::vec3(10.f);
@@ -979,9 +983,10 @@ void display()
 	
 	auto& colored = buffet.GetColor();
 	uiRectTexture.SetTextureUnit("image", colored, 0);
-	uiRectTexture.SetVec4("rectangle", glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
-		colored.GetWidth(), colored.GetHeight()));
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	glm::vec4 loc = glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
+		colored.GetWidth(), colored.GetHeight());
+	uiRectTexture.SetVec4("rectangle", loc);
+	uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	/*
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
@@ -2267,6 +2272,8 @@ void init()
 
 	nineSlice.Load("9slice.png");
 	nineSlice.SetFilters();
+	Bank<Texture2D>::Get("flma").Load("depth.png");
+	Bank<Texture2D>::Get("flma").SetFilters();
 
 	// TODO: Use glm::noise::perlin
 
@@ -2731,7 +2738,7 @@ void init()
 
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
-		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 100, 100);
+		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 50, 50);
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.75f, 3.25f, 30, 30);
 	}
 
