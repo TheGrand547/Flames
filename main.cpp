@@ -652,6 +652,7 @@ void display()
 		maudlin.scale = glm::vec3(10.f);
 		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
+		foolish.SetInt("FeatureToggle", featureToggle);
 		foolish.DrawElements(sphereIndicies);
 		EnableDepthBufferWrite();
 	}
@@ -914,7 +915,7 @@ void display()
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 	skyBox.SetTextureUnit("skyBox", sky);
-	skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+	//skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
 	EnableGLFeatures<FaceCulling>();
 
 	basic.SetActiveShader();
@@ -986,7 +987,7 @@ void display()
 	glm::vec4 loc = glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
 		colored.GetWidth(), colored.GetHeight());
 	uiRectTexture.SetVec4("rectangle", loc);
-	uiRect.DrawArray<DrawType::TriangleStrip>(4);
+	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
 	/*
 	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
 	uiRectTexture.SetVec4("rectangle", buttonRect);
@@ -2738,7 +2739,7 @@ void init()
 
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
-		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 50, 50);
+		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 100, 100);
 		Capsule::GenerateMesh(capsuleBuffer, capsuleIndex, 0.75f, 3.25f, 30, 30);
 	}
 

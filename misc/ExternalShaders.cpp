@@ -7,7 +7,7 @@ namespace ExternalShaders
 	{
 		constexpr auto externals = std::to_array<std::string_view>(
 			{
-				"CellularNoise", 
+				"CellularNoise",
 				"debug",
 				"fbm",
 				"fbmImage",
@@ -23,11 +23,11 @@ namespace ExternalShaders
 				"voronoi",
 				"warp"
 			}
-			);
+		);
 		for (const auto& element : externals)
 		{
 			Shader::IncludeInShaderFilesystem(element.data(), std::string("external\\") + element.data() + std::string(".glsl"));
 		}
-
+		Shader::IncludeInShaderFilesystem("CubeMapMath", "CubeMapMath.incl");
 	}
 }

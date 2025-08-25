@@ -1,0 +1,20 @@
+vec2 NormToUVCubemap(vec3 normal)
+{
+	vec2 uv;
+	vec3 absolute = abs(normal.xyz);
+	float major = max(absolute.x, max(absolute.y, absolute.z));
+	if (absolute.x == major)
+	{
+		uv = normal.yz;
+	}
+	else if (absolute.y == major)
+	{
+		uv = normal.xz;
+	}
+	else
+	{
+		uv = normal.xy;
+	}
+	uv = 0.5 * (1 + (uv / major));
+	return uv;
+}

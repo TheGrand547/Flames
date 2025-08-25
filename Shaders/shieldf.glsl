@@ -1,4 +1,5 @@
 #version 440 core
+#include "CubeMapMath"
 
 layout(location = 0) out vec4 colorOut;
 
@@ -7,9 +8,16 @@ layout(location = 1) in vec4 fNorm;
 layout(location = 2) in vec2 fTex;
 
 uniform sampler2D textureIn;
+uniform int FeatureToggle;
 
 void main()
 {
+	const vec4 ShieldColor = vec4(120,204,226, 255) / 255;
 	// Hairy ball says this is the best we got. Screm
-	colorOut = vec4(120,204,226, 255) / 255 * (texture(textureIn, fTex).r);
+	vec2 uv = fTex;
+	if (FeatureToggle >= 0)
+	{
+		uv = NormToUVCubemap(fNorm.xyz);
+	}
+	colorOut = ShieldColor * texture(textureIn, uv).r;
 }
