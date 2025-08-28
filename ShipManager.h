@@ -54,6 +54,20 @@ public:
 		}
 		return OBB();
 	}
+	inline ArrayBuffer& GetPositions() noexcept
+	{
+		return this->smooth;
+	}
+	inline std::vector<glm::vec3> GetRawPositions() noexcept
+	{
+		return this->fools.ExclusiveOperation([&](auto& list)
+			{
+				std::vector<glm::vec3> out(std::size_t(list.size()));
+				std::ranges::copy(list, std::back_inserter(out));
+				return out;
+			}
+		);
+	}
 };
 
 #endif // SHIP_MANAGER_H

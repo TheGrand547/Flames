@@ -13,11 +13,6 @@ uniform int FeatureToggle;
 void main()
 {
 	const vec4 ShieldColor = vec4(120,204,226, 255) / 255;
-	// Hairy ball says this is the best we got. Screm
-	vec2 uv = fTex;
-	if (FeatureToggle >= 0)
-	{
-		uv = NormToUVCubemap(fNorm.xyz);
-	}
-	colorOut = ShieldColor * texture(textureIn, uv).r;
+	colorOut = ShieldColor * texture(textureIn, NormToUVCubemap(fNorm.xyz)).r;
+	colorOut.w *= colorOut.w * colorOut.w;
 }

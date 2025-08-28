@@ -22,6 +22,7 @@ void ShipManager::Update() noexcept
 	{
 		// I don't know if this is even a good idea
 		StaticVector<MeshMatrix> meshes(this->brainDrain.size(), MeshMatrix({ 0.f }, { 0.f }));
+		StaticVector<glm::vec3> sleeper(this->brainDrain.size());
 		
 		Parallel::for_each_index(std::execution::par, this->brainDrain, [&](std::size_t i)
 			{
@@ -30,6 +31,7 @@ void ShipManager::Update() noexcept
 				element.Update(bigboys);
 				//this->inactive[i] = (element.GetPair());
 				meshes[i] = (element.GetPair());
+				sleeper[i] = element.GetPos();
 
 				// Keeping this in just in case the issue returns, despite the performance penalty
 				auto& p = meshes[i];
@@ -39,7 +41,8 @@ void ShipManager::Update() noexcept
 				}
 			}
 		);
-		std::copy(meshes.begin(), meshes.end(), std::back_inserter(this->inactive));
+		std::ranges::copy(meshes, std::back_inserter(this->inactive));
+		std::ranges::copy(sleeper, std::back_inserter(pointers));
 	}
 	else
 	{
@@ -49,7 +52,7 @@ void ShipManager::Update() noexcept
 				element.Update(bigboys);
 				this->inactive.push_back(element.GetPair());
 				pointers.push_back(element.GetPos());
-				pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);
+				//pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);
 
 			}
 		);

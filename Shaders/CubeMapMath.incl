@@ -1,3 +1,4 @@
+// Based on the implementation laid out: https://en.wikipedia.org/wiki/Cube_mapping
 vec2 NormToUVCubemap(vec3 normal)
 {
 	vec2 uv;

@@ -305,6 +305,7 @@ Frustum GetFrustum(const Model& playerModel)
 
 ShieldGenerator bobert;
 ColorFrameBuffer buffet;
+BufferSync<std::vector<glm::vec3>> shieldPos;
 void display()
 {
 	// Some kind of framerate limiter?
@@ -637,23 +638,29 @@ void display()
 	CheckError();
 
 	{
+		// TODO: move this elsewhere
 		FeatureFlagPush<Blending> _blend;
 		FeatureFlagPush<FaceCulling, false> _blend2;
 		DisableDepthBufferWrite();
 		Shader& foolish = ShaderBank::Get("Shielding");
+		VAO& vao = VAOBank::Get("simple_mesh_instance");
+		ArrayBuffer& buffer = Bank<ArrayBuffer>::Get("shieldPos");
 		foolish.SetActiveShader();
-		meshVAO.Bind();
-		sphereBuffer.BindBuffer();
+		vao.Bind();
+		vao.BindArrayBuffer(sphereBuffer, 0);
+		vao.BindArrayBuffer(buffer, 1);
+		//sphereBuffer.BindBuffer();
 		sphereIndicies.BindBuffer();
 		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
 		//foolish.SetTextureUnit("textureIn", Bank<Texture2D>::Get("flma"), 0);
 		Model maudlin;
-		maudlin.translation = glm::vec3(0, 60.f, 0.f);
+		//maudlin.translation = glm::vec3(0, 60.f, 0.f);
 		maudlin.scale = glm::vec3(10.f);
 		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
 		foolish.SetInt("FeatureToggle", featureToggle);
-		foolish.DrawElements(sphereIndicies);
+		//foolish.DrawElements(sphereIndicies);
+		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 		EnableDepthBufferWrite();
 	}
 
@@ -1284,6 +1291,11 @@ void idle()
 			}
 		);
 		management.UpdateMeshes();
+		shieldPos.ExclusiveOperation([&](std::vector<glm::vec3>& bufs)
+			{
+				Bank<ArrayBuffer>::Get("shieldPos").BufferData(bufs);
+			}
+		);
 	}
 
 	Parallel::SetStatus(!keyState['P']);
@@ -1330,7 +1342,7 @@ void idle()
 
 	fonter.GetTextTris(textBuffer, 0, 0, formatted);
 
-	std::copy(std::begin(keyState), std::end(keyState), std::begin(keyStateBackup));
+	std::ranges::copy(keyState, std::begin(keyStateBackup));
 
 	decalVertex.ExclusiveOperation([&](auto& ref)
 		{
@@ -1467,6 +1479,7 @@ void gameTick()
 		drawingVolumes.Swap(volumes);
 
 		management.Update();
+		shieldPos.Swap(bobert.GetPoints(management.GetRawPositions()));
 		heWhoSleeps.Update();
 
 		// Gun animation
@@ -2214,6 +2227,16 @@ void init()
 		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
+		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+	}
+	{
+		CheckError();
+		VAO& ref = VAOBank::Get("simple_mesh_instance");
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(MeshVertex, normal), sizeof(MeshVertex));
+		ref.ArrayFormatOverride<glm::vec2>(2, 0, 0, offsetof(MeshVertex, texture), sizeof(MeshVertex));
+		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, 0, sizeof(glm::vec3));
+		//ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	CheckError();
