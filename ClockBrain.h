@@ -17,6 +17,10 @@ protected:
 	float wander;
 	int state;
 	std::uint8_t tickOffset;
+	std::size_t hash;
+
+	void GenerateHash() noexcept;
+
 public:
 	inline ClockBrain() { this->Init(); }
 	// Everything about this is a horrific hack
@@ -65,7 +69,21 @@ public:
 		return Level::GetCurrentTick() + this->tickOffset;
 	}
 
+	inline std::size_t GetHash() const noexcept
+	{
+		return this->hash;
+	}
+
 	static inline OBB Collision;
+};
+
+template<>
+struct std::hash<ClockBrain>
+{
+	std::size_t operator()(const ClockBrain& brain) const
+	{
+		return brain.GetHash();
+	}
 };
 
 #endif // CLOCK_BRAIN_H

@@ -1479,6 +1479,7 @@ void gameTick()
 		drawingVolumes.Swap(volumes);
 
 		management.Update();
+
 		shieldPos.Swap(bobert.GetPoints(management.GetRawPositions()));
 		heWhoSleeps.Update();
 

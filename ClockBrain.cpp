@@ -1,5 +1,6 @@
 #include "ClockBrain.h"
 #include <glm/gtc/random.hpp>
+#include <glm/gtx/hash.hpp>
 #include "Model.h"
 #include "BasicPhysics.h"
 #include "MissileMotion.h"
@@ -80,6 +81,12 @@ void ClockBrain::Init(glm::vec3 init)
 	//this->home = glm::i16vec3(this->target + glm::ballRand(10.f));
 
 	this->home = glm::i16vec3(this->target);
+	this->GenerateHash();
+}
+
+void ClockBrain::GenerateHash() noexcept
+{
+	this->hash = std::hash<glm::vec3>{}(this->transform.position);
 }
 
 void ClockBrain::Update(const kdTree<Transform>& transforms)

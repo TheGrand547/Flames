@@ -14,7 +14,7 @@ protected:
 	ArrayBuffer smooth;
 	
 	std::vector<MeshMatrix> active, inactive;
-	BufferSync<std::vector<glm::vec3>> fools;
+	BufferSync<std::vector<std::pair<std::size_t, glm::vec3>>> fools;
 	bool dirty = true;
 public:
 	ShipManager() noexcept = default;
@@ -58,11 +58,11 @@ public:
 	{
 		return this->smooth;
 	}
-	inline std::vector<glm::vec3> GetRawPositions() noexcept
+	inline std::vector<std::pair<std::size_t, glm::vec3>> GetRawPositions() noexcept
 	{
 		return this->fools.ExclusiveOperation([&](auto& list)
 			{
-				std::vector<glm::vec3> out(std::size_t(list.size()));
+				std::vector<std::pair<std::size_t, glm::vec3>> out;
 				std::ranges::copy(list, std::back_inserter(out));
 				return out;
 			}

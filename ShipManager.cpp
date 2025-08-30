@@ -16,13 +16,13 @@ void ShipManager::Update() noexcept
 
 	kdTree<Transform> bigboys = kdTree<Transform>::Generate(transformers);
 
-	std::vector<glm::vec3> pointers;
+	std::vector<std::pair<std::size_t, glm::vec3>> pointers;
 	// Arbitrary threshold
 	if (!Input::Mouse::CheckButton(Input::Mouse::ButtonMiddle) && this->brainDrain.size() > 50)
 	{
 		// I don't know if this is even a good idea
 		StaticVector<MeshMatrix> meshes(this->brainDrain.size(), MeshMatrix({ 0.f }, { 0.f }));
-		StaticVector<glm::vec3> sleeper(this->brainDrain.size());
+		StaticVector<std::pair<std::size_t, glm::vec3>> sleeper(this->brainDrain.size());
 		
 		Parallel::for_each_index(std::execution::par, this->brainDrain, [&](std::size_t i)
 			{
@@ -31,7 +31,7 @@ void ShipManager::Update() noexcept
 				element.Update(bigboys);
 				//this->inactive[i] = (element.GetPair());
 				meshes[i] = (element.GetPair());
-				sleeper[i] = element.GetPos();
+				sleeper[i] = std::make_pair(element.GetHash(), element.GetPos());
 
 				// Keeping this in just in case the issue returns, despite the performance penalty
 				auto& p = meshes[i];
@@ -51,7 +51,7 @@ void ShipManager::Update() noexcept
 				glm::vec3 position = element.GetPos();
 				element.Update(bigboys);
 				this->inactive.push_back(element.GetPair());
-				pointers.push_back(element.GetPos());
+				pointers.push_back(std::make_pair(element.GetHash(), element.GetPos()));
 				//pointers.push_back(element.GetPos() + glm::mat3_cast(element.GetTransform().rotation)[0] * 10.f);
 
 			}
@@ -108,5 +108,9 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
 void ShipManager::UpdateMeshes() noexcept
 {
 	this->pain.BufferData(this->active, DynamicDraw);
-	this->fools.ExclusiveOperation([&](std::vector<glm::vec3>& p) {this->smooth.BufferData(p, DynamicDraw); });
+	this->fools.ExclusiveOperation([&](decltype(this->fools)::value_type & p)
+		{
+			this->smooth.BufferData(p | std::views::values, DynamicDraw);
+		}
+	);
 }
