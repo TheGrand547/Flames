@@ -20,7 +20,7 @@ static constexpr float TurningThrust = 30.f;
 static constexpr float MinFiringVelocity = 8.f; 
 
 static constexpr IntervalType FireDelay = 16;
-static constexpr IntervalType FireInterval = 200;
+static constexpr IntervalType FireInterval = 16;
 static constexpr IntervalType WaitingValue = -1;
 
 static constexpr float ImpactResponse = 1.00f; // Maybe tune this a bit
@@ -38,7 +38,7 @@ static const glm::vec3 PopcornOffsetZ = glm::vec3(3.5f, 0.f, -1.25f); // Painful
 static const glm::vec3 SponsonOffset = glm::vec3(6.75f, 0.f, 3.4f);
 static const glm::vec3 SponsonOffsetZ = glm::vec3(6.75f, 0.f, -3.4f); // Painfully sloppy
 
-static constexpr IntervalType PopcornDelay = 40;
+static constexpr IntervalType PopcornDelay = 20;
 static constexpr IntervalType RecoilTime = 15;
 static SimpleAnimation popcornAnimation{ {glm::vec3(0.f)},  RecoilTime, Easing::EaseOutCircular,
 						{glm::vec3(-0.4f, 0.f, 0.f)}, PopcornDelay - RecoilTime, Easing::EaseOutBack };

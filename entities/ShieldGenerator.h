@@ -8,6 +8,11 @@
 
 struct ShieldGenerator
 {
+	struct Individual
+	{
+		Transform transform;
+		std::uint16_t health = 1000;
+	};
 	static inline MeshData models;
 	Transform transform;
 	std::uint16_t cycle{ 0 };

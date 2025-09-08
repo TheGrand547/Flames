@@ -50,6 +50,12 @@ namespace Level
 
 	glm::vec3 GetPlayerVel() noexcept;
 	void SetPlayerVel(glm::vec3 vec) noexcept;
+
+	using IDType = std::uint32_t;
+
+	IDType GetID() noexcept;
+
+	static inline std::unordered_map<IDType, std::uint32_t> ShieldMapping;
 }
 
 

@@ -154,4 +154,10 @@ namespace Level
 	{
 		PlayerVel = pos;
 	}
+
+	static IDType currentId;
+	IDType GetID() noexcept
+	{
+		return currentId++;
+	}
 }

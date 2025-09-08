@@ -798,13 +798,13 @@ void display()
 	CheckError();
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	if (bulletMesh.rawIndirect[0].instanceCount > 0)
+	if (bulletMesh.rawIndirect[1].instanceCount > 0)
 	{
 		Shader& bulletShader = ShaderBank::Get("bulletShader");
 		bulletShader.SetActiveShader();
 		bulletMesh.Bind(bulletVAO);
 		bulletVAO.BindArrayBuffer(bulletMats, 1);
-		bulletShader.DrawElements(bulletMesh.indirect);
+		bulletShader.MultiDrawElements(bulletMesh.indirect);
 		{
 			
 			Shader& shaderRef = ShaderBank::Get("uniformInstance");
@@ -1279,7 +1279,8 @@ void idle()
 	{
 		bulletMatricies.ExclusiveOperation([&](std::vector<glm::mat4>& mats) 
 			{
-				bulletMesh.rawIndirect[0].instanceCount = static_cast<GLuint>(mats.size());
+				bulletMesh.rawIndirect[0].instanceCount = 0;
+				bulletMesh.rawIndirect[1].instanceCount = static_cast<GLuint>(mats.size());
 				bulletMesh.indirect.BufferSubData(bulletMesh.rawIndirect);
 				bulletMats.BufferData(mats);
 			}
@@ -1399,11 +1400,38 @@ void gameTick()
 			});
 		auto doorBop = heWhoSleeps.GetTris();
 		Sphere broadPass = heWhoSleeps.GetBroad();
+
+		management.Update();
+
+		auto tmep = bobert.GetPoints(management.GetRawPositions());
+		std::vector<glm::vec3> shieldPoses;
+		// This is bad and should be moved to the shield generator class
+		for (glm::vec3 point : tmep)
+		{
+			Sphere spoke(point, 10.f);
+			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
+			{
+				shieldPoses.push_back(point);
+			}
+		}
+		shieldPos.Swap(tmep);
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
 				if (glm::any(glm::isnan(local.transform.position)) || local.lifeTime > 5 * Tick::PerSecond)
 				{
 					return true;
+				}
+				if (local.team == 0)
+				{
+					for (glm::vec3 point : shieldPoses)
+					{
+						float distance = glm::distance(point, local.transform.position);
+						if (9.5f < distance && distance <= 10.f)
+						{
+							Level::SetExplosion(local.transform.position);
+							return true;
+						}
+					}
 				}
 				OBB transformedBox = local.GetOBB();
 				if (transformedBox.GetAABB().Overlap(broadPass))
@@ -1478,9 +1506,6 @@ void gameTick()
 
 		drawingVolumes.Swap(volumes);
 
-		management.Update();
-
-		shieldPos.Swap(bobert.GetPoints(management.GetRawPositions()));
 		heWhoSleeps.Update();
 
 		// Gun animation

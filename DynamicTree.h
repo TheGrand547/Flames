@@ -13,6 +13,11 @@ constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (15);
 constexpr auto DYNAMIC_OCT_TREE_DIMENSION = (100.f);
 constexpr auto DYNAMIC_OCT_TREE_MIN_VOLUME = (10.f);
 
+enum DynamicTreeEnum
+{
+	RESEAT, REMOVE, DO_NOTHING
+};
+
 template<class T> class DynamicOctTree
 {
 protected:
@@ -245,6 +250,30 @@ protected:
 				}
 			}
 		}
+
+		bool QuickTest(const AABB& bounds) const noexcept
+		{
+			if (this->bounds.Overlap(bounds))
+			{
+				for (std::size_t i = 0; i < 8; i++)
+				{
+					if (this->members[i] && 
+						this->members[i]->size > 0 && 
+						this->members[i]->QuickTest(bounds))
+					{
+						return true;
+					}
+				}
+				for (const auto& element : this->objects)
+				{
+					if (element.first.Overlap(bounds))
+					{
+						return true;
+					}
+				}
+			}
+			return false;
+		}
 };
 	
 public: 
@@ -418,8 +447,8 @@ public:
 		}
 	}
 
-	template<typename F>
-	std::size_t EraseIf(F func)
+	// Returns the number of removed elements
+	template<typename F> std::size_t EraseIf(F func)
 	{
 		std::size_t size = 0;
 		//using iter_type = Structure::iterator;
@@ -434,6 +463,7 @@ public:
 			{
 				// CLEAN UP
 				this->InternalErase(this->elements.begin());
+				return 1;
 			}
 			return 0;
 		}
@@ -455,6 +485,83 @@ public:
 				{
 					clearAll = true;
 				}
+			}
+			if (i == this->elements.begin())
+			{
+				break;
+			}
+		}
+		if (clearAll)
+		{
+			this->elements.clear();
+		}
+		else
+		{
+			this->elements.erase(endOfInvalid.iter + 1, this->elements.end());
+		}
+		// Make sure this gets rid of the pointer things
+		return size;
+	}
+
+	// Returns the number of removed elements
+	template<typename F>
+		requires requires(F func, T& element)
+	{
+		{ func(element) } -> std::convertible_to<DynamicTreeEnum>;
+	}
+	std::size_t FullService(F func)
+	{
+		std::size_t size = 0;
+		using iter_type = iterator;
+		if (this->elements.size() == 0)
+		{
+			return 0;
+		}
+		if (this->elements.size() == 1)
+		{
+			auto mini = func(this->elements.front().first);
+			switch (mini)
+			{
+			case REMOVE:
+				// CLEAN UP
+				this->InternalErase(this->elements.begin());
+				return 1;
+			case RESEAT:
+				this->ReSeat(this->elements.front());
+				[[fallthrough]];
+			default:
+				return 0;
+				
+			}
+		}
+		iter_type endOfInvalid = iterator(std::prev(this->elements.end()));
+		bool clearAll = false;
+		for (iter_type i = iterator(endOfInvalid); ; i--)
+		{
+			DynamicTreeEnum local = func(*i);
+			switch (local)
+			{
+				case REMOVE:
+					{
+						// Need to replace swap it to the 'start' of the 'invalid' region;
+						size++;
+						i.swap(endOfInvalid);
+						endOfInvalid.iter->second.pointer->Erase(endOfInvalid.iter->second.iterator);
+						if (endOfInvalid != this->elements.begin())
+						{
+							endOfInvalid--;
+						}
+						else
+						{
+							clearAll = true;
+						}
+						break;
+					}
+				case RESEAT:
+					this->Reseat(*i);
+					break;
+				default:
+					break;
 			}
 			if (i == this->elements.begin())
 			{
@@ -535,6 +642,10 @@ public:
 		}
 		return value;
 	}
+	template<typename Type> inline auto Search(const Type& type) const noexcept
+	{
+		return this->Search(type.GetAABB());
+	}
 
 	// (Probably) Super expensive, try not to do this if you can avoid it
 	void ReSeat()
@@ -606,6 +717,17 @@ public:
 	inline std::size_t size() const noexcept
 	{
 		return this->elements.size();
+	}
+
+	// Efficicently checks to see if *anything* in this overlaps the given bounds, trying to minimize comparisons
+	bool QuickTest(const AABB& bounds) const noexcept
+	{
+		return this->root.QuickTest(bounds);
+	}
+
+	template<typename Type> bool QuickTest(const Type& type) const noexcept
+	{
+		return this->root.QuickTest(type.GetAABB());
 	}
 
 protected:
