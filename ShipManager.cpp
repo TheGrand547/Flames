@@ -65,12 +65,15 @@ void ShipManager::Update() noexcept
 			for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
 			{
 				//Log(glm::distance(thingy->GetPos(), bullet.position));
-				if (bullet->team == 0 && bullet->GetAABB().Overlap(bloke.GetAABB()))
+				if (bullet->team == 0 && bullet->IsValid() && bullet->GetAABB().Overlap(bloke.GetAABB()))
 				{
 					Log("Oh shit we got one");
 					bullet->transform.position = glm::vec3(NAN);
-					Level::SetExplosion(bloke.GetPos());
-					return true;
+					if (--bloke.health == 0)
+					{
+						Level::SetExplosion(bloke.GetPos());
+						return true;
+					}
 				}
 			}
 			return false;

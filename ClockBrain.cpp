@@ -82,6 +82,7 @@ void ClockBrain::Init(glm::vec3 init)
 
 	this->home = glm::i16vec3(this->target);
 	this->GenerateHash();
+	this->health = 10;
 }
 
 void ClockBrain::GenerateHash() noexcept

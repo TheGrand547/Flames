@@ -1306,6 +1306,7 @@ void idle()
 	buffered << "\n" << playfield.GetModel().translation;
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle << "\nFull Calculations: " << debugFlags[FULL_CALCULATIONS];
 	{
+		buffered << '\n' << Level::GetBulletTree().size();
 		// Only for debugging lights
 		/*
 		glm::vec3 localCamera = cameraPosition;
@@ -1381,6 +1382,10 @@ void gameTick()
 		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
+				if (!local.IsValid())
+				{
+					return false;
+				}
 				glm::vec3 previous = local.transform.position;
 				if (!debugFlags[FREEZE_GAMEPLAY])
 				{
@@ -1398,8 +1403,6 @@ void gameTick()
 				}
 				return previous != local.transform.position;
 			});
-		auto doorBop = heWhoSleeps.GetTris();
-		Sphere broadPass = heWhoSleeps.GetBroad();
 
 		management.Update();
 
@@ -1411,17 +1414,17 @@ void gameTick()
 			Sphere spoke(point, 10.f);
 			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
 			{
-				shieldPoses.push_back(point);
+				//shieldPoses.push_back(point);
 			}
 		}
-		shieldPos.Swap(tmep);
+		//shieldPos.Swap(tmep);
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
-				if (glm::any(glm::isnan(local.transform.position)) || local.lifeTime > 5 * Tick::PerSecond)
+				if (!local.IsValid())
 				{
 					return true;
 				}
-				if (local.team == 0)
+				if (local.team == 0 && false)
 				{
 					for (glm::vec3 point : shieldPoses)
 					{
@@ -1434,18 +1437,6 @@ void gameTick()
 					}
 				}
 				OBB transformedBox = local.GetOBB();
-				if (transformedBox.GetAABB().Overlap(broadPass))
-				{
-					for (auto& watcher : doorBop)
-					{
-						if (DetectCollision::Overlap(transformedBox, watcher) && heWhoSleeps.openState != Door::Open)
-						{
-							//heWhoSleeps.openState = Door::Opening;
-							heWhoSleeps.StartOpening();
-							return true;
-						}
-					}
-				}
 				//blarg.push_back(transformedBox.GetModelMatrix());
 				//blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
 				
@@ -1460,7 +1451,8 @@ void gameTick()
 						// can be parallelized, with only the copying needing sequential access
 						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
 						// generating decals also requires a OctTreeSearch, escape the outer one.
-						if (decalVertex.ExclusiveOperation([&](auto& ref)
+						if (decalVertex.ExclusiveOperation(
+							[&](auto& ref)
 							{
 								//QuickTimer _time("Decal Generation");
 								// TODO: Not completely pleased with this, which triangle is hit first has a big impact on the 

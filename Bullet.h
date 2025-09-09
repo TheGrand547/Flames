@@ -26,5 +26,10 @@ struct Bullet
 	Model GetModel() const noexcept;
 	OBB GetOBB() const noexcept;
 	AABB GetAABB() const noexcept;
+	
+	inline bool IsValid() const noexcept
+	{
+		return !glm::any(glm::isnan(this->transform.position)) && this->lifeTime < 5 * Tick::PerSecond;
+	}
 };
 #endif // BULLET_H
