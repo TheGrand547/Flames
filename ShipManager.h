@@ -5,6 +5,7 @@
 #include "ClockBrain.h"
 #include "Buffer.h"
 #include "async/BufferSync.h"
+#include "Level.h"
 
 class ShipManager
 {
@@ -14,7 +15,7 @@ protected:
 	ArrayBuffer smooth;
 	
 	std::vector<MeshMatrix> active, inactive;
-	BufferSync<std::vector<std::pair<std::size_t, glm::vec3>>> fools;
+	BufferSync<std::vector<Bundle<glm::vec3>>> fools;
 	bool dirty = true;
 public:
 	ShipManager() noexcept = default;
@@ -58,11 +59,11 @@ public:
 	{
 		return this->smooth;
 	}
-	inline std::vector<std::pair<std::size_t, glm::vec3>> GetRawPositions() noexcept
+	inline std::vector<Bundle<glm::vec3>> GetRawPositions() noexcept
 	{
 		return this->fools.ExclusiveOperation([&](auto& list)
 			{
-				std::vector<std::pair<std::size_t, glm::vec3>> out;
+				std::vector<Bundle<glm::vec3>> out;
 				std::ranges::copy(list, std::back_inserter(out));
 				return out;
 			}

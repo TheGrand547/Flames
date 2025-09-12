@@ -254,6 +254,7 @@
     <ClInclude Include="DrawStruct.h" />
     <ClInclude Include="DummyArrays.h" />
     <ClInclude Include="DynamicTree.h" />
+    <ClInclude Include="entities\EntityBundle.h" />
     <ClInclude Include="entities\ShieldGenerator.h" />
     <ClInclude Include="ExhaustManager.h" />
     <ClInclude Include="Font.h" />

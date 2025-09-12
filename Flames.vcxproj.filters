@@ -503,6 +503,9 @@
     <ClInclude Include="misc\ExternalShaders.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="entities\EntityBundle.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="Flames.rc">

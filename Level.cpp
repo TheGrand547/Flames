@@ -1,5 +1,6 @@
 #include "Level.h"
 #include <mutex>
+#include <atomic>
 
 namespace Level
 {
@@ -155,7 +156,7 @@ namespace Level
 		PlayerVel = pos;
 	}
 
-	static IDType currentId;
+	static std::atomic<IDType> currentId;
 	IDType GetID() noexcept
 	{
 		return currentId++;

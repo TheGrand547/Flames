@@ -18,6 +18,7 @@ protected:
 	int state;
 	std::uint8_t tickOffset;
 	std::size_t hash;
+	IDType id;
 
 	void GenerateHash() noexcept;
 
@@ -73,6 +74,11 @@ public:
 	inline std::size_t GetHash() const noexcept
 	{
 		return this->hash;
+	}
+
+	inline IDType GetID() const noexcept
+	{
+		return this->id;
 	}
 
 	static inline OBB Collision;

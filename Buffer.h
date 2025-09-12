@@ -6,6 +6,7 @@
 #include <map>
 #include <span>
 #include <vector>
+#include <ranges>
 #include "log.h"
 
 enum BufferAccess
@@ -85,6 +86,12 @@ public:
 
 	// Generic data structure buffer data
 	template<template<class, class...> class C, class T, class... Args> void BufferData(const C<T, Args...>& data, BufferAccess usage = StaticDraw);
+
+	template<typename U, class T> void BufferData(const T& data, BufferAccess usage = StaticDraw) requires std::ranges::range<T>&&
+		requires (T type)
+	{
+		{ *type.begin() } -> std::convertible_to<U>;
+	};
 	
 	// For inserting a single element
 	template<class T> void BufferSubData(const T& data, GLintptr offset = 0);
@@ -287,6 +294,29 @@ template<BufferType Type> template<class T> void Buffer<Type>::BufferData(const 
 	this->BufferData(std::span<const T>(data), usage);
 }
 
+template<BufferType Type> template<typename U, typename T> void Buffer<Type>::BufferData(const T& data, BufferAccess usage)
+	requires std::ranges::range<T>&&
+	requires (T type)
+{
+	{ *type.begin() } -> std::convertible_to<U>;
+}
+{
+	if (!this->buffer)
+	{
+		this->Generate();
+	}
+	if (this->buffer)
+	{
+		std::vector<U> reserved{};
+		reserved.reserve(std::distance(data.begin(), data.end()));
+		for (const auto& a : data)
+		{
+			reserved.push_back(a);
+		}
+		this->BufferData(std::span<const U>(reserved), usage);
+	}
+}
+
 template<BufferType Type> template<template<class, class...> class C, class T, class... Args> inline void Buffer<Type>::BufferData(const C<T, Args...>& data, BufferAccess usage)
 {
 	if (!this->buffer)
@@ -297,13 +327,15 @@ template<BufferType Type> template<template<class, class...> class C, class T, c
 	{
 		std::vector<T> reserved{};
 		reserved.reserve(std::distance(data.begin(), data.end()));
-		for (auto& a : data)
+		for (const auto& a : data)
 		{
 			reserved.push_back(a);
 		}
 		this->BufferData(std::span<const T>(reserved), usage);
 	}
 }
+
+
 
 template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubData(const T& data, GLintptr offset)
 {

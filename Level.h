@@ -7,6 +7,7 @@
 #include "PathNode.h"
 #include "Bullet.h"
 #include "NavMesh.h"
+#include "entities/EntityBundle.h"
 
 namespace Level
 {
@@ -51,7 +52,6 @@ namespace Level
 	glm::vec3 GetPlayerVel() noexcept;
 	void SetPlayerVel(glm::vec3 vec) noexcept;
 
-	using IDType = std::uint32_t;
 
 	IDType GetID() noexcept;
 
