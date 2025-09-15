@@ -655,7 +655,7 @@ void display()
 		//foolish.SetTextureUnit("textureIn", Bank<Texture2D>::Get("flma"), 0);
 		Model maudlin;
 		//maudlin.translation = glm::vec3(0, 60.f, 0.f);
-		maudlin.scale = glm::vec3(10.f);
+		maudlin.scale = glm::vec3(4.f * glm::compMax(ClockBrain::Collision.GetScale()));
 		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
 		foolish.SetInt("FeatureToggle", featureToggle);
@@ -1414,26 +1414,42 @@ void gameTick()
 			Sphere spoke(point, 10.f);
 			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
 			{
-				//shieldPoses.push_back(point);
+				shieldPoses.push_back(point);
 			}
+			volumes.push_back({ glm::vec4(point, 10.f), glm::vec3(120.f,204.f,226.f) / 255.f, glm::vec3(1.f, 0.5f, 0.05f) });
 		}
-		//shieldPos.Swap(tmep);
+		shieldPos.Swap(tmep);
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
 			{
 				if (!local.IsValid())
 				{
 					return true;
 				}
-				if (local.team == 0 && false)
+				if (local.team == 0)
 				{
 					for (glm::vec3 point : shieldPoses)
 					{
+						glm::vec3 forward = (local.transform.rotation * glm::vec3(local.speed, 0.f, 0.f)) * Tick::TimeDelta;
+						LineSegment segmentation{ local.transform.position - forward, local.transform.position + forward };
+						Capsule flipper(segmentation, 0.1f);
+						Collision hit{};
+						Sphere bogus{ point, 4.f * glm::compMax(ClockBrain::Collision.GetScale()) };
+						if (flipper.Intersect(bogus, hit))
+						{
+							if (!(bogus.SignedDistance(segmentation.A) < 0 && bogus.SignedDistance(segmentation.B) < 0))
+							{
+								//Log("Blown'd up");
+								return true;
+							}
+						}
+						/*
 						float distance = glm::distance(point, local.transform.position);
 						if (9.5f < distance && distance <= 10.f)
 						{
 							Level::SetExplosion(local.transform.position);
 							return true;
 						}
+						*/
 					}
 				}
 				OBB transformedBox = local.GetOBB();

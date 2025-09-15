@@ -178,7 +178,7 @@ namespace DetectCollision
 	bool Overlap(OBB box, Triangle triangle) noexcept
 	{
 		Collision dummy{};
-		return DetectCollision::Overlap(box, triangle, dummy);
+		return ::DetectCollision::Overlap(box, triangle, dummy);
 	}
 
 

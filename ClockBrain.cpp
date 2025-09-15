@@ -219,7 +219,7 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 		//acceleration += glm::normalize(Level::GetPlayerPos() - this->transform.position) * PlayerSightForce;
 	}
 
-	BasicPhysics::Update(this->transform.position, this->velocity, acceleration);
+	//BasicPhysics::Update(this->transform.position, this->velocity, acceleration);
 	BasicPhysics::Clamp(this->velocity, MaxClockSpeed);
 	// Pretend it's non-zero
 	if (glm::length(this->velocity) > EPSILON)

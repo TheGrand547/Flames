@@ -65,7 +65,7 @@ void ShipManager::Update() noexcept
 			for (auto& bullet : Level::GetBulletTree().Search(bloke.GetAABB()))
 			{
 				//Log(glm::distance(thingy->GetPos(), bullet.position));
-				if (bullet->team == 0 && bullet->IsValid() && bullet->GetAABB().Overlap(bloke.GetAABB()))
+				if (bullet->team == 0 && bullet->IsValid() && bullet->GetOBB().Overlap(bloke.GetOBB()))
 				{
 					Log("Oh shit we got one");
 					bullet->transform.position = glm::vec3(NAN);
@@ -113,6 +113,7 @@ void ShipManager::UpdateMeshes() noexcept
 	this->pain.BufferData(this->active, DynamicDraw);
 	this->fools.ExclusiveOperation([&](decltype(this->fools)::value_type & p)
 		{
+			// I hate that this is required so much man
 			this->smooth.BufferData<glm::vec3>(p | BundleData, DynamicDraw);
 		}
 	);
