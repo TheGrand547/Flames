@@ -2350,6 +2350,27 @@ void init()
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
 
+	{
+		Shader& shader = ShaderBank::Get("computation");
+		shader.CompileCompute("compute_frustums");
+		ShaderStorageBuffer locality;
+		locality.BufferData(std::array<std::uint32_t, 256>{0});
+
+		locality.BindBuffer();
+		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, locality.GetBuffer());
+
+		const int TileSize = 16;
+		const float TileSizeF = static_cast<float>(TileSize);
+		glm::uvec2 windowSize = glm::ceil(Window::GetSizeF() / TileSizeF) * TileSizeF;
+
+		// Moving past the sample
+		shader.SetActiveShader();
+		shader.SetInt("Width", windowSize.x);
+		shader.SetInt("Height", windowSize.y);
+		shader.DispatchCompute(257);
+	}
+
+
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
 	rays.fill(glm::vec3(0));

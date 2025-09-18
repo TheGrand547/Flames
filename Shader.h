@@ -72,7 +72,10 @@ public:
 	// Vertex, fragment, geometry, tesselation control, tesselation evaluate, respectively
 	bool CompileSimple(const std::string& name);
 
-
+	bool CompileCompute(const std::string& name);
+	bool CompileComputeEmbedded(const std::string& source);
+	void DispatchCompute(std::uint32_t x, std::uint32_t y = 1, std::uint32_t z = 1) const noexcept;
+	
 	bool Compile(const std::string& vertex, const std::string& frag);
 
 	// These all work on shader code as a string, not read in from a file

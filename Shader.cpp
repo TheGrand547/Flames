@@ -307,6 +307,43 @@ bool Shader::CompileSimple(const std::string& name)
 	return this->compiled;
 }
 
+bool Shader::CompileCompute(const std::string& name)
+{
+	std::filesystem::path path(shaderBasePath + name + ".glsl");
+	if (!std::filesystem::exists(path))
+	{
+		return false;
+	}
+	std::ifstream inputs(path.string(), std::ifstream::in);
+	if (inputs.is_open())
+	{
+		std::string vertex(std::istreambuf_iterator<char>{inputs}, {});
+		inputs.close();
+		return this->CompileComputeEmbedded(vertex);
+	}
+	return false;
+}
+
+bool Shader::CompileComputeEmbedded(const std::string& source)
+{
+	std::string local(source);
+	ApplyShaderIncludes(local);
+	GLuint compute = CompileShader(GL_COMPUTE_SHADER, local.c_str());
+	if (compute && (this->program = glCreateProgram()))
+	{
+		glAttachShader(this->program, compute);
+		glLinkProgram(this->program);
+		glDeleteShader(compute);
+	}
+	return false;
+}
+
+void Shader::DispatchCompute(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept
+{
+	this->SetActiveShader();
+	glDispatchCompute(x, y, z);
+}
+
 bool Shader::Compile(const std::string& vert, const std::string& frag)
 {
 	this->CleanUp();
