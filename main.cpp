@@ -2126,6 +2126,7 @@ void init()
 	Shader::SetBasePath("Shaders");
 	Shader::IncludeInShaderFilesystem("lighting", "lighting.incl");
 	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
+	Shader::IncludeInShaderFilesystem("frustums", "frustums.incl");
 	ExternalShaders::Setup();
 
 	basic.CompileSimple("basic");
@@ -2351,6 +2352,7 @@ void init()
 	//pathNodePositions.BufferData(funnys);
 
 	{
+		ShaderBank::Get("gleep").CompileCompute("light_cull");
 		Shader& shader = ShaderBank::Get("computation");
 		shader.CompileCompute("compute_frustums");
 		ShaderStorageBuffer locality;
@@ -2359,9 +2361,11 @@ void init()
 		locality.BindBuffer();
 		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, locality.GetBuffer());
 
+		auto nextMult = [](auto a, auto b) {return glm::ceil(a / b) * b; };
+
 		const int TileSize = 16;
 		const float TileSizeF = static_cast<float>(TileSize);
-		glm::uvec2 windowSize = glm::ceil(Window::GetSizeF() / TileSizeF) * TileSizeF;
+		glm::uvec2 windowSize = nextMult(Window::GetSizeF(), TileSizeF); // glm::ceil(Window::GetSizeF() / TileSizeF)* TileSizeF;
 
 		// Moving past the sample
 		shader.SetActiveShader();
