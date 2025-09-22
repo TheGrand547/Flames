@@ -68,6 +68,8 @@ public:
 	void BindBuffer() const;
 	void Reserve(BufferAccess access, GLsizeiptr size);
 
+	void BindBufferBase(GLuint index) const noexcept;
+
 	// Constructor with buffer creation
 	template<class T> Buffer(const T& data, BufferAccess usage = StaticDraw);
 	Buffer(std::size_t size, BufferAccess usage = StaticDraw);
@@ -215,6 +217,12 @@ template<BufferType Type> inline void Buffer<Type>::Reserve(BufferAccess access,
 		glNamedBufferData(this->buffer, size, nullptr, static_cast<GLenum>(access));
 		this->length = size;
 	}
+}
+
+template<BufferType Type>
+inline void Buffer<Type>::BindBufferBase(GLuint index) const noexcept
+{
+	glBindBufferBase(static_cast<GLenum>(Type), index, this->buffer);
 }
 
 template<BufferType Type> inline void Buffer<Type>::Reserve(std::size_t size, BufferAccess usage)

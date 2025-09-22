@@ -306,6 +306,8 @@ Frustum GetFrustum(const Model& playerModel)
 ShieldGenerator bobert;
 ColorFrameBuffer buffet;
 BufferSync<std::vector<glm::vec3>> shieldPos;
+using ShaderStorage = Bank<ShaderStorageBuffer>;
+
 void display()
 {
 	// Some kind of framerate limiter?
@@ -397,19 +399,27 @@ void display()
 		EnableDepthBufferWrite();
 	}
 
-	// Switch between forward and deferred rendering
+	// Switch between forward+ and deferred rendering
 	if (debugFlags[FULL_CALCULATIONS] && false)
 	{
-		Shader& interzone = ShaderBank::Get("defer");
-		deferredBuffer.Bind();
-		ClearFramebuffer<ColorBuffer | DepthBuffer>();
+		// Do the light culling and junk
+		ShaderStorage::Get("LightGrid2").BufferData<std::uint32_t>(0);
+		//ShaderBank::Get("lightCulling").DispatchCompute()
+
+
+		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
 		levelGeometry.Bind(outerzone);
 		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
-		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
+		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
+
+
+
+		management.Draw(guyMeshData, outerzone, interzone);
+		//bobert.Draw();
 
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
@@ -418,18 +428,6 @@ void display()
 		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 		outerzone.BindArrayBuffer(buf, 1);
 		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
-
-		// Do the actual deferred rendering
-		BindDefaultFrameBuffer();
-		Shader& interzone2 = ShaderBank::Get("fullRender");
-		interzone2.SetActiveShader();
-		interzone2.SetInt("featureToggle", featureToggle);
-		interzone2.SetVec3("lightPos", playerModel.translation);
-		interzone2.SetVec3("lightDir", playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
-		interzone2.SetTextureUnit("position", deferredBuffer.GetColorBuffer<0>(), 0);
-		interzone2.SetTextureUnit("normal", deferredBuffer.GetColorBuffer<1>(), 1);
-		interzone2.SetTextureUnit("color", deferredBuffer.GetColorBuffer<2>(), 2);
-		interzone2.DrawArray<DrawType::TriangleStrip>(4);
 	}
 	else
 	{
@@ -2127,6 +2125,7 @@ void init()
 	Shader::IncludeInShaderFilesystem("lighting", "lighting.incl");
 	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
 	Shader::IncludeInShaderFilesystem("frustums", "frustums.incl");
+	Shader::IncludeInShaderFilesystem("forward_buffers", "forward_buffers.incl");
 	ExternalShaders::Setup();
 
 	basic.CompileSimple("basic");
@@ -2162,6 +2161,8 @@ void init()
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("new_mesh_single").Compile("new_mesh_single", "deferred");
+	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
+	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
@@ -2187,6 +2188,8 @@ void init()
 	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("dither").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("forwardPlus").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("new_mesh_single").UniformBlockBinding("Camera", 0);
@@ -2352,7 +2355,7 @@ void init()
 	//pathNodePositions.BufferData(funnys);
 
 	{
-		ShaderBank::Get("gleep").CompileCompute("light_cull");
+		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
 		Shader& shader = ShaderBank::Get("computation");
 		shader.CompileCompute("compute_frustums");
 		ShaderStorageBuffer locality;
@@ -2371,7 +2374,43 @@ void init()
 		shader.SetActiveShader();
 		shader.SetInt("Width", windowSize.x);
 		shader.SetInt("Height", windowSize.y);
-		shader.DispatchCompute(257);
+		//shader.DispatchCompute(257);
+
+		// Frustum space calculations
+		const float gridResolution = 16;
+		auto amount = nextMult(Window::GetSizeF(), gridResolution);
+		const auto numTiles = amount.x * amount.y;
+		struct A
+		{
+			glm::vec3 c;
+			float b;
+		};
+		struct B
+		{
+			A ar[4];
+		};
+		ShaderStorage::Get("Frustums");      // 5
+		ShaderStorage::Get("LightIndicies"); // 6
+		ShaderStorage::Get("LightGrid");     // 7
+		ShaderStorage::Get("LightBlock");    // 8
+		ShaderStorage::Get("LightGrid2");    // 9
+		// Frustums
+		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
+		ShaderStorage::Get("Frustums").BindBufferBase(5);
+		// Say 100 light max per tile
+		ShaderStorage::Get("LightIndicies").BufferData(StaticVector<std::uint32_t>(numTiles * 100));
+		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
+		// Only need one per tile
+		ShaderStorage::Get("LightGrid").BufferData(StaticVector<glm::uvec2>(numTiles));
+		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		// Light Block is dynamically generated, but dummy data will suffice
+		ShaderStorage::Get("LightBlock").BufferData<std::uint32_t>(0);
+		ShaderStorage::Get("LightBlock").BindBufferBase(8);
+		// Must be reset every frame before usage
+		ShaderStorage::Get("LightGrid2").BufferData<std::uint32_t>(0);
+		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
+		shader.SetVec2("ScreenSize", Window::GetSizeF());
+		shader.SetInt("TileSize", static_cast<int>(gridResolution));
 	}
 
 

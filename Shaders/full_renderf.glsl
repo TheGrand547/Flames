@@ -2,6 +2,8 @@
 #include "lighting"
 #include "camera"
 
+#include "forward_buffers"
+
 layout(location = 0) in vec2 textureCoords;
 layout(location = 0) out vec4 fColor;
 
@@ -31,11 +33,14 @@ void main()
 	
 	//if (featureToggle == 1)
 	{
-		for (int i = 0; i < 12; i++)
+		uvec2 gridInfo = grid[0];
+		for (uint i = gridInfo.x; i < gridInfo.y; i++)
 		{
+			uint index = indices[i];
 			//if (length(lightBuffer[i].position.xyz - fPos) > 70.f)
 				//continue;
-			lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
+			//lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
+			lightOut += PointLight(lights[index].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);
 		
 		}
 	}

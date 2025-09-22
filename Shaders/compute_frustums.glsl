@@ -7,18 +7,10 @@
 // Screen is broken up into 16x16 TILES
 // A 8x8 arrangement of TILES is called to used by this shader to compute the frustums for the TILES
 
-uniform int ScreenWidth;
-uniform int ScreenHeight;
-uniform int GroupSizeX;
-uniform int GroupSizeY;
 uniform int TileSize;
 
 uniform vec2 ScreenSize;
 
-layout(std430, binding = 5) buffer Frustums
-{
-	Frustum frustums[];
-};
 
 // Determines, per work group, how many of each local threads there will be there are
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
@@ -41,7 +33,7 @@ void main()
 {
 	vec2 size = vec2(TileSize, 0);
 	vec2 position = size.xx * gl_WorkGroupID.xy;
-	if (position.x > ScreenWidth || position.y > ScreenHeight)
+	if (position.x > ScreenSize.x || position.y > ScreenSize.y)
 	{
 		return;
 	}

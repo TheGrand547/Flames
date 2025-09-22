@@ -44,3 +44,8 @@ bool FrustumSphere(Frustum frustum, vec4 sphere)
 	}
 	return result;
 }
+
+layout(std430, binding = 5) buffer Frustums
+{
+	Frustum frustums[];
+};

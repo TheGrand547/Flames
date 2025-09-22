@@ -2,36 +2,8 @@
 #include "lighting"
 #include "frustums"
 #include "camera"
+#include "forward_buffers"
 
-
-layout(std430, binding = 5) buffer Frustums
-{
-	Frustum frustums[];
-};
-
-
-layout(std430, binding = 6) buffer LightIndices
-{
-	uint indices[];
-};
-
-layout(std430, binding = 7) buffer LightGrid
-{
-	uvec2 grid[];
-};
-
-
-layout(std430, binding = 8) buffer LightBlock
-{
-	uint lightCount;
-	// These will be already transformed into view space, for convenience
-	LightInfo lights[];
-};
-
-layout(std430, binding = 9) buffer LightGrid2
-{
-	uint globalLightIndex;
-};
 
 
 #define BLOCK_SIZE 16
