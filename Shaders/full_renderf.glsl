@@ -36,7 +36,7 @@ void main()
 		uvec2 gridInfo = grid[0];
 		for (uint i = gridInfo.x; i < gridInfo.y; i++)
 		{
-			uint index = indices[i];
+			uint index = indicies[i];
 			//if (length(lightBuffer[i].position.xyz - fPos) > 70.f)
 				//continue;
 			//lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, normal, fPos, viewDirection);

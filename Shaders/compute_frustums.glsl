@@ -17,7 +17,7 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 vec4 TransformToView(vec2 ins)
 {
-	vec4 temp = inverse(Projection) * vec4(ins / ScreenSize * 2.f - 1.f, -1.f, 1.f);
+	vec4 temp = inverse(Projection) * vec4((ins / ScreenSize) * 2.f - 1.f, 1.f, 1.f);
 	temp /= temp.w;
 	return temp;
 	
@@ -53,5 +53,7 @@ void main()
 	result.planes[2] = MakePlane(eye, points2[0], points2[1]); // Top
 	result.planes[3] = MakePlane(eye, points2[2], points2[3]); // Bottom
 	
-	frustums[gl_LocalInvocationIndex] = result;
+	uint index = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x;
+	
+	frustums[index] = result;
 };

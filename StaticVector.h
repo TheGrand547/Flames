@@ -83,6 +83,16 @@ public:
 		return this->pointer.get() + this->length;
 	}
 
+	inline const std::span<Type> span() noexcept
+	{
+		return std::span(this->pointer, this->length);
+	}
+
+	inline const std::span<const Type> span() const noexcept
+	{
+		return std::span(this->pointer, this->length);
+	}
+
 	inline void make(std::span<Type> data) noexcept
 	{
 		this->length = data.size();

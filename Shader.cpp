@@ -10,7 +10,8 @@
 #ifdef RELEASE
 #define EXIT
 #else // RELEASE
-#define EXIT exit(-1)
+//#define EXIT exit(-1)
+#define EXIT system("pause")
 #endif // RELEASE
 
 static std::map<std::string, std::string> shaderIncludeMapping;

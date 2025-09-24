@@ -4,6 +4,13 @@ struct LightInfo
 	vec4 color;
 };
 
+struct LightInfoBig
+{
+	vec4 position;
+	vec4 color;
+	vec4 constants;
+};
+
 layout(std140) uniform BlockLighting
 {
 	LightInfo lightBuffer[60];

@@ -99,10 +99,11 @@ public:
 	inline void SetInt(const std::string& name, const int i) const noexcept;
 	inline void SetUnsignedInt(const std::string& name, const unsigned int i) const noexcept;
 	inline void SetFloat(const std::string& name, const float i) const noexcept;
-	inline void SetVec2(const std::string& name, const glm::vec2& vec) const noexcept;
-	inline void SetVec3(const std::string& name, const glm::vec3& vec) const noexcept;
-	inline void SetVec4(const std::string& name, const glm::vec4& vec) const noexcept;
-	inline void SetMat4(const std::string& name, const glm::mat4& mat) const noexcept;
+	inline void SetUVec2(const std::string& name, const glm::uvec2& vec) const noexcept;
+	inline void SetVec2(const std::string& name,  const glm::vec2& vec) const noexcept;
+	inline void SetVec3(const std::string& name,  const glm::vec3& vec) const noexcept;
+	inline void SetVec4(const std::string& name,  const glm::vec4& vec) const noexcept;
+	inline void SetMat4(const std::string& name,  const glm::mat4& mat) const noexcept;
 	inline void SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const noexcept;
 	inline void SetTextureUnit(const std::string& name, const GLuint unit = 0) const noexcept;
 	inline void SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit = 0) const noexcept;
@@ -181,6 +182,11 @@ inline void Shader::SetFloat(const std::string& name, const float i) const noexc
 inline void Shader::SetVec2(const std::string& name, const glm::vec2& vec) const noexcept
 {
 	glUniform2fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+}
+
+inline void Shader::SetUVec2(const std::string& name, const glm::uvec2& vec) const noexcept
+{
+	glUniform2uiv(this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const noexcept

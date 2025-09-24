@@ -27,7 +27,7 @@ Plane MakePlane(vec3 a, vec3 b, vec3 c)
 
 bool SphereBehindPlane(Plane plane, vec4 sphere)
 {
-	return getDistance(plane, sphere.xyz) < sphere.w;
+	return getDistance(plane, sphere.xyz) < -sphere.w;
 }
 
 // Does the frustum contain the sphere?
@@ -45,7 +45,7 @@ bool FrustumSphere(Frustum frustum, vec4 sphere)
 	return result;
 }
 
-layout(std430, binding = 5) buffer Frustums
+layout(std430, binding = 5) volatile buffer Frustums
 {
 	Frustum frustums[];
 };

@@ -193,8 +193,8 @@ std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 struct LightVolume
 {
 	glm::vec4 position;
-	glm::vec3 color;
-	glm::vec3 constants;
+	glm::vec4 color;
+	glm::vec4 constants;
 };
 
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
@@ -273,7 +273,7 @@ Framebuffer<3, Depth> deferredBuffer;
 ColorFrameBuffer pointLightBuffer;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
-BufferSync<std::vector<LightVolume>> drawingVolumes;
+BufferSync<std::vector<LightVolume>> drawingVolumes, drawingVolumes2;
 std::vector<LightVolume> constantLights;
 
 Door heWhoSleeps(glm::vec3(97.244f, 17.102f, 0));
@@ -307,6 +307,10 @@ ShieldGenerator bobert;
 ColorFrameBuffer buffet;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
+
+static const float gridResolution = 16;
+static int numTiles = 0;
+static glm::uvec2 tileDimension;
 
 void display()
 {
@@ -400,11 +404,41 @@ void display()
 	}
 
 	// Switch between forward+ and deferred rendering
-	if (debugFlags[FULL_CALCULATIONS] && false)
-	{
+	//if (debugFlags[FULL_CALCULATIONS] && false)
+	if (featureToggle)
+	{ 
+		drawingVolumes2.ExclusiveOperation(
+			[&](auto& data) 
+			{
+				std::size_t byteSize = sizeof(decltype(drawingVolumes2)::value_type::value_type) * data.size();
+				auto& buffer = ShaderStorage::Get("LightBlock");
+				std::vector<LightVolume> grouper;
+				std::ranges::copy(
+					data | std::views::transform(
+						[&](const LightVolume& v)
+						{
+							return LightVolume{ glm::vec4(glm::vec3(view * glm::vec4(glm::vec3(v.position), 1.f)), v.position.w),
+									v.color, v.constants };
+						}
+					), std::back_inserter(grouper));
+
+				buffer.BufferData(grouper);
+				ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
+			}
+		);
 		// Do the light culling and junk
-		ShaderStorage::Get("LightGrid2").BufferData<std::uint32_t>(0);
-		//ShaderBank::Get("lightCulling").DispatchCompute()
+		ShaderStorage::Get("Frustums").BindBufferBase(5);
+		// Say 100 light max per tile
+		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
+		// Only need one per tile
+		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		// Light Block is dynamically generated, but dummy data will suffice
+		ShaderStorage::Get("LightBlock").BindBufferBase(8);
+		// Must be reset every frame before usage
+		ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
+		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
+		ShaderBank::Get("lightCulling").SetActiveShader();
+		ShaderBank::Get("lightCulling").DispatchCompute(tileDimension.x, tileDimension.y);
 
 
 		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
@@ -413,7 +447,15 @@ void display()
 		levelGeometry.Bind(outerzone);
 		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 		interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
+		interzone.SetVec2("ScreenSize", Window::GetSizeF());
+		interzone.SetInt("TileSize", static_cast<int>(gridResolution));
+		interzone.SetUVec2("tileDimension", tileDimension);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
+		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
+		// Only need one per tile
+		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		// Light Block is dynamically generated, but dummy data will suffice
+		ShaderStorage::Get("LightBlock").BindBufferBase(8);
 		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 
@@ -699,7 +741,7 @@ void display()
 	}*/
 
 	// Level outline
-	if (featureToggle)
+	if (featureToggle && debugFlags[FREEZE_GAMEPLAY])
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		DisablePushFlags(DepthTesting | FaceCulling);
@@ -1396,7 +1438,7 @@ void gameTick()
 					inactive.push_back(local.GetModel().GetModelMatrix());
 					if (local.lifeTime > 10)
 					{
-						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec3(1.f, 1.f, 0.f), glm::vec3(1.f, 0.f, 0.05f) });
+						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
 					}
 				}
 				return previous != local.transform.position;
@@ -1414,7 +1456,7 @@ void gameTick()
 			{
 				shieldPoses.push_back(point);
 			}
-			volumes.push_back({ glm::vec4(point, 10.f), glm::vec3(120.f,204.f,226.f) / 255.f, glm::vec3(1.f, 0.5f, 0.05f) });
+			volumes.push_back({ glm::vec4(point, 10.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
 		}
 		shieldPos.Swap(tmep);
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
@@ -1509,8 +1551,9 @@ void gameTick()
 		{
 			bulletImpacts.Swap(blarg);
 		}
-
+		std::vector<LightVolume> volumer{ volumes };
 		drawingVolumes.Swap(volumes);
+		drawingVolumes2.Swap(volumer);
 
 		heWhoSleeps.Update();
 
@@ -1957,6 +2000,64 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
 	pointLightBuffer.Assemble();
+
+	// This is dependent on screen size so must be here.
+	{
+		QUICKTIMER("Foolhardy");
+		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
+		Shader& shader = ShaderBank::Get("computation");
+		shader.CompileCompute("compute_frustums");
+		shader.UniformBlockBinding("Camera", 0);
+
+		auto nextMult = [](auto a, auto b) {return glm::ceil(a / b) * b; };
+
+		const int TileSize = 16;
+		const float TileSizeF = static_cast<float>(TileSize);
+		glm::uvec2 windowSize = nextMult(Window::GetSizeF(), TileSizeF); // glm::ceil(Window::GetSizeF() / TileSizeF)* TileSizeF;
+
+		// Moving past the sample
+		shader.SetActiveShader();
+		shader.SetInt("Width", windowSize.x);
+		shader.SetInt("Height", windowSize.y);
+		//shader.DispatchCompute(257);
+
+		// Frustum space calculations
+		auto amount = nextMult(Window::GetSizeF(), gridResolution) / gridResolution;
+		numTiles = amount.x * amount.y;
+		tileDimension = amount;
+		struct A
+		{
+			glm::vec3 c;
+			float b;
+		};
+		struct B
+		{
+			A ar[4];
+		};
+		//ShaderStorage::Get("Frustums");      // 5
+		//ShaderStorage::Get("LightIndicies"); // 6
+		//ShaderStorage::Get("LightGrid");     // 7
+		//ShaderStorage::Get("LightBlock");    // 8
+		//ShaderStorage::Get("LightGrid2");    // 9
+		// Frustums
+		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
+		ShaderStorage::Get("Frustums").BindBufferBase(5);
+		// Say 100 light max per tile
+		ShaderStorage::Get("LightIndicies").BufferData(StaticVector<std::uint32_t>(numTiles * 100));
+		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
+		// Only need one per tile
+		ShaderStorage::Get("LightGrid").BufferData(StaticVector<glm::uvec2>(numTiles));
+		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		// Light Block is dynamically generated, but dummy data will suffice
+		ShaderStorage::Get("LightBlock").BufferData<std::uint32_t>(0);
+		ShaderStorage::Get("LightBlock").BindBufferBase(8);
+		// Must be reset every frame before usage
+		ShaderStorage::Get("LightGrid2").BufferData(std::to_array({0u, 0u}));
+		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
+		shader.SetVec2("ScreenSize", Window::GetSizeF());
+		shader.SetInt("TileSize", static_cast<int>(gridResolution));
+		shader.DispatchCompute(tileDimension.x, tileDimension.y);
+	}
 }
 
 void init();
@@ -2238,8 +2339,8 @@ void init()
 	{
 		VAO& ref = VAOBank::Get("light_volume");
 		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 1, offsetof(LightVolume, color));
-		ref.ArrayFormatOverride<glm::vec3>(2, 0, 1, offsetof(LightVolume, constants));
+		ref.ArrayFormatOverride<glm::vec4>(1, 0, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec4>(2, 0, 1, offsetof(LightVolume, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("light_volume_mesh");
@@ -2286,7 +2387,7 @@ void init()
 			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
-			constantLights.push_back({lightingArray[i], glm::vec3(lightingArray[i + 1]), glm::vec3(1.f, 1.f / 30.f, 0.002f)});
+			constantLights.push_back({lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f)});
 			constantLights.back().position.w = 60.f;
 		}
 		globalLighting.BufferData(lightingArray);
@@ -2353,65 +2454,6 @@ void init()
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
-
-	{
-		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
-		Shader& shader = ShaderBank::Get("computation");
-		shader.CompileCompute("compute_frustums");
-		ShaderStorageBuffer locality;
-		locality.BufferData(std::array<std::uint32_t, 256>{0});
-
-		locality.BindBuffer();
-		glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 0, locality.GetBuffer());
-
-		auto nextMult = [](auto a, auto b) {return glm::ceil(a / b) * b; };
-
-		const int TileSize = 16;
-		const float TileSizeF = static_cast<float>(TileSize);
-		glm::uvec2 windowSize = nextMult(Window::GetSizeF(), TileSizeF); // glm::ceil(Window::GetSizeF() / TileSizeF)* TileSizeF;
-
-		// Moving past the sample
-		shader.SetActiveShader();
-		shader.SetInt("Width", windowSize.x);
-		shader.SetInt("Height", windowSize.y);
-		//shader.DispatchCompute(257);
-
-		// Frustum space calculations
-		const float gridResolution = 16;
-		auto amount = nextMult(Window::GetSizeF(), gridResolution);
-		const auto numTiles = amount.x * amount.y;
-		struct A
-		{
-			glm::vec3 c;
-			float b;
-		};
-		struct B
-		{
-			A ar[4];
-		};
-		ShaderStorage::Get("Frustums");      // 5
-		ShaderStorage::Get("LightIndicies"); // 6
-		ShaderStorage::Get("LightGrid");     // 7
-		ShaderStorage::Get("LightBlock");    // 8
-		ShaderStorage::Get("LightGrid2");    // 9
-		// Frustums
-		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
-		ShaderStorage::Get("Frustums").BindBufferBase(5);
-		// Say 100 light max per tile
-		ShaderStorage::Get("LightIndicies").BufferData(StaticVector<std::uint32_t>(numTiles * 100));
-		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
-		// Only need one per tile
-		ShaderStorage::Get("LightGrid").BufferData(StaticVector<glm::uvec2>(numTiles));
-		ShaderStorage::Get("LightGrid").BindBufferBase(7);
-		// Light Block is dynamically generated, but dummy data will suffice
-		ShaderStorage::Get("LightBlock").BufferData<std::uint32_t>(0);
-		ShaderStorage::Get("LightBlock").BindBufferBase(8);
-		// Must be reset every frame before usage
-		ShaderStorage::Get("LightGrid2").BufferData<std::uint32_t>(0);
-		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
-		shader.SetVec2("ScreenSize", Window::GetSizeF());
-		shader.SetInt("TileSize", static_cast<int>(gridResolution));
-	}
 
 
 	// RAY SETUP

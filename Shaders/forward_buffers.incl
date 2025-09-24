@@ -1,22 +1,22 @@
-layout(std430, binding = 6) buffer LightIndices
+layout(std430, binding = 6) volatile buffer LightIndices
 {
-	uint indices[];
+	uint indicies[];
 };
 
-layout(std430, binding = 7) buffer LightGrid
+layout(std430, binding = 7) volatile buffer LightGrid
 {
 	uvec2 grid[];
 };
 
 
-layout(std430, binding = 8) buffer LightBlock
+layout(std430, binding = 8) volatile buffer LightBlock
 {
-	uint lightCount;
 	// These will be already transformed into view space, for convenience
-	LightInfo lights[];
+	LightInfoBig lights[];
 };
 
-layout(std430, binding = 9) buffer LightGrid2
+layout(std430, binding = 9) volatile buffer LightGrid2
 {
+	uint lightCount;
 	uint globalLightIndex;
 };
