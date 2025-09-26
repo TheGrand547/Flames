@@ -28,7 +28,7 @@ void main()
 	
 	vec3 fragmentPosition = rawPos.xyz;
 	vec3 viewDirection = normalize(View[3].xyz - fragmentPosition);
-	lightOut += DirectedPointLight(lightPos, -lightDir, tempLightColor, normal, fragmentPosition, viewDirection);
+	//lightOut += DirectedPointLight(lightPos, -lightDir, tempLightColor, normal, fragmentPosition, viewDirection);
 	
 	vec3 result =  shapeColor * (ambient + lightOut);
 	fColor = vec4(result, 1.0);

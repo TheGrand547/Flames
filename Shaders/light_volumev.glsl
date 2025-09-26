@@ -1,8 +1,8 @@
 #version 440 core
 
 layout(location = 0) in vec4 positionRadius;
-layout(location = 1) in vec3 color;
-layout(location = 2) in vec3 constants;
+layout(location = 1) in vec4 color;
+layout(location = 2) in vec4 constants;
 
 layout(location = 0) out vec2 fTex;
 layout(location = 1) flat out vec3 relativePosition;
@@ -53,7 +53,7 @@ void main()
 	fTex = positions[gl_VertexID % 10].xy * radius * 1.5f;
 	inputData = positionRadius;
 	lightColor = color.xyz;
-	lightConstants = constants;
+	lightConstants = constants.xyz;
 	
 	float cameraDistance = length(cameraPosition - position);
 	vec3 cameraDelta = normalize(cameraPosition - position);

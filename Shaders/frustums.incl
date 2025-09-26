@@ -20,7 +20,7 @@ Plane MakePlane(vec3 a, vec3 b, vec3 c)
 	Plane dummy;
 	vec3 ba = normalize(b - a);
 	vec3 ca = normalize(c - a);
-	dummy.normal = normalize(cross(ba, ca));
+	dummy.normal = normalize(cross(ca, ba));
 	dummy.distance = dot(dummy.normal, a);
 	return dummy;
 }
@@ -34,7 +34,7 @@ bool SphereBehindPlane(Plane plane, vec4 sphere)
 bool FrustumSphere(Frustum frustum, vec4 sphere)
 {
 	bool result = true;
-	// Far/near culling
+	// TODO: Far/near culling
 	for (int i = 0; i < 4 && result; i++)
 	{
 		if (SphereBehindPlane(frustum.planes[i], sphere))

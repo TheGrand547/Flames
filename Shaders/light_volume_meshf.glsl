@@ -23,7 +23,7 @@ void main()
 	vec3 fPos       = rawPos.xyz;
 	vec3 normal     = texture(gNormal, textureCoords).xyz;
 	
-		if (length(fPos - lightCenter) > lightRadius)
+	if (length(fPos - lightCenter) > lightRadius)
 		discard;
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);

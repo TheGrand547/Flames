@@ -308,7 +308,7 @@ ColorFrameBuffer buffet;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
 
-static const float gridResolution = 16;
+static const float gridResolution = 64;
 static int numTiles = 0;
 static glm::uvec2 tileDimension;
 
@@ -454,7 +454,6 @@ void display()
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		// Only need one per tile
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
-		// Light Block is dynamically generated, but dummy data will suffice
 		ShaderStorage::Get("LightBlock").BindBufferBase(8);
 		interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
@@ -1551,7 +1550,8 @@ void gameTick()
 		{
 			bulletImpacts.Swap(blarg);
 		}
-		std::vector<LightVolume> volumer{ volumes };
+		std::vector<LightVolume> volumer{ };
+		std::ranges::copy(volumes | std::ranges::views::all, std::back_inserter(volumer));
 		drawingVolumes.Swap(volumes);
 		drawingVolumes2.Swap(volumer);
 

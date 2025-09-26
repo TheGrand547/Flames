@@ -5,8 +5,9 @@
 #include "forward_buffers"
 
 
-
+// GET BACK TO THIS
 #define BLOCK_SIZE 1
+
 #define MAX_LIGHTS 100
 
 shared uint numLights;
@@ -16,12 +17,13 @@ shared Frustum groupFrustum;
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
 {
+	const uint groupIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x; 
 	uint threadIndex = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
-	threadIndex = 0;
+	//threadIndex = 0;
 	if (threadIndex == 0)
 	{
 		numLights = 0;
-		groupFrustum = frustums[gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x];
+		groupFrustum = frustums[groupIndex];
 	}
 	memoryBarrierShared();
 	for (uint i = threadIndex; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
@@ -46,8 +48,8 @@ void main()
 		{
 			indicies[index + i] = groupLights[i];
 		}
-		grid[gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.y] = uvec2(index, numLights);
-		//grid[gl_WorkGroupID.x + gl_NumWorkGroups.x * gl_WorkGroupID.y] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
+		grid[groupIndex] = uvec2(index, numLights);
+		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
 		
 	}
 }
