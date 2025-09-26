@@ -38,7 +38,9 @@ void main()
 		return;
 	}
 	
-	vec2 points[4] = {position + size.yy,  position + size.xy, position + size.xx, position + size.yx};
+	//vec2 points[4] = {position + size.yy,  position + size.xy, position + size.xx, position + size.yx};
+	vec2 points[4] = {position + size.yy, position + size.xy, 
+					  position + size.yx, position + size.xx};
 	vec3 points2[4];
 	for (int i = 0; i < 4; i++)
 	{
@@ -47,11 +49,11 @@ void main()
 	const vec3 eye = vec3(0, 0, 0);
 	
 	Frustum result;
-	result.planes[0] = MakePlane(eye, points2[3], points2[0]); // Left
-	result.planes[1] = MakePlane(eye, points2[1], points2[2]); // Right
+	result.planes[0] = MakePlane(eye, points2[2], points2[0]); // Left
+	result.planes[1] = MakePlane(eye, points2[1], points2[3]); // Right
 	
 	result.planes[2] = MakePlane(eye, points2[0], points2[1]); // Top
-	result.planes[3] = MakePlane(eye, points2[2], points2[3]); // Bottom
+	result.planes[3] = MakePlane(eye, points2[3], points2[2]); // Bottom
 	
 	uint index = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x;
 	

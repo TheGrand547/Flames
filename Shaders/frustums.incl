@@ -27,7 +27,7 @@ Plane MakePlane(vec3 a, vec3 b, vec3 c)
 
 bool SphereBehindPlane(Plane plane, vec4 sphere)
 {
-	return getDistance(plane, sphere.xyz) < -sphere.w;
+	return getDistance(plane, sphere.xyz) < -sphere.w * 1.2;
 }
 
 // Does the frustum contain the sphere?

@@ -6,13 +6,15 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 8
 
 #define MAX_LIGHTS 100
 
 shared uint numLights;
 shared uint groupLights[MAX_LIGHTS];
 shared Frustum groupFrustum;
+shared uint globalOffset;
+
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
@@ -23,6 +25,7 @@ void main()
 	if (threadIndex == 0)
 	{
 		numLights = 0;
+		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
 	}
 	//memoryBarrierShared();
@@ -45,13 +48,19 @@ void main()
 	// Actually save them here
 	if (threadIndex == 0)
 	{
-		uint index = atomicAdd(globalLightIndex, numLights);
-		for (int i = 0; i < numLights; i++)
-		{
-			indicies[index + i] = groupLights[i];
-		}
-		grid[groupIndex] = uvec2(index, numLights);
-		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
+		globalOffset = atomicAdd(globalLightIndex, numLights);
 		
+		//for (int i = 0; i < numLights; i++)
+		{
+			//indicies[globalOffset + i] = groupLights[i];
+		}
+		grid[groupIndex] = uvec2(globalOffset, numLights);
+		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
+	}
+	groupMemoryBarrier();
+	// TODO: return to this shit
+	for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
+	{
+		indicies[globalOffset + i] = groupLights[i];
 	}
 }

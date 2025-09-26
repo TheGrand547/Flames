@@ -443,7 +443,7 @@ void display()
 		ShaderStorage::Get("LightBlockOriginal").BindBufferBase(10);
 		ShaderBank::Get("lightCulling").SetActiveShader();
 		ShaderBank::Get("lightCulling").DispatchCompute(tileDimension.x, tileDimension.y);
-
+		glFlush();
 		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
@@ -520,7 +520,7 @@ void display()
 		auto meshs = meshs2.GetMatrixPair();
 		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 		outerzone.BindArrayBuffer(buf, 1);
-		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
+		//playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 		bobert.Draw();
 
 		heWhoSleeps.Draw();
