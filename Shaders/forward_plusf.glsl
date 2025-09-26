@@ -61,4 +61,5 @@ void main()
 		sampled.xyz *= mult;
 	}
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
+	//fragmentColor = vec4(float(lightData.y) / 60, 0, 0, 1);
 }

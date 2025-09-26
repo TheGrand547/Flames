@@ -6,7 +6,7 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 1
+#define BLOCK_SIZE 16
 
 #define MAX_LIGHTS 100
 
@@ -25,7 +25,8 @@ void main()
 		numLights = 0;
 		groupFrustum = frustums[groupIndex];
 	}
-	memoryBarrierShared();
+	//memoryBarrierShared();
+	groupMemoryBarrier();
 	for (uint i = threadIndex; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		LightInfoBig current = lights[i];
@@ -38,7 +39,8 @@ void main()
 			}
 		}
 	}
-	memoryBarrierShared();
+	groupMemoryBarrier();
+	//memoryBarrierShared();
 	
 	// Actually save them here
 	if (threadIndex == 0)

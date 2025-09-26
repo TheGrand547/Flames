@@ -444,7 +444,6 @@ void display()
 		ShaderBank::Get("lightCulling").SetActiveShader();
 		ShaderBank::Get("lightCulling").DispatchCompute(tileDimension.x, tileDimension.y);
 
-
 		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
@@ -455,6 +454,7 @@ void display()
 		interzone.SetInt("TileSize", static_cast<int>(gridResolution));
 		interzone.SetUVec2("tileDimension", tileDimension);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		// Only need one per tile
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
@@ -465,7 +465,7 @@ void display()
 
 		management.Draw(guyMeshData, outerzone, interzone);
 		//bobert.Draw();
-
+		/*
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
 		meshs2.scale *= 0.5f;
@@ -473,6 +473,20 @@ void display()
 		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 		outerzone.BindArrayBuffer(buf, 1);
 		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
+		*/
+		
+		Shader& sahder = ShaderBank::Get("visualize");
+		sahder.SetActiveShader();
+		sahder.SetVec2("ScreenSize", Window::GetSizeF());
+		sahder.SetInt("TileSize", static_cast<int>(gridResolution));
+		sahder.SetUVec2("tileDimension", tileDimension);
+		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		if (debugFlags[CHECK_UVS])
+		{
+			//FeatureFlagPush<DepthTesting | FaceCulling, false> flagger;
+			DisablePushFlags(DepthTesting | FaceCulling);
+			sahder.DrawArray<DrawType::TriangleStrip>(4);
+		}
 	}
 	else
 	{
@@ -2028,7 +2042,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 		// Frustum space calculations
 		auto amount = nextMult(Window::GetSizeF(), gridResolution) / gridResolution;
-		numTiles = amount.x * amount.y;
+		numTiles = static_cast<decltype(numTiles)>(amount.x * amount.y);
 		tileDimension = amount;
 		struct A
 		{
@@ -2048,7 +2062,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
 		ShaderStorage::Get("Frustums").BindBufferBase(5);
 		// Say 100 light max per tile
-		ShaderStorage::Get("LightIndicies").BufferData(StaticVector<std::uint32_t>(numTiles * 100));
+		ShaderStorage::Get("LightIndicies").Reserve(sizeof(std::uint32_t) * 100 * numTiles);
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		// Only need one per tile
 		ShaderStorage::Get("LightGrid").BufferData(StaticVector<glm::uvec2>(numTiles));
@@ -2271,6 +2285,7 @@ void init()
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
+	ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
 	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
 	ShaderBank::Get("light_volume").CompileSimple("light_volume");
 	ShaderBank::Get("Shielding").CompileSimple("shield");

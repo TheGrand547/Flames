@@ -271,7 +271,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferData
 		glBindBuffer(static_cast<GLenum>(Type), this->buffer);
 		glBufferData(static_cast<GLenum>(Type), static_cast<GLsizeiptr>(data.size() * sizeof(T)), nullptr, static_cast<GLenum>(usage));
 		glBufferSubData(static_cast<GLenum>(Type), 0, static_cast<GLsizeiptr>(data.size() * sizeof(T)), data.data());
-		glFlush();
+		//glFlush();
 		this->length = data.size() * sizeof(T);
 		this->elementCount = static_cast<GLsizei>(data.size());
 		this->elementType = (sizeof(T) == 1) ? GL_UNSIGNED_BYTE : ((sizeof(T) == 2) ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT);

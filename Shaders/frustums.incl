@@ -20,7 +20,7 @@ Plane MakePlane(vec3 a, vec3 b, vec3 c)
 	Plane dummy;
 	vec3 ba = normalize(b - a);
 	vec3 ca = normalize(c - a);
-	dummy.normal = normalize(cross(ca, ba));
+	dummy.normal = normalize(cross(ba, ca));
 	dummy.distance = dot(dummy.normal, a);
 	return dummy;
 }
