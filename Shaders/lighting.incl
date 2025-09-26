@@ -51,6 +51,11 @@ vec3 PointLightConstants(vec3 lightPos, vec3 lightColor, vec3 lightConstants, ve
 	return lightColor * (specular + diffuse) * fallOff;
 }
 
+vec3 PointLightStruct(LightInfoBig inputs, vec3 fragNormal, vec3 fragPos, vec3 viewDirection)
+{
+	return PointLightConstants(inputs.position.xyz, inputs.color.xyz, inputs.constants.xyz, fragNormal, fragPos, viewDirection);
+}
+
 vec3 DirectedPointLight(vec3 lightPos, vec3 lightDirection, vec3 lightColor, vec3 fragNormal, vec3 fragPos, vec3 viewDirection)
 {
 	vec3 lightDir  = normalize(lightPos - fragPos);

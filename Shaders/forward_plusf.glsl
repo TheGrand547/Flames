@@ -26,12 +26,9 @@ void main()
 	vec3 mod = (gl_FrontFacing) ? vec3(1.f) : vec3(-1.f);
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);
-	vec3 viewPos = (View * vec4(fPos, 1)).xyz;
-	
-	//vec3 viewDirection = normalize(View[3].xyz - fPos);
-	
+		
 	// This is a hack, but for some reason gl_FrontFacing won't work otherwise. Need to work on this
-	vec3 normal = (View * vec4(TBNmat * norm * mod, 0)).xyz;
+	vec3 normal = (vec4(TBNmat * norm, 0)).xyz;
 	
 	
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
@@ -47,13 +44,11 @@ void main()
 	for (int i = 0; i < lightData.y; i++)
 	{
 		uint index = indicies[i + lightData.x];
-		LightInfoBig current = lights[index];
-		// Lights closer to the camera is too 
-		if (length(current.position.xyz - viewPos) > current.position.w)
+		LightInfoBig current = lightsOriginal[index];
+		if (length(current.position.xyz - fPos) > current.position.w)
 			continue;
-		lightOut += PointLightConstants(current.position.xyz, current.color.xyz, current.constants.xyz, normal, viewPos, viewDirection);
+		lightOut += PointLightStruct(current, normal, fPos, viewDirection);
 	}
-	
 	
 	// For textured stuff
 	//vec4 sampled = texture(textureColor, fTex);

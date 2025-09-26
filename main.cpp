@@ -308,7 +308,7 @@ ColorFrameBuffer buffet;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
 
-static const float gridResolution = 64;
+static const float gridResolution = 32;
 static int numTiles = 0;
 static glm::uvec2 tileDimension;
 
@@ -407,10 +407,11 @@ void display()
 	//if (debugFlags[FULL_CALCULATIONS] && false)
 	if (featureToggle)
 	{ 
-		drawingVolumes2.ExclusiveOperation(
+		drawingVolumes.ExclusiveOperation(
 			[&](auto& data) 
 			{
-				std::size_t byteSize = sizeof(decltype(drawingVolumes2)::value_type::value_type) * data.size();
+				// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
+				std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
 				auto& buffer = ShaderStorage::Get("LightBlock");
 				std::vector<LightVolume> grouper;
 				std::ranges::copy(
@@ -424,6 +425,8 @@ void display()
 
 				buffer.BufferData(grouper);
 				ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
+				auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
+				buffer2.BufferData(data);
 			}
 		);
 		// Do the light culling and junk
@@ -437,6 +440,7 @@ void display()
 		// Must be reset every frame before usage
 		ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
+		ShaderStorage::Get("LightBlockOriginal").BindBufferBase(10);
 		ShaderBank::Get("lightCulling").SetActiveShader();
 		ShaderBank::Get("lightCulling").DispatchCompute(tileDimension.x, tileDimension.y);
 
@@ -517,7 +521,8 @@ void display()
 		ClearFramebuffer<ColorBuffer>();
 		drawingVolumes.ExclusiveOperation([](auto& data) {Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(data, DynamicDraw); });
 		// I don't know man this is too much
-		if (featureToggle && false)
+		//if (featureToggle && false)
+		if (false)
 		{
 			Shader& throne = ShaderBank::Get("light_volume_mesh");
 			VAO& shadow = VAOBank::Get("light_volume_mesh");
@@ -2346,8 +2351,8 @@ void init()
 		VAO& ref = VAOBank::Get("light_volume_mesh");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
 		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
-		ref.ArrayFormatOverride<glm::vec3>(2, 1, 1, offsetof(LightVolume, color));
-		ref.ArrayFormatOverride<glm::vec3>(3, 1, 1, offsetof(LightVolume, constants));
+		ref.ArrayFormatOverride<glm::vec4>(2, 1, 1, offsetof(LightVolume, color));
+		ref.ArrayFormatOverride<glm::vec4>(3, 1, 1, offsetof(LightVolume, constants));
 	}
 	{
 		VAO& ref = VAOBank::Get("new_mesh_single");
