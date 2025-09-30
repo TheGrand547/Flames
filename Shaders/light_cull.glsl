@@ -6,7 +6,7 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 8
+#define BLOCK_SIZE 32
 
 #define MAX_LIGHTS 100
 
@@ -14,26 +14,64 @@ shared uint numLights;
 shared uint groupLights[MAX_LIGHTS];
 shared Frustum groupFrustum;
 shared uint globalOffset;
+shared uint maxDepth;
+shared uint minDepth;
 
+
+uniform sampler2D DepthBuffer;
+uniform vec2 ScreenSize;
+uniform mat4 InverseProjection;
+uniform int TileSize;
+
+
+vec4 TransformToView4(vec4 ins)
+{
+	vec4 temp = InverseProjection * ins;
+	temp /= temp.w;
+	return temp;
+};
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
 {
 	const uint groupIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x; 
 	uint threadIndex = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
-	//threadIndex = 0;
+	
+	float ratio = float(TileSize) / BLOCK_SIZE;
+	
+	vec2 sampleCoord = vec2(gl_WorkGroupID.xy * TileSize + gl_LocalInvocationID.xy * ratio) / ScreenSize;
+	float sampledDepth = texture(DepthBuffer, sampleCoord).r;
+	uint ordered = floatBitsToUint(sampledDepth);
 	if (threadIndex == 0)
 	{
+		minDepth = 0xFFFFFFFF;
+		maxDepth = 0;
 		numLights = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
 	}
-	//memoryBarrierShared();
+	// TODO: try other memory barriers
 	groupMemoryBarrier();
+	atomicMin(minDepth, ordered);
+	atomicMax(maxDepth, ordered);
+	groupMemoryBarrier();
+	
+	float rawNear = uintBitsToFloat(minDepth);
+	float rawFar  = uintBitsToFloat(maxDepth);
+	
+	float zNear   = TransformToView4(vec4(0, 0, rawNear, 1)).z;
+	float zFar    = TransformToView4(vec4(0, 0, rawFar, 1)).z;
+	Plane nearPlane = Plane(vec3(0, 0, -1), -zNear);
+	Plane farPlane = Plane(vec3(0, 0, 1), zFar);
+	
 	for (uint i = threadIndex; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		LightInfoBig current = lights[i];
-		if (FrustumSphere(groupFrustum, current.position))
+		//if (SphereBehindPlane(nearPlane, current.position) || SphereBehindPlane(farPlane,current.position))
+		{
+		
+		}
+		 if (FrustumSphere(groupFrustum, current.position) && !SphereBehindPlane(nearPlane, current.position))// && !SphereBehindPlane(farPlane,current.position))
 		{
 			uint index = atomicAdd(numLights, 1);
 			if (index < MAX_LIGHTS)
@@ -43,7 +81,6 @@ void main()
 		}
 	}
 	groupMemoryBarrier();
-	//memoryBarrierShared();
 	
 	// Actually save them here
 	if (threadIndex == 0)

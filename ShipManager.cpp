@@ -81,7 +81,7 @@ void ShipManager::Update() noexcept
 	);
 }
 
-void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
+void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 {
 	if (this->pain.GetElementCount() == 0)
 	{
@@ -89,7 +89,7 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader2) noexcept
 	}
 	data.rawIndirect[0].instanceCount = this->pain.GetElementCount();
 	data.rawIndirect[1].instanceCount = this->pain.GetElementCount();
-	Shader& shader = ShaderBank::Get("defer");
+	//Shader& shader = ShaderBank::Get("defer");
 	shader.SetActiveShader();
 	shader.SetVec3("shapeColor", glm::vec3(0.8f));
 

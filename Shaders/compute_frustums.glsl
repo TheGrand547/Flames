@@ -10,6 +10,7 @@
 uniform int TileSize;
 
 uniform vec2 ScreenSize;
+uniform mat4 InverseProjection;
 
 
 // Determines, per work group, how many of each local threads there will be there are
@@ -24,7 +25,7 @@ vec4 TransformToView(vec2 ins)
 };
 vec4 TransformToView4(vec4 ins)
 {
-	vec4 temp = inverse(Projection) * ins;
+	vec4 temp = InverseProjection * ins;
 	temp /= temp.w;
 	return temp;
 };

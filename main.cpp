@@ -311,6 +311,7 @@ using ShaderStorage = Bank<ShaderStorageBuffer>;
 static const float gridResolution = 32;
 static int numTiles = 0;
 static glm::uvec2 tileDimension;
+static Framebuffer<1, Depth> earlyDepth;
 
 void display()
 {
@@ -406,7 +407,22 @@ void display()
 	// Switch between forward+ and deferred rendering
 	//if (debugFlags[FULL_CALCULATIONS] && false)
 	if (featureToggle)
-	{ 
+	{
+		VAO& outerzone = VAOBank::Get("new_mesh");
+		// Opaque depth pass first
+		earlyDepth.Bind();
+		
+		{
+			Shader& depthPass = ShaderBank::Get("depthOnly");
+			glClearDepthf(1.f);
+			depthPass.SetActiveShader();
+			outerzone.Bind();
+			levelGeometry.Bind(outerzone);
+			depthPass.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
+
+		}
+		BindDefaultFrameBuffer();
+
 		drawingVolumes.ExclusiveOperation(
 			[&](auto& data) 
 			{
@@ -429,23 +445,28 @@ void display()
 				buffer2.BufferData(data);
 			}
 		);
-		// Do the light culling and junk
 		ShaderStorage::Get("Frustums").BindBufferBase(5);
-		// Say 100 light max per tile
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
-		// Only need one per tile
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
-		// Light Block is dynamically generated, but dummy data will suffice
 		ShaderStorage::Get("LightBlock").BindBufferBase(8);
-		// Must be reset every frame before usage
 		ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
 		ShaderStorage::Get("LightBlockOriginal").BindBufferBase(10);
-		ShaderBank::Get("lightCulling").SetActiveShader();
-		ShaderBank::Get("lightCulling").DispatchCompute(tileDimension.x, tileDimension.y);
-		glFlush();
+		{
+			Shader& cullLights = ShaderBank::Get("lightCulling");
+			cullLights.SetActiveShader();
+			cullLights.SetVec2("ScreenSize", Window::GetSizeF());
+			cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth());
+			cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
+			// This should really be its own function
+			cullLights.SetMat4("InverseProjection", glm::inverse(Window::GetPerspective(zNear, zFar)));
+			cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
+			glFlush();
+		}
+
+		// Actual drawing based on the lighting stuff
+
 		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
-		VAO& outerzone = VAOBank::Get("new_mesh");
 		interzone.SetActiveShader();
 		levelGeometry.Bind(outerzone);
 		outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
@@ -483,6 +504,11 @@ void display()
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
 		if (debugFlags[CHECK_UVS])
 		{
+			static int thresholdAmount = 10;
+			ImGui::Begin("Light Threshold");
+			ImGui::SliderInt("Threshold", &thresholdAmount, 0, 100);
+			ImGui::End();
+			sahder.SetInt("maxLight", thresholdAmount);
 			//FeatureFlagPush<DepthTesting | FaceCulling, false> flagger;
 			DisablePushFlags(DepthTesting | FaceCulling);
 			sahder.DrawArray<DrawType::TriangleStrip>(4);
@@ -1161,7 +1187,7 @@ void idle()
 	}
 	if (timeDelta > 0.01)
 	{
-		Log("SPIKE: " << timeDelta);
+		//Log("SPIKE: " << timeDelta);
 	}
 
 	// "Proper" input handling
@@ -2020,6 +2046,10 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
 	pointLightBuffer.Assemble();
 
+	earlyDepth.GetColor().CreateEmpty(Window::GetSize(), InternalRed8);
+	earlyDepth.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth16);
+	earlyDepth.Assemble();
+
 	// This is dependent on screen size so must be here.
 	{
 		QUICKTIMER("Foolhardy");
@@ -2075,6 +2105,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
 		shader.SetVec2("ScreenSize", Window::GetSizeF());
 		shader.SetInt("TileSize", static_cast<int>(gridResolution));
+		shader.SetMat4("InverseProjection", glm::inverse(projection));
 		shader.DispatchCompute(tileDimension.x, tileDimension.y);
 	}
 }
@@ -2280,6 +2311,7 @@ void init()
 	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
+	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
 	ShaderBank::Get("new_mesh_single").Compile("new_mesh_single", "deferred");
 	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
@@ -2308,6 +2340,7 @@ void init()
 
 	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("dither").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("depthOnly").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("forwardPlus").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("Camera", 0);
@@ -2399,24 +2432,6 @@ void init()
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	CheckError();
-	{
-		std::array<glm::vec4, 40*2> lightingArray{ glm::vec4(0.f) };
-		std::array<LightVolume, 2> kipper{};
-		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
-		{
-			lightingArray[i] = glm::vec4(glm::ballRand(200.f), 0.f);
-			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
-			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
-			constantLights.push_back({lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f)});
-			constantLights.back().position.w = 60.f;
-		}
-		globalLighting.BufferData(lightingArray);
-		globalLighting.SetBindingPoint(4);
-		globalLighting.BindUniform();
-		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(kipper);
-		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
-		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
-	}
 
 	texturedVAO.ArrayFormat<TextureVertex>();
 
@@ -2711,6 +2726,26 @@ void init()
 	{
 		QUICKTIMER("BSP Tree");
 		bp.GenerateBSP(nodeTri);
+	}
+
+	{
+		std::array<glm::vec4, 40 * 2> lightingArray{ glm::vec4(0.f) };
+		std::array<LightVolume, 2> kipper{};
+		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
+		{
+			Triangle parent = nodeTri[rand() % nodeTri.size()];
+			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::gaussRand(10.f, 3.f), 0.f);
+			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
+			constantLights.push_back({ lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
+			constantLights.back().position.w = 60.f;
+		}
+		globalLighting.BufferData(lightingArray);
+		globalLighting.SetBindingPoint(4);
+		globalLighting.BindUniform();
+		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(kipper);
+		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
+		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
 	
 	for (int i = 0; i < 10; i++)
