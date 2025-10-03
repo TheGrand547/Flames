@@ -415,13 +415,16 @@ void display()
 		{
 			Shader& depthPass = ShaderBank::Get("depthOnly");
 			glClearDepthf(1.f);
+			glClear(GL_DEPTH_BUFFER_BIT);
 			depthPass.SetActiveShader();
 			outerzone.Bind();
 			levelGeometry.Bind(outerzone);
+			outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 			depthPass.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 		}
 		BindDefaultFrameBuffer();
+		Window::Viewport();
 
 		drawingVolumes.ExclusiveOperation(
 			[&](auto& data) 
@@ -2047,7 +2050,9 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	pointLightBuffer.Assemble();
 
 	earlyDepth.GetColor().CreateEmpty(Window::GetSize(), InternalRed8);
-	earlyDepth.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth16);
+	earlyDepth.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth32);
+	earlyDepth.GetDepth().SetFilters(LinearLinear, MagLinear, EdgeClamp, EdgeClamp);
+	earlyDepth.GetDepth().GenerateMipmap();
 	earlyDepth.Assemble();
 
 	// This is dependent on screen size so must be here.
@@ -2106,6 +2111,10 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 		shader.SetVec2("ScreenSize", Window::GetSizeF());
 		shader.SetInt("TileSize", static_cast<int>(gridResolution));
 		shader.SetMat4("InverseProjection", glm::inverse(projection));
+		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.25, 1) << '\n';
+		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.5, 1) << '\n';
+		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.75, 1) << '\n';
+		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.85, 1) << '\n';
 		shader.DispatchCompute(tileDimension.x, tileDimension.y);
 	}
 }

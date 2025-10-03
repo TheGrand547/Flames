@@ -61,17 +61,30 @@ void main()
 	
 	float zNear   = TransformToView4(vec4(0, 0, rawNear, 1)).z;
 	float zFar    = TransformToView4(vec4(0, 0, rawFar, 1)).z;
-	Plane nearPlane = Plane(vec3(0, 0, -1), -zNear);
-	Plane farPlane = Plane(vec3(0, 0, 1), zFar);
+	float clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
+
+	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
+	Plane nearPlane;//  = Plane(vec3(0, 0, -1), dot(vec3(0, 0, -1), vec3(0, 0, zNear)));
+	nearPlane.normal = vec3(0, 0, -1);
+	nearPlane.distance = -zNear;
+	
+	//clipNear = min(clipNear, zNear);
 	
 	for (uint i = threadIndex; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
-		LightInfoBig current = lights[i];
-		//if (SphereBehindPlane(nearPlane, current.position) || SphereBehindPlane(farPlane,current.position))
+		if (rawNear == rawFar)
 		{
-		
+			i = lightCount + 1;
+			continue;
 		}
-		 if (FrustumSphere(groupFrustum, current.position) && !SphereBehindPlane(nearPlane, current.position))// && !SphereBehindPlane(farPlane,current.position))
+		LightInfoBig current = lights[i];
+		
+		// Check if light is too near/far, being lenient
+		if (current.position.z - current.position.w > clipNear || current.position.z + current.position.w < zFar)
+		{
+			continue;
+		}
+		if (FrustumSphere(groupFrustum, current.position))// && !SphereBehindPlane(nearPlane, current.position))
 		{
 			uint index = atomicAdd(numLights, 1);
 			if (index < MAX_LIGHTS)
