@@ -6,7 +6,7 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 8
 
 #define MAX_LIGHTS 100
 
@@ -38,6 +38,7 @@ void main()
 	uint threadIndex = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
 	
 	float ratio = float(TileSize) / BLOCK_SIZE;
+	ratio = 1.f;
 	
 	vec2 sampleCoord = vec2(gl_WorkGroupID.xy * TileSize + gl_LocalInvocationID.xy * ratio) / ScreenSize;
 	float sampledDepth = texture(DepthBuffer, sampleCoord).r;
@@ -66,7 +67,7 @@ void main()
 	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
 	Plane nearPlane;//  = Plane(vec3(0, 0, -1), dot(vec3(0, 0, -1), vec3(0, 0, zNear)));
 	nearPlane.normal = vec3(0, 0, -1);
-	nearPlane.distance = -zNear;
+	nearPlane.distance = zNear;
 	
 	//clipNear = min(clipNear, zNear);
 	
@@ -84,12 +85,15 @@ void main()
 		{
 			continue;
 		}
-		if (FrustumSphere(groupFrustum, current.position))// && !SphereBehindPlane(nearPlane, current.position))
+		if (FrustumSphere(groupFrustum, current.position))
 		{
-			uint index = atomicAdd(numLights, 1);
-			if (index < MAX_LIGHTS)
+			if (!SphereBehindPlaneExact(nearPlane, current.position))
 			{
-				groupLights[index] = i;
+				uint index = atomicAdd(numLights, 1);
+				if (index < MAX_LIGHTS)
+				{
+					groupLights[index] = i;
+				}
 			}
 		}
 	}
