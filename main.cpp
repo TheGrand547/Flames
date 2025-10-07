@@ -466,8 +466,11 @@ void display()
 			cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
 			// This should really be its own function
 			cullLights.SetMat4("InverseProjection", glm::inverse(Window::GetPerspective(zNear, zFar)));
+			glFinish();
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
-			glFlush();
+			glFinish();
+			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
 
 		// Actual drawing based on the lighting stuff
@@ -481,7 +484,11 @@ void display()
 		interzone.SetInt("TileSize", static_cast<int>(gridResolution));
 		interzone.SetUVec2("tileDimension", tileDimension);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
+		glMemoryBarrier(GL_ALL_BARRIER_BITS);
+		glFlush();
+		glFinish();
+
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		// Only need one per tile
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
@@ -633,6 +640,15 @@ void display()
 		//EnableGLFeatures<DepthTesting>();
 		//EnableDepthBufferWrite();
 	}
+	//if (Input::Mouse::CheckButton(Input::Mouse::Button1))
+	{
+		glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, earlyDepth.GetFrameBuffer());
+		glm::ivec2 dimension = Window::GetSize();
+		glBlitFramebuffer(0, 0, dimension.x, dimension.y, 0, 0, dimension.x, dimension.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+		glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	}
+
 	CheckError();
 	/* STICK FIGURE GUY */
 	uniform.SetActiveShader();
@@ -1138,12 +1154,7 @@ void display()
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-	/*
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, earlyDepth.GetFrameBuffer());
-	glm::ivec2 dimension = Window::GetSize();
-	glBlitFramebuffer(0, 0, dimension.x, dimension.y, 0, 0, dimension.x, dimension.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-	*/
+	
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
@@ -1473,7 +1484,7 @@ void gameTick()
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
 
-		std::vector<LightVolume> volumes;//{ constantLights };
+		std::vector<LightVolume> volumes{ constantLights };
 		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
