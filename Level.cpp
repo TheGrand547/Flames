@@ -52,7 +52,7 @@ namespace Level
 		return Bullets;
 	}
 
-	static DynamicOctTree<Bullet> bulletTree{ glm::vec3(1000.f) };
+	static DynamicOctTree<Bullet> bulletTree{ glm::vec3(500.f) };
 
 	DynamicOctTree<Bullet>& GetBulletTree()
 	{

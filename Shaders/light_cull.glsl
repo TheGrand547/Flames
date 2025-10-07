@@ -40,9 +40,9 @@ void main()
 	float ratio = float(TileSize) / BLOCK_SIZE;
 	ratio = 1.f;
 	
-	vec2 sampleCoord = vec2(gl_WorkGroupID.xy * TileSize + gl_LocalInvocationID.xy * ratio) / ScreenSize;
-	float sampledDepth = texture(DepthBuffer, sampleCoord).r;
-	uint ordered = floatBitsToUint(sampledDepth);
+	//vec2 sampleCoord = vec2(gl_WorkGroupID.xy * TileSize + gl_LocalInvocationID.xy * ratio) / ScreenSize;
+	//float sampledDepth = texture(DepthBuffer, sampleCoord).r;
+	//uint ordered = floatBitsToUint(sampledDepth);
 	if (threadIndex == 0)
 	{
 		minDepth = 0xFFFFFFFF;
@@ -52,31 +52,31 @@ void main()
 		groupFrustum = frustums[groupIndex];
 	}
 	// TODO: try other memory barriers
-	groupMemoryBarrier();
-	atomicMin(minDepth, ordered);
-	atomicMax(maxDepth, ordered);
+	//groupMemoryBarrier();
+	//atomicMin(minDepth, ordered);
+	//atomicMax(maxDepth, ordered);
 	groupMemoryBarrier();
 	
-	float rawNear = uintBitsToFloat(minDepth);
-	float rawFar  = uintBitsToFloat(maxDepth);
+	//float rawNear = uintBitsToFloat(minDepth);
+	//float rawFar  = uintBitsToFloat(maxDepth);
 	
-	float zNear   = TransformToView4(vec4(0, 0, rawNear, 1)).z;
-	float zFar    = TransformToView4(vec4(0, 0, rawFar, 1)).z;
+	//float zNear   = TransformToView4(vec4(0, 0, rawNear, 1)).z;
+	float zFar    = TransformToView4(vec4(0, 0, 1, 1)).z;
 	float clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
 
 	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
 	Plane nearPlane;//  = Plane(vec3(0, 0, -1), dot(vec3(0, 0, -1), vec3(0, 0, zNear)));
 	nearPlane.normal = vec3(0, 0, -1);
-	nearPlane.distance = zNear;
+	//nearPlane.distance = -zNear;
 	
 	//clipNear = min(clipNear, zNear);
 	
 	for (uint i = threadIndex; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
-		if (rawNear == rawFar)
+		//if (rawNear == rawFar)
 		{
-			i = lightCount + 1;
-			continue;
+			//i = lightCount + 1;
+			//continue;
 		}
 		LightInfoBig current = lights[i];
 		
@@ -87,7 +87,7 @@ void main()
 		}
 		if (FrustumSphere(groupFrustum, current.position))
 		{
-			if (!SphereBehindPlaneExact(nearPlane, current.position))
+			//if (!SphereBehindPlaneExact(nearPlane, current.position))
 			{
 				uint index = atomicAdd(numLights, 1);
 				if (index < MAX_LIGHTS)

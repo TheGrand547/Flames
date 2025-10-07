@@ -18,7 +18,8 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 
 vec4 TransformToView(vec2 ins)
 {
-	vec4 temp = inverse(Projection) * vec4((ins / ScreenSize) * 2.f - 1.f, 1.f, 1.f);
+	vec2 grump = vec2(ins / ScreenSize);
+	vec4 temp = InverseProjection * vec4((vec2(grump.x, 1.f - grump.y) * 2.f) - 1.f, 1.f, 1.f);
 	temp /= temp.w;
 	return temp;
 	
@@ -51,10 +52,10 @@ void main()
 	
 	Frustum result;
 	result.planes[0] = MakePlane(eye, points2[2], points2[0]); // Left
-	result.planes[1] = MakePlane(eye, points2[1], points2[3]); // Right
+	result.planes[3] = MakePlane(eye, points2[1], points2[3]); // Right
 	
 	result.planes[2] = MakePlane(eye, points2[0], points2[1]); // Top
-	result.planes[3] = MakePlane(eye, points2[3], points2[2]); // Bottom
+	result.planes[1] = MakePlane(eye, points2[3], points2[2]); // Bottom
 	
 	uint index = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x;
 	

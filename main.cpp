@@ -86,6 +86,7 @@
 #include "entities/ShieldGenerator.h"
 #include "misc/ExternalShaders.h"
 #include <semaphore>
+#include "Test.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: Delaunay Trianglulation
@@ -181,7 +182,7 @@ constexpr float ANGLE_DELTA = 4;
 glm::vec3 cameraPosition(0, 1.5f, 0);
 glm::vec3 cameraRotation(0, 0, 0);
 
-float zNear = 0.1f, zFar = 1000.f;
+float zNear = 0.1f, zFar = 250.f;
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
@@ -312,6 +313,7 @@ static const float gridResolution = 32;
 static int numTiles = 0;
 static glm::uvec2 tileDimension;
 static Framebuffer<1, Depth> earlyDepth;
+static constexpr float EarlyDepthRatio = 1;
 
 void display()
 {
@@ -410,8 +412,9 @@ void display()
 	{
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		// Opaque depth pass first
-		earlyDepth.Bind();
+		//earlyDepth.Bind();
 		
+		if (false)
 		{
 			Shader& depthPass = ShaderBank::Get("depthOnly");
 			glClearDepthf(1.f);
@@ -423,12 +426,14 @@ void display()
 			depthPass.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 		}
-		BindDefaultFrameBuffer();
-		Window::Viewport();
+		//BindDefaultFrameBuffer();
+		//Window::Viewport();
 
 		drawingVolumes.ExclusiveOperation(
 			[&](auto& data) 
 			{
+				auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
+				buffer2.BufferData(data);
 				// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
 				std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
 				auto& buffer = ShaderStorage::Get("LightBlock");
@@ -444,8 +449,6 @@ void display()
 
 				buffer.BufferData(grouper);
 				ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
-				auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
-				buffer2.BufferData(data);
 			}
 		);
 		ShaderStorage::Get("Frustums").BindBufferBase(5);
@@ -458,7 +461,7 @@ void display()
 		{
 			Shader& cullLights = ShaderBank::Get("lightCulling");
 			cullLights.SetActiveShader();
-			cullLights.SetVec2("ScreenSize", Window::GetSizeF());
+			cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
 			cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth());
 			cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
 			// This should really be its own function
@@ -788,7 +791,7 @@ void display()
 	}*/
 
 	// Level outline
-	if (featureToggle && debugFlags[FREEZE_GAMEPLAY])
+	if (featureToggle && debugFlags[FREEZE_GAMEPLAY] && false)
 	{
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 		DisablePushFlags(DepthTesting | FaceCulling);
@@ -1001,7 +1004,7 @@ void display()
 
 	DisableGLFeatures<StencilTesting>();
 	//EnableGLFeatures<DepthTesting>();
-	glDepthMask(GL_TRUE);
+	glDepthMask(GL_FALSE);
 
 	DisableGLFeatures<FaceCulling>();
 	glDepthFunc(GL_LEQUAL);
@@ -1130,12 +1133,17 @@ void display()
 	glLineWidth(1.f);
 	widget.SetActiveShader();
 	widget.DrawArray<DrawType::Lines>(6);
-	
+
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
 	ImGui::Render();
 	ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
+	/*
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, earlyDepth.GetFrameBuffer());
+	glm::ivec2 dimension = Window::GetSize();
+	glBlitFramebuffer(0, 0, dimension.x, dimension.y, 0, 0, dimension.x, dimension.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
+	*/
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
@@ -1465,7 +1473,7 @@ void gameTick()
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
 
-		std::vector<LightVolume> volumes{ constantLights };
+		std::vector<LightVolume> volumes;//{ constantLights };
 		// TODO: Combine these with a special function with an enum return value
 		Level::GetBulletTree().for_each([&](Bullet& local)
 			{
@@ -2049,10 +2057,11 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
 	pointLightBuffer.Assemble();
 
-	earlyDepth.GetColor().CreateEmpty(Window::GetSize(), InternalRed8);
-	earlyDepth.GetDepth().CreateEmpty(Window::GetSize(), InternalDepth32);
-	earlyDepth.GetDepth().SetFilters(LinearLinear, MagLinear, EdgeClamp, EdgeClamp);
-	earlyDepth.GetDepth().GenerateMipmap();
+	earlyDepth.GetColor().CreateEmpty(Window::GetSizeF() / EarlyDepthRatio, InternalRed8);
+	earlyDepth.GetDepth().CreateEmpty(Window::GetSizeF() / EarlyDepthRatio, InternalDepth32);
+	//earlyDepth.GetDepth().SetFilters(LinearLinear, MagLinear, EdgeClamp, EdgeClamp);
+	earlyDepth.GetDepth().SetFilters(MinNearest, MagNearest, EdgeClamp, EdgeClamp);
+	//earlyDepth.GetDepth().GenerateMipmap();
 	earlyDepth.Assemble();
 
 	// This is dependent on screen size so must be here.
@@ -2254,6 +2263,7 @@ void testOBB()
 
 void init()
 {
+	TestFunc();
 	//Input::ControllerStuff();
 	//testOBB();
 	std::srand(NULL);
@@ -2743,11 +2753,11 @@ void init()
 		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
 			Triangle parent = nodeTri[rand() % nodeTri.size()];
-			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::gaussRand(10.f, 3.f), 0.f);
+			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::gaussRand(30.f, 10.f), 0.f);
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
 			constantLights.push_back({ lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
-			constantLights.back().position.w = 60.f;
+			constantLights.back().position.w = glm::gaussRand(40.f, 10.f);
 		}
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);

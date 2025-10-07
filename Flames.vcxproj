@@ -216,6 +216,7 @@
     <ClCompile Include="StaticOctTree.cpp" />
     <ClCompile Include="stbWrangler.cpp" />
     <ClCompile Include="Geometry.cpp" />
+    <ClCompile Include="Test.cpp" />
     <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Texture2D.cpp" />
     <ClCompile Include="TextureUtil.cpp" />
@@ -309,6 +310,7 @@
     <ClInclude Include="stb_rect_pack.h" />
     <ClInclude Include="stb_truetype.h" />
     <ClInclude Include="Geometry.h" />
+    <ClInclude Include="Test.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Texture2D.h" />
     <ClInclude Include="TextureUtil.h" />
