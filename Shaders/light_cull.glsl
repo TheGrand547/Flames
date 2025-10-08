@@ -6,7 +6,7 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 16
+#define BLOCK_SIZE 32
 
 #define MAX_LIGHTS 100
 
@@ -46,35 +46,46 @@ void main()
 	uint ordered = floatBitsToUint(sampledDepth);
 	if (threadIndex == 0)
 	{
+		if (groupIndex == 0)
+		{
+			globalLightIndex = 0;
+		}
 		minDepth = 0xFFFFFFFF;
 		maxDepth = 0;
 		numLights = 0;
+		globalOffset = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
 	}
 	// TODO: try other memory barriers
 	//memoryBarrierShared();
-	groupMemoryBarrier();
+	//groupMemoryBarrier();
+	barrier();
 	atomicMin(minDepth, ordered);
 	atomicMax(maxDepth, ordered);
 	//memoryBarrierShared();
-	groupMemoryBarrier();
+	//groupMemoryBarrier();
+	barrier();
 	
 	float rawNear = uintBitsToFloat(minDepth);
 	float rawFar  = uintBitsToFloat(maxDepth);
 	
-	float zNear   = TransformToView4(vec4(0, 0, rawNear, 1)).z;
-	float zFar    = TransformToView4(vec4(0, 0, rawFar, 1)).z;
+	float zNear    = TransformToView4(vec4(0, 0, rawNear, 1)).z;
+	float zFar     = TransformToView4(vec4(0, 0, rawFar, 1)).z;
 	float clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
+	float clipFar  = TransformToView4(vec4(0, 0, 1, 1)).z;
 
 	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
 	Plane nearPlane;
 	nearPlane.normal = vec3(0, 0, -1);
-	nearPlane.distance = zNear;
+	nearPlane.distance = -zNear;
+	
 	uint i = threadIndex;
-	if (minDepth == 0xFFFFFFFF)
+	//if (zNear == clipFar)
+	if (minDepth == floatBitsToUint(1.f))
 	{
-		i = lightCount;
+		i = lightCount + 1;
+		//return;
 	}
 	for (; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
@@ -83,12 +94,17 @@ void main()
 		// Check if light is too near/far, being lenient
 		if (current.position.z - current.position.w > clipNear || current.position.z + current.position.w < zFar)
 		{
-			continue;
+			
 		}
-		if (FrustumSphere(groupFrustum, current.position))
+		/*
+		else if (minDepth == floatBitsToUint(1.f))
 		{
-			//if (SphereTouchesPlane(nearPlane, current.position))
-			if (!SphereBehindPlane(nearPlane, current.position))
+		
+		}*/
+		else if (FrustumSphere(groupFrustum, current.position))
+		{
+			// This still doesn't work for some reason and I have spent too long today fixing bullshit
+			//if (!SphereBehindPlane(nearPlane, current.position))
 			{
 				uint index = atomicAdd(numLights, 1);
 				if (index < MAX_LIGHTS)
@@ -98,8 +114,9 @@ void main()
 			}
 		}
 	}
-	groupMemoryBarrier();
+	//groupMemoryBarrier();
 	//memoryBarrierShared();
+	barrier();
 	// Actually save them here
 	if (threadIndex == 0)
 	{
@@ -112,12 +129,14 @@ void main()
 		grid[groupIndex] = uvec2(globalOffset, numLights);
 		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
 	}
-	groupMemoryBarrier();
+	//groupMemoryBarrier();
 	//memoryBarrierShared();
+	barrier();
 	// TODO: return to this shit
 	for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		indicies[globalOffset + i] = groupLights[i];
 	}
 	groupMemoryBarrier();
+	memoryBarrierShared();
 }
