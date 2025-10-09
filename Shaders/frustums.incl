@@ -45,7 +45,7 @@ bool FrustumSphere(Frustum frustum, vec4 sphere)
 {
 	bool result = true;
 	// TODO: Far/near culling
-	for (int i = 0; i < 4 && result; i++)
+	for (uint i = 0; i < 4 && result; i++)
 	{
 		if (SphereBehindPlane(frustum.planes[i], sphere))
 		{

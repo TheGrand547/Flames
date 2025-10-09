@@ -30,6 +30,17 @@ void main()
 	float det = (B * B) - (4 * C);
 	if(det < 0.0)
 		discard;
+		
+	float sqrtDet = sqrt(det);
+	float posT = (-B + sqrtDet)/2;
+	float negT = (-B - sqrtDet)/2;
+	
+	float intersectT = max(posT, negT);
+	vec3 cameraPos = ray * intersectT;
+	vec4 laDeDa = Projection * vec4(cameraPos, 1.f);
+	laDeDa /= laDeDa.w;
+	gl_FragDepth = laDeDa.z / 2 + 0.5;
+	// Something is very fishy and wrong here but I don't know what
 	
 	vec2 textureCoord = gl_FragCoord.xy / 1000;
 	

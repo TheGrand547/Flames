@@ -1,9 +1,9 @@
 #version 440 core
 
-layout(location = 0) in vec3 lightColor;
-layout(location = 1) in vec3 lightCenter;
-layout(location = 2) in float lightRadius;
-layout(location = 3) in vec3 lightConstant;
+layout(location = 0) flat in vec3 lightColor;
+layout(location = 1) flat in vec3 lightCenter;
+layout(location = 2) flat in float lightRadius;
+layout(location = 3) flat in vec3 lightConstant;
 
 layout(location = 0) out vec4 fColor;
 

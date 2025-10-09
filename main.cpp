@@ -196,6 +196,7 @@ struct LightVolume
 	glm::vec4 position;
 	glm::vec4 color;
 	glm::vec4 constants;
+	glm::vec4 padding{ 0.f };
 };
 
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
@@ -271,7 +272,8 @@ UniformBuffer globalLighting;
 Framebuffer<3, Depth> deferredBuffer;
 
 // Could be expanded to have another buffer if necessary
-ColorFrameBuffer pointLightBuffer;
+//ColorFrameBuffer pointLightBuffer;
+Framebuffer<1, Depth> pointLightBuffer;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
 BufferSync<std::vector<LightVolume>> drawingVolumes, drawingVolumes2;
@@ -373,7 +375,7 @@ void display()
 	const glm::vec3 localCamera = cameraPair.first;
 	const glm::vec3 cameraForward = cameraPair.second;
 
-	glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel, velocity), axes[1]);
+	const glm::mat4 view = glm::lookAt(localCamera, GetCameraFocus(playerModel, velocity), axes[1]);
 	cameraUniformBuffer.BufferSubData(view, 0);
 	Frustum frustum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 	CheckError();
@@ -442,37 +444,40 @@ void display()
 					data | std::views::transform(
 						[&](const LightVolume& v)
 						{
-							return LightVolume{ glm::vec4(glm::vec3(view * glm::vec4(glm::vec3(v.position), 1.f)), v.position.w),
+							glm::vec3 transformed = view * glm::vec4(glm::xyz(v.position), 1.f);
+							return LightVolume{ glm::vec4(transformed, v.position.w),
 									v.color, v.constants };
 						}
 					), std::back_inserter(grouper));
 
 				buffer.BufferData(grouper);
 				ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
+				ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 			}
 		);
 		ShaderStorage::Get("Frustums").BindBufferBase(5);
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		ShaderStorage::Get("LightGrid").BindBufferBase(7);
 		ShaderStorage::Get("LightBlock").BindBufferBase(8);
-		ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
 		ShaderStorage::Get("LightBlockOriginal").BindBufferBase(10);
 		{
 			Shader& cullLights = ShaderBank::Get("lightCulling");
 			cullLights.SetActiveShader();
 			cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
-			cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth());
+			cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
 			cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
 			// This should really be its own function
 			cullLights.SetMat4("InverseProjection", glm::inverse(Window::GetPerspective(zNear, zFar)));
+			Texture2D& fucker = Bank<Texture2D>::Get("hatred");
+			fucker.CreateEmpty(glm::ivec2(tileDimension), InternalFloatRedGreen32);
+			glFinish();
+			//cullLights.SetTextureUnit("imgOutput", fucker, 0);
+			glBindImageTexture(0, fucker.GetGLTexture(), 0, GL_FALSE, 0, GL_READ_WRITE, InternalFloatRedGreen32);
 			glFinish();
 			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
-			glFinish();
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
 		}
-
 		// Actual drawing based on the lighting stuff
 
 		Shader& interzone = ShaderBank::Get("forwardPlusMulti");
@@ -484,10 +489,7 @@ void display()
 		interzone.SetInt("TileSize", static_cast<int>(gridResolution));
 		interzone.SetUVec2("tileDimension", tileDimension);
 		outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT | GL_TEXTURE_FETCH_BARRIER_BIT);
-		glMemoryBarrier(GL_ALL_BARRIER_BITS);
-		glFlush();
-		glFinish();
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
 		// Only need one per tile
@@ -575,8 +577,13 @@ void display()
 		drawingVolumes.ExclusiveOperation([](auto& data) {Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(data, DynamicDraw); });
 		// I don't know man this is too much
 		//if (featureToggle && false)
-		if (false)
+		if (debugFlags[TIGHT_BOXES])
 		{
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+			glDepthFunc(GL_GEQUAL);
+			glCullFace(GL_FRONT);
+			glEnable(GL_CULL_FACE);
 			Shader& throne = ShaderBank::Get("light_volume_mesh");
 			VAO& shadow = VAOBank::Get("light_volume_mesh");
 			ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
@@ -587,21 +594,25 @@ void display()
 			sphereIndicies.BindBuffer();
 			throne.SetTextureUnit("gPosition", deferredBuffer.GetColorBuffer<0>(), 0);
 			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
-			if (featureToggle || true)
+			if (true)
 			{
 				throne.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, cotillion);
 			}
-			else
+			if (false)
 			{
 				// Possibility of working if locked to camera perspective but unsure
 				shadow.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 				solidCubeIndex.BindBuffer();
 				throne.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, cotillion);
 			}
+			glDepthFunc(GL_LEQUAL);
 		}
 		else
 		{
 			glCullFace(GL_BACK);
+			glEnable(GL_DEPTH_TEST);
+			glDepthMask(GL_FALSE);
+			glDepthFunc(GL_GEQUAL);
 			Shader& throne = ShaderBank::Get("light_volume");
 			VAO& shadow = VAOBank::Get("light_volume");
 			ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
@@ -614,6 +625,7 @@ void display()
 			throne.SetTextureUnit("gNormal", deferredBuffer.GetColorBuffer<1>(), 1);
 			//throne.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), cotillion);
 			throne.DrawArrayInstanced<DrawType::TriangleFan>(Bank<ArrayBuffer>::Get("dummy2"), cotillion);
+			glDepthFunc(GL_LEQUAL);
 		}
 
 		//throne.DrawElements<DrawType::Triangle>(sphereIndicies);
@@ -2066,6 +2078,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	deferredBuffer.Assemble();
 
 	pointLightBuffer.GetColor().CreateEmpty(Window::GetSize());
+	pointLightBuffer.GetDepth().MakeAliasOf(deferredBuffer.GetDepth());
 	pointLightBuffer.Assemble();
 
 	earlyDepth.GetColor().CreateEmpty(Window::GetSizeF() / EarlyDepthRatio, InternalRed8);
@@ -2285,7 +2298,7 @@ void init()
 	glDepthFunc(GL_LEQUAL);
 
 	glClearColor(0, 0, 0, 1);
-
+	glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 	glFrontFace(GL_CCW);
 	// OpenGL debuggin
 	glDebugMessageCallback(DebugCallback, nullptr);
@@ -2759,16 +2772,21 @@ void init()
 	}
 
 	{
-		std::array<glm::vec4, 40 * 2> lightingArray{ glm::vec4(0.f) };
+		std::array<glm::vec4, 20 * 2> lightingArray{ glm::vec4(0.f) };
 		std::array<LightVolume, 2> kipper{};
 		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
 			Triangle parent = nodeTri[rand() % nodeTri.size()];
-			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::gaussRand(30.f, 10.f), 0.f);
+			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::max(glm::gaussRand(15.f, 5.f), 5.f), 
+				glm::max(glm::gaussRand(40.f, 10.f), 5.f));
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
+			
 			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
 			constantLights.push_back({ lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
-			constantLights.back().position.w = glm::gaussRand(40.f, 10.f);
+			if (!bp.TestPoint(glm::vec3(lightingArray[i])))
+			{
+				std::cout << "Invalid Point" << '\n';
+			}
 		}
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
@@ -2780,7 +2798,9 @@ void init()
 	
 	for (int i = 0; i < 10; i++)
 	{
-		management.Make().Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
+		auto& foo = management.Make();
+		foo.Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
+		foo.SetPos(constantLights[i].position);
 	}
 
 	Level::GetTriangleTree().UpdateStructure();

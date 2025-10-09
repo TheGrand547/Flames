@@ -5,10 +5,10 @@ layout(location = 1) in vec4 instancePosition;
 layout(location = 2) in vec4 color;
 layout(location = 3) in vec4 constant;
 
-layout(location = 0) out vec3 lightColor;
-layout(location = 1) out vec3 lightCenter;
-layout(location = 2) out float lightRadius;
-layout(location = 3) out vec3 lightConstant;
+layout(location = 0) flat out vec3 lightColor;
+layout(location = 1) flat out vec3 lightCenter;
+layout(location = 2) flat out float lightRadius;
+layout(location = 3) flat out vec3 lightConstant;
 
 #include "camera"
 

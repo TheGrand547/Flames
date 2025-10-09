@@ -66,6 +66,8 @@ public:
 		return this->transform;
 	}
 
+	inline void SetPos(glm::vec3 b) { this->transform.position = b; }
+
 	inline std::size_t GetModulatedTick() const noexcept
 	{
 		return Level::GetCurrentTick() + this->tickOffset;

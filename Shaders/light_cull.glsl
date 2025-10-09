@@ -31,6 +31,8 @@ vec4 TransformToView4(vec4 ins)
 	return temp;
 };
 
+layout(rg16f, binding = 0) uniform image2D imgOutput;
+
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
 {
@@ -73,15 +75,16 @@ void main()
 	float zNear    = TransformToView4(vec4(0, 0, rawNear, 1)).z;
 	float zFar     = TransformToView4(vec4(0, 0, rawFar, 1)).z;
 	float clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
-	float clipFar  = TransformToView4(vec4(0, 0, 1, 1)).z;
+	//float clipFar  = TransformToView4(vec4(0, 0, 1, 1)).z;
 
 	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
 	Plane nearPlane;
 	nearPlane.normal = vec3(0, 0, -1);
-	nearPlane.distance = -zNear;
+	nearPlane.distance = dot(nearPlane.normal, vec3(0, 0, zNear));
 	
 	uint i = threadIndex;
 	//if (zNear == clipFar)
+	
 	if (minDepth == floatBitsToUint(1.f))
 	{
 		i = lightCount + 1;
@@ -104,7 +107,7 @@ void main()
 		else if (FrustumSphere(groupFrustum, current.position))
 		{
 			// This still doesn't work for some reason and I have spent too long today fixing bullshit
-			//if (!SphereBehindPlane(nearPlane, current.position))
+			if (!SphereBehindPlane(nearPlane, current.position))
 			{
 				uint index = atomicAdd(numLights, 1);
 				if (index < MAX_LIGHTS)
@@ -127,6 +130,7 @@ void main()
 			//indicies[globalOffset + i] = groupLights[i];
 		}
 		grid[groupIndex] = uvec2(globalOffset, numLights);
+		imageStore(imgOutput, ivec2(gl_WorkGroupID.xy), vec4(rawNear, rawFar, 0, 1));
 		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
 	}
 	//groupMemoryBarrier();
@@ -137,6 +141,6 @@ void main()
 	{
 		indicies[globalOffset + i] = groupLights[i];
 	}
-	groupMemoryBarrier();
-	memoryBarrierShared();
+	//groupMemoryBarrier();
+	//memoryBarrierShared();
 }
