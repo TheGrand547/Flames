@@ -104,7 +104,8 @@ void main()
 		{
 		
 		}*/
-		else if (FrustumSphere(groupFrustum, current.position))
+		//else 
+		if (FrustumSphere(groupFrustum, current.position))
 		{
 			// This still doesn't work for some reason and I have spent too long today fixing bullshit
 			if (!SphereBehindPlane(nearPlane, current.position))
@@ -130,7 +131,7 @@ void main()
 			//indicies[globalOffset + i] = groupLights[i];
 		}
 		grid[groupIndex] = uvec2(globalOffset, numLights);
-		imageStore(imgOutput, ivec2(gl_WorkGroupID.xy), vec4(rawNear, rawFar, 0, 1));
+		//imageStore(imgOutput, ivec2(gl_WorkGroupID.xy), vec4(rawNear, rawFar, 0, 1));
 		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
 	}
 	//groupMemoryBarrier();

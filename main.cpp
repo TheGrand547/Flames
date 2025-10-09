@@ -193,9 +193,9 @@ std::chrono::nanoseconds idleTime, displayTime, renderDelay;
 
 struct LightVolume
 {
-	glm::vec4 position;
-	glm::vec4 color;
-	glm::vec4 constants;
+	glm::vec4 position{ glm::vec3(0.f), 10.f };
+	glm::vec4 color{ 1.f };
+	glm::vec4 constants{1.f, 0.025f, 0.f, 0.f};
 	glm::vec4 padding{ 0.f };
 };
 
@@ -436,6 +436,8 @@ void display()
 			{
 				auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
 				buffer2.BufferData(data);
+				LightVolume board{};
+				//buffer2.BufferData(board);
 				// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
 				std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
 				auto& buffer = ShaderStorage::Get("LightBlock");
@@ -451,6 +453,8 @@ void display()
 					), std::back_inserter(grouper));
 
 				buffer.BufferData(grouper);
+				LightVolume hack{ glm::vec4(0.f, 10.f, -50.f, 10.f), glm::vec4(1.f), {} };
+				//buffer.BufferData(hack);
 				ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
 				ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 			}
@@ -609,10 +613,10 @@ void display()
 		}
 		else
 		{
-			glCullFace(GL_BACK);
-			glEnable(GL_DEPTH_TEST);
-			glDepthMask(GL_FALSE);
-			glDepthFunc(GL_GEQUAL);
+			//glCullFace(GL_BACK);
+			//glEnable(GL_DEPTH_TEST);
+			//glDepthMask(GL_FALSE);
+			//glDepthFunc(GL_GEQUAL);
 			Shader& throne = ShaderBank::Get("light_volume");
 			VAO& shadow = VAOBank::Get("light_volume");
 			ArrayBuffer& cotillion = Bank<ArrayBuffer>::Get("light_volume_mesh");
@@ -1597,7 +1601,8 @@ void gameTick()
 									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
 									Bullet::Collision.GetScale() * glm::vec3(1.5f, BulletDecalScale, BulletDecalScale)));
 								blarg.push_back(sigma.GetModelMatrix());
-								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
+								//if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
+								if (false)
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
@@ -2777,8 +2782,8 @@ void init()
 		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
 			Triangle parent = nodeTri[rand() % nodeTri.size()];
-			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::max(glm::gaussRand(15.f, 5.f), 5.f), 
-				glm::max(glm::gaussRand(40.f, 10.f), 5.f));
+			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::max(glm::gaussRand(25.f, 5.f), 5.f), 
+				glm::min(glm::gaussRand(25.f, 10.f), 40.f));
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			
 			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
@@ -2800,7 +2805,7 @@ void init()
 	{
 		auto& foo = management.Make();
 		foo.Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
-		foo.SetPos(constantLights[i].position);
+		//foo.SetPos(constantLights[i].position);
 	}
 
 	Level::GetTriangleTree().UpdateStructure();
