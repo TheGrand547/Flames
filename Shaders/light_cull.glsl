@@ -20,17 +20,8 @@ shared float clipNear;
 
 uniform sampler2D DepthBuffer;
 uniform vec2 ScreenSize;
-uniform mat4 InverseProjection;
 uniform mat2 fastProjection;
 uniform int TileSize;
-uniform uint FeatureToggle;
-
-vec4 TransformToView4(vec4 ins)
-{
-	vec4 temp = InverseProjection * ins;
-	temp /= temp.w;
-	return temp;
-};
 
 float TransformFast(float depth)
 {
@@ -62,35 +53,16 @@ void main()
 		globalOffset = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
-		if (FeatureToggle == 0)
-		{
-			clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
-		}
-		else
-		{
-			clipNear = TransformFast(0);
-		}
+		clipNear = TransformFast(0);
 	}
 	barrier();
 	atomicMin(minDepth, ordered);
 	atomicMax(maxDepth, ordered);
 	barrier();
 	
-	float rawNear = uintBitsToFloat(minDepth);
-	float rawFar  = uintBitsToFloat(maxDepth);
-	
-	float zNear, zFar;
-	if (FeatureToggle == 0)
-	{
-		zNear    = TransformToView4(vec4(0, 0, rawNear, 1)).z;
-		zFar     = TransformToView4(vec4(0, 0, rawFar, 1)).z;
-	}
-	else
-	{
-		zNear = TransformFast(rawNear);
-		zFar  = TransformFast(rawFar);
-	}
-	
+	float zNear = TransformFast(uintBitsToFloat(minDepth));
+	float zFar  = TransformFast(uintBitsToFloat(maxDepth));
+
 	Plane nearPlane = {vec3(0, 0, -1), -zNear};
 	
 	uint i = threadIndex;
