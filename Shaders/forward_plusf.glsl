@@ -46,9 +46,10 @@ void main()
 	{
 		uint index = indicies[i + lightData.x];
 		LightInfoBig current = lightsOriginal[index];
-		if (length(current.position.xyz - fPos) > current.position.w)
-			continue;
-		lightOut += PointLightStruct(current, normal, fPos, viewDirection);
+		if (length(current.position.xyz - fPos) < current.position.w)
+		{
+			lightOut += PointLightStruct(current, normal, fPos, viewDirection);
+		}
 	}
 	
 	// For textured stuff

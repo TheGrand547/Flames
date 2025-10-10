@@ -6,7 +6,7 @@
 
 
 // GET BACK TO THIS
-#define BLOCK_SIZE 32
+#define BLOCK_SIZE 16
 
 #define MAX_LIGHTS 100
 
@@ -16,13 +16,14 @@ shared Frustum groupFrustum;
 shared uint globalOffset;
 shared uint maxDepth;
 shared uint minDepth;
-
+shared float clipNear;
 
 uniform sampler2D DepthBuffer;
 uniform vec2 ScreenSize;
 uniform mat4 InverseProjection;
+uniform mat2 fastProjection;
 uniform int TileSize;
-
+uniform uint FeatureToggle;
 
 vec4 TransformToView4(vec4 ins)
 {
@@ -31,7 +32,11 @@ vec4 TransformToView4(vec4 ins)
 	return temp;
 };
 
-layout(rg16f, binding = 0) uniform image2D imgOutput;
+float TransformFast(float depth)
+{
+	vec2 temp = fastProjection * vec2(depth, 1.f);
+	return temp.x / temp.y;
+}
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
@@ -40,7 +45,6 @@ void main()
 	uint threadIndex = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
 	
 	float ratio = float(TileSize) / float(BLOCK_SIZE);
-	//ratio = 1.f;
 	
 	vec2 sampleCoord = vec2(gl_WorkGroupID.xy * TileSize + gl_LocalInvocationID.xy * ratio) / ScreenSize;
 	sampleCoord.y = 1 - sampleCoord.y;
@@ -58,57 +62,55 @@ void main()
 		globalOffset = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
+		if (FeatureToggle == 0)
+		{
+			clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
+		}
+		else
+		{
+			clipNear = TransformFast(0);
+		}
 	}
-	// TODO: try other memory barriers
-	//memoryBarrierShared();
-	//groupMemoryBarrier();
 	barrier();
 	atomicMin(minDepth, ordered);
 	atomicMax(maxDepth, ordered);
-	//memoryBarrierShared();
-	//groupMemoryBarrier();
 	barrier();
 	
 	float rawNear = uintBitsToFloat(minDepth);
 	float rawFar  = uintBitsToFloat(maxDepth);
 	
-	float zNear    = TransformToView4(vec4(0, 0, rawNear, 1)).z;
-	float zFar     = TransformToView4(vec4(0, 0, rawFar, 1)).z;
-	float clipNear = TransformToView4(vec4(0, 0, 0, 1)).z;
-	//float clipFar  = TransformToView4(vec4(0, 0, 1, 1)).z;
-
-	// I have no clue and have lost multiple hours trying to figure out why this shit doesn't work so I will just have to not touch it
-	Plane nearPlane;
-	nearPlane.normal = vec3(0, 0, -1);
-	nearPlane.distance = dot(nearPlane.normal, vec3(0, 0, zNear));
+	float zNear, zFar;
+	if (FeatureToggle == 0)
+	{
+		zNear    = TransformToView4(vec4(0, 0, rawNear, 1)).z;
+		zFar     = TransformToView4(vec4(0, 0, rawFar, 1)).z;
+	}
+	else
+	{
+		zNear = TransformFast(rawNear);
+		zFar  = TransformFast(rawFar);
+	}
+	
+	Plane nearPlane = {vec3(0, 0, -1), -zNear};
 	
 	uint i = threadIndex;
-	//if (zNear == clipFar)
-	
 	if (minDepth == floatBitsToUint(1.f))
 	{
 		i = lightCount + 1;
-		//return;
 	}
 	for (; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		LightInfoBig current = lights[i];
 		
 		// Check if light is too near/far, being lenient
-		if (current.position.z - current.position.w > clipNear || current.position.z + current.position.w < zFar)
+		// Could also simplify this by making zNear and skipping the nearPlane culling
+		if (current.position.z - current.position.w > zNear || current.position.z + current.position.w < zFar)
 		{
 			
 		}
-		/*
-		else if (minDepth == floatBitsToUint(1.f))
+		else if (FrustumSphere(groupFrustum, current.position))
 		{
-		
-		}*/
-		//else 
-		if (FrustumSphere(groupFrustum, current.position))
-		{
-			// This still doesn't work for some reason and I have spent too long today fixing bullshit
-			if (!SphereBehindPlane(nearPlane, current.position))
+			//if (!SphereBehindPlane(nearPlane, current.position))
 			{
 				uint index = atomicAdd(numLights, 1);
 				if (index < MAX_LIGHTS)
@@ -118,30 +120,21 @@ void main()
 			}
 		}
 	}
-	//groupMemoryBarrier();
-	//memoryBarrierShared();
 	barrier();
 	// Actually save them here
 	if (threadIndex == 0)
 	{
 		globalOffset = atomicAdd(globalLightIndex, numLights);
-		
-		//for (int i = 0; i < numLights; i++)
-		{
-			//indicies[globalOffset + i] = groupLights[i];
-		}
 		grid[groupIndex] = uvec2(globalOffset, numLights);
-		//imageStore(imgOutput, ivec2(gl_WorkGroupID.xy), vec4(rawNear, rawFar, 0, 1));
-		//grid[groupIndex] = uvec2(gl_WorkGroupID.x, gl_WorkGroupID.y);
+		for (uint i = 0; i < numLights; i += 1)
+		{
+			indicies[globalOffset + i] = groupLights[i];
+		}
 	}
-	//groupMemoryBarrier();
-	//memoryBarrierShared();
-	barrier();
-	// TODO: return to this shit
-	for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
+	// TODO: Possibly return to this
+	//barrier();
+	//for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
-		indicies[globalOffset + i] = groupLights[i];
+		//indicies[globalOffset + i] = groupLights[i];
 	}
-	//groupMemoryBarrier();
-	//memoryBarrierShared();
 }

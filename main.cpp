@@ -196,7 +196,6 @@ struct LightVolume
 	glm::vec4 position{ glm::vec3(0.f), 10.f };
 	glm::vec4 color{ 1.f };
 	glm::vec4 constants{1.f, 0.025f, 0.f, 0.f};
-	glm::vec4 padding{ 0.f };
 };
 
 DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
@@ -410,7 +409,7 @@ void display()
 
 	// Switch between forward+ and deferred rendering
 	//if (debugFlags[FULL_CALCULATIONS] && false)
-	if (featureToggle)
+	if (true)
 	{
 		VAO& outerzone = VAOBank::Get("new_mesh");
 		// Opaque depth pass first
@@ -471,15 +470,13 @@ void display()
 			cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
 			cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
 			cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
+
 			// This should really be its own function
-			cullLights.SetMat4("InverseProjection", glm::inverse(Window::GetPerspective(zNear, zFar)));
-			Texture2D& fucker = Bank<Texture2D>::Get("hatred");
-			fucker.CreateEmpty(glm::ivec2(tileDimension), InternalFloatRedGreen32);
-			glFinish();
-			//cullLights.SetTextureUnit("imgOutput", fucker, 0);
-			glBindImageTexture(0, fucker.GetGLTexture(), 0, GL_FALSE, 0, GL_READ_WRITE, InternalFloatRedGreen32);
-			glFinish();
-			glMemoryBarrier(GL_ALL_BARRIER_BITS);
+			glm::mat4 inverseProjection = glm::inverse(Window::GetPerspective(zNear, zFar));
+			cullLights.SetMat4("InverseProjection", inverseProjection);
+			cullLights.SetMat2("fastProjection", GetLower2x2(inverseProjection));
+			cullLights.SetUnsignedInt("FeatureToggle", featureToggle);
+			//glMemoryBarrier(GL_ALL_BARRIER_BITS);
 			cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
 		}
 		// Actual drawing based on the lighting stuff
@@ -505,7 +502,7 @@ void display()
 
 		management.Draw(guyMeshData, outerzone, interzone);
 		//bobert.Draw();
-		/*
+		
 		auto& buf = BufferBank::Get("player");
 		auto meshs2 = playerModel;
 		meshs2.scale *= 0.5f;
@@ -513,7 +510,7 @@ void display()
 		buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 		outerzone.BindArrayBuffer(buf, 1);
 		playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
-		*/
+		
 		
 		Shader& sahder = ShaderBank::Get("visualize");
 		sahder.SetActiveShader();
@@ -1520,7 +1517,7 @@ void gameTick()
 					inactive.push_back(local.GetModel().GetModelMatrix());
 					if (local.lifeTime > 10)
 					{
-						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
+						volumes.push_back({ glm::vec4(local.transform.position, 10.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
 					}
 				}
 				return previous != local.transform.position;

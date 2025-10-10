@@ -37,4 +37,11 @@ inline float Rectify(const float& value, const float& reference = 0.f) noexcept
 
 glm::vec2 GetProjectionHalfs(glm::mat4& mat);
 
+inline glm::mat2 GetLower2x2(const glm::mat4& in)
+{
+	// GLM is column major
+	return glm::mat2(glm::vec2(in[2][2], in[2][3]),
+					glm::vec2(in[3][2], in[3][3]));
+}
+
 #endif // UTIL_H
