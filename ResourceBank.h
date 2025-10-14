@@ -6,21 +6,6 @@
 #include "VertexArray.h"
 #include <unordered_map>
 
-namespace ShaderBank
-{
-	Shader& Get(const std::string_view& name);
-}
-
-namespace VAOBank
-{
-	VAO& Get(const std::string_view& name);
-}
-
-namespace BufferBank
-{
-	ArrayBuffer& Get(const std::string_view& name);
-}
-
 template<typename Type> struct Bank
 {
 private:
@@ -31,5 +16,9 @@ public:
 		return ::Bank<Type>::elements[name];
 	}
 };
+
+using ShaderBank = Bank<Shader>;
+using VAOBank = Bank<VAO>;
+using BufferBank = Bank<ArrayBuffer>;
 
 #endif // RESOURCE_BANK_H

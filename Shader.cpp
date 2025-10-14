@@ -51,7 +51,7 @@ static void ApplyShaderIncludes(std::string& data)
 		const std::size_t length = std::string("#include \"").length();
 		std::filesystem::path path(data.substr(index + length, end - index - length));
 		Shader::IncludeInShaderFilesystem(path.filename().string(), data.substr(index + length, end - index - length));
-		std::string current = std::format("#include \"{}\"\n", path.filename().string());
+		std::string current = std::format("#include \"{}\"", path.filename().string());
 		index = data.find(current);
 		if (index != std::string::npos)
 		{
@@ -59,6 +59,8 @@ static void ApplyShaderIncludes(std::string& data)
 		}
 	}
 }
+
+static constexpr std::string_view FailedShaderLog = "failed_shader.txt";
 
 static GLuint CompileShader(GLenum type, std::string data)
 {
@@ -81,8 +83,19 @@ static GLuint CompileShader(GLenum type, std::string data)
 		std::unique_ptr<char[]> infoLog = std::make_unique<char[]>(static_cast<size_t>(length) + 1);
 		infoLog[length] = '\0';
 		glGetShaderInfoLog(vertex, length, NULL, infoLog.get());
-		std::cout << "Compilation of Shader failed\n" << std::string(infoLog.get()) << std::endl;
-		std::cout << data << '\n';
+		std::cout << "Compilation of Shader failed\n" << std::string(infoLog.get()) << '\n';
+
+		std::ofstream grumpiest(FailedShaderLog.data());
+		if (grumpiest.is_open())
+		{
+			std::cout << "See error file '" << FailedShaderLog << "' for the full shader source being compiled.\n";
+			grumpiest << data;
+			grumpiest.close();
+		}
+		else
+		{
+			std::cout << data << '\n';
+		}
 		EXIT;
 		return 0; // Error Code
 	}

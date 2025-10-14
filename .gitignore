@@ -59,3 +59,4 @@ imgui.ini
 *.app
 *.csp
 uniform.csp
+failed_shader.txt

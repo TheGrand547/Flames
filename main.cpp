@@ -284,7 +284,7 @@ ColorFrameBuffer buffet;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
 
-static const float gridResolution = 32;
+static const float gridResolution = 16;
 static int numTiles = 0;
 static glm::uvec2 tileDimension;
 static Framebuffer<1, Depth> earlyDepth;
@@ -446,7 +446,7 @@ void display()
 
 	management.Draw(guyMeshData, outerzone, interzone);
 	//bobert.Draw();
-		
+	
 	auto& buf = BufferBank::Get("player");
 	auto meshs2 = playerModel;
 	meshs2.scale *= 0.5f;
@@ -455,15 +455,13 @@ void display()
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 		
-		
-	Shader& sahder = ShaderBank::Get("visualize");
-	sahder.SetActiveShader();
-	sahder.SetVec2("ScreenSize", Window::GetSizeF());
-	sahder.SetInt("TileSize", static_cast<int>(gridResolution));
-	sahder.SetUVec2("tileDimension", tileDimension);
-	//ShaderStorage::Get("LightGrid").BindBufferBase(7);
 	if (debugFlags[CHECK_UVS])
 	{
+		Shader& sahder = ShaderBank::Get("visualize");
+		sahder.SetActiveShader();
+		sahder.SetVec2("ScreenSize", Window::GetSizeF());
+		sahder.SetInt("TileSize", static_cast<int>(gridResolution));
+		sahder.SetUVec2("tileDimension", tileDimension);
 		static int thresholdAmount = 10;
 		ImGui::Begin("Light Threshold");
 		ImGui::SliderInt("Threshold", &thresholdAmount, 0, 100);
@@ -473,6 +471,26 @@ void display()
 		DisablePushFlags(DepthTesting | FaceCulling);
 		sahder.DrawArray<DrawType::TriangleStrip>(4);
 	}
+
+	if (featureToggle)
+	{
+		Shader& local = ShaderBank::Get("dust");
+		local.SetActiveShader();
+		VAO& vao = VAOBank::Get("bigscrem");
+		vao.Bind();
+		ArrayBuffer& points = BufferBank::Get("DustTest");
+		vao.BindArrayBuffer(points, 0);
+		local.SetVec3("shapeColor", glm::vec3(0.9f));
+		local.SetVec2("ScreenSize", Window::GetSizeF());
+		local.SetInt("TileSize", static_cast<int>(gridResolution));
+		local.SetUVec2("tileDimension", tileDimension);
+		local.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), points);
+		glPointSize(10.f);
+		//local.DrawArray<DrawType::Points>(points);
+		glPointSize(1.f);
+	}
+
+
 	// Copy the current depth buffer status to the early depth buffer for next frame
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, earlyDepth.GetFrameBuffer());
@@ -879,7 +897,7 @@ void display()
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
-	glFinish();
+	//glFlush();
 	end = std::chrono::high_resolution_clock::now();
 	renderDelay = end - displayStartTime;
 }
@@ -924,7 +942,7 @@ void idle()
 	{
 		ImGui::Begin("Metrics", &disableFpsDisplay);
 		auto frames = fpsPlot.GetLinear();
-		ImGui::PlotLines("##2", frames.data(), static_cast<int>(frames.size()), 0, "Frame Time", 2.f, 10.f, ImVec2(100, 100));
+		ImGui::PlotLines("##2", frames.data(), static_cast<int>(frames.size()), 0, "Frame Time", 0.f, 10.f, ImVec2(100, 100));
 		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
 		ImGui::End();
 	}
@@ -1168,7 +1186,7 @@ void gameTick()
 					inactive.push_back(local.GetModel().GetModelMatrix());
 					if (local.lifeTime > 10)
 					{
-						volumes.push_back({ glm::vec4(local.transform.position, 10.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
+						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
 					}
 				}
 				return previous != local.transform.position;
@@ -1186,7 +1204,7 @@ void gameTick()
 			{
 				shieldPoses.push_back(point);
 			}
-			volumes.push_back({ glm::vec4(point, 10.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
+			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
 		}
 		shieldPos.Swap(tmep);
 		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
@@ -1890,6 +1908,7 @@ void init()
 	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
 	Shader::IncludeInShaderFilesystem("frustums", "frustums.incl");
 	Shader::IncludeInShaderFilesystem("forward_buffers", "forward_buffers.incl");
+	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
 	ExternalShaders::Setup();
 
 	basic.CompileSimple("basic");
@@ -1917,8 +1936,8 @@ void init()
 		"framebuffer", "shield_texture"
 	);
 	
-	ShaderBank::Get("defer").Compile("new_mesh", "deferred");
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
+	ShaderBank::Get("dust").CompileSimple("dust");
 	ShaderBank::Get("expand").Compile("framebuffer", "expand");
 	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
@@ -1949,9 +1968,8 @@ void init()
 	uniform.UniformBlockBinding("Camera", 0);
 	vision.UniformBlockBinding("Camera", 0);
 
-	ShaderBank::Get("defer").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("dither").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("depthOnly").UniformBlockBinding("Camera", 0);
+	ShaderBank::Get("dust").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("forwardPlus").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("Camera", 0);
@@ -1989,9 +2007,14 @@ void init()
 	plainVAO.ArrayFormat<Vertex>();
 	VAOBank::Get("uniform").ArrayFormat<Vertex>();
 	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>();
+	VAOBank::Get("normalVertex").ArrayFormat<NormalVertex>();
 
 	VAOBank::Get("engineInstance").ArrayFormatOverride<glm::vec4>(0, 0, 1);
 	VAOBank::Get("muscle").ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, 56);
+	{
+		VAO& ref = VAOBank::Get("bigscrem");
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 1);
+	}
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
 		ref.ArrayFormat<Vertex>();
@@ -2128,12 +2151,6 @@ void init()
 	// Decal stuff
 	decals.Generate();
 
-	auto verts = Planes::GetUVPoints();
-	for (auto& point : verts)
-	{
-		point.position = glm::mat3(glm::eulerAngleZY(glm::radians(90.f), glm::radians(-90.f))) * point.position;
-		//point.position += glm::vec3(0, 1.f, 0);
-	}
 	constexpr int followsize = 10;
 	//followers.ReserveSize(followsize);
 	for (int i = 0; i < followsize; i++)
@@ -2315,6 +2332,16 @@ void init()
 		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
 	
+	{
+		std::array<Vertex, 100> hmm{};
+		for (auto& element : hmm)
+		{
+			element = playfield.GetModel().translation + glm::ballRand(25.f);
+			//element.normal = glm::sphericalRand(1.f);
+		}
+		Bank<ArrayBuffer>::Get("DustTest").BufferData(hmm);
+	}
+
 	for (int i = 0; i < 10; i++)
 	{
 		auto& foo = management.Make();

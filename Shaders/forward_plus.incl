@@ -1,0 +1,47 @@
+layout(origin_upper_left) in vec4 gl_FragCoord;
+
+uniform int TileSize;
+uniform vec2 ScreenSize;
+uniform uvec2 tileDimension;
+
+vec3 ForwardPlusLighting(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
+{
+	const float ambient = 0.15;
+	vec3 lightOut = vec3(ambient);
+
+	vec2 index = floor((gl_FragCoord.xy) / TileSize);
+	uint gridIndex = uint(index.x + index.y * tileDimension.x);
+	uvec2 lightData = grid[gridIndex];
+	
+	for (uint i = 0; i < lightData.y; i++)
+	{
+		uint index = indicies[i + lightData.x];
+		LightInfoBig current = lightsOriginal[index];
+		if (length(current.position.xyz - fragPosition) < current.position.w)
+		{
+			lightOut += PointLightStruct(current, fragNormal, fragPosition, viewDirection);
+		}
+	}
+	return lightOut;
+}
+
+vec3 ForwardPlusLightingViewSpace(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
+{
+	const float ambient = 0.15;
+	vec3 lightOut = vec3(ambient);
+
+	vec2 index = floor((gl_FragCoord.xy) / TileSize);
+	uint gridIndex = uint(index.x + index.y * tileDimension.x);
+	uvec2 lightData = grid[gridIndex];
+	
+	for (uint i = 0; i < lightData.y; i++)
+	{
+		uint index = indicies[i + lightData.x];
+		LightInfoBig current = lights[index];
+		if (length(current.position.xyz - fragPosition) < current.position.w)
+		{
+			lightOut += PointLightStruct(current, fragNormal, fragPosition, viewDirection);
+		}
+	}
+	return lightOut;
+}

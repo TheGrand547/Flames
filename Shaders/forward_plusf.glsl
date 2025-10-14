@@ -2,6 +2,7 @@
 #include "lighting"
 #include "camera"
 #include "forward_buffers"
+#include "forward_plus"
 
 layout(location = 0) in vec3 fPos;
 layout(location = 1) in vec2 fTex;
@@ -14,12 +15,6 @@ layout(location = 2) uniform int checkUVs;
 
 layout(location = 0) uniform sampler2D color;
 
-layout(origin_upper_left) in vec4 gl_FragCoord;
-
-uniform int TileSize; 
-uniform vec2 ScreenSize;
-uniform uvec2 tileDimension;
-
 void main()
 {
 	// TODO: Texture reads for maps and stuff
@@ -31,26 +26,7 @@ void main()
 	// This is a hack, but for some reason gl_FrontFacing won't work otherwise. Need to work on this
 	vec3 normal = (vec4(TBNmat * norm, 0)).xyz;
 	
-	
-	vec2 index = floor((gl_FragCoord.xy) / TileSize);
-	
-	uint gridIndex = uint(index.x + index.y * tileDimension.x);
-	
-	uvec2 lightData = grid[gridIndex];
-	
-	float ambient = 0.15;
-	
-	vec3 lightOut = vec3(ambient);
-	
-	for (int i = 0; i < lightData.y; i++)
-	{
-		uint index = indicies[i + lightData.x];
-		LightInfoBig current = lightsOriginal[index];
-		if (length(current.position.xyz - fPos) < current.position.w)
-		{
-			lightOut += PointLightStruct(current, normal, fPos, viewDirection);
-		}
-	}
+	vec3 lightOut = ForwardPlusLighting(fPos, normal, viewDirection);
 	
 	// For textured stuff
 	//vec4 sampled = texture(textureColor, fTex);
