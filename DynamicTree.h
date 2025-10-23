@@ -9,7 +9,7 @@
 #include "QuickTimer.h"
 #include "Lines.h"
 
-constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (15);
+constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (7);
 constexpr auto DYNAMIC_OCT_TREE_DIMENSION = (100.f);
 constexpr auto DYNAMIC_OCT_TREE_MIN_VOLUME = (10.f);
 
@@ -527,7 +527,7 @@ public:
 				this->InternalErase(this->elements.begin());
 				return 1;
 			case RESEAT:
-				this->ReSeat(this->elements.front());
+				this->ReSeat(this->elements.begin());
 				[[fallthrough]];
 			default:
 				return 0;
@@ -558,7 +558,7 @@ public:
 						break;
 					}
 				case RESEAT:
-					this->Reseat(*i);
+					this->ReSeat(i.iter);
 					break;
 				default:
 					break;
@@ -575,6 +575,10 @@ public:
 		else
 		{
 			this->elements.erase(endOfInvalid.iter + 1, this->elements.end());
+		}
+		if (size > 0)
+		{
+			this->UpdateStructure();
 		}
 		// Make sure this gets rid of the pointer things
 		return size;

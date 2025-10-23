@@ -184,8 +184,8 @@ bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
 Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << std::endl; });
 
-bool featureToggle = false;
-std::chrono::nanoseconds idleTime, displayTime, renderDelay;
+static bool featureToggle = false;
+static std::chrono::nanoseconds idleTime, displayTime;
 
 struct LightVolume
 {
@@ -205,7 +205,7 @@ ArrayBuffer ui_tester_buffer;
 std::vector<AABB> dynamicTreeBoxes;
 using namespace Input;
 
-bool shouldClose = false;
+static bool windowShouldClose = false;
 
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
@@ -290,17 +290,13 @@ static glm::uvec2 tileDimension;
 static Framebuffer<1, Depth> earlyDepth;
 static constexpr float EarlyDepthRatio = 1;
 
+static std::vector<GLuint> glQueries;
+
 void display()
 {
-	// Some kind of framerate limiter?
-	/*
-	static std::size_t lastRenderTick = 0;
-	if (lastRenderTick == gameTicks)
-	{
-		return;
-	}
-	lastRenderTick = gameTicks;
-	*/
+	GLuint currentRenderQuery = 0;
+	glGenQueries(1, &currentRenderQuery);
+	glBeginQuery(GL_TIME_ELAPSED, currentRenderQuery);
 
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
@@ -472,7 +468,7 @@ void display()
 		sahder.DrawArray<DrawType::TriangleStrip>(4);
 	}
 
-	if (featureToggle)
+	//if (featureToggle)
 	{
 		Shader& local = ShaderBank::Get("dust");
 		local.SetActiveShader();
@@ -897,9 +893,9 @@ void display()
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
-	//glFlush();
-	end = std::chrono::high_resolution_clock::now();
-	renderDelay = end - displayStartTime;
+
+	glEndQuery(GL_TIME_ELAPSED);
+	glQueries.push_back(currentRenderQuery);
 }
 
 // TODO: Mech suit has an interior for the pilot that articulates seperately from the main body, within the outer limits of the frame
@@ -918,8 +914,11 @@ void idle()
 {
 	static auto lastIdleStart = std::chrono::high_resolution_clock::now();
 
-	static TimerAverage<300> displayTimes, idleTimes, renderTimes;
+	static TimerAverage<300> displayTimes, idleTimes;
 	static TimerAverage<300, float> frames;
+
+	// This is in NANOseconds
+	static TimerAverage<100, GLuint64> renderDelays;
 	static CircularBuffer<float, 200> fpsPlot;
 	static unsigned long long displaySimple = 0, idleSimple = 0;
 
@@ -930,10 +929,8 @@ void idle()
 	const float timeDelta = std::chrono::duration<float, std::chrono::seconds::period>(delta).count();
 
 	float averageFps = frames.Update(1.f / timeDelta);
-	
 	long long averageIdle = idleTimes.Update(idleTime.count() / 1000);
 	long long averageDisplay = displayTimes.Update(displayTime.count() / 1000);
-	long long averageRender = renderTimes.Update(renderDelay.count() / 1000);
 
 	fpsPlot.Push(timeDelta * 1000.f);
 	static bool disableFpsDisplay = true;
@@ -946,10 +943,20 @@ void idle()
 		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
 		ImGui::End();
 	}
-	if (timeDelta > 0.01)
-	{
-		//Log("SPIKE: " << timeDelta);
-	}
+	std::erase_if(glQueries,
+		[&](GLuint query)
+		{
+			GLuint64 out = 0;
+			glGetQueryObjectui64v(query, GL_QUERY_RESULT_NO_WAIT, &out);
+			if (out)
+			{
+				renderDelays.Update(out);
+				glDeleteQueries(1, &query);
+				return true;
+			}
+			return false;
+		}
+	);
 
 	// "Proper" input handling
 	// These functions should be moved to the gametick loop, don't want to over-poll the input device and get weird
@@ -1034,7 +1041,7 @@ void idle()
 		boardState.cruiseControl = Input::Gamepad::CheckButton(Input::Gamepad::X);
 		if (Input::Gamepad::CheckButton(Input::Gamepad::BackButton))
 		{
-			shouldClose = true;
+			windowShouldClose = true;
 			glfwSetWindowShouldClose(windowPointer, true);
 		}
 
@@ -1047,12 +1054,9 @@ void idle()
 		playerTextEntry = fonter.Render(letters.str(), glm::vec4(1.f, 0.f, 0.f, 1.f));
 		std::stringstream().swap(letters);
 	}
-
-	//followed.Update();
-
 	if (debugFlags[DYNAMIC_TREE])
 	{
-		dynamicTreeBoxes = Level::GetTriangleTree().GetBoxes();
+		dynamicTreeBoxes = Level::GetBulletTree().GetBoxes();
 	}
 
 	const Model playerModel = playfield.GetModel();
@@ -1124,11 +1128,22 @@ void idle()
 	buffered << '\n' << Level::GetBulletTree().size();
 	Level::SetInterest(management.GetPos());
 	
-	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay:\n-Concurrent: {}ns\
-		\n-GPU Block Time: {}ns\nAverage Tick Length:{}ns\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
+	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay: {}us\n-Concurrent: {}us\
+		\n-GPU Block Time: {}us\nAverage Tick Length:{}us\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
 
-	std::string formatted = std::format(formatString, averageFps, 1000.f / averageFps, averageIdle, 
-		averageDisplay, averageRender, averageTickTime, maxTickTime / 1000.f, gameTicks / glfwGetTime(), buffered.str());
+	auto renderTime = renderDelays.Get() / 1000;
+	auto currentRenderDelay = renderDelays.Get() / 1000;
+	if (static_cast<long long>(renderTime) < averageDisplay)
+	{
+		currentRenderDelay = 0;
+	}
+	else
+	{
+		currentRenderDelay -= averageDisplay;
+	}
+
+	std::string formatted = std::format(formatString, averageFps, 1000.f / averageFps, averageIdle, renderTime,
+		averageDisplay, currentRenderDelay, averageTickTime, maxTickTime / 1000.f, gameTicks / glfwGetTime(), buffered.str());
 
 	fonter.GetTextTris(textBuffer, 0, 0, formatted);
 
@@ -1167,12 +1182,29 @@ void gameTick()
 		std::vector<glm::mat4> inactive, blarg;
 
 		std::vector<LightVolume> volumes{ constantLights };
-		// TODO: Combine these with a special function with an enum return value
-		Level::GetBulletTree().for_each([&](Bullet& local)
+		management.Update();
+
+		auto tmep = bobert.GetPoints(management.GetRawPositions());
+		std::vector<glm::vec3> shieldPoses;
+		// This is bad and should be moved to the shield generator class
+		for (glm::vec3 point : tmep)
+		{
+			Sphere spoke(point, 10.f);
+			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
 			{
+				shieldPoses.push_back(point);
+			}
+			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
+		}
+		shieldPos.Swap(tmep);
+
+		// TODO: I combined these but it's sloooooow
+		std::size_t removedBullets = Level::GetBulletTree().FullService([&](Bullet& local)
+			{
+				DynamicTreeEnum out = RESEAT;
 				if (!local.IsValid())
 				{
-					return false;
+					return REMOVE;
 				}
 				glm::vec3 previous = local.transform.position;
 				if (!debugFlags[FREEZE_GAMEPLAY])
@@ -1189,29 +1221,9 @@ void gameTick()
 						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
 					}
 				}
-				return previous != local.transform.position;
-			});
-
-		management.Update();
-
-		auto tmep = bobert.GetPoints(management.GetRawPositions());
-		std::vector<glm::vec3> shieldPoses;
-		// This is bad and should be moved to the shield generator class
-		for (glm::vec3 point : tmep)
-		{
-			Sphere spoke(point, 10.f);
-			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
-			{
-				shieldPoses.push_back(point);
-			}
-			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
-		}
-		shieldPos.Swap(tmep);
-		std::size_t removedBullets = Level::GetBulletTree().EraseIf([&](Bullet& local) 
-			{
-				if (!local.IsValid())
+				if (previous == local.transform.position)
 				{
-					return true;
+					return DO_NOTHING;
 				}
 				if (local.team == 0)
 				{
@@ -1227,35 +1239,27 @@ void gameTick()
 							if (!(bogus.SignedDistance(segmentation.A) < 0 && bogus.SignedDistance(segmentation.B) < 0))
 							{
 								//Log("Blown'd up");
-								return true;
+								return REMOVE;
 							}
 						}
-						/*
-						float distance = glm::distance(point, local.transform.position);
-						if (9.5f < distance && distance <= 10.f)
-						{
-							Level::SetExplosion(local.transform.position);
-							return true;
-						}
-						*/
 					}
 				}
 				OBB transformedBox = local.GetOBB();
-				//blarg.push_back(transformedBox.GetModelMatrix());
-				//blarg.push_back(transformedBox.GetAABB().GetModelMatrix());
 				
+
+				if (false)
 				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
 						// Don't let enemy decals clog things up 
 						if (local.team != 0)
-							return true;
+							return REMOVE;
 						// TODO: change this so that the output vector isn't the big list so the actual generation of the decals
 						// can be parallelized, with only the copying needing sequential access
 						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
 						// generating decals also requires a OctTreeSearch, escape the outer one.
-						if (decalVertex.ExclusiveOperation(
+						if (true || decalVertex.ExclusiveOperation(
 							[&](auto& ref)
 							{
 								//QuickTimer _time("Decal Generation");
@@ -1282,18 +1286,18 @@ void gameTick()
 						))
 						{
 							// Decals generated -> must remove the bullet
-							return true;
+							return REMOVE;
 						}
 						break;
 					}
 				}
-				return false; 
+				if (previous != local.transform.position)
+				{
+					return RESEAT;
+				}
+				return DO_NOTHING;
 			}
 		);
-		if (removedBullets > 0)
-		{
-			Level::GetBulletTree().UpdateStructure();
-		}
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		bulletMatricies.Swap(inactive);
 		if (blarg.size() > 0)
@@ -1395,7 +1399,7 @@ void gameTick()
 			Level::SetPlayerPos(playerModel.translation);
 		}
 		Level::SetPlayerVel(playfield.GetVelocity());
-	} while (!shouldClose);
+	} while (!windowShouldClose);
 }
 
 void window_focus_callback(GLFWwindow* window, int focused)
@@ -1476,7 +1480,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_N) cameraPosition.y -= 3;
 		if (key == GLFW_KEY_ESCAPE) 
 		{
-			shouldClose = true;
+			windowShouldClose = true;
 			glfwSetWindowShouldClose(window, GLFW_TRUE);
 		}
 		if (key == GLFW_KEY_B) featureToggle = !featureToggle;

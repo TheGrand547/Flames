@@ -12,8 +12,6 @@ struct TimerAverage
 	void Reset() noexcept
 	{
 		this->currentAverage = 0;
-		this->lastPercentage = 0;
-		this->countedTicks = 0;
 		this->storedTimes.Reset();
 	}
 
@@ -30,6 +28,11 @@ struct TimerAverage
 		}
 		this->currentAverage += contribution;
 		return this->currentAverage;
+	}
+
+	Delta Get() const noexcept
+	{
+		return currentAverage;
 	}
 
 protected:
