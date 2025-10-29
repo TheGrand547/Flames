@@ -27,7 +27,7 @@ namespace Level
 		return Boxes;
 	}
 
-	static GeometryType Tris(AABB(glm::vec3(1000.f)));
+	static GeometryType Tris(AABB(glm::vec3(500.f)));
 
 	void AddTri(Triangle triangle)
 	{

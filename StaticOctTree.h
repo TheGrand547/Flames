@@ -7,6 +7,7 @@
 #include <vector>
 #include "AABB.h"
 #include "OrientedBoundingBox.h"
+#include "Parallel.h"
 
 constexpr int OCT_TREE_MAX_DEPTH = 8;
 constexpr auto OCT_TREE_MIN_VOLUME = (10.f);
@@ -48,6 +49,19 @@ protected:
 
 		std::list<Item> RayCast(const Ray& line) const;
 		void RayCast(const Ray& line, std::list<Item>& items) const;
+
+		template<typename F> void for_each(F func) const noexcept
+		{
+			//Parallel::for_each(std::execution::par, this->objects, [=](const auto& a) {func(a.second); });
+			Parallel::for_each(std::execution::seq, this->objects, [=](const auto& a) {func(a.second); });
+			for (const auto& pointer : this->tree)
+			{
+				if (pointer)
+				{
+					pointer->for_each(func);
+				}
+			}
+		}
 	};
 
 	StaticOctTreeNode root;
@@ -77,6 +91,11 @@ public:
 	void Resize(const glm::vec3& bounds) noexcept;
 	void Resize(const AABB& bounds) noexcept;
 	void Insert(const T& element, const AABB& box);
+
+	template<typename F> void for_each(F func) const noexcept
+	{
+		this->root.for_each(func);
+	}
 };
 
 template<class T> using Item = typename std::list<T>::iterator;

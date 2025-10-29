@@ -19,7 +19,7 @@ namespace Level
 	void AddOBB(OBB obb);
 	StaticOctTree<OBB>& GetOBBTree();
 
-	using GeometryType = DynamicOctTree<Triangle>;
+	using GeometryType = StaticOctTree<Triangle>;
 	void AddTri(Triangle triangle);
 	GeometryType& GetTriangleTree();
 

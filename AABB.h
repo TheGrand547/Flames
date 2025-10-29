@@ -207,17 +207,18 @@ inline bool AABB::Overlap(const AABB& other) const noexcept
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
-	bool result = glm::all(glm::lessThanEqual(negativeBoundOther, positiveBound)) && glm::all(glm::lessThanEqual(negativeBound, positiveBoundOther));
-#ifdef _DEBUG
+	//bool result = glm::all(glm::lessThanEqual(negativeBoundOther, positiveBound)) && glm::all(glm::lessThanEqual(negativeBound, positiveBoundOther));
+//#ifdef _DEBUG
 	bool xInside = negativeBoundOther.x <= positiveBound.x && positiveBoundOther.x >= negativeBound.x;
 	bool yInside = negativeBoundOther.y <= positiveBound.y && positiveBoundOther.y >= negativeBound.y;
 	bool zInside = negativeBoundOther.z <= positiveBound.z && positiveBoundOther.z >= negativeBound.z;
-	if (result != (xInside && yInside && zInside))
+	bool result = xInside && yInside && zInside;
+	//if (result != (xInside && yInside && zInside))
 	{
-		Log("Shortcut for AABB overlap AABB failed");
-		result = xInside && yInside && zInside;
+		//Log("Shortcut for AABB overlap AABB failed");
+		//result = xInside && yInside && zInside;
 	}
-#endif // !_DEBUG
+//#endif // !_DEBUG
 	return result;
 }
 
@@ -225,17 +226,17 @@ inline bool AABB::Contains(const AABB& other) const noexcept
 {
 	glm::vec3 negativeBound = this->center - this->halfs, positiveBound = this->center + this->halfs;
 	glm::vec3 negativeBoundOther = other.center - other.halfs, positiveBoundOther = other.center + other.halfs;
-	bool result = glm::all(glm::lessThanEqual(negativeBound, negativeBoundOther)) && glm::all(glm::lessThanEqual(positiveBoundOther, positiveBound));
-#ifdef _DEBUG
+	//bool result = glm::all(glm::lessThanEqual(negativeBound, negativeBoundOther)) && glm::all(glm::lessThanEqual(positiveBoundOther, positiveBound));
+//#ifdef _DEBUG
 	bool xInside = negativeBound.x <= negativeBoundOther.x && positiveBound.x >= positiveBoundOther.x;
 	bool yInside = negativeBound.y <= negativeBoundOther.y && positiveBound.y >= positiveBoundOther.y;
 	bool zInside = negativeBound.z <= negativeBoundOther.z && positiveBound.z >= positiveBoundOther.z;
-	if (result != (xInside && yInside && zInside))
+	//if (false && result != (xInside && yInside && zInside))
 	{
-		Log("Shortcut for AABB inside AABB failed");
+		//Log("Shortcut for AABB inside AABB failed");
 	}
-	result = xInside && yInside && zInside;
-#endif // !_DEBUG
+	bool result = xInside && yInside && zInside;
+//#endif // !_DEBUG
 	return result;
 }
 

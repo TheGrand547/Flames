@@ -23,10 +23,23 @@ struct Bullet
 
 	Bullet(glm::vec3 position, glm::vec3 velocity, glm::vec3 up, unsigned int team = 0) noexcept;
 	
-	Model GetModel() const noexcept;
-	OBB GetOBB() const noexcept;
-	AABB GetAABB() const noexcept;
-	
+	inline Model GetModel() const noexcept
+	{
+		return Model(this->transform);
+	}
+
+	inline OBB GetOBB() const noexcept
+	{
+		Model temp = Bullet::Collision.GetModel().ApplyParent(this->GetModel());
+		return OBB(temp);
+	}
+
+	inline AABB GetAABB() const noexcept
+	{
+		return this->GetOBB().GetAABB();
+	}
+
+
 	inline bool IsValid() const noexcept
 	{
 		return !glm::any(glm::isnan(this->transform.position)) && this->lifeTime < 5 * Tick::PerSecond;

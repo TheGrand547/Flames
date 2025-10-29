@@ -719,7 +719,7 @@ void display()
 			vaoRef.BindArrayBuffer(bulletMats, 1);
 			shaderRef.SetMat4("Model2", glm::mat4(1.f));
 			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
-
+			glLineWidth(1.f);
 			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("bulletImpacts"), 1);
 			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, Bank<ArrayBuffer>::Get("bulletImpacts"));
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -1057,6 +1057,7 @@ void idle()
 	if (debugFlags[DYNAMIC_TREE])
 	{
 		dynamicTreeBoxes = Level::GetBulletTree().GetBoxes();
+		//dynamicTreeBoxes = Level::GetTriangleTree().GetBoxes();
 	}
 
 	const Model playerModel = playfield.GetModel();
@@ -1211,11 +1212,13 @@ void gameTick()
 				{
 					local.Update();
 				}
-				const AABB endState = local.GetAABB();
+				const OBB transformedBox = local.GetOBB();
+				const AABB endState = transformedBox.GetAABB();
 
 				if (!localFrust.Overlaps(Sphere(endState.GetCenter(), glm::compMax(endState.Deviation()))))
 				{
 					inactive.push_back(local.GetModel().GetModelMatrix());
+					blarg.push_back(transformedBox.GetModelMatrix());
 					if (local.lifeTime > 10)
 					{
 						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
@@ -1244,11 +1247,8 @@ void gameTick()
 						}
 					}
 				}
-				OBB transformedBox = local.GetOBB();
-				
 
-				if (false)
-				for (const auto& currentTri : Level::GetTriangleTree().Search(transformedBox.GetAABB()))
+				for (const auto& currentTri : Level::GetTriangleTree().Search(endState))
 				{
 					if (DetectCollision::Overlap(transformedBox, *currentTri))
 					{
@@ -2351,14 +2351,15 @@ void init()
 		auto& foo = management.Make();
 		foo.Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
 	}
-	Level::GetTriangleTree().UpdateStructure();
+	//Level::GetTriangleTree().UpdateStructure();
 
 	{
 		QUICKTIMER("AABB Stress test");
 		std::size_t succeed = 0, fails = 0;
 		Level::GetTriangleTree().for_each(
-			[&](auto& ref) 
+			[&](auto& ref2) 
 			{
+				auto& ref = *ref2;
 				const glm::vec3 start = ref.GetCenter() + ref.GetNormal() * 2.f;
 				const AABB box = ref.GetAABB();
 				for (auto i = 0; i < 100; i++)

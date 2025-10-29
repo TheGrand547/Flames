@@ -10,6 +10,7 @@
 #include "Lines.h"
 
 constexpr auto DYNAMIC_OCT_TREE_MAX_DEPTH = (7);
+constexpr auto DYNAMIC_OCT_TREE_MIN_RECURSIVE = (8);
 constexpr auto DYNAMIC_OCT_TREE_DIMENSION = (100.f);
 constexpr auto DYNAMIC_OCT_TREE_MIN_VOLUME = (10.f);
 
@@ -69,7 +70,7 @@ protected:
 			}
 		}
 
-		// Provides a strick upper bound on the number of elements in this tree, and its descenents
+		// Provides a strict upper bound on the number of elements in this tree, and its descenents
 		std::size_t Size() const noexcept
 		{
 			return this->size;
@@ -77,7 +78,7 @@ protected:
 
 		void Generate() noexcept
 		{
-			glm::vec3 center = this->bounds.GetCenter();
+			glm::vec3 center  = this->bounds.GetCenter();
 			glm::vec3 extents = this->bounds.Deviation();
 
 			glm::vec3 mults(-1.f);
@@ -98,7 +99,9 @@ protected:
 
 		Member Insert(const Index& obj, const AABB& box) noexcept
 		{
-			if (this->depth + 1 < DYNAMIC_OCT_TREE_MAX_DEPTH)
+			this->size++;
+			if (this->depth + 1 < DYNAMIC_OCT_TREE_MAX_DEPTH 
+				&& this->size > DYNAMIC_OCT_TREE_MIN_RECURSIVE)
 			{
 				for (std::size_t i = 0; i < 8; i++)
 				{
@@ -126,7 +129,7 @@ protected:
 					std::size_t result = pointer->Recalculate();
 					if (result == 0)
 					{
-						pointer.reset(nullptr);
+						//pointer.reset(nullptr);
 					}
 					this->size += result;
 				}
@@ -170,7 +173,9 @@ protected:
 			for (const auto& element : this->objects)
 			{
 				if (box.Overlap(element.first))
+				{
 					items.push_back(element.second);
+				}
 			}
 			for (std::size_t i = 0; i < 8; i++)
 			{
@@ -191,7 +196,9 @@ protected:
 		void GetBoxes(std::vector<AABB>& staticBoxes) const noexcept
 		{
 			if (this->objects.size() > 0)
+			{
 				staticBoxes.push_back(this->bounds);
+			}
 			for (const MemberPointer& point: this->members)
 			{
 				if (point && point->size > 0)
@@ -393,35 +400,36 @@ public:
 #ifdef DEBUG
 		static std::size_t total = 0;
 		static std::size_t small = 0;
-		total++;
 #endif // DEBUG
-		AABB current = GetAABB(element->first);
+		const AABB current = GetAABB(element->first);
 
 		// See if the current AABB is wholly contained in the same box as before
 		if (element->second.pointer->bounds.Contains(current))
 		{
+			InternalOctTree* currentNode = element->second.pointer;
 			// If it is, only update the bounding box in the structure, don't re-insert
 			// Although this *could* lead to clogging up the top level of the structure but would need
 			// to test that to verify. Could also insert only into that element so hmm, much to think on
 			element->second.iterator->first = current;
-#ifdef DEBUG
-			InternalOctTree* temp = element->second.pointer;
-#endif // DEBUG
+			
+			if (currentNode->depth < DYNAMIC_OCT_TREE_MAX_DEPTH && currentNode->Size() > DYNAMIC_OCT_TREE_MIN_RECURSIVE)
+			{
+				// Check if this fucks everything up
+				Index index = element->second.iterator->second;
+				currentNode->objects.erase(element->second.iterator);
+				element->second = currentNode->Insert(index, current);
+			}
 
-			// Check if this fucks everything up
-			Index index = element->second.iterator->second;
-			element->second.pointer->objects.erase(element->second.iterator);
-			element->second = element->second.pointer->Insert(index, GetAABB(element->first));
-
 #ifdef DEBUG
-			small += temp == element->second.pointer;
+			total++;
+			small += currentNode == element->second.pointer;
 #endif // DEBUG
 		}
 		else
 		{
 			Index index = element->second.iterator->second;
 			element->second.pointer->objects.erase(element->second.iterator);
-			element->second = this->root.Insert(index, GetAABB(element->first));
+			element->second = this->root.Insert(index, current);
 		}
 #ifdef DEBUG
 		if (total % 10000 == 0)
