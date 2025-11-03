@@ -30,6 +30,7 @@ struct Model
 	void Translate(const glm::vec3& distance) noexcept;
 
 	// Apply a 'parent' transform to the current model, and return it. Translation of *this is interpreted as being in local space
+	// Equivalent to multipling the Model Matrices
 	Model ApplyParent(const Model& parent) noexcept;
 
 	// Applies the parent rotation to this, then applies the translations linearly. Both translations are are in world space

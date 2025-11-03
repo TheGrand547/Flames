@@ -18,6 +18,14 @@ layout(location = 0) out vec4 fragmentColor;
 
 layout(location = 1) uniform vec3 shapeColor;
 
+float CameraToDepth(float depth)
+{
+	mat2 bottom = mat2(vec2(Projection[2][2], Projection[2][3]),
+					vec2(Projection[3][2], Projection[3][3]));
+	vec2 temp = bottom * vec2(depth, 1.f);
+	return temp.x / temp.y;
+}
+
 void main()
 {
 	/*
@@ -39,15 +47,15 @@ void main()
 		discard;
 		
 	float sqrtDet = sqrt(det);
-	float posT = (-B + sqrtDet)/2;
-	float negT = (-B - sqrtDet)/2;
+	float posT = (-B + sqrtDet) / 2;
+	float negT = (-B - sqrtDet) / 2;
 	
 	float intersectT = min(posT, negT);
 	
 	vec3 cameraPos = ray * intersectT;
-	vec4 laDeDa = Projection * vec4(cameraPos, 1.f);
-	laDeDa /= laDeDa.w;
-	gl_FragDepth = laDeDa.z;
+	//vec4 laDeDa = Projection * vec4(cameraPos, 1.f);
+	//laDeDa /= laDeDa.w;
+	gl_FragDepth = CameraToDepth(cameraPos.z);
 	vec3 cameraNormal = normalize(cameraPos - fPos);
 	
 	

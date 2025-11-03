@@ -3,13 +3,12 @@
 #include "frustums"
 
 #include "camera"
+#include "lighting"
+#include "forward_buffers"
 
 // Screen is broken up into 16x16 TILES
 // A 8x8 arrangement of TILES is called to used by this shader to compute the frustums for the TILES
 
-uniform int TileSize;
-
-uniform vec2 ScreenSize;
 uniform mat4 InverseProjection;
 
 

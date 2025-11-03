@@ -19,15 +19,6 @@ shared uint minDepth;
 shared float clipNear;
 
 uniform sampler2D DepthBuffer;
-uniform vec2 ScreenSize;
-uniform mat2 fastProjection;
-uniform int TileSize;
-
-float TransformFast(float depth)
-{
-	vec2 temp = fastProjection * vec2(depth, 1.f);
-	return temp.x / temp.y;
-}
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()

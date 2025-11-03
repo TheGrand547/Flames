@@ -25,3 +25,17 @@ layout(std430, binding = 9) volatile buffer LightGrid2
 	uint lightCount;
 	uint globalLightIndex;
 };
+
+layout(std140, binding = 2) uniform ForwardPlusConstants
+{
+	mat2 FastProjection;
+	vec2 ScreenSize;
+	uvec2 tileDimension;
+	int TileSize;
+};
+
+float TransformFast(float depth)
+{
+	vec2 temp = FastProjection * vec2(depth, 1.f);
+	return temp.x / temp.y;
+}

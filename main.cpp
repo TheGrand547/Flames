@@ -291,7 +291,7 @@ static Framebuffer<1, Depth> earlyDepth;
 static constexpr float EarlyDepthRatio = 1;
 
 static std::vector<GLuint> glQueries;
-
+std::mutex bulletMutex;
 void display()
 {
 	GLuint currentRenderQuery = 0;
@@ -412,11 +412,11 @@ void display()
 	{
 		Shader& cullLights = ShaderBank::Get("lightCulling");
 		cullLights.SetActiveShader();
-		cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
+		//cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
 		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
-		cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
+		//cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
 		glm::mat4 inverseProjection = glm::inverse(Window::GetPerspective(zNear, zFar));
-		cullLights.SetMat2("fastProjection", GetLower2x2(inverseProjection));
+		//cullLights.SetMat2("fastProjection", GetLower2x2(inverseProjection
 		cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
 	}
 	// Actual drawing based on the lighting stuff
@@ -426,9 +426,9 @@ void display()
 	levelGeometry.Bind(outerzone);
 	outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 	interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-	interzone.SetVec2("ScreenSize", Window::GetSizeF());
-	interzone.SetInt("TileSize", static_cast<int>(gridResolution));
-	interzone.SetUVec2("tileDimension", tileDimension);
+	//interzone.SetVec2("ScreenSize", Window::GetSizeF());
+	//interzone.SetInt("TileSize", static_cast<int>(gridResolution));
+	//interzone.SetUVec2("tileDimension", tileDimension);
 	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
@@ -450,25 +450,7 @@ void display()
 	buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
-		
-	if (debugFlags[CHECK_UVS])
-	{
-		Shader& sahder = ShaderBank::Get("visualize");
-		sahder.SetActiveShader();
-		sahder.SetVec2("ScreenSize", Window::GetSizeF());
-		sahder.SetInt("TileSize", static_cast<int>(gridResolution));
-		sahder.SetUVec2("tileDimension", tileDimension);
-		static int thresholdAmount = 10;
-		ImGui::Begin("Light Threshold");
-		ImGui::SliderInt("Threshold", &thresholdAmount, 0, 100);
-		ImGui::End();
-		sahder.SetInt("maxLight", thresholdAmount);
-		//FeatureFlagPush<DepthTesting | FaceCulling, false> flagger;
-		DisablePushFlags(DepthTesting | FaceCulling);
-		sahder.DrawArray<DrawType::TriangleStrip>(4);
-	}
-
-	//if (featureToggle)
+	
 	{
 		Shader& local = ShaderBank::Get("dust");
 		local.SetActiveShader();
@@ -477,13 +459,30 @@ void display()
 		ArrayBuffer& points = BufferBank::Get("DustTest");
 		vao.BindArrayBuffer(points, 0);
 		local.SetVec3("shapeColor", glm::vec3(0.9f));
-		local.SetVec2("ScreenSize", Window::GetSizeF());
-		local.SetInt("TileSize", static_cast<int>(gridResolution));
-		local.SetUVec2("tileDimension", tileDimension);
+		//local.SetVec2("ScreenSize", Window::GetSizeF());
+		//local.SetInt("TileSize", static_cast<int>(gridResolution));
+		//local.SetUVec2("tileDimension", tileDimension);
 		local.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), points);
 		glPointSize(10.f);
 		//local.DrawArray<DrawType::Points>(points);
 		glPointSize(1.f);
+	}
+
+	if (debugFlags[CHECK_UVS])
+	{
+		Shader& sahder = ShaderBank::Get("visualize");
+		sahder.SetActiveShader();
+		//sahder.SetVec2("ScreenSize", Window::GetSizeF());
+		//sahder.SetInt("TileSize", static_cast<int>(gridResolution));
+		//sahder.SetUVec2("tileDimension", tileDimension);
+		static int thresholdAmount = 10;
+		ImGui::Begin("Light Threshold");
+		ImGui::SliderInt("Threshold", &thresholdAmount, 0, 100);
+		ImGui::End();
+		sahder.SetInt("maxLight", thresholdAmount);
+		//FeatureFlagPush<DepthTesting | FaceCulling, false> flagger;
+		DisablePushFlags(DepthTesting | FaceCulling);
+		sahder.DrawArray<DrawType::TriangleStrip>(4);
 	}
 
 
@@ -1200,6 +1199,7 @@ void gameTick()
 		shieldPos.Swap(tmep);
 
 		// TODO: I combined these but it's sloooooow
+		std::lock_guard opinion(bulletMutex);
 		std::size_t removedBullets = Level::GetBulletTree().FullService([&](Bullet& local)
 			{
 				DynamicTreeEnum out = RESEAT;
@@ -1458,9 +1458,19 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		}
 		if (key == GLFW_KEY_V)
 		{
-			if (magnetic.Finished())
+			//if (magnetic.Finished())
 			{
-				magnetic.Start({ playfield.GetModel().translation, playfield.GetModel().rotation});
+				//magnetic.Start({ playfield.GetModel().translation, playfield.GetModel().rotation});
+			}
+			std::lock_guard lockon(bulletMutex);
+			std::mt19937 engineer;
+			std::uniform_real_distribution<float> numbers(-150.f, 150.f);
+			std::uniform_real_distribution<float> smallNumbers(-1.f, 1.f);
+			for (int i = 0; i < 150; i++)
+			{
+				glm::vec3 position(numbers(engineer), numbers(engineer), numbers(engineer));
+				glm::vec3 direction = glm::normalize(glm::vec3(smallNumbers(engineer), smallNumbers(engineer), smallNumbers(engineer)));
+				Level::AddBulletTree(position, direction * 100.f, World::Up, 0);
 			}
 		}
 		if (key == GLFW_KEY_U)
@@ -1665,7 +1675,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 	cameraUniformBuffer.SetBindingPoint(0);
 	cameraUniformBuffer.BindUniform();
 
-	glm::mat4 projection = Window::GetPerspective(zNear, zFar);
+	const glm::mat4 projection = Window::GetPerspective(zNear, zFar);
 	cameraUniformBuffer.BufferSubData(projection, sizeof(glm::mat4));
 
 	FilterStruct screenFilters{ MinLinear, MagLinear, BorderClamp, BorderClamp };
@@ -1690,29 +1700,16 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 		auto nextMult = [](auto a, auto b) {return glm::ceil(a / b) * b; };
 
-		const int TileSize = 16;
-		const float TileSizeF = static_cast<float>(TileSize);
-		glm::uvec2 windowSize = nextMult(Window::GetSizeF(), TileSizeF); // glm::ceil(Window::GetSizeF() / TileSizeF)* TileSizeF;
-
 		// Moving past the sample
 		shader.SetActiveShader();
-		shader.SetInt("Width", windowSize.x);
-		shader.SetInt("Height", windowSize.y);
-		//shader.DispatchCompute(257);
 
+		// ???? <- Oh it's about reserving sizes of things, grumble grumble
+		struct A{glm::vec3 c;float b;};
+		struct B{A ar[4];};
 		// Frustum space calculations
 		auto amount = nextMult(Window::GetSizeF(), gridResolution) / gridResolution;
 		numTiles = static_cast<decltype(numTiles)>(amount.x * amount.y);
 		tileDimension = amount;
-		struct A
-		{
-			glm::vec3 c;
-			float b;
-		};
-		struct B
-		{
-			A ar[4];
-		};
 		//ShaderStorage::Get("Frustums");      // 5
 		//ShaderStorage::Get("LightIndicies"); // 6
 		//ShaderStorage::Get("LightGrid");     // 7
@@ -1733,14 +1730,33 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 		// Must be reset every frame before usage
 		ShaderStorage::Get("LightGrid2").BufferData(std::to_array({0u, 0u}));
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
-		shader.SetVec2("ScreenSize", Window::GetSizeF());
-		shader.SetInt("TileSize", static_cast<int>(gridResolution));
+		{
+			UniformBuffer& uniformed = Bank<UniformBuffer>::Get("ForwardPlusConstants");
+			//uniformed.Generate(StaticDraw, sizeof(glm::mat2) + sizeof(glm::uvec2) + sizeof(glm::vec2) + sizeof(int));
+			uniformed.Generate(StaticDraw, 64);
+			glm::mat2 smp = GetLower2x2(glm::inverse(projection));
+			uniformed.BufferSubData(smp[0], 0);
+			uniformed.BufferSubData(smp[0], sizeof(glm::vec2));
+			uniformed.BufferSubData(smp[1], sizeof(glm::vec4));
+			uniformed.BufferSubData(smp[1], sizeof(glm::vec4) + sizeof(glm::vec2));
+			uniformed.BufferSubData(Window::GetSizeF(), sizeof(glm::mat4x2));
+			uniformed.BufferSubData(tileDimension, sizeof(glm::mat4x2) + sizeof(glm::vec2));
+			uniformed.BufferSubData(static_cast<int>(gridResolution), sizeof(glm::mat4x2) + sizeof(glm::vec2) + sizeof(glm::uvec2));
+			uniformed.BufferSubData(glm::uvec3(666, 1337, 547), 52);
+			uniformed.SetBindingPoint(2);
+			uniformed.BindUniform();
+		}
+		shader.UniformBlockBinding("ForwardPlusConstants", 2);
 		shader.SetMat4("InverseProjection", glm::inverse(projection));
-		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.25, 1) << '\n';
-		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.5, 1) << '\n';
-		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.75, 1) << '\n';
-		std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.85, 1) << '\n';
+		//shader.SetVec2("ScreenSize", Window::GetSizeF());
+		//shader.SetInt("TileSize", static_cast<int>(gridResolution));
+		//shader.SetMat4("InverseProjection", glm::inverse(projection));
+		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.25, 1) << '\n';
+		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.5, 1) << '\n';
+		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.75, 1) << '\n';
+		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.85, 1) << '\n';
 		shader.DispatchCompute(tileDimension.x, tileDimension.y);
+		ShaderBank::Get("lightCulling").UniformBlockBinding("ForwardPlusConstants", 2);
 	}
 }
 
@@ -1985,6 +2001,11 @@ void init()
 	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("light_volume").UniformBlockBinding("Camera", 0);
 	ShaderBank::Get("Shields").UniformBlockBinding("Camera", 0);
+
+	ShaderBank::Get("dust").UniformBlockBinding("ForwardPlusConstants", 2);
+	ShaderBank::Get("forwardPlus").UniformBlockBinding("ForwardPlusConstants", 2);
+	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("ForwardPlusConstants", 2);
+	ShaderBank::Get("visualize").UniformBlockBinding("ForwardPlusConstants", 2);
 
 	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
 	uiRect.UniformBlockBinding("ScreenSpace", 1);
@@ -2280,6 +2301,8 @@ void init()
 				Bullet::Collision = OBB::MakeOBB(pain);
 			}
 		);
+		//Bullet::Collision.ReCenter(Bullet::Collision.Forward());
+		//Bullet::Collision.ReCenter(Bullet::Collision.Forward() * Bullet::Collision.GetScale().x);
 		//geometry = OBJReader::MeshThingy("Models\\LevelMaybe.glb",
 		//levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\LevelMaybe2.glb",
 		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\mothership.glb",

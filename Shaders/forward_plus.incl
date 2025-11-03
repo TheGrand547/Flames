@@ -1,9 +1,5 @@
 layout(origin_upper_left) in vec4 gl_FragCoord;
 
-uniform int TileSize;
-uniform vec2 ScreenSize;
-uniform uvec2 tileDimension;
-
 vec3 ForwardPlusLighting(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
 {
 	const float ambient = 0.15;

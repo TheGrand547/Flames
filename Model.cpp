@@ -8,7 +8,7 @@ Model Model::ApplyParent(const Model& parent) noexcept
 {
     Model temp{ *this };
     temp.scale *= parent.scale;
-    glm::vec3 immediate = temp.rotation * temp.translation;
+    glm::vec3 immediate = parent.rotation * (temp.translation * parent.scale);
     temp.rotation = parent.rotation * temp.rotation;
     //temp.rotation = temp.rotation * parent.rotation;
     temp.translation = parent.translation + immediate;

@@ -4,9 +4,6 @@
 layout(location = 0) in vec2 textureCoords;
 layout(location = 0) out vec4 fColor;
 
-uniform int TileSize; 
-uniform vec2 ScreenSize;
-uniform uvec2 tileDimension;
 uniform int maxLight;
 
 layout(origin_upper_left) in vec4 gl_FragCoord;
