@@ -28,12 +28,6 @@ void main()
 	vec3 viewDirection = normalize(View[3].xyz - fPos);
 	
 	vec3 lightOut = DirectedPointLight(lightPos, -lightDir, tempLightColor, norm, fPos, viewDirection);
-	
-	for (int i = 0; i < 12; i++)
-	{
-		lightOut += PointLight(lightBuffer[i].position.xyz, lightBuffer[i].color.xyz, norm, fPos, viewDirection);
-	
-	}
 	vec3 result = ambient * tempShapeColor + lightOut;
 	
 	fColor = vec4(result, 1.0);

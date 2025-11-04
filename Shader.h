@@ -11,6 +11,7 @@
 #include "Texture2D.h"
 #include "CubeMap.h"
 #include "DrawStruct.h"
+#include "ResourceBank.h"
 
 enum struct PrimitiveDrawingType : unsigned int
 {
@@ -343,5 +344,7 @@ template<class Container> inline void Shader::DrawElementsMemory(PrimitiveDrawin
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glDrawElements(static_cast<GLenum>(type), static_cast<GLsizei>(contents.size()), GL_UNSIGNED_BYTE, contents.data());
 }
+
+using ShaderBank = Bank<Shader>;
 
 #endif // FLAMES_SHADER_H

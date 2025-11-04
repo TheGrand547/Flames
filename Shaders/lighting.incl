@@ -11,10 +11,6 @@ struct LightInfoBig
 	vec4 constants;
 };
 
-layout(std140) uniform BlockLighting
-{
-	LightInfo lightBuffer[60];
-};
 
 vec3 DirectedLight(vec3 lightDirection, vec3 lightColor, vec3 fragNormal, vec3 viewDirection)
 {

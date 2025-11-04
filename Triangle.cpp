@@ -126,7 +126,7 @@ Plane Triangle::GetPlane() const
 }
 
 
-std::vector<Triangle> Triangle::Split(const Plane& plane, bool cullBack) const
+std::vector<Triangle> Triangle::Split(const Plane& plane, [[maybe_unused]] bool cullBack) const
 {
 	std::vector<Triangle> triangles;
 

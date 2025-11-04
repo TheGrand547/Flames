@@ -162,9 +162,6 @@
     <ClCompile Include="Parallel.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="GLData.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="DebrisManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -420,9 +417,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Parallel.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="GLData.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="DrawStruct.h">

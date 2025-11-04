@@ -11,7 +11,8 @@ void CheckError(const std::source_location location)
 	}
 }
 
-void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam) 
+void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, [[maybe_unused]] GLsizei length, const GLchar* message,
+	[[maybe_unused]] const void* userParam)
 {
 	// FROM https://gist.github.com/liam-middlebrook/c52b069e4be2d87a6d2f
 	const char* _source;

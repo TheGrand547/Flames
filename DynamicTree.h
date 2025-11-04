@@ -686,7 +686,6 @@ public:
 
 	iterator Insert(const T& element, const AABB& box) noexcept
 	{
-		std::size_t oldSize = this->elements.capacity();
 		this->elements.emplace_back(element, Member{});
 		this->InternalInsert(static_cast<Index>(this->elements.size() - 1), box);
 		// I don't think this is necessary? 

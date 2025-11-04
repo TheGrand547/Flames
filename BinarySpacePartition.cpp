@@ -100,7 +100,6 @@ bool BinarySpacePartition::TestPoint(const glm::vec3& point) const
 		}
 		return false;
 	}
-	return true;
 }
 
 void BinarySpacePartition::AddTriangle(const Triangle& triangle)

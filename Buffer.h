@@ -8,6 +8,7 @@
 #include <vector>
 #include <ranges>
 #include "log.h"
+#include "ResourceBank.h"
 
 enum BufferAccess
 {
@@ -442,5 +443,5 @@ typedef Buffer<BufferType::ShaderStorage> ShaderStorageBuffer;
 typedef Buffer<BufferType::TextureBuffer> TextureBuffer;
 typedef Buffer<BufferType::TransformFeedback> TransformFeedback;
 typedef Buffer<BufferType::UniformBufferObject> UniformBufferObject;
-
+using BufferBank = Bank<ArrayBuffer>;
 #endif // BUFFER_H

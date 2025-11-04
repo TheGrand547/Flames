@@ -253,7 +253,7 @@ namespace DetectCollision
 				// TODO: Return to this
 				if (glm::any(glm::epsilonNotEqual(triProjections, triProjections2, EPSILON)))
 				{
-					float lome = glm::distance(triProjections, triProjections2);
+					//float lome = glm::distance(triProjections, triProjections2);
 					//Log("Optimization failed");
 					triProjections = triProjections2;
 				}
@@ -288,7 +288,6 @@ namespace DetectCollision
 			float high = glm::compMax(triProjections);
 			
 			float overlap = glm::abs(glm::min(high, boxProjection) - glm::max(low, -boxProjection));
-			bool firstTest = (low > boxProjection) || (high < -boxProjection);
 			// Triangle covers interval [low,high], box [-BoxProjection,+BoxProjection]
 			if (low > boxProjection || high < -boxProjection)
 			{

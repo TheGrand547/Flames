@@ -2,7 +2,6 @@
 #include "Shader.h"
 #include "ResourceBank.h"
 #include "VertexArray.h"
-#include "imgui/imgui.h"
 #include "util.h"
 
 static constexpr std::string_view ResourceName = "door_shader";

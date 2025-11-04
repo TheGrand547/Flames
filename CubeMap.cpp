@@ -40,12 +40,6 @@ void CubeMap::Generate(const std::array<Texture2D, 6>& textures)
 	for (std::size_t i = 0; i < 6; i++)
 	{
 		const Texture2D& current = textures[i];
-
-		GLenum targetTexture = GL_TEXTURE_CUBE_MAP_POSITIVE_X + static_cast<GLenum>(i);
-		/*
-		glTexImage2D(targetTexture, 0, InternalRGB, width, height, BORDER_PARAMETER,
-			FormatRGB, GL_UNSIGNED_BYTE, nullptr
-		);*/
 		glCopyImageSubData(current.GetGLTexture(), GL_TEXTURE_2D, 0, 0, 0, 0,
 			this->texture, GL_TEXTURE_CUBE_MAP, 0, 0, 0, static_cast<GLint>(i), 
 			width, height, 1);

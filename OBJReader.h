@@ -64,12 +64,6 @@ struct MeshData
 
 struct OBJReader
 {
-	static void ReadOBJ(const std::string& filename, ArrayBuffer& elements, ElementArray& index, const std::size_t& id = 0);
-	static std::vector<MeshPair> ReadOBJ(const std::string& filename);
-	static void ReadOBJ(const std::string& filename, std::vector<MeshPair>& input);
-
-	static MeshData ReadOBJSimple(const std::string& filename);
-
 	template<typename T> static void ProcessVertexed(aiMesh* mesh, aiVector3D translation, std::vector<T>& results)
 	{
 		constexpr bool HasPosition = std::is_same_v<T, ColoredVertex>
@@ -250,7 +244,6 @@ struct OBJReader
 		DrawIndirect flames{ 0, 1, 0, static_cast<GLint>(vertexOut.size()), 0 };
 		ProcessVertexed<T>(mesh, translation, vertexOut);
 		flames.firstVertexIndex = static_cast<GLuint>(indexOut.size());
-		const std::size_t first = vertexOut.size();
 		unsigned int numIndicies = 0;
 		for (unsigned int x = 0; x < mesh->mNumFaces; x++)
 		{

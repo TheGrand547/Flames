@@ -49,7 +49,7 @@ inline Sphere::Sphere(const glm::vec3& center, const float& radius) noexcept : c
 
 inline void Sphere::Translate(const glm::vec3& amount) noexcept
 {
-	this->center += radius;
+	this->center += amount;
 }
 
 inline void Sphere::Scale(const float& amount) noexcept

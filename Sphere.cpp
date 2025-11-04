@@ -68,7 +68,7 @@ void Sphere::GenerateNormals(ArrayBuffer& verts, ElementArray& indicies,
 				index.push_back(last);
 				index.push_back(first);
 			}
-			if (i != (longitudeSlices - 1))
+			if (i + 1 != longitudeSlices)
 			{
 				index.push_back(last + 1);
 				index.push_back(last);
@@ -145,7 +145,7 @@ void Sphere::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 				index.push_back(last);
 				index.push_back(first);
 			}
-			if (i != (longitudeSlices - 1))
+			if (i + 1 != longitudeSlices)
 			{
 				index.push_back(last + 1);
 				index.push_back(last);
@@ -208,7 +208,7 @@ void Sphere::Generate(ArrayBuffer& verts, ElementArray& indicies,
 				index.push_back(last);
 				index.push_back(first);
 			}
-			if (i != (longitudeSlices - 1))
+			if (i + 1 != longitudeSlices)
 			{
 				index.push_back(last + 1);
 				index.push_back(last);

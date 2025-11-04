@@ -11,6 +11,7 @@
 #include "log.h"
 #include "Shader.h"
 #include "Vertex.h"
+#include "ResourceBank.h"
 
 class VertexArray
 {
@@ -265,5 +266,5 @@ template<class T> static void VertexArray::GenerateArrays(std::map<T, VertexArra
 		begin++;
 	}
 }
-
+using VAOBank = Bank<VAO>;
 #endif // VERTEX_ARRAY_H

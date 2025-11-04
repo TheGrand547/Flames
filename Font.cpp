@@ -134,7 +134,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 {
 	ArrayBuffer buffer;
 	glm::ivec2 size = this->GetTextTris(buffer, 0, 0, message);
-	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA8, glm::vec4(1, 0.5, 0.25, 1.f));
+	framebuffer.GetColor().CreateEmpty(size.x, size.y, InternalRGBA8, backgroundColor);
 	//framebuffer.GetColor().FillTexture(backgroundColor);
 	// Don't want artifacting
 	framebuffer.GetColor().SetFilters(MinLinear, MagLinear);
@@ -171,6 +171,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 {
 	// TODO: Return and make this work
 	ColorFrameBuffer framebuffer;
+	texture.FillTexture(backgroundColor);
 	framebuffer.GetColor().MakeAliasOf(texture);
 	framebuffer.Assemble();
 	framebuffer.Bind();
@@ -231,8 +232,8 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 
 		int x0, y0, x1, y1;
 		stbtt_GetFontBoundingBox(&information, &x0, &y0, &x1, &y1);
-		float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
-		float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
+		//float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
+		//float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
 		
 		std::vector<unsigned char> scratchSpace{}; // Has to be the same size as the buffer
 		scratchSpace.reserve(static_cast<std::size_t>(font.atlasWidth) * static_cast<std::size_t>(font.atlasHeight));

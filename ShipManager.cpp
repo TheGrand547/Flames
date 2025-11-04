@@ -93,10 +93,10 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 	shader.SetActiveShader();
 	shader.SetVec3("shapeColor", glm::vec3(0.8f));
 
-	VAO& truth = VAOBank::Get("new_mesh");
-	data.Bind(truth);
-	truth.Bind();
-	truth.BindArrayBuffer(this->pain, 1);
+	
+	data.Bind(vao);
+	vao.Bind();
+	vao.BindArrayBuffer(this->pain, 1);
 	data.indirect.BufferSubData(data.rawIndirect, 0);
 	shader.MultiDrawElements(data.indirect);
 	/*

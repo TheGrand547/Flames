@@ -325,6 +325,6 @@ bool DebrisManager::LoadResources() noexcept
 {
 	//meshData = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Debris.glb");
 	meshData = OBJReader::MeshThingy<MeshVertex>("Models\\Debris.glb");
-	DebrisTypes = meshData.indirect.GetElementCount();
+	DebrisTypes = static_cast<unsigned char>(meshData.indirect.GetElementCount());
 	return DebrisTypes > 1;
 }

@@ -2,7 +2,7 @@
 #include "Interpolation.h"
 
 MagneticAttack::MagneticAttack(std::uint16_t growTime, std::uint16_t maxTime, std::uint16_t shrinkTime, float maxRadius) noexcept : 
-	local(QuatIdentity()), ticksAlive(-1), growTime(growTime), maxTime(maxTime + growTime), shrinkTime(shrinkTime + maxTime + growTime), radius(0.f),
+	local(QuatIdentity()), ticksAlive(static_cast<std::uint16_t>(-1)), growTime(growTime), maxTime(maxTime + growTime), shrinkTime(shrinkTime + maxTime + growTime), radius(0.f),
 	maxRadius(maxRadius)
 {
 

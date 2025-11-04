@@ -70,9 +70,12 @@
 #include "DebrisManager.h"
 #include "MissileMotion.h"
 #include "MagneticAttack.h"
+#pragma warning (push)
+#pragma warning (disable : 6031 6011 33010 28182 26819)
 #include "imgui/imgui.h"
 #include "imgui/imgui_impl_opengl3.h"
 #include "imgui/imgui_impl_glfw.h"
+#pragma warning (pop)
 #include "ClockBrain.h"
 #include "ShipManager.h"
 #include "async/BufferSync.h"
@@ -114,19 +117,6 @@ MeshData guyMeshData;
 ElementArray capsuleIndex, cubeOutlineIndex, solidCubeIndex, sphereIndicies, stickIndicies;
 
 UniformBuffer cameraUniformBuffer, screenSpaceBuffer;
-
-// Shaders
-Shader fontShader, uiRect, uiRectTexture, uniform, widget;
-Shader decalShader;
-Shader pathNodeView, stencilTest;
-Shader nineSlicer;
-Shader vision;
-Shader ship;
-Shader basic;
-Shader engine;
-Shader skyBox;
-Shader trails;
-Shader debris;
 
 // Textures
 Texture2D ditherTexture, hatching, normalMap, texture, wallTexture;
@@ -182,7 +172,7 @@ float zNear = 0.1f, zFar = 250.f;
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
-Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << std::endl; });
+Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << ":" << i << std::endl; });
 
 static bool featureToggle = false;
 static std::chrono::nanoseconds idleTime, displayTime;
@@ -227,7 +217,6 @@ bool shiftHeld;
 std::atomic_uchar addExplosion;
 
 DebrisManager trashMan;
-Shader normalDebris;
 
 MagneticAttack magnetic(100, 20, 80, 4.f);
 MeshData playerMesh, playerMesh2;
@@ -267,7 +256,10 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 	
 	localCamera = (playerModel.rotation * aboutTheShip) * basePoint;
 	localCamera += playerModel.translation;
+
+	const glm::vec3 modelForward = playerModel.rotation * glm::vec3(1.f, 0.f, 0.f);
 	localCamera -= velocity / 20.f;
+
 	const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
 	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
 	return { localCamera, cameraForward };
@@ -351,11 +343,12 @@ void display()
 	glEnable(GL_CULL_FACE);
 	glDepthFunc(GL_LEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-	
+	Shader& uniform = ShaderBank::Retrieve("uniform");
 	if (debugFlags[DEBUG_PATH])
 	{
 		EnableGLFeatures<Blending>();
 		//DisableDepthBufferWrite();
+		Shader& pathNodeView = ShaderBank::Retrieve("pathNodeView");
 		pathNodeView.SetActiveShader();
 		pathNodeVAO.Bind();
 		pathNodeVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
@@ -377,15 +370,13 @@ void display()
 		EnableDepthBufferWrite();
 	}
 
-	VAO& outerzone = VAOBank::Get("new_mesh");
-
 	drawingVolumes.ExclusiveOperation(
 		[&](auto& data)
 		{
 			auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
 			buffer2.BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
-			std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
+			//std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
 			auto& buffer = ShaderStorage::Get("LightBlock");
 			std::vector<LightVolume> grouper;
 			std::ranges::copy(
@@ -403,25 +394,22 @@ void display()
 			ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 		}
 	);
-	ShaderStorage::Get("Frustums").BindBufferBase(5);
-	ShaderStorage::Get("LightIndicies").BindBufferBase(6);
-	ShaderStorage::Get("LightGrid").BindBufferBase(7);
-	ShaderStorage::Get("LightBlock").BindBufferBase(8);
-	ShaderStorage::Get("LightGrid2").BindBufferBase(9);
-	ShaderStorage::Get("LightBlockOriginal").BindBufferBase(10);
+	ShaderStorage::Retrieve("Frustums").BindBufferBase(5);
+	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
+	ShaderStorage::Retrieve("LightGrid").BindBufferBase(7);
+	ShaderStorage::Retrieve("LightBlock").BindBufferBase(8);
+	ShaderStorage::Retrieve("LightGrid2").BindBufferBase(9);
+	ShaderStorage::Retrieve("LightBlockOriginal").BindBufferBase(10);
 	{
-		Shader& cullLights = ShaderBank::Get("lightCulling");
+		Shader& cullLights = ShaderBank::Retrieve("lightCulling");
 		cullLights.SetActiveShader();
-		//cullLights.SetVec2("ScreenSize", Window::GetSizeF() / EarlyDepthRatio);
 		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
-		//cullLights.SetInt("TileSize", static_cast<int>(gridResolution));
-		glm::mat4 inverseProjection = glm::inverse(Window::GetPerspective(zNear, zFar));
-		//cullLights.SetMat2("fastProjection", GetLower2x2(inverseProjection
 		cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
 	}
 	// Actual drawing based on the lighting stuff
 
-	Shader& interzone = ShaderBank::Get("forwardPlusMulti");
+	Shader& interzone = ShaderBank::Retrieve("forwardPlusMulti");
+	VAO& outerzone = VAOBank::Retrieve("forwardPlusMulti");
 	interzone.SetActiveShader();
 	levelGeometry.Bind(outerzone);
 	outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
@@ -429,10 +417,10 @@ void display()
 	//interzone.SetVec2("ScreenSize", Window::GetSizeF());
 	//interzone.SetInt("TileSize", static_cast<int>(gridResolution));
 	//interzone.SetUVec2("tileDimension", tileDimension);
-	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Get("dummyInstance"), 1);
+	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Retrieve("dummyInstance"), 1);
 	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
-	ShaderStorage::Get("LightIndicies").BindBufferBase(6);
+	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
 	// Only need one per tile
 	//ShaderStorage::Get("LightGrid").BindBufferBase(7);
 	//ShaderStorage::Get("LightBlock").BindBufferBase(8);
@@ -566,78 +554,44 @@ void display()
 	//uniform.SetMat4("Model", dumbBox.GetModelMatrix());
 	//uniform.DrawElements<DrawType::Triangle>(solidCubeIndex);
 
-	ship.SetActiveShader();
-	meshVAO.Bind();
-	//meshVAO.BindArrayBuffer(guyBuffer);
-	//meshVAO.BindArrayBuffer(guyMeshData.vertex);
-	//guyMeshData.index.BindBuffer();
-
 	CheckError();
 
-	{
-		// TODO: move this elsewhere
-		FeatureFlagPush<Blending> _blend;
-		FeatureFlagPush<FaceCulling, false> _blend2;
-		DisableDepthBufferWrite();
-		Shader& foolish = ShaderBank::Get("Shielding");
-		VAO& vao = VAOBank::Get("simple_mesh_instance");
-		ArrayBuffer& buffer = Bank<ArrayBuffer>::Get("shieldPos");
-		foolish.SetActiveShader();
-		vao.Bind();
-		vao.BindArrayBuffer(sphereBuffer, 0);
-		vao.BindArrayBuffer(buffer, 1);
-		//sphereBuffer.BindBuffer();
-		sphereIndicies.BindBuffer();
-		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
-		//foolish.SetTextureUnit("textureIn", Bank<Texture2D>::Get("flma"), 0);
-		Model maudlin;
-		//maudlin.translation = glm::vec3(0, 60.f, 0.f);
-		maudlin.scale = glm::vec3(4.f * glm::compMax(ClockBrain::Collision.GetScale()));
-		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
-		foolish.SetMat4("normalMat", glm::mat4(1.f));
-		foolish.SetInt("FeatureToggle", featureToggle);
-		//foolish.DrawElements(sphereIndicies);
-		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
-		EnableDepthBufferWrite();
-	}
-
 	Model defaults(playerModel);
-
+	ShaderBank::Get("ship").SetActiveShader();
+	meshVAO.Bind();
 	defaults.translation = glm::vec3(10, 10, 0);
 	defaults.rotation = glm::quat(0.f, 0.f, 0.f, 1.f);
 	defaults.scale = glm::vec3(0.5f);
-	ship.SetMat4("modelMat", defaults.GetModelMatrix());
-	ship.SetMat4("normalMat", defaults.GetNormalMatrix());
-	groovy.Draw(ship);
+	ShaderBank::Get("ship").SetMat4("modelMat", defaults.GetModelMatrix());
+	ShaderBank::Get("ship").SetMat4("normalMat", defaults.GetNormalMatrix());
+	groovy.Draw(ShaderBank::Get("ship"));
 
 	//glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	EnableGLFeatures<Blending>();
 	DisableDepthBufferWrite();
 	// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
-	decalShader.SetActiveShader();
+	ShaderBank::Get("decalShader").SetActiveShader();
 	texturedVAO.Bind();
 	texturedVAO.BindArrayBuffer(decals);
-	decalShader.SetTextureUnit("textureIn", texture, 0);
-	decalShader.DrawArray<DrawType::Triangle>(decals);
+	ShaderBank::Get("decalShader").SetTextureUnit("textureIn", texture, 0);
+	ShaderBank::Get("decalShader").DrawArray<DrawType::Triangle>(decals);
 	EnableDepthBufferWrite();
 	DisableGLFeatures<Blending>();
 	
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	//meshVAO.BindArrayBuffer(guyBuffer2);
-	CheckError();
 
-	trashMan.Draw(debris);
+	trashMan.Draw(ShaderBank::Retrieve("debris"));
 	glLineWidth(1.f);
 
-	basic.SetActiveShader();
+	ShaderBank::Get("basic").SetActiveShader();
 	meshVAO.Bind();
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	sphereIndicies.BindBuffer();
-	basic.SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
-	basic.SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
-	basic.DrawElements<DrawType::Lines>(sphereIndicies);
-	CheckError();
+	ShaderBank::Get("basic").SetVec4("Color", glm::vec4(2.f, 204.f, 254.f, 250.f) / 255.f);
+	ShaderBank::Get("basic").SetMat4("Model", magnetic.GetMatrix(playerModel.translation));
+	ShaderBank::Get("basic").DrawElements<DrawType::Lines>(sphereIndicies);
 	glDepthMask(GL_TRUE);
 	// Albert
 	//glPatchParameteri(GL_PATCH_VERTICES, 3);
@@ -671,33 +625,34 @@ void display()
 	glLineWidth(15.f);
 	//uniform.DrawArray<DrawType::Lines>(rayBuffer);
 
-	trails.SetActiveShader();
-	colorVAO.Bind();
-	DisableGLFeatures<FaceCulling>();
-	EnableGLFeatures<Blending>();
-
-	trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
-	colorVAO.BindArrayBuffer(leftBuffer);
-	trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
-	colorVAO.BindArrayBuffer(rightBuffer);
-	trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
-	EnableGLFeatures<FaceCulling>();
-	DisableGLFeatures<Blending>();
+	{
+		DisablePushFlags(FaceCulling);
+		EnablePushFlags(Blending);
+		Shader& trails = ShaderBank::Retrieve("trail");
+		trails.SetActiveShader();
+		colorVAO.Bind();
+		trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
+		colorVAO.BindArrayBuffer(leftBuffer);
+		trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
+		colorVAO.BindArrayBuffer(rightBuffer);
+		trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
+	}
 
 	//tickTockMan.Draw(guyMeshData, VAOBank::Get("new_mesh"), ShaderBank::Get("new_mesh"));
 	//debris.SetActiveShader();
 	//management.Draw(guyMeshData, meshVAO, debris);
 
-	CheckError();
-
-	engine.SetActiveShader();
-	VAOBank::Get("engineInstance").Bind();
-	VAOBank::Get("engineInstance").BindArrayBuffer(exhaustBuffer);
-	engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
-	engine.SetUnsignedInt("Period", 150);
-	engine.DrawArrayInstanced<DrawType::Triangle>(Bank<ArrayBuffer>::Get("dummyEngine"), exhaustBuffer);
+	{
+		Shader& engine = ShaderBank::Retrieve("engine");
+		engine.SetActiveShader();
+		VAOBank::Get("engineInstance").Bind();
+		VAOBank::Get("engineInstance").BindArrayBuffer(exhaustBuffer);
+		engine.SetUnsignedInt("Time", static_cast<unsigned int>(gameTicks & std::numeric_limits<unsigned int>::max()));
+		engine.SetUnsignedInt("Period", 150);
+		engine.DrawArrayInstanced<DrawType::Triangle>(Bank<ArrayBuffer>::Get("dummyEngine"), exhaustBuffer);
+	}
 	//EnableGLFeatures<DepthTesting>();
-	CheckError();
+	// 
 	// Sphere drawing
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	if (bulletMesh.rawIndirect[1].instanceCount > 0)
@@ -733,7 +688,6 @@ void display()
 	lightModel.scale = glm::vec3(2.2f);//glm::vec3(2.2, 2.2, 1.1);
 
 	sphereModel.translation += glm::vec3(0, 1, 0) * glm::sin(glm::radians(idleFrameCounter * 0.25f)) * 3.f;
-	stencilTest.SetActiveShader();
 
 	// TODO: Make something to clarify the weirdness of the stencil function
 	// Stuff like the stencilOp being in order: Stencil Fail(depth ignored), Stencil Pass(Depth Fail), Stencil Pass(Depth Pass)
@@ -772,6 +726,8 @@ void display()
 	glStencilOpSeparate(GL_FRONT, GL_KEEP, GL_DECR_WRAP, GL_KEEP);
 
 	// Drawing of the appropriate volumes
+	Shader& stencilTest =  ShaderBank::Retrieve("stencilTest");
+	stencilTest.SetActiveShader();
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	//stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
@@ -808,69 +764,103 @@ void display()
 	//glStencilOpSeparate(GL_FRONT_AND_BACK, GL_KEEP, GL_KEEP, GL_KEEP);
 	glStencilOp(GL_KEEP, GL_KEEP, GL_INCR);
 	//glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
-	uiRect.SetActiveShader();
-	uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
-	uiRect.SetVec4("rectangle", glm::vec4(0, 0, Window::Width, Window::Height));
-	//uiRect.DrawArray(TriangleStrip, 4);
-	//uiRect.DrawArray(TriangleStrip, 4);
+	{
+		Shader& uiRect = ShaderBank::Retrieve("uiRect");
+		uiRect.SetActiveShader();
+		uiRect.SetVec4("color", glm::vec4(0, 0, 0, 0.8));
+		uiRect.SetVec4("rectangle", glm::vec4(0, 0, Window::Width, Window::Height));
+		//uiRect.DrawArray(TriangleStrip, 4);
+		//uiRect.DrawArray(TriangleStrip, 4);
+	}
 
 	DisableGLFeatures<StencilTesting>();
 	//EnableGLFeatures<DepthTesting>();
 	glDepthMask(GL_FALSE);
 
-	DisableGLFeatures<FaceCulling>();
-	glDepthFunc(GL_LEQUAL);
-	skyBox.SetActiveShader();
-	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
-	skyBox.SetTextureUnit("skyBox", sky);
-	//skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
-	EnableGLFeatures<FaceCulling>();
+	{
+		DisablePushFlags(FaceCulling);
+		glDepthFunc(GL_LEQUAL);
+		Shader& skyBox = ShaderBank::Retrieve("skyBox");
+		skyBox.SetActiveShader();
+		plainVAO.Bind();
+		plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
+		skyBox.SetTextureUnit("skyBox", sky);
+		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+	}
+	{
+		// TODO: move this elsewhere
+		FeatureFlagPush<Blending> _blend;
+		FeatureFlagPush<FaceCulling, false> _blend2;
+		DisableDepthBufferWrite();
+		Shader& foolish = ShaderBank::Get("Shielding");
+		VAO& vao = VAOBank::Get("simple_mesh_instance");
+		ArrayBuffer& buffer = Bank<ArrayBuffer>::Get("shieldPos");
+		foolish.SetActiveShader();
+		vao.Bind();
+		vao.BindArrayBuffer(sphereBuffer, 0);
+		vao.BindArrayBuffer(buffer, 1);
+		//sphereBuffer.BindBuffer();
+		sphereIndicies.BindBuffer();
+		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
+		//foolish.SetTextureUnit("textureIn", Bank<Texture2D>::Get("flma"), 0);
+		Model maudlin;
+		//maudlin.translation = glm::vec3(0, 60.f, 0.f);
+		maudlin.scale = glm::vec3(4.f * glm::compMax(ClockBrain::Collision.GetScale()));
+		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
+		foolish.SetMat4("normalMat", glm::mat4(1.f));
+		foolish.SetInt("FeatureToggle", featureToggle);
+		//foolish.DrawElements(sphereIndicies);
+		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
+		EnableDepthBufferWrite();
+	}
 
-	basic.SetActiveShader();
+	ShaderBank::Get("basic").SetActiveShader();
 	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(rayBuffer);
-	basic.SetMat4("Model", glm::mat4(1.f));
-	basic.SetVec4("Color", glm::vec4(1.f));
-	basic.DrawArray(rayBuffer);
+	ShaderBank::Get("basic").SetMat4("Model", glm::mat4(1.f));
+	ShaderBank::Get("basic").SetVec4("Color", glm::vec4(1.f));
+	ShaderBank::Get("basic").DrawArray(rayBuffer);
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
+	if (false)
+	{
+		Shader& uiRectTexture = ShaderBank::Retrieve("uiRectTexture");
+		uiRectTexture.SetActiveShader();
 
-	CheckError();
-	
-	uiRectTexture.SetActiveShader();
-	
-	auto& colored = buffet.GetColor();
-	uiRectTexture.SetTextureUnit("image", colored, 0);
-	glm::vec4 loc = glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
-		colored.GetWidth(), colored.GetHeight());
-	uiRectTexture.SetVec4("rectangle", loc);
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
-	/*
-	uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
-	uiRectTexture.SetVec4("rectangle", buttonRect);
-	uiRect.DrawArray<DrawType::TriangleStrip>(4);
+		auto& colored = buffet.GetColor();
+		uiRectTexture.SetTextureUnit("image", colored, 0);
+		glm::vec4 loc = glm::vec4((Window::Width - colored.GetWidth()) / 2, (Window::Height - colored.GetHeight()) / 2,
+			colored.GetWidth(), colored.GetHeight());
+		uiRectTexture.SetVec4("rectangle", loc);
+		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
+		
+		uiRectTexture.SetTextureUnit("image", (buttonToggle) ? buttonA : buttonB, 0);
+		uiRectTexture.SetVec4("rectangle", buttonRect);
+		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
 
-	uiRectTexture.SetTextureUnit("image", help.GetTexture(), 0);
-	uiRectTexture.SetVec4("rectangle", help.GetRect());
-	uiRect.DrawArray<DrawType::TriangleStrip>(4);
+		uiRectTexture.SetTextureUnit("image", help.GetTexture(), 0);
+		uiRectTexture.SetVec4("rectangle", help.GetRect());
+		uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
 
-	uiRectTexture.SetTextureUnit("image", normalMap);
-	uiRectTexture.SetVec4("rectangle", { 0, 0, normalMap.GetSize()});
-	//uiRect.DrawArray<DrawType::TriangleStrip>(4);
-	CheckError();
-	DisableGLFeatures<FaceCulling>();
-	DisableGLFeatures<Blending>();
-	*/
+		uiRectTexture.SetTextureUnit("image", normalMap);
+		uiRectTexture.SetVec4("rectangle", { 0, 0, normalMap.GetSize()});
+		//uiRectTexture.DrawArray<DrawType::TriangleStrip>(4);
+		DisableGLFeatures<FaceCulling>();
+		DisableGLFeatures<Blending>();
+		
+	}
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
-	fontShader.SetActiveShader();
-	fontVAO.Bind();
-	fontVAO.BindArrayBuffer(textBuffer);
-	fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
-	fontShader.DrawArray<DrawType::Triangle>(textBuffer);
+	{
+		Shader& fontShader = ShaderBank::Retrieve("fontShader");
+		fontShader.SetActiveShader();
+		fontVAO.Bind();
+		fontVAO.BindArrayBuffer(textBuffer);
+		fontShader.SetTextureUnit("fontTexture", fonter.GetTexture(), 0);
+		fontShader.DrawArray<DrawType::Triangle>(textBuffer);
+	}
 
 	DisableGLFeatures<Blending>();
 	EnableGLFeatures<DepthTesting>();
@@ -881,8 +871,8 @@ void display()
 	glStencilMask(0xFF);
 
 	glLineWidth(1.f);
-	widget.SetActiveShader();
-	widget.DrawArray<DrawType::Lines>(6);
+	ShaderBank::Retrieve("widget").SetActiveShader();
+	ShaderBank::Retrieve("widget").DrawArray<DrawType::Lines>(6);
 
 	EnableGLFeatures<DepthTesting | StencilTesting | FaceCulling>();
 
@@ -937,8 +927,8 @@ void idle()
 	if (disableFpsDisplay)
 	{
 		ImGui::Begin("Metrics", &disableFpsDisplay);
-		auto frames = fpsPlot.GetLinear();
-		ImGui::PlotLines("##2", frames.data(), static_cast<int>(frames.size()), 0, "Frame Time", 0.f, 10.f, ImVec2(100, 100));
+		auto lienarFrames = fpsPlot.GetLinear();
+		ImGui::PlotLines("##2", lienarFrames.data(), static_cast<int>(lienarFrames.size()), 0, "Frame Time", 0.f, 10.f, ImVec2(100, 100));
 		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
 		ImGui::End();
 	}
@@ -1125,7 +1115,7 @@ void idle()
 	buffered << playfield.GetVelocity() << ":" << glm::length(playfield.GetVelocity());
 	buffered << "\n" << playfield.GetModel().translation;
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle << "\nFull Calculations: " << debugFlags[FULL_CALCULATIONS];
-	buffered << '\n' << Level::GetBulletTree().size();
+	buffered << '\n' << glm::dot(glm::normalize(playfield.GetVelocity()), playfield.GetModel().rotation * World::Forward);
 	Level::SetInterest(management.GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay: {}us\n-Concurrent: {}us\
@@ -1200,9 +1190,8 @@ void gameTick()
 
 		// TODO: I combined these but it's sloooooow
 		std::lock_guard opinion(bulletMutex);
-		std::size_t removedBullets = Level::GetBulletTree().FullService([&](Bullet& local)
+		[[maybe_unused]] std::size_t removedBullets = Level::GetBulletTree().FullService([&](Bullet& local)
 			{
-				DynamicTreeEnum out = RESEAT;
 				if (!local.IsValid())
 				{
 					return REMOVE;
@@ -1259,7 +1248,7 @@ void gameTick()
 						// can be parallelized, with only the copying needing sequential access
 						// If no decals were generated, then it didn't 'precisely' overlap any of the geometry, and as
 						// generating decals also requires a OctTreeSearch, escape the outer one.
-						if (true || decalVertex.ExclusiveOperation(
+						if (false && decalVertex.ExclusiveOperation(
 							[&](auto& ref)
 							{
 								//QuickTimer _time("Decal Generation");
@@ -1271,8 +1260,7 @@ void gameTick()
 									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
 									Bullet::Collision.GetScale() * glm::vec3(1.5f, BulletDecalScale, BulletDecalScale)));
 								blarg.push_back(sigma.GetModelMatrix());
-								//if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
-								if (false)
+								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
 									// Possibly helps things, but I'm not completely sure
 									Log("Decal Failed");
@@ -1360,8 +1348,8 @@ void gameTick()
 			foobar.Start(foobarInstance);
 		}
 		foobar.Get(foobarInstance).position;
-		float playerSpeed = glm::length(playfield.GetVelocity());
-		const glm::vec3 playerForward = playfield.GetVelocity();
+		//float playerSpeed = glm::length(playfield.GetVelocity());
+		//const glm::vec3 playerForward = playfield.GetVelocity();
 
 		groovy.Update();
 
@@ -1402,7 +1390,7 @@ void gameTick()
 	} while (!windowShouldClose);
 }
 
-void window_focus_callback(GLFWwindow* window, int focused)
+void window_focus_callback([[maybe_unused]] GLFWwindow* window, int focused)
 {
 	if (!focused)
 	{
@@ -1427,9 +1415,9 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (std::isalnum(copied))
 		{
 			if (!(mods & GLFW_MOD_CAPS_LOCK) && mods & GLFW_MOD_SHIFT)
-				copied = std::tolower(copied);
+				copied = static_cast<unsigned char>(std::tolower(copied));
 			else if (!(mods & GLFW_MOD_SHIFT)) 
-				copied = std::tolower(copied);
+				copied = static_cast<unsigned char>(std::tolower(copied));
 		}
 		letters << copied;
 	}
@@ -1554,7 +1542,7 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	return Ray(cameraPosition, faced);
 }
 
-void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
+void mouseButtonFunc(GLFWwindow* window, int button, int action, [[maybe_unused]] int status)
 {
 	// Set bit (button) in mouseStatus.buttons
 	//mouseStatus.buttons = (mouseStatus.buttons & ~(1 << button)) | ((action == GLFW_PRESS) << button);
@@ -1604,13 +1592,13 @@ void mouseButtonFunc(GLFWwindow* window, int button, int action, int status)
 	}
 }
 
-void mouseScrollFunc(GLFWwindow* window, double xDelta, double yDelta)
+void mouseScrollFunc([[maybe_unused]] GLFWwindow* window, [[maybe_unused]] double xDelta, double yDelta)
 {
 	playerSpeedControl += 0.1f * glm::sign(static_cast<float>(yDelta));
 	playerSpeedControl = glm::clamp(playerSpeedControl, 0.f, 1.f);
 }
 
-void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
+void mouseCursorFunc([[maybe_unused]] GLFWwindow* window, double xPos, double yPos)
 {
 	float x = static_cast<float>(xPos), y = static_cast<float>(yPos);
 	const glm::vec2 oldPos = Mouse::GetPosition();
@@ -1667,7 +1655,7 @@ void mouseCursorFunc(GLFWwindow* window, double xPos, double yPos)
 	}
 }
 
-void window_size_callback(GLFWwindow* window, int width, int height)
+void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int height)
 {
 	Window::Update(width, height);
 	
@@ -1762,7 +1750,7 @@ void window_size_callback(GLFWwindow* window, int width, int height)
 
 void init();
 
-int main(int argc, char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
 	int error = 0;
 	debugFlags.fill(false);
@@ -1871,8 +1859,6 @@ int main(int argc, char** argv)
 	return 0;
 }
 
-void Dumber(std::size_t id) {}
-
 void testOBB()
 {
 	std::cout << "OBB Testing\n";
@@ -1931,26 +1917,24 @@ void init()
 	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
 	ExternalShaders::Setup();
 
-	basic.CompileSimple("basic");
+	ShaderBank::Get("basic").CompileSimple("basic");
 	ShaderBank::Get("bulletShader").Compile("color_final", "mesh_final");
-	debris.Compile("mesh_final_instance", "mesh_final");
-	decalShader.CompileSimple("decal");
+	ShaderBank::Get("debris").Compile("mesh_final_instance", "mesh_final");
+	ShaderBank::Get("skyBox").CompileSimple("sky");
+	ShaderBank::Get("decalShader").CompileSimple("decal");
 	
-	engine.CompileSimple("engine");
-	fontShader.CompileSimple("font");
-	nineSlicer.CompileSimple("ui_nine");
-	normalDebris.CompileSimple("mesh_instance");
-	pathNodeView.CompileSimple("path_node");
-	ship.CompileSimple("mesh_final");
-	skyBox.CompileSimple("sky");
-	stencilTest.CompileSimple("stencil_");
-	trails.CompileSimple("trail");
-	uiRect.CompileSimple("ui_rect");
-	uiRectTexture.CompileSimple("ui_rect_texture");
-	uniform.CompileSimple("uniform");
+	ShaderBank::Get("engine").CompileSimple("engine");
+	ShaderBank::Get("fontShader").CompileSimple("font");
+	ShaderBank::Get("nineSlicer").CompileSimple("ui_nine");
+	ShaderBank::Get("pathNodeView").CompileSimple("path_node");
+	ShaderBank::Get("stencilTest").CompileSimple("stencil_");
+	ShaderBank::Get("trail").CompileSimple("trail");
+	ShaderBank::Get("uiRect").CompileSimple("ui_rect");
+	ShaderBank::Get("uiRectTexture").CompileSimple("ui_rect_texture");
 	ShaderBank::Get("uniform").CompileSimple("uniform");
-	vision.CompileSimple("vision");
-	widget.CompileSimple("widget");
+	ShaderBank::Get("uniform").CompileSimple("uniform");
+	ShaderBank::Get("vision").CompileSimple("vision");
+	ShaderBank::Get("widget").CompileSimple("widget");
 
 	ShaderBank::Get("ShieldTexture").Compile(
 		"framebuffer", "shield_texture"
@@ -1958,77 +1942,48 @@ void init()
 	
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
 	ShaderBank::Get("dust").CompileSimple("dust");
-	ShaderBank::Get("expand").Compile("framebuffer", "expand");
-	ShaderBank::Get("fullRender").Compile("framebuffer", "full_render");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
-	ShaderBank::Get("new_mesh_single").Compile("new_mesh_single", "deferred");
 	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
-	ShaderBank::Get("light_volume_mesh").CompileSimple("light_volume_mesh");
-	ShaderBank::Get("light_volume").CompileSimple("light_volume");
 	ShaderBank::Get("Shielding").CompileSimple("shield");
+	ShaderBank::Get("ship").CompileSimple("mesh_final");
 
-	basic.UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("bulletShader").UniformBlockBinding("Camera", 0);
-	debris.UniformBlockBinding("Camera", 0);
-	decalShader.UniformBlockBinding("Camera", 0);
-	
-	engine.UniformBlockBinding("Camera", 0);
-	normalDebris.UniformBlockBinding("Camera", 0);
-	pathNodeView.UniformBlockBinding("Camera", 0);
-	ship.UniformBlockBinding("Camera", 0);
-	skyBox.UniformBlockBinding("Camera", 0);
-	stencilTest.UniformBlockBinding("Camera", 0);
-	trails.UniformBlockBinding("Camera", 0);
-	uniform.UniformBlockBinding("Camera", 0);
-	vision.UniformBlockBinding("Camera", 0);
+	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "lightVolume", "engine",
+		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic", "vision",
+		"trail", "uniform", "pathNodeView", "stencilTest"}),
+		[](auto& element)
+		{
+			element.UniformBlockBinding("Camera", 0);
+		}
+	);
 
-	ShaderBank::Get("depthOnly").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("dust").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("fullRender").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("forwardPlus").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("lightVolume").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("new_mesh").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("new_mesh_single").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("uniformInstance").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("combinePass").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("light_volume_mesh").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("light_volume").UniformBlockBinding("Camera", 0);
-	ShaderBank::Get("Shields").UniformBlockBinding("Camera", 0);
+	ShaderBank::for_each(std::to_array({ "dust", "forwardPlus", "forwardPlusMulti", "visualize"}),
+		[](auto& element)
+		{
+			element.UniformBlockBinding("ForwardPlusConstants", 2);
+		}
+	);
 
-	ShaderBank::Get("dust").UniformBlockBinding("ForwardPlusConstants", 2);
-	ShaderBank::Get("forwardPlus").UniformBlockBinding("ForwardPlusConstants", 2);
-	ShaderBank::Get("forwardPlusMulti").UniformBlockBinding("ForwardPlusConstants", 2);
-	ShaderBank::Get("visualize").UniformBlockBinding("ForwardPlusConstants", 2);
-
-	nineSlicer.UniformBlockBinding("ScreenSpace", 1);
-	uiRect.UniformBlockBinding("ScreenSpace", 1);
-	uiRectTexture.UniformBlockBinding("ScreenSpace", 1);
-	fontShader.UniformBlockBinding("ScreenSpace", 1);
-
-	debris.UniformBlockBinding("Lighting", 3);
-	normalDebris.UniformBlockBinding("Lighting", 3);
-	ship.UniformBlockBinding("Lighting", 3);
-
-	ShaderBank::Get("new_mesh").UniformBlockBinding("BlockLighting", 4);
-	ShaderBank::Get("fullRender").UniformBlockBinding("BlockLighting", 4);
+	ShaderBank::for_each(std::to_array({ "fontShader", "uiRect", "uiRectTexture", "nineSlicer"}),
+		[](auto& element)
+		{
+			element.UniformBlockBinding("ScreenSpace", 1);
+		}
+	);
 
 	// VAO SETUP
 	fontVAO.ArrayFormat<UIVertex>();
 
 	meshVAO.ArrayFormat<MeshVertex>();
-
-	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", nineSlicer, 0, 1);
+	nineSliced.ArrayFormatOverride<glm::vec4>("rectangle", ShaderBank::Retrieve("nineSlicer"), 0, 1);
 
 	pathNodeVAO.ArrayFormat<Vertex>(0);
-	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", pathNodeView, 1, 1);
-
+	pathNodeVAO.ArrayFormatOverride<glm::vec3>("Position", ShaderBank::Retrieve("pathNodeView"), 1, 1);
 	plainVAO.ArrayFormat<Vertex>();
 	VAOBank::Get("uniform").ArrayFormat<Vertex>();
 	VAOBank::Get("meshVertex").ArrayFormat<MeshVertex>();
@@ -2046,35 +2001,13 @@ void init()
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
 	}
 	{
-		VAO& ref = VAOBank::Get("light_volume");
-		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1, 0);
-		ref.ArrayFormatOverride<glm::vec4>(1, 0, 1, offsetof(LightVolume, color));
-		ref.ArrayFormatOverride<glm::vec4>(2, 0, 1, offsetof(LightVolume, constants));
-	}
-	{
-		VAO& ref = VAOBank::Get("light_volume_mesh");
-		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
-		ref.ArrayFormatOverride<glm::vec4>(1, 1, 1, 0);
-		ref.ArrayFormatOverride<glm::vec4>(2, 1, 1, offsetof(LightVolume, color));
-		ref.ArrayFormatOverride<glm::vec4>(3, 1, 1, offsetof(LightVolume, constants));
-	}
-	{
-		VAO& ref = VAOBank::Get("new_mesh_single");
-		//ref.ArrayFormat<NormalMeshVertex>();
-		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, offsetof(NormalMeshVertex, position), sizeof(NormalMeshVertex));
-		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal), sizeof(NormalMeshVertex));
-		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent), sizeof(NormalMeshVertex));
-		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
-		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
-	}
-	{
-		VAO& ref = VAOBank::Get("new_mesh");
+		VAO& ref = VAOBank::Get("forwardPlusMulti");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec3>(2, 0, 0, offsetof(NormalMeshVertex, tangent), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
-		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("new_mesh"), 1, 1, 0, sizeof(MeshMatrix));
+		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("forwardPlusMulti"), 1, 1, 0, sizeof(MeshMatrix));
 		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
@@ -2336,7 +2269,6 @@ void init()
 
 	{
 		std::array<glm::vec4, 20 * 2> lightingArray{ glm::vec4(0.f) };
-		std::array<LightVolume, 2> kipper{};
 		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
 		{
 			Triangle parent = nodeTri[rand() % nodeTri.size()];
@@ -2354,7 +2286,6 @@ void init()
 		globalLighting.BufferData(lightingArray);
 		globalLighting.SetBindingPoint(4);
 		globalLighting.BindUniform();
-		Bank<ArrayBuffer>::Get("light_volume_mesh").BufferData(kipper);
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
@@ -2464,7 +2395,6 @@ void init()
 		QUICKTIMER("kdTree");
 		const auto& first = Level::AllNodes().front();
 		PathNodePtr pint = nullptr;
-		float dist = INFINITY;
 		Level::Tree.nearestNeighbor(first->GetPos());
 	}
 	if (Level::AllNodes().size() > 0) 
@@ -2550,6 +2480,8 @@ void init()
 		buffered.GetColor().MakeAliasOf(current);
 		buffered.Assemble();
 		buffered.Bind();
+		Shader& nineSlicer = ShaderBank::Retrieve("nineSlicer");
+		Shader& uiRectTexture = ShaderBank::Retrieve("uiRectTexture");
 		nineSlicer.SetActiveShader();
 		nineSliced.Bind();
 		nineSliced.BindArrayBuffer(rects);

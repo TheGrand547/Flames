@@ -250,10 +250,10 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 #ifdef _DEBUG
 		float cardinal = 0.f;
 		glm::vec3 axis = separatingAxes[i];
-		for (glm::length_t i = 0; i < 3; i++)
+		for (glm::length_t ii = 0; ii < 3; ii++)
 		{
-			cardinal += glm::abs(this->halfs[i] * glm::dot(glm::vec3(this->matrix[i]), axis));
-			cardinal += glm::abs(other.halfs[i] * glm::dot(glm::vec3(other.matrix[i]), axis));
+			cardinal += glm::abs(this->halfs[ii] * glm::dot(glm::vec3(this->matrix[ii]), axis));
+			cardinal += glm::abs(other.halfs[ii] * glm::dot(glm::vec3(other.matrix[ii]), axis));
 		}
 		// glm::abs(obbProjections - cardinal) > EPSILON || 
 		if (((obbProjections > deltaProjection) != (cardinal > deltaProjection)))
@@ -403,7 +403,7 @@ bool OrientedBoundingBox::Overlap(const OrientedBoundingBox& other, SlidingColli
 			if (glm::abs(direction) > EPSILON)
 			{
 				//float maximum = glm::acos(1 - (glm::abs(glm::dot(mostAlignedVector, rotationAxis))));
-				float maximum = glm::acos(glm::abs(glm::dot(mostAlignedVector, rotate.axis)));
+				//float maximum = glm::acos(glm::abs(glm::dot(mostAlignedVector, rotate.axis)));
 				//collide.distance = glm::min(maximum, collide.distance);
 				//if (collide.distance > EPSILON)
 				rotate.distance = slide.distance * glm::sign(direction);

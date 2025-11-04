@@ -1,9 +1,8 @@
 #pragma once
 #ifndef RESOURCE_BANK_H
 #define RESOURCE_BANK_H
-#include "Shader.h"
-#include "Buffer.h"
-#include "VertexArray.h"
+#include "Log.h"
+#include <format>
 #include <unordered_map>
 
 template<typename Type> struct Bank
@@ -15,10 +14,25 @@ public:
 	{
 		return ::Bank<Type>::elements[name];
 	}
+
+	static inline Type& Retrieve(const std::string_view& name) noexcept
+	{
+		return ::Bank<Type>::elements.at(name);
+	}
+
+	template<typename Data, typename Function> static inline void for_each(const Data& data, Function function)
+	{
+		for (const auto& element : data)
+		{
+			if (elements.contains(element))
+			{
+				function(elements[element]);
+			}
+			else
+			{
+				Log(std::format("'{}' is not a pre-existing element in this ResourceBank", element));
+			}
+		}
+	}
 };
-
-using ShaderBank = Bank<Shader>;
-using VAOBank = Bank<VAO>;
-using BufferBank = Bank<ArrayBuffer>;
-
 #endif // RESOURCE_BANK_H

@@ -103,15 +103,17 @@
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
-      <WarningLevel>Level3</WarningLevel>
+      <WarningLevel>Level4</WarningLevel>
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;CLEANER_FUNCTIONS;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS;DEBUG;GLM_FORCE_DEPTH_ZERO_TO_ONE;NOMINMAX</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <IntrinsicFunctions>false</IntrinsicFunctions>
       <InlineFunctionExpansion>AnySuitable</InlineFunctionExpansion>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <DisableSpecificWarnings>4458;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -131,7 +133,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions);GLM_ENABLE_EXPERIMENTAL;GLM_FORCE_INTRINSICS;GLM_FORCE_DEPTH_ZERO_TO_ONE;NOMINMAX</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;C:\Users\sdfis\Documents\Programming\OpenGL\OBJ-Loader-master\Source;;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\sdfis\Documents\Programming\GLM\glm;C:\Program Files %28x86%29\Windows Kits\10\Include\10.0.19041.0\um\gl;C:\glfw\include;;C:\Users\sdfis\Documents\Programming\INI-Again;C:\Users\sdfis\Documents\Programming\miniaudio-master</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
@@ -176,7 +178,6 @@
     <ClCompile Include="Font.cpp" />
     <ClCompile Include="Framebuffer.cpp" />
     <ClCompile Include="Frustum.cpp" />
-    <ClCompile Include="GLData.cpp" />
     <ClCompile Include="glmHelp.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
     <ClCompile Include="imgui\imgui_demo.cpp" />
@@ -261,7 +262,6 @@
     <ClInclude Include="Font.h" />
     <ClInclude Include="Framebuffer.h" />
     <ClInclude Include="Frustum.h" />
-    <ClInclude Include="GLData.h" />
     <ClInclude Include="glmHelp.h" />
     <ClInclude Include="glUtil.h" />
     <ClInclude Include="imgui\imconfig.h" />

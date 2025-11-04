@@ -4,10 +4,16 @@
 #include <iostream>
 #include <array>
 #include "util.h"
+#pragma warning (push)
+#pragma warning (disable : 6031 6011 33010 28182 26819)
 #include "imgui/imgui.h"
 #include "imgui/imgui_stdlib.h"
+#pragma warning (pop)
 #include "Interpolation.h"
+#pragma warning (push)
+#pragma warning (disable : 4456 4267 4244)
 #include <iniparser.hpp>
+#pragma warning (pop)
 
 namespace Input
 {
@@ -180,8 +186,11 @@ namespace Input
 			for (int i = GLFW_JOYSTICK_LAST; i >= 0; i--)
 			{
 				int exists = glfwJoystickIsGamepad(GLFW_JOYSTICK_1 + i);
-				currentGamepad = i;
-				break;
+				if (exists)
+				{
+					currentGamepad = i;
+					break;
+				}
 			}
 		}
 	}

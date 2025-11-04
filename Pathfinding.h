@@ -108,7 +108,7 @@ template<SearchNode Node, typename T>
 			float tentative = cheapestPath[current].score + current->distance(*local);
 			if (tentative < cheapestPath[local].score)
 			{
-				float oldGuess = bestGuess[local].score;
+				//float oldGuess = bestGuess[local].score;
 				pathHistory[local] = current;
 				
 				float newGuess = tentative + heuristic(*local, *target);

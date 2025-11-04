@@ -72,8 +72,6 @@ void Capsule::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies, float rad
 	const float latitudeStep = glm::two_pi<float>() / (float)latitudeSlices;
 	const float longitudeStep = glm::pi<float>() / (float)longitudeSlices;
 	
-	const float inverse = 1.f / radius;
-
 	for (unsigned int i = 0; i <= longitudeSlices; i++)
 	{
 		float angle = glm::half_pi<float>() - i * longitudeStep;

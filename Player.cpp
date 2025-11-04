@@ -21,7 +21,7 @@ static constexpr float MinFiringVelocity = 8.f;
 
 static constexpr IntervalType FireDelay = 16;
 static constexpr IntervalType FireInterval = 16;
-static constexpr IntervalType WaitingValue = -1;
+static constexpr IntervalType WaitingValue = static_cast<IntervalType>(-1);
 
 static constexpr float ImpactResponse = 1.00f; // Maybe tune this a bit
 
@@ -56,7 +56,7 @@ OBB Player::Box;
 void Player::SelectTarget() noexcept
 {
 	float alignment = 0.f;
-	std::size_t index = -1;
+	std::size_t index = static_cast<std::size_t>(-1);
 	const glm::mat3 localAxes(static_cast<glm::mat3>(this->transform.rotation));
 	const glm::vec3 forward = localAxes[0];
 	const glm::vec3 currentPos{};
@@ -276,8 +276,7 @@ void Player::Update(Input::Keyboard input) noexcept
 		float kineticEnergy = 0.5f * PlayerMass * currentSpeed * currentSpeed;
 		float bulletEnergy = glm::sqrt(kineticEnergy * 2.f * Bullet::InvMass);
 
-		float momentum = currentSpeed * PlayerMass;
-		float bulletMomentum = momentum * Bullet::InvMass;
+		//float momentum = currentSpeed * PlayerMass;
 		// Conserve momentum
 		
 		glm::vec3 bulletVelocity = bulletEnergy * facingVector;

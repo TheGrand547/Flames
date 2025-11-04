@@ -429,7 +429,7 @@ bool Shader::CompileEmbeddedGeometry(const std::string& vertex, const std::strin
 	{
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex);
 		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, fragment);
-		GLuint gShader = CompileShader(GL_GEOMETRY_SHADER, fragment);
+		GLuint gShader = CompileShader(GL_GEOMETRY_SHADER, geometry);
 		if (vShader && fShader && gShader)
 		{
 			glAttachShader(this->program, vShader);
