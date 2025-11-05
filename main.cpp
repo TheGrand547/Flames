@@ -439,6 +439,7 @@ void display()
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 	
+	if (!featureToggle)
 	{
 		Shader& local = ShaderBank::Get("dust");
 		local.SetActiveShader();
@@ -447,13 +448,44 @@ void display()
 		ArrayBuffer& points = BufferBank::Get("DustTest");
 		vao.BindArrayBuffer(points, 0);
 		local.SetVec3("shapeColor", glm::vec3(0.9f));
-		//local.SetVec2("ScreenSize", Window::GetSizeF());
-		//local.SetInt("TileSize", static_cast<int>(gridResolution));
-		//local.SetUVec2("tileDimension", tileDimension);
+		local.SetVec3("lightPosition", view* glm::vec4(playerModel.translation, 1.f));
+		local.SetVec3("lightForward", view* glm::vec4((playerModel.rotation* glm::vec3(-1.f, 0.f, 0.f)), 0.f));
 		local.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), points);
-		glPointSize(10.f);
-		//local.DrawArray<DrawType::Points>(points);
-		glPointSize(1.f);
+	}
+	else
+	{
+		// Once this is working, move it up. It can be done before the big memory barrier
+		Shader& computation = ShaderBank::Retrieve("debrisCompute");
+		auto& rawDebris = ShaderStorage::Retrieve("RawDebris");
+		auto& transformedOut = ShaderStorage::Retrieve("DrawDebris");
+		auto& indirectOut = ShaderStorage::Retrieve("DebrisIndirect");
+
+		computation.SetActiveShader();
+		rawDebris.BindBufferBase(0);
+		transformedOut.BindBufferBase(1);
+		indirectOut.BindBufferBase(2);
+		computation.SetFloat("zFar", zFar);
+		computation.SetVec3("cameraForward", cameraForward);
+		computation.SetVec3("cameraPos", localCamera);
+		computation.DispatchCompute(1);
+
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		auto& outputBuffer = BufferBank::Retrieve("DrawDebris");
+		auto& outputIndirect = Bank<DrawIndirectBuffer>::Retrieve("DebrisIndirect");
+		glCopyNamedBufferSubData(transformedOut.GetBuffer(), outputBuffer.GetBuffer(), 0, 0, transformedOut.Size());
+		glCopyNamedBufferSubData(indirectOut.GetBuffer(), outputIndirect.GetBuffer(), 0, 0, sizeof(unsigned int) * 4);
+		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
+
+		Shader& local = ShaderBank::Get("dust");
+		local.SetActiveShader();
+		VAO& vao = VAOBank::Get("bigscrem");
+		vao.Bind();
+		vao.BindArrayBuffer(outputBuffer, 0);
+		local.SetVec3("shapeColor", glm::vec3(0.9f));
+		outputIndirect.BindBuffer();
+		local.SetVec3("lightPosition", view * glm::vec4(playerModel.translation, 1.f));
+		local.SetVec3("lightForward", -(view * glm::vec4((playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)), 0.f)));
+		local.DrawArrayIndirect<DrawType::TriangleStrip>(outputIndirect);
 	}
 
 	if (debugFlags[CHECK_UVS])
@@ -1940,6 +1972,8 @@ void init()
 		"framebuffer", "shield_texture"
 	);
 	
+	ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
+
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
 	ShaderBank::Get("dust").CompileSimple("dust");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
@@ -1955,7 +1989,7 @@ void init()
 
 	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "lightVolume", "engine",
 		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic", "vision",
-		"trail", "uniform", "pathNodeView", "stencilTest"}),
+		"trail", "uniform", "pathNodeView", "stencilTest", "debrisCompute"}),
 		[](auto& element)
 		{
 			element.UniformBlockBinding("Camera", 0);
@@ -1991,9 +2025,10 @@ void init()
 
 	VAOBank::Get("engineInstance").ArrayFormatOverride<glm::vec4>(0, 0, 1);
 	VAOBank::Get("muscle").ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, 56);
+	//VAOBank::Get("Debris").ArrayFormatOverride<glm::vec4>(0, 0, 1);
 	{
 		VAO& ref = VAOBank::Get("bigscrem");
-		ref.ArrayFormatOverride<glm::vec3>(0, 0, 1);
+		ref.ArrayFormatOverride<glm::vec4>(0, 0, 1);
 	}
 	{
 		VAO& ref = VAOBank::Get("uniformInstance");
@@ -2072,6 +2107,13 @@ void init()
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
+
+	{
+		ShaderStorage::Get("DrawDebris").Reserve(sizeof(glm::vec4) * 1024);
+		ShaderStorage::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
+		BufferBank::Get("DrawDebris").Reserve(sizeof(glm::vec4) * 1024);
+		Bank<DrawIndirectBuffer>::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
+	}
 
 
 	// RAY SETUP
@@ -2291,13 +2333,23 @@ void init()
 	}
 	
 	{
-		std::array<Vertex, 100> hmm{};
+		// Just for, annoying, alignment reasons
+		std::array<glm::vec4, 1024> hmm{};
 		for (auto& element : hmm)
 		{
-			element = playfield.GetModel().translation + glm::ballRand(25.f);
+			element = glm::vec4(playfield.GetModel().translation + glm::ballRand(zFar), 1.f);
 			//element.normal = glm::sphericalRand(1.f);
 		}
 		Bank<ArrayBuffer>::Get("DustTest").BufferData(hmm);
+		struct doub { glm::vec4 pos, dir; };
+		std::array<doub, 1024> hmm2;
+		for (std::size_t i = 0; i < 1024; i++)
+		{
+			hmm2[i].pos = hmm[i];
+			// Might need some work
+			hmm2[i].dir = glm::vec4(Tick::TimeDelta * glm::gaussRand(0.4f, 0.225f) * glm::sphericalRand(1.f), 1.f);
+		}
+		ShaderStorage::Get("RawDebris").BufferData(hmm2);
 	}
 
 	for (int i = 0; i < 10; i++)

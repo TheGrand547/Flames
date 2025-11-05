@@ -26,6 +26,9 @@ float CameraToDepth(float depth)
 	return temp.x / temp.y;
 }
 
+uniform vec3 lightForward;
+uniform vec3 lightPosition;
+
 void main()
 {
 	/*
@@ -53,13 +56,13 @@ void main()
 	float intersectT = min(posT, negT);
 	
 	vec3 cameraPos = ray * intersectT;
-	//vec4 laDeDa = Projection * vec4(cameraPos, 1.f);
-	//laDeDa /= laDeDa.w;
 	gl_FragDepth = CameraToDepth(cameraPos.z);
 	vec3 cameraNormal = normalize(cameraPos - fPos);
 	
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);	
 	vec3 lightOut = ForwardPlusLightingViewSpace(cameraPos, cameraNormal, -normalize(cameraPos));
+	//lightOut += DirectedLight((View * vec4(1.f, 0.f, 0.f, 0.f)).xyz, vec3(1.f), cameraNormal, -normalize(cameraPos));
+	lightOut += DirectedPointLight(lightPosition, lightForward, vec3(1.f), cameraNormal, cameraPos, -normalize(cameraPos));
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 }

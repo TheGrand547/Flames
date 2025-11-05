@@ -119,6 +119,8 @@ public:
 	inline void DrawArray(PrimitiveDrawingType type, ArrayBuffer& buffer, const GLuint elementOffset = 0);
 	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArray(const GLuint primitiveCount, const GLuint elementOffset = 0);
 	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArray(ArrayBuffer& buffer, const GLuint elementOffset = 0);
+	
+	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayIndirect(DrawIndirectBuffer& buffer, const GLuint offset = 0);
 
 	// Feed the shader the data in the buffer, augmented by the instance number, instance count times
 	template<PrimitiveDrawingType type = DrawType::Triangle> inline void DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
@@ -257,6 +259,11 @@ inline void Shader::DrawArray(PrimitiveDrawingType type, ArrayBuffer& buffer, co
 template<PrimitiveDrawingType type> inline void Shader::DrawArray(ArrayBuffer& buffer, const GLuint elementOffset)
 {
 	this->DrawArray<type>(buffer.GetElementCount(), elementOffset);
+}
+
+template<PrimitiveDrawingType type> inline void Shader::DrawArrayIndirect(DrawIndirectBuffer& buffer, const GLuint offset)
+{
+	glDrawArraysIndirect(static_cast<GLenum>(type), reinterpret_cast<const void*>(offset * sizeof(DrawIndirect)));
 }
 
 template<PrimitiveDrawingType type> inline void Shader::DrawArrayInstanced(const GLuint primitiveCount, const GLuint instanceCount, 
