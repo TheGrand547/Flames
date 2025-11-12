@@ -18,7 +18,8 @@ layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 vec4 TransformToView(vec2 ins)
 {
 	vec2 grump = vec2(ins / ScreenSize);
-	vec4 temp = InverseProjection * vec4((vec2(grump.x, 1.f - grump.y) * 2.f) - 1.f, 1.f, 1.f);
+	// Reverse Z
+	vec4 temp = InverseProjection * vec4((vec2(grump.x, 1.f - grump.y) * 2.f) - 1.f, 0.00001f, 1.f);
 	temp /= temp.w;
 	return temp;
 	
@@ -47,7 +48,7 @@ void main()
 	{
 		points2[i] = TransformToView(min(points[i], ScreenSize)).xyz;
 	}
-	const vec3 eye = vec3(0, 0, 0);
+	const vec3 eye = vec3(0, 0, 1.f);
 	
 	Frustum result;
 	result.planes[0] = MakePlane(eye, points2[2], points2[0]); // Left

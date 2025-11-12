@@ -21,6 +21,22 @@ vec3 ForwardPlusLighting(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
 	return lightOut;
 }
 
+vec3 LightTesting()
+{
+	const float ambient = 0.15;
+	vec3 lightOut = vec3(ambient);
+
+	vec2 index = floor((gl_FragCoord.xy) / TileSize);
+	uint gridIndex = uint(index.x + index.y * tileDimension.x);
+	uvec2 lightData = grid[gridIndex];
+	
+	if (lightData.y > 10)
+	{
+		return ambient + vec3(0, 1.f, 0);
+	}
+	return ambient + vec3(lightData.y / 10.f);
+};
+
 vec3 ForwardPlusLightingViewSpace(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
 {
 	const float ambient = 0.15;

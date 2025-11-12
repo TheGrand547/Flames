@@ -37,10 +37,12 @@ namespace Window
 	{
 		return glm::radians(FOV * AspectRatio);
 	}
-
+	glm::mat4 GetMatInternal(float zNear, float zFar);
 	inline glm::mat4 GetPerspective(float zNear, float zFar)
 	{
-		return glm::perspective(GetYFOV(), AspectRatio, zNear, zFar);
+		//return glm::perspective(GetYFOV(), AspectRatio, zFar, zNear);
+		//return glm::infinitePerspective(GetYFOV(), AspectRatio, zNear);
+		return GetMatInternal(zNear, zFar);
 	}
 
 	inline glm::mat4 GetOrthogonal() noexcept

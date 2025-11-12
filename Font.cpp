@@ -152,7 +152,7 @@ void ASCIIFont::Render(ColorFrameBuffer& framebuffer, const std::string& message
 	Font::vao.BindArrayBuffer(buffer);
 	Font::shader.DrawArray<DrawType::Triangle>(buffer);
 	DisableGLFeatures<Blending>();
-	BindDefaultFrameBuffer();
+	BindDrawFramebuffer();
 }
 
 ColorFrameBuffer ASCIIFont::Render(const std::string& message, const glm::vec4& textColor, const glm::vec4& backgroundColor) const
@@ -194,7 +194,7 @@ void ASCIIFont::RenderOntoTexture(Texture2D& texture, const std::string& message
 	Font::vao.BindArrayBuffer(triBuffer);
 	Font::shader.DrawArray<DrawType::Triangle>(triBuffer);
 	DisableGLFeatures<Blending>();
-	BindDefaultFrameBuffer();
+	BindDrawFramebuffer();
 	//ColorFrameBuffer buffer = this->Render(message, textColor, backgroundColor);
 	//framebuffer.ReadColorIntoTexture(texture);
 }

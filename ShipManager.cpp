@@ -113,7 +113,7 @@ void ShipManager::UpdateMeshes() noexcept
 	this->active.ExclusiveOperation(
 		[&](const auto& p)
 		{
-			this->pain.BufferData(p, DynamicDraw);
+			this->pain.BufferData(p, DynamicDraw); 
 		}
 	);
 	this->fools.ExclusiveOperation(

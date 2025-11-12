@@ -270,6 +270,7 @@ Frustum GetFrustum(const Model& playerModel)
 
 ShieldGenerator bobert;
 ColorFrameBuffer buffet;
+Framebuffer renderTarget;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
 
@@ -285,6 +286,12 @@ std::mutex bulletMutex;
 constexpr std::size_t dustDimension = 20;
 constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
 
+void BindDrawFramebuffer()
+{
+	renderTarget.BindDraw();
+	Window::Viewport();
+}
+
 void display()
 {
 	GLuint currentRenderQuery = 0;
@@ -292,18 +299,8 @@ void display()
 	glBeginQuery(GL_TIME_ELAPSED, currentRenderQuery);
 
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
-	glBindFramebuffer(GL_FRAMEBUFFER, 0);
-	Window::Viewport();
-	glClearColor(0, 0, 0, 1);
 
 	EnableGLFeatures<DepthTesting | FaceCulling>();
-	EnableDepthBufferWrite();
-	//glClearDepth(0);
-	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
-	glClearDepth(1);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-	DisableGLFeatures<StencilTesting>();
-
 	{
 		if (buffet.GetColor().GetGLTexture() == 0)
 		{
@@ -323,10 +320,11 @@ void display()
 		local.SetActiveShader();
 		local.SetFloat("FrameTime", gameTicks * Tick::TimeDelta);
 		local.DrawArray<DrawType::TriangleStrip>(4);
-		BindDefaultFrameBuffer();
 	}
-	Window::Viewport();
-	
+	BindDrawFramebuffer();
+	glClearDepth(0);
+	ClearFramebuffer<ColorBuffer | DepthBuffer | StencilBuffer>();
+
 	const Model playerModel(playfield.GetModel());
 
 	// Camera matrix
@@ -342,7 +340,8 @@ void display()
 	Frustum frustum(localCamera, ForwardDir(cameraForward, axes[1]), glm::vec2(zNear, zFar));
 	CheckError();
 	glEnable(GL_CULL_FACE);
-	glDepthFunc(GL_LEQUAL);
+	//glDepthFunc(GL_LEQUAL);
+	glDepthFunc(GL_GEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	Shader& uniform = ShaderBank::Retrieve("uniform");
 	if (debugFlags[DEBUG_PATH])
@@ -488,12 +487,12 @@ void display()
 
 
 	// Copy the current depth buffer status to the early depth buffer for next frame
-	glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.GetFrameBuffer());
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, earlyDepth.GetFrameBuffer());
 	glm::ivec2 dimension = Window::GetSize();
 	glm::ivec2 depthSize = earlyDepth.GetDepth().GetSize();
 	glBlitFramebuffer(0, 0, dimension.x, dimension.y, 0, 0, depthSize.x, depthSize.y, GL_DEPTH_BUFFER_BIT, GL_NEAREST);
-	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, renderTarget.GetFrameBuffer());
 
 	CheckError();
 	/* STICK FIGURE GUY */
@@ -776,10 +775,9 @@ void display()
 
 	DisableGLFeatures<StencilTesting>();
 	//EnableGLFeatures<DepthTesting>();
-	glDepthMask(GL_FALSE);
-
 	{
 		DisablePushFlags(FaceCulling);
+		glDepthMask(GL_FALSE);
 		glDepthFunc(GL_LEQUAL);
 		Shader& skyBox = ShaderBank::Retrieve("skyBox");
 		skyBox.SetActiveShader();
@@ -787,6 +785,7 @@ void display()
 		plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 		skyBox.SetTextureUnit("skyBox", sky);
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+		glDepthFunc(GL_GEQUAL);
 	}
 	{
 		// TODO: move this elsewhere
@@ -855,6 +854,7 @@ void display()
 	EnableGLFeatures<Blending>();
 	// Debug Info Display
 	{
+		DisablePushFlags(DepthTesting);
 		Shader& fontShader = ShaderBank::Retrieve("fontShader");
 		fontShader.SetActiveShader();
 		fontVAO.Bind();
@@ -869,7 +869,13 @@ void display()
 	// Framebuffer stuff
 	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
-	glStencilMask(0xFF);
+	glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.GetFrameBuffer());
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	glm::ivec2 dimension2 = Window::GetSize();
+	// TODO: Let render resolution and screen resolution be decoupled
+	glBlitFramebuffer(0, 0, dimension2.x, dimension2.y, 0, 0, dimension2.x, dimension2.y, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+	BindDefaultFrameBuffer();
 
 	glLineWidth(1.f);
 	ShaderBank::Retrieve("widget").SetActiveShader();
@@ -1671,9 +1677,13 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 	screenSpaceBuffer.BufferSubData(Window::GetOrthogonal());
 
 	earlyDepth.GetColor().CreateEmpty(glm::ivec2(1), InternalRed8);
-	earlyDepth.GetDepth().CreateEmpty(Window::GetSizeF() / EarlyDepthRatio, InternalDepth32);
+	earlyDepth.GetDepth().CreateEmpty(Window::GetSizeF() / EarlyDepthRatio, InternalDepthFloat32);
 	earlyDepth.GetDepth().SetFilters(MinNearest, MagNearest, EdgeClamp, EdgeClamp);
 	earlyDepth.Assemble();
+
+	renderTarget.GetColor().CreateEmpty(Window::GetSize(), InternalRGBA8);
+	renderTarget.GetDepth().CreateEmpty(Window::GetSize(), InternalDepthFloat32);
+	renderTarget.Assemble();
 
 	// This is dependent on screen size so must be here.
 	{
@@ -1882,7 +1892,9 @@ void init()
 	EnableGLFeatures<DepthTesting | FaceCulling | DebugOutput>();
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	DisableGLFeatures<MultiSampling>();
-	glDepthFunc(GL_LEQUAL);
+
+	//glDepthFunc(GL_LEQUAL);
+	glDepthFunc(GL_GEQUAL);
 
 	glClearColor(0, 0, 0, 1);
 	glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);

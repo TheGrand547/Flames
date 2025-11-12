@@ -6,7 +6,9 @@
 
 
 // GET BACK TO THIS
+#ifndef BLOCK_SIZE
 #define BLOCK_SIZE 16
+#endif
 
 #define MAX_LIGHTS 100
 
@@ -38,26 +40,26 @@ void main()
 		{
 			globalLightIndex = 0;
 		}
-		minDepth = 0xFFFFFFFF;
-		maxDepth = 0;
+		minDepth = 0;
+		maxDepth = 0xFFFFFFFF;
 		numLights = 0;
 		globalOffset = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
-		clipNear = TransformFast(0);
 	}
 	barrier();
-	atomicMin(minDepth, ordered);
-	atomicMax(maxDepth, ordered);
+	atomicMax(minDepth, ordered);
+	atomicMin(maxDepth, ordered);
 	barrier();
 	
-	float zNear = TransformFast(uintBitsToFloat(minDepth));
-	float zFar  = TransformFast(uintBitsToFloat(maxDepth));
+	float zNear = TransformFast(uintBitsToFloat(maxDepth));
+	float zFar  = TransformFast(uintBitsToFloat(minDepth));
 
 	Plane nearPlane = {vec3(0, 0, -1), -zNear};
 	
 	uint i = threadIndex;
-	if (minDepth == floatBitsToUint(1.f))
+	// This feels backwards, but I can't prove it.
+	if (minDepth == floatBitsToUint(0.f))
 	{
 		i = lightCount + 1;
 	}
@@ -67,7 +69,7 @@ void main()
 		
 		// Check if light is too near/far, being lenient
 		// Could also simplify this by making zNear and skipping the nearPlane culling
-		if (current.position.z - current.position.w > zNear || current.position.z + current.position.w < zFar)
+		if (current.position.z + current.position.w < zNear || current.position.z - current.position.w > zFar)
 		{
 			
 		}
@@ -89,15 +91,15 @@ void main()
 	{
 		globalOffset = atomicAdd(globalLightIndex, numLights);
 		grid[groupIndex] = uvec2(globalOffset, numLights);
-		for (uint i = 0; i < numLights; i += 1)
+		//for (uint i = 0; i < numLights; i += 1)
 		{
-			indicies[globalOffset + i] = groupLights[i];
+			//indicies[globalOffset + i] = groupLights[i];
 		}
 	}
 	// TODO: Possibly return to this
-	//barrier();
-	//for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
+	barrier();
+	for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
-		//indicies[globalOffset + i] = groupLights[i];
+		indicies[globalOffset + i] = groupLights[i];
 	}
 }

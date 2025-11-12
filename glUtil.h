@@ -121,6 +121,8 @@ inline void BindDefaultFrameBuffer()
 	glBindFramebuffer(GL_FRAMEBUFFER, 0);
 }
 
+extern void BindDrawFramebuffer();
+
 inline void DisableDepthBufferWrite()
 {
     glDepthMask(GL_FALSE);

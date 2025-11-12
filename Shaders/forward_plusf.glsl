@@ -39,5 +39,6 @@ void main()
 		sampled.xyz *= mult;
 	}
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
+	//fragmentColor = vec4(LightTesting(), 1.f);
 	//fragmentColor = vec4(index / tileDimension, 0, 1);
 }
