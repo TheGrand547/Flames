@@ -374,11 +374,11 @@ void display()
 	drawingVolumes.ExclusiveOperation(
 		[&](auto& data)
 		{
-			auto& buffer2 = ShaderStorage::Get("LightBlockOriginal");
+			auto& buffer2 = ShaderStorage::Retrieve("LightBlockOriginal");
 			buffer2.BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
 			//std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
-			auto& buffer = ShaderStorage::Get("LightBlock");
+			auto& buffer = ShaderStorage::Retrieve("LightBlock");
 			std::vector<LightVolume> grouper;
 			std::ranges::copy(
 				data | std::views::transform(
@@ -391,21 +391,40 @@ void display()
 				), std::back_inserter(grouper));
 
 			buffer.BufferData(grouper);
-			ShaderStorage::Get("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
-			ShaderStorage::Get("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
+			ShaderStorage::Retrieve("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
+			ShaderStorage::Retrieve("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 		}
 	);
-	ShaderStorage::Retrieve("Frustums").BindBufferBase(5);
-	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
-	ShaderStorage::Retrieve("LightGrid").BindBufferBase(7);
-	ShaderStorage::Retrieve("LightBlock").BindBufferBase(8);
-	ShaderStorage::Retrieve("LightGrid2").BindBufferBase(9);
-	ShaderStorage::Retrieve("LightBlockOriginal").BindBufferBase(10);
+	// Compute Shaders
 	{
 		Shader& cullLights = ShaderBank::Retrieve("lightCulling");
 		cullLights.SetActiveShader();
 		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
 		cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
+		Shader& computation = ShaderBank::Retrieve("debrisCompute");
+		auto& rawDebris = ShaderStorage::Retrieve("RawDebris");
+		auto& transformedOut = ShaderStorage::Retrieve("DrawDebris");
+		auto& indirectOut = ShaderStorage::Retrieve("DebrisIndirect");
+
+		computation.SetActiveShader();
+		rawDebris.BindBufferBase(0);
+		transformedOut.BindBufferBase(1);
+		indirectOut.BindBufferBase(2);
+		computation.SetFloat("zFar", zFar);
+		computation.SetVec3("cameraForward", cameraForward);
+		computation.SetVec3("cameraPos", localCamera);
+		computation.SetVec3("cameraVelocity", velocity);
+		computation.DispatchCompute(dustDimension, dustDimension, dustDimension);
+
+		// END OF COMPUTE SECTION
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+
+
+		auto& outputBuffer = BufferBank::Retrieve("DrawDebris");
+		auto& outputIndirect = Bank<DrawIndirectBuffer>::Retrieve("DebrisIndirect");
+		glCopyNamedBufferSubData(transformedOut.GetBuffer(), outputBuffer.GetBuffer(), 0, 0, transformedOut.Size());
+		glCopyNamedBufferSubData(indirectOut.GetBuffer(), outputIndirect.GetBuffer(), 0, 0, sizeof(unsigned int) * 4);
 	}
 	// Actual drawing based on the lighting stuff
 
@@ -415,11 +434,7 @@ void display()
 	levelGeometry.Bind(outerzone);
 	outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 	interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
-	//interzone.SetVec2("ScreenSize", Window::GetSizeF());
-	//interzone.SetInt("TileSize", static_cast<int>(gridResolution));
-	//interzone.SetUVec2("tileDimension", tileDimension);
 	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Retrieve("dummyInstance"), 1);
-	glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 
 	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
 	// Only need one per tile
@@ -441,38 +456,17 @@ void display()
 	playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 	
 	{
-		// Once this is working, move it up. It can be done before the big memory barrier
-		Shader& computation = ShaderBank::Retrieve("debrisCompute");
-		auto& rawDebris = ShaderStorage::Retrieve("RawDebris");
-		auto& transformedOut = ShaderStorage::Retrieve("DrawDebris");
-		auto& indirectOut = ShaderStorage::Retrieve("DebrisIndirect");
-
-		computation.SetActiveShader();
-		rawDebris.BindBufferBase(0);
-		transformedOut.BindBufferBase(1);
-		indirectOut.BindBufferBase(2);
-		computation.SetFloat("zFar", zFar);
-		computation.SetVec3("cameraForward", cameraForward);
-		computation.SetVec3("cameraPos", localCamera);
-		computation.SetVec3("cameraVelocity", velocity);
-		computation.DispatchCompute(dustDimension, dustDimension, dustDimension);
-
-		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
-		auto& outputBuffer = BufferBank::Retrieve("DrawDebris");
-		auto& outputIndirect = Bank<DrawIndirectBuffer>::Retrieve("DebrisIndirect");
-		glCopyNamedBufferSubData(transformedOut.GetBuffer(), outputBuffer.GetBuffer(), 0, 0, transformedOut.Size());
-		glCopyNamedBufferSubData(indirectOut.GetBuffer(), outputIndirect.GetBuffer(), 0, 0, sizeof(unsigned int) * 4);
+		// *Needs* to have the copying between the buffers completed by this point
 		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
-
 		Shader& local = ShaderBank::Retrieve("dust");
 		local.SetActiveShader();
 		VAO& vao = VAOBank::Get("bigscrem");
 		vao.Bind();
-		vao.BindArrayBuffer(outputBuffer, 0);
+		vao.BindArrayBuffer(BufferBank::Retrieve("DrawDebris"), 0);
 		local.SetVec3("shapeColor", glm::vec3(0.9f));
 		local.SetVec3("lightPosition", view * glm::vec4(playerModel.translation, 1.f));
 		local.SetVec3("lightForward", -(view * glm::vec4((playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)), 0.f)));
-		local.DrawArrayIndirect<DrawType::TriangleStrip>(outputIndirect);
+		local.DrawArrayIndirect<DrawType::TriangleStrip>(Bank<DrawIndirectBuffer>::Retrieve("DebrisIndirect"));
 	}
 
 	if (debugFlags[CHECK_UVS])
@@ -1722,6 +1716,8 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		// Must be reset every frame before usage
 		ShaderStorage::Get("LightGrid2").BufferData(std::to_array({0u, 0u}));
 		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
+		ShaderStorage::Get("LightBlockOriginal").BufferData(std::to_array({ 0u, 0u }));
+		ShaderStorage::Retrieve("LightBlockOriginal").BindBufferBase(10);
 		{
 			UniformBuffer& uniformed = Bank<UniformBuffer>::Get("ForwardPlusConstants");
 			//uniformed.Generate(StaticDraw, sizeof(glm::mat2) + sizeof(glm::uvec2) + sizeof(glm::vec2) + sizeof(int));
