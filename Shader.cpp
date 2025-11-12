@@ -21,6 +21,9 @@ static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.gl
 static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
 	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 
+static std::vector<std::string_view> shaderDefines;
+static std::vector<std::string_view> shaderTempDefines;
+
 void Shader::SetBasePath(const std::string& basePath)
 {
 	shaderBasePath = basePath + FILEPATH_SLASH;
@@ -31,9 +34,44 @@ void Shader::SetRecompilationFlag(bool flag)
 	Recompile = flag;
 }
 
+void Shader::Define(const std::string_view& define)
+{
+	shaderDefines.push_back(define);
+}
+
+void Shader::DefineTemp(const std::string_view& define)
+{
+	shaderTempDefines.push_back(define);
+}
+
 
 static void ApplyShaderIncludes(std::string& data)
 {
+	if (shaderDefines.size() != 0 || shaderTempDefines.size() != 0)
+	{
+		std::stringstream newDefines;
+		newDefines << '\n';
+		for (const auto& define : shaderDefines)
+		{
+			newDefines << define << '\n';
+		}
+		for (const auto& define : shaderTempDefines)
+		{
+			newDefines << define << '\n';
+		}
+		shaderTempDefines.clear();
+		newDefines << '\n';
+		std::size_t first = data.find('\n');
+		if (first == std::string::npos)
+		{
+			Log("No newlines in the given shader.");
+			EXIT;
+		}
+		else
+		{
+			data.insert(first, newDefines.str());
+		}
+	}
 	const std::string basis("#include \"{}\"\n");
 	for (auto& [tag, mapping] : shaderIncludeMapping)
 	{

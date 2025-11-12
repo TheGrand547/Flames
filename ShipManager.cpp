@@ -57,7 +57,7 @@ void ShipManager::Update() noexcept
 			}
 		);
 	}
-	std::swap(this->active, this->inactive);
+	this->active.Swap(this->inactive);
 	this->fools.Swap(pointers);
 	Parallel::erase_if(std::execution::par, this->brainDrain, 
 		[](ClockBrain& bloke)
@@ -110,8 +110,14 @@ void ShipManager::Draw(MeshData& data, VAO& vao, Shader& shader) noexcept
 
 void ShipManager::UpdateMeshes() noexcept
 {
-	this->pain.BufferData(this->active, DynamicDraw);
-	this->fools.ExclusiveOperation([&](decltype(this->fools)::value_type & p)
+	this->active.ExclusiveOperation(
+		[&](const auto& p)
+		{
+			this->pain.BufferData(p, DynamicDraw);
+		}
+	);
+	this->fools.ExclusiveOperation(
+		[&](decltype(this->fools)::value_type & p)
 		{
 			// I hate that this is required so much man
 			this->smooth.BufferData<glm::vec3>(p | BundleData, DynamicDraw);

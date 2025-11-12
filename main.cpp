@@ -166,9 +166,8 @@ constexpr float ANGLE_DELTA = 4;
 
 // Camera
 glm::vec3 cameraPosition(0, 1.5f, 0);
-glm::vec3 cameraRotation(0, 0, 0);
 
-float zNear = 0.1f, zFar = 250.f;
+float zNear = 0.1f, zFar = 1000.f;
 
 bool buttonToggle = false;
 ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
@@ -183,8 +182,6 @@ struct LightVolume
 	glm::vec4 color{ 1.f };
 	glm::vec4 constants{1.f, 0.025f, 0.f, 0.f};
 };
-
-DynamicOctTree<PathFollower> followers{AABB(glm::vec3(1000.f))};
 
 // TODO: Semaphore version of buffersync
 BufferSync<std::vector<TextureVertex>> decalVertex;
@@ -284,6 +281,10 @@ static constexpr float EarlyDepthRatio = 1;
 
 static std::vector<GLuint> glQueries;
 std::mutex bulletMutex;
+
+constexpr std::size_t dustDimension = 20;
+constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
+
 void display()
 {
 	GLuint currentRenderQuery = 0;
@@ -439,20 +440,6 @@ void display()
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh2, playerModel);
 	
-	if (!featureToggle)
-	{
-		Shader& local = ShaderBank::Get("dust");
-		local.SetActiveShader();
-		VAO& vao = VAOBank::Get("bigscrem");
-		vao.Bind();
-		ArrayBuffer& points = BufferBank::Get("DustTest");
-		vao.BindArrayBuffer(points, 0);
-		local.SetVec3("shapeColor", glm::vec3(0.9f));
-		local.SetVec3("lightPosition", view* glm::vec4(playerModel.translation, 1.f));
-		local.SetVec3("lightForward", view* glm::vec4((playerModel.rotation* glm::vec3(-1.f, 0.f, 0.f)), 0.f));
-		local.DrawArrayInstanced<DrawType::TriangleStrip>(Bank<ArrayBuffer>::Get("dummy"), points);
-	}
-	else
 	{
 		// Once this is working, move it up. It can be done before the big memory barrier
 		Shader& computation = ShaderBank::Retrieve("debrisCompute");
@@ -467,7 +454,8 @@ void display()
 		computation.SetFloat("zFar", zFar);
 		computation.SetVec3("cameraForward", cameraForward);
 		computation.SetVec3("cameraPos", localCamera);
-		computation.DispatchCompute(1);
+		computation.SetVec3("cameraVelocity", velocity);
+		computation.DispatchCompute(dustDimension, dustDimension, dustDimension);
 
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		auto& outputBuffer = BufferBank::Retrieve("DrawDebris");
@@ -476,13 +464,12 @@ void display()
 		glCopyNamedBufferSubData(indirectOut.GetBuffer(), outputIndirect.GetBuffer(), 0, 0, sizeof(unsigned int) * 4);
 		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
 
-		Shader& local = ShaderBank::Get("dust");
+		Shader& local = ShaderBank::Retrieve("dust");
 		local.SetActiveShader();
 		VAO& vao = VAOBank::Get("bigscrem");
 		vao.Bind();
 		vao.BindArrayBuffer(outputBuffer, 0);
 		local.SetVec3("shapeColor", glm::vec3(0.9f));
-		outputIndirect.BindBuffer();
 		local.SetVec3("lightPosition", view * glm::vec4(playerModel.translation, 1.f));
 		local.SetVec3("lightForward", -(view * glm::vec4((playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)), 0.f)));
 		local.DrawArrayIndirect<DrawType::TriangleStrip>(outputIndirect);
@@ -763,18 +750,6 @@ void display()
 	stencilTest.SetMat4("Model", sphereModel.GetModelMatrix());
 	meshVAO.BindArrayBuffer(sphereBuffer);
 	//stencilTest.DrawElements<DrawType::Triangle>(sphereIndicies);
-
-	plainVAO.BindArrayBuffer(plainCube);
-	//for (int i = 0; i < 4; i++)
-	int count = 0;
-	for (auto& following : followers)
-	{
-		lightModel.translation = following.first.GetPosition();
-		lightModel.scale = glm::vec3(2.3f + float(count++));
-		//lightModel.Translate(glm::vec3(2 + i * glm::cos(frameCounter / 100.f), 0, 0));
-		stencilTest.SetMat4("Model", lightModel.GetModelMatrix());
-		stencilTest.DrawElementsMemory<DrawType::Triangle>(cubeIndicies);
-	}
 	
 	// Clean up
 	EnableGLFeatures<FaceCulling>();
@@ -1552,7 +1527,8 @@ Ray GetMouseProjection(const glm::vec2& mouse, glm::mat4& cameraOrientation)
 	sizes *= GetProjectionHalfs(projection);
 	glm::vec3 project(sizes.x, sizes.y, -depth);
 
-	glm::vec3 radians = glm::radians(cameraRotation);
+	// Get the camera orientation
+	glm::vec3 radians = glm::radians(glm::vec3(0.f));
 
 	// Center of screen orientation
 	cameraOrientation = glm::eulerAngleXYZ(radians.x, radians.y + glm::half_pi<float>(), radians.z);
@@ -1653,13 +1629,8 @@ void mouseCursorFunc([[maybe_unused]] GLFWwindow* window, double xPos, double yP
 		// Why 50??
 		const float AngleFactor = ANGLE_DELTA * 50.f;
 		glm::vec2 rawDeltas = glm::vec2(xDif, yDif) / Window::GetSizeF();
-		float yDelta = rawDeltas.x * AngleFactor;
-		float zDelta = rawDeltas.y * AngleFactor;
 		// TODO: Sensitivity values
 
-
-		cameraRotation.y += yDelta;
-		cameraRotation.x = std::clamp(cameraRotation.x + zDelta, -75.f, 75.f);
 		if (Mouse::CheckButton(Mouse::ButtonLeft))
 		{
 			// TODO: Some clamping to ensure less whackiness
@@ -1712,6 +1683,7 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 
 	// This is dependent on screen size so must be here.
 	{
+		// TODO: Put the constants and stuff in here so it doesn't have to be recompiled all the time
 		QUICKTIMER("Foolhardy");
 		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
 		Shader& shader = ShaderBank::Get("computation");
@@ -1768,13 +1740,6 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		}
 		shader.UniformBlockBinding("ForwardPlusConstants", 2);
 		shader.SetMat4("InverseProjection", glm::inverse(projection));
-		//shader.SetVec2("ScreenSize", Window::GetSizeF());
-		//shader.SetInt("TileSize", static_cast<int>(gridResolution));
-		//shader.SetMat4("InverseProjection", glm::inverse(projection));
-		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.25, 1) << '\n';
-		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.5, 1) << '\n';
-		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.75, 1) << '\n';
-		//std::cout << glm::inverse(projection) * glm::vec4(0, 0, 0.85, 1) << '\n';
 		shader.DispatchCompute(tileDimension.x, tileDimension.y);
 		ShaderBank::Get("lightCulling").UniformBlockBinding("ForwardPlusConstants", 2);
 	}
@@ -1972,6 +1937,7 @@ void init()
 		"framebuffer", "shield_texture"
 	);
 	
+	Shader::DefineTemp("#define DEBRIS_COUNT 666");
 	ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
 
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
@@ -2108,13 +2074,6 @@ void init()
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
 
-	{
-		ShaderStorage::Get("DrawDebris").Reserve(sizeof(glm::vec4) * 1024);
-		ShaderStorage::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
-		BufferBank::Get("DrawDebris").Reserve(sizeof(glm::vec4) * 1024);
-		Bank<DrawIndirectBuffer>::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
-	}
-
 
 	// RAY SETUP
 	std::array<glm::vec3, 20> rays = {};
@@ -2151,14 +2110,6 @@ void init()
 	// Decal stuff
 	decals.Generate();
 
-	constexpr int followsize = 10;
-	//followers.ReserveSize(followsize);
-	for (int i = 0; i < followsize; i++)
-	{
-		glm::vec2 base = glm::diskRand(20.f);
-		//followers.emplace_back(glm::vec3(base.x, 2.5, base.y));
-		PathFollower fus(glm::vec3(base.x, 2.5, base.y));
-	}
 	// Cube map shenanigans
 	{
 		// From Here https://opengameart.org/content/space-skybox-1 under CC0 Public Domain License
@@ -2333,23 +2284,20 @@ void init()
 	}
 	
 	{
-		// Just for, annoying, alignment reasons
-		std::array<glm::vec4, 1024> hmm{};
-		for (auto& element : hmm)
-		{
-			element = glm::vec4(playfield.GetModel().translation + glm::ballRand(zFar), 1.f);
-			//element.normal = glm::sphericalRand(1.f);
-		}
-		Bank<ArrayBuffer>::Get("DustTest").BufferData(hmm);
+		QUICKTIMER("Debris Initializing");
 		struct doub { glm::vec4 pos, dir; };
-		std::array<doub, 1024> hmm2;
-		for (std::size_t i = 0; i < 1024; i++)
+		StaticVector<doub> hmm2(dustCount);
+		for (std::size_t i = 0; i < hmm2.size(); i++)
 		{
-			hmm2[i].pos = hmm[i];
+			hmm2[i].pos = glm::vec4(glm::ballRand(zFar / 2.f) + playfield.GetModel().translation * 10000.f, 1.f);
 			// Might need some work
 			hmm2[i].dir = glm::vec4(Tick::TimeDelta * glm::gaussRand(0.4f, 0.225f) * glm::sphericalRand(1.f), 1.f);
 		}
 		ShaderStorage::Get("RawDebris").BufferData(hmm2);
+		ShaderStorage::Get("DrawDebris").Reserve(sizeof(glm::vec4) * hmm2.size());
+		ShaderStorage::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
+		BufferBank::Get("DrawDebris").Reserve(sizeof(glm::vec4) * hmm2.size());
+		Bank<DrawIndirectBuffer>::Get("DebrisIndirect").Reserve(sizeof(DrawIndirect));
 	}
 
 	for (int i = 0; i < 10; i++)

@@ -14,7 +14,8 @@ protected:
 	ArrayBuffer pain;
 	ArrayBuffer smooth;
 	
-	std::vector<MeshMatrix> active, inactive;
+	BufferSync<std::vector<MeshMatrix>> active;
+	std::vector<MeshMatrix> inactive;
 	BufferSync<std::vector<Bundle<glm::vec3>>> fools;
 	bool dirty = true;
 public:

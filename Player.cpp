@@ -131,7 +131,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	glm::vec3 forces{0.f};
 
 	// This is kind of a complete mess but it appears to work
-	if (input.cruiseControl && this->sat)
+	if (input.cruiseControl && this->sat && false)
 	{
 		// Entirely separate logic for "cruise control"
 		//const glm::vec3 target = this->sat->GetBounding().GetCenter();
@@ -313,9 +313,10 @@ void Player::Update(Input::Keyboard input) noexcept
 	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
 
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
-	//if (!input.zoomZoom)
+	if (!input.zoomZoom && glm::length(this->velocity) > MaxSpeed)
 	{
-		BasicPhysics::Clamp(this->velocity, MaxSpeed);
+		this->velocity *= 0.999;
+		//BasicPhysics::Clamp(this->velocity, MaxSpeed);
 	}
 	// Bad constant
 	Sphere playerSphere(this->transform.position, 3.f);

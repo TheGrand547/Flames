@@ -152,6 +152,12 @@ public:
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 	static void SetBasePath(const std::string& basePath);
 	static void SetRecompilationFlag(bool flag);
+
+	// Adds some define to all further shader compliations
+	static void Define(const std::string_view& define);
+
+	// Adds a define to only the very next shader compliation
+	static void DefineTemp(const std::string_view& define);
 };
 
 constexpr bool Shader::Compiled() const
@@ -263,6 +269,7 @@ template<PrimitiveDrawingType type> inline void Shader::DrawArray(ArrayBuffer& b
 
 template<PrimitiveDrawingType type> inline void Shader::DrawArrayIndirect(DrawIndirectBuffer& buffer, const GLuint offset)
 {
+	buffer.BindBuffer();
 	glDrawArraysIndirect(static_cast<GLenum>(type), reinterpret_cast<const void*>(offset * sizeof(DrawIndirect)));
 }
 

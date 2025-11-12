@@ -397,10 +397,6 @@ public:
 
 	void ReSeat(typename Structure::iterator element) noexcept
 	{
-#ifdef DEBUG
-		static std::size_t total = 0;
-		static std::size_t small = 0;
-#endif // DEBUG
 		const AABB current = GetAABB(element->first);
 
 		// See if the current AABB is wholly contained in the same box as before
@@ -421,8 +417,14 @@ public:
 			}
 
 #ifdef DEBUG
+			static std::size_t total = 0;
+			static std::size_t small = 0;
 			total++;
 			small += currentNode == element->second.pointer;
+			if (total % 10000 == 0)
+			{
+				Log(std::format("Ratio of partial to full insertions: {} : {}", small, total));
+			}
 #endif // DEBUG
 		}
 		else
@@ -431,12 +433,6 @@ public:
 			element->second.pointer->objects.erase(element->second.iterator);
 			element->second = this->root.Insert(index, current);
 		}
-#ifdef DEBUG
-		if (total % 10000 == 0)
-		{
-			Log(std::format("Ratio of partial to full insertions: {} : {}", small, total));
-		}
-#endif // DEBUG
 	}
 	
 	template<typename F> 

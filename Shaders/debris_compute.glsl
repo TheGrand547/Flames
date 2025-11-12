@@ -31,71 +31,102 @@ layout(std430, binding = 2) volatile buffer DebrisIndirect
 #define DEBRIS_COUNT 1024
 #endif
 
+#define COPY_LENGTH 10
+shared uint CopiedElements[COPY_LENGTH];
+
 shared uint drawIndex;
+shared uint drawCount;
 
-uniform vec3 cameraForward;
-uniform vec3 cameraPos;
-uniform float zFar;
+layout(location = 0) uniform vec3 cameraForward;
+layout(location = 1) uniform vec3 cameraPos;
+layout(location = 2) uniform vec3 cameraVelocity;
+layout(location = 3) uniform float zFar;
 
-layout(local_size_x = DEBRIS_COUNT, local_size_y = 1, local_size_z = 1) in;
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
-	const uint groupIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x; 
-	uint threadIndex = gl_LocalInvocationID.x + gl_LocalInvocationID.y * gl_WorkGroupSize.x;
+	const uint WorkGroupSize = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;
+	uvec3 toLinear = uvec3(1, WorkGroupSize, WorkGroupSize * WorkGroupSize);
+	uvec3 smear = uvec3(1, gl_WorkGroupSize.x, gl_WorkGroupSize.x * gl_WorkGroupSize.y);
 	
-	// Group index is me just planning ahead
-	if (threadIndex == 0 && groupIndex == 0)
+	// The flattened index of the current work group
+	const uint groupIndex = gl_WorkGroupID.x + gl_WorkGroupID.y * gl_NumWorkGroups.x + gl_WorkGroupID.z * gl_NumWorkGroups.x * gl_NumWorkGroups.y;
+
+	// The index of this instance within the current work group
+	const uint workGroupIndex = gl_LocalInvocationID.z * gl_WorkGroupSize.x * gl_WorkGroupSize.y + gl_LocalInvocationID.y * gl_WorkGroupSize.x + gl_LocalInvocationID.x;
+	
+	// Unique index of this compute instance
+	const uint globalIndex = groupIndex * WorkGroupSize + workGroupIndex;
+	
+	if (globalIndex == 0)
 	{
 		count = 4; // the number of vertices in the draw call
 		first = 0; // First 'index' in the array of 'indices'
 		baseInstance = 0;
 		primCount = 0;
+	}
+	if (workGroupIndex == 0)
+	{
 		drawIndex = 0;
+		drawCount = 0;
 	}
 	barrier();
-	Oblong current = elements[threadIndex];
-	vec3 currentDust = current.position.xyz;
-	// Move dust
-	
-	// A constant motion to imply that the 'big ship' is moving, albiet slowly
-	const vec3 dustDirection = pow(2.f, -7.f) * 0.4f * normalize(vec3(1.f, -0.25f, 0.325f));
-	
-	
-	const float angleDeviation = 50;
-	const float cosineValue = cos(radians(angleDeviation));
-	
-	currentDust += dustDirection + current.velocity.xyz;
-	// Since View[3] is negated, the double negative becomes a position(maybe)
-	vec3 delta = currentDust - cameraPos;
-	float alignment = dot(cameraForward, normalize(delta));
-	if (alignment < -cosineValue && length(delta) > zFar *0.8)
+	if (globalIndex < elements.length())
 	{
-		// Regenerate
-		vec3 position = hash3D(currentDust) * 2.f - 1.f;
+		Oblong current = elements[globalIndex];
+		vec3 currentDust = current.position.xyz;
+		// Move dust
 		
-		// Scale the adjustment in the plane of camera forward to be 20% of what it was
-		vec3 adjustment = dot(position, cameraForward) * 0.8 * cameraForward;
-		position -= adjustment;
+		// A constant motion to imply that the 'big ship' is moving, albiet slowly
+		const vec3 dustDirection = pow(2.f, -7.f) * 0.4f * normalize(vec3(1.f, -0.25f, 0.325f));
 		
-		// Position is now far in front of 
-		position = (cameraForward * zFar * 0.6f) + position * (zFar / 4.f) + cameraPos.xyz;
-		currentDust = position;
-		elements[threadIndex].position.w = hash1D(position);
+		
+		const float angleDeviation = 50;
+		const float cosineValue = cos(radians(angleDeviation));
+		
+		currentDust += dustDirection + current.velocity.xyz;
+		// Since View[3] is negated, the double negative becomes a position(maybe)
+		vec3 delta = currentDust - cameraPos;
+		float alignment = dot(cameraForward, normalize(delta));
+		//if ((alignment < -cosineValue && length(delta) > zFar *0.8) || length(delta) > 2 * zFar)
+		if (length(delta) > 0.25 * zFar)
+		{
+			// Regenerate
+			vec3 position = hash3D(currentDust) * 2.f - 1.f;
+			
+			// Scale the adjustment in the plane of camera forward to be 20% of what it was
+			vec3 adjustment = dot(position, cameraForward) * 0.8 * cameraForward;
+			//position -= adjustment;
+			
+			// Position is now far in front of 
+			//position = (normalize(cameraVelocity) * zFar * 0.6f) + position * (zFar / 4.f) + cameraPos;
+			position = position * zFar / 4.f + cameraPos + cameraVelocity;
+			currentDust = position;
+			elements[globalIndex].position.w = max(hash1D(position) / 2.f, 0.2);
+		}
+		
+		
+		// Transform dust to camera
+		elements[globalIndex].position.xyz = currentDust;
+		
+		// Only pass particles in front of the camera to the shader
+		if (alignment > 0)
+		{
+			uint myIndex = atomicAdd(drawCount, 1);
+			if (myIndex < COPY_LENGTH)
+			{
+				CopiedElements[myIndex] = globalIndex;
+			}
+		}
 	}
-	
-	
-	// Transform dust to camera
-	elements[threadIndex].position.xyz = currentDust;
-	
-	// Only pass particles in front of the camera to the shader
-	if (alignment > 0)
-	{
-		uint myIndex = atomicAdd(drawIndex, 1);
-		drawElements[myIndex] = elements[threadIndex].position;
-	}		
 	barrier();
-	if (threadIndex == 0 && groupIndex == 0)
+	if (workGroupIndex == 0 && drawCount > 0)
 	{
-		primCount = drawIndex;
+		drawIndex = atomicAdd(primCount, drawCount);
+		for (int i =0 ; i < drawCount; i++)
+		{
+			drawElements[drawIndex + i] = elements[CopiedElements[i]].position;
+		}
 	}
+	
 }

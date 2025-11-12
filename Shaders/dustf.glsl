@@ -4,13 +4,8 @@
 #include "forward_buffers"
 #include "forward_plus"
 
-/*
-layout(location = 0) in vec3 fPos;
-layout(location = 1) in vec3 fNorm;
-*/
-
 layout(location = 0) flat in vec3 fPos;
-layout(location = 1) in vec3 fNorm;
+layout(location = 1) in float radius;
 layout(location = 2) in vec3 relativePosition;
 layout(location = 3) in vec2 fTex;
 
@@ -36,7 +31,6 @@ void main()
 	vec3 lightOut = ForwardPlusLighting(fPos, fNorm, viewDirection);
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 	*/
-	const float radius = 0.5f;
 	
 	// From https://github.com/paroj/gltut/blob/master/Tut%2013%20Impostors/data/GeomImpostor.frag
 	vec3 adjusted = vec3(fTex, 0.0) + relativePosition;
@@ -59,10 +53,11 @@ void main()
 	gl_FragDepth = CameraToDepth(cameraPos.z);
 	vec3 cameraNormal = normalize(cameraPos - fPos);
 	
+	const vec3 FlashLightColor = vec3(148, 252, 255) / 255;
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);	
 	vec3 lightOut = ForwardPlusLightingViewSpace(cameraPos, cameraNormal, -normalize(cameraPos));
 	//lightOut += DirectedLight((View * vec4(1.f, 0.f, 0.f, 0.f)).xyz, vec3(1.f), cameraNormal, -normalize(cameraPos));
-	lightOut += DirectedPointLight(lightPosition, lightForward, vec3(1.f), cameraNormal, cameraPos, -normalize(cameraPos));
+	lightOut += DirectedPointLight(lightPosition, lightForward, FlashLightColor, cameraNormal, cameraPos, -normalize(cameraPos));
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 }

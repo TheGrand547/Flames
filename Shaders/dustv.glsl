@@ -4,7 +4,7 @@
 layout(location = 0) in vec4 vPos2;
 
 layout(location = 0) flat out vec3 fPos;
-layout(location = 1) out vec3 fNorm;
+layout(location = 1) out float radius;
 layout(location = 2) out vec3 relativePosition;
 layout(location = 3) out vec2 fTex;
 
@@ -15,8 +15,7 @@ vec2 positions[] = {
 
 void main()
 {
-	//const float radius = 0.5f;
-	float radius = vPos2.w;
+	radius = vPos2.w;
 	vec3 vPos = vPos2.xyz;
 	// Multiplying fTex by higher ratios and not adjusting it later leads to some weird stuff
 	fTex = positions[gl_VertexID % 4].xy * radius * 1.5f;
