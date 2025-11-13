@@ -53,6 +53,6 @@ void main()
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);	
 	vec3 lightOut = ForwardPlusLightingViewSpace(cameraPos, cameraNormal, -normalize(cameraPos));
-	lightOut += DirectedPointLight(lightPosition, lightForward, FlashLightColor, cameraNormal, cameraPos, -normalize(cameraPos));
+	//lightOut += DirectedPointLight(lightPosition, lightForward, FlashLightColor, cameraNormal, cameraPos, -normalize(cameraPos));
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 }

@@ -14,19 +14,18 @@ layout(location = 0) out vec4 fragmentColor;
 
 layout(location = 1) uniform vec3 shapeColor;
 layout(location = 2) uniform int checkUVs;
-
+layout(location = 3) uniform vec3 CameraPos;
 layout(location = 0) uniform sampler2D color;
 
 void main()
 {
 	// TODO: Texture reads for maps and stuff
 	vec3 norm = vec3(0, 0, 1);
-	vec3 mod = (gl_FrontFacing) ? vec3(1.f) : vec3(-1.f);
+	vec3 normal = normalize(TBNmat * norm);
 	
-	vec3 viewDirection = normalize(View[3].xyz - fPos);
+	
+	vec3 viewDirection = normalize(CameraPos - fPos);
 		
-	// This is a hack, but for some reason gl_FrontFacing won't work otherwise. Need to work on this
-	vec3 normal = (vec4(TBNmat * norm, 0)).xyz;
 	
 	vec3 lightOut = ForwardPlusLighting(fPos, normal, viewDirection);
 	
@@ -41,6 +40,7 @@ void main()
 		sampled.xyz *= mult;
 	}
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
+	//fragmentColor = vec4(norm, 1.f);
 	//fragmentColor = vec4(LightTesting(), 1.f);
 	//fragmentColor = vec4(index / tileDimension, 0, 1);
 }

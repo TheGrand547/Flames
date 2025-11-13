@@ -2,22 +2,24 @@ layout(origin_upper_left) in vec4 gl_FragCoord;
 
 float ConeRatio(Cone cone, vec3 forward)
 {
-	float angle = dot(cone.forward, -forward);
-	return angle;
+	const float wranger = cos(radians(25));
+	float angle = max(dot(normalize(cone.forward), normalize(-forward)), 0);
+	return (wranger > angle) ? 1.f : 0.f;
 }
 
 vec3 ConeLight(LightInfoBig light, vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
 {
 	Cone cone = LightToCone(light);
 	vec3 lightDirection = cone.position - fragPosition;
-	float distance = length(lightDirection);
-	lightDirection /= distance;
+	float distance = length(cone.position - fragPosition);
+	lightDirection = normalize(lightDirection);
+	
 	// Do the attenuation thing
 	float diffuse = max(dot(lightDirection, fragNormal), 0);
 	float specular = 0;
 	
 	vec3 lightConstants = light.constants.xyz;
-	float fallOff = 1.0 / (lightConstants.x + lightConstants.y * distance + lightConstants.z * distance * distance);
+	float fallOff = 1.f / (lightConstants.x + lightConstants.y * distance + lightConstants.z * distance * distance);
 	return light.color.xyz * (diffuse + specular) * ConeRatio(cone, lightDirection) * fallOff;
 }
 
@@ -36,7 +38,7 @@ vec3 ApplyLight(LightInfoBig current, vec3 fragPosition, vec3 fragNormal, vec3 v
 	// Light cone
 	else if (type < 0)
 	{
-		lightOut = ConeLight(current, fragNormal, fragPosition, viewDirection);
+		lightOut = ConeLight(current, fragPosition, fragPosition, viewDirection);
 	}
 	return lightOut;
 } 
@@ -54,7 +56,6 @@ vec3 ForwardPlusLighting(vec3 fragPosition, vec3 fragNormal, vec3 viewDirection)
 	{
 		uint index = indicies[i + lightData.x];
 		LightInfoBig current = lightsOriginal[index];
-		
 		lightOut += ApplyLight(current, fragPosition, fragNormal, viewDirection);
 	}
 	return lightOut;

@@ -380,7 +380,6 @@ void display()
 			auto& buffer2 = ShaderStorage::Retrieve("LightBlockOriginal");
 			buffer2.BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
-			//std::size_t byteSize = sizeof(decltype(drawingVolumes)::value_type::value_type) * data.size();
 			auto& buffer = ShaderStorage::Retrieve("LightBlock");
 			std::vector<LightVolume> grouper;
 			std::ranges::copy(
@@ -438,6 +437,7 @@ void display()
 	levelGeometry.Bind(outerzone);
 	outerzone.BindArrayBuffer(levelGeometry.vertex, 0);
 	interzone.SetVec3("shapeColor", glm::vec3(1.0, 1.0, 1.0));
+	interzone.SetVec3("CameraPos", localCamera);
 	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Retrieve("dummyInstance"), 1);
 
 	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
@@ -883,6 +883,7 @@ void display()
 	BindDefaultFrameBuffer();
 
 	glLineWidth(1.f);
+	DisableGLFeatures<DepthTesting>();
 	ShaderBank::Retrieve("widget").SetActiveShader();
 	ShaderBank::Retrieve("widget").DrawArray<DrawType::Lines>(6);
 
@@ -1193,8 +1194,9 @@ void gameTick()
 			constexpr float FlashLightHeight = 100.f;
 			constexpr float FlashLightRadius = 50.f; 
 			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
-			greeblies.color    = glm::vec4(148, 252, 255, 1.f) / 255.f;
-			greeblies.direction = glm::vec4(playerModel.rotation * World::Forward, FlashLightRadius);
+			greeblies.color    = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
+			greeblies.constants = glm::vec4(1.f, 1.f/20.f, 1.f/2000.f, 1.f);
+			greeblies.direction = glm::vec4(playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), FlashLightRadius);
 			// Leave the constants alone
 			volumes.push_back(greeblies);
 		}
@@ -1967,12 +1969,16 @@ void init()
 	ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
 
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
-	ShaderBank::Get("dust").CompileSimple("dust");
 	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
 	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
+
+	Shader::SetRecompilationFlag(true);
 	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
+	ShaderBank::Get("dust").CompileSimple("dust");
+	Shader::SetRecompilationFlag(false);
+
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
@@ -2035,7 +2041,7 @@ void init()
 		ref.ArrayFormatOverride<glm::vec3>(3, 0, 0, offsetof(NormalMeshVertex, biTangent), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec2>(4, 0, 0, offsetof(NormalMeshVertex, texture), sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::mat4>("modelMat", ShaderBank::Get("forwardPlusMulti"), 1, 1, 0, sizeof(MeshMatrix));
-		//ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("new_mesh"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
+		ref.ArrayFormatOverride<glm::mat4>("normalMat", ShaderBank::Get("forwardPlusMulti"), 1, 1, sizeof(glm::mat4), sizeof(MeshMatrix));
 	}
 	{
 		CheckError();

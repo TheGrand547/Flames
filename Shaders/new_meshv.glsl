@@ -22,7 +22,7 @@ void main()
 	fTex = vTex + vBtn.xy; // ?????
 	
 	vec3 tangent = normalize(shifted * vTan);
-	vec3 normal = vNorm;
+	vec3 normal  = normalize(shifted * vNorm);
 	tangent = normalize(tangent - normal * dot(normal, tangent));
 	vec3 biTangent = normalize(cross(normal, tangent));
 	TBNmat = mat3(tangent, biTangent, normal);

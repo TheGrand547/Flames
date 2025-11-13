@@ -112,7 +112,8 @@ void main()
 		// Directed point light(cone)
 		else if (type < 0)
 		{
-			ConeLightCull(i, zNear, zFar);
+			//ConeLightCull(i, zNear, zFar);
+			AddLight(i);
 		}
 		// Type 0, directed light
 		else
