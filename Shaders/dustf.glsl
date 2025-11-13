@@ -1,7 +1,9 @@
 #version 440 core
 #include "lighting"
 #include "camera"
+#include "frustums"
 #include "forward_buffers"
+#include "cone"
 #include "forward_plus"
 
 layout(location = 0) flat in vec3 fPos;
@@ -26,12 +28,6 @@ uniform vec3 lightPosition;
 
 void main()
 {
-	/*
-	vec3 viewDirection = normalize(View[3].xyz - fPos);	
-	vec3 lightOut = ForwardPlusLighting(fPos, fNorm, viewDirection);
-	fragmentColor = vec4(shapeColor * lightOut, 1);
-	*/
-	
 	// From https://github.com/paroj/gltut/blob/master/Tut%2013%20Impostors/data/GeomImpostor.frag
 	vec3 adjusted = vec3(fTex, 0.0) + relativePosition;
 	vec3 ray = normalize(adjusted);
@@ -57,7 +53,6 @@ void main()
 	
 	vec3 viewDirection = normalize(View[3].xyz - fPos);	
 	vec3 lightOut = ForwardPlusLightingViewSpace(cameraPos, cameraNormal, -normalize(cameraPos));
-	//lightOut += DirectedLight((View * vec4(1.f, 0.f, 0.f, 0.f)).xyz, vec3(1.f), cameraNormal, -normalize(cameraPos));
 	lightOut += DirectedPointLight(lightPosition, lightForward, FlashLightColor, cameraNormal, cameraPos, -normalize(cameraPos));
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 }

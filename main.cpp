@@ -178,9 +178,13 @@ static std::chrono::nanoseconds idleTime, displayTime;
 
 struct LightVolume
 {
+	// Position position.w means point light, being the radius
+	// Negative position.w means cone, with the absolute value of it being the height
+	// 0 position.w means directed light
 	glm::vec4 position{ glm::vec3(0.f), 10.f };
 	glm::vec4 color{ 1.f };
 	glm::vec4 constants{1.f, 0.025f, 0.f, 0.f};
+	glm::vec4 direction{0.f};
 };
 
 // TODO: Semaphore version of buffersync
@@ -384,8 +388,9 @@ void display()
 					[&](const LightVolume& v)
 					{
 						glm::vec3 transformed = view * glm::vec4(glm::xyz(v.position), 1.f);
+						glm::vec3 transformed2 = view * glm::vec4(glm::xyz(v.direction), 0.f);
 						return LightVolume{ glm::vec4(transformed, v.position.w),
-								v.color, v.constants };
+								v.color, v.constants, glm::vec4(transformed2, v.direction.w)};
 					}
 				), std::back_inserter(grouper));
 
@@ -1173,12 +1178,26 @@ void gameTick()
 		const TimeDelta interval = tickStart - lastStart;
 		Capsule silly{ groovy.GetBounding() };
 
-		const Frustum localFrust = GetFrustum(playfield.GetModel());
+		playfield.Update(boardState);
+		const Model playerModel = playfield.GetModel();
+		const Frustum localFrust = GetFrustum(playerModel);
 
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
 
 		std::vector<LightVolume> volumes{ constantLights };
+		// The players 'torch'
+		{
+			LightVolume greeblies;
+			// 100 is the length of the cone
+			constexpr float FlashLightHeight = 100.f;
+			constexpr float FlashLightRadius = 50.f; 
+			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
+			greeblies.color    = glm::vec4(148, 252, 255, 1.f) / 255.f;
+			greeblies.direction = glm::vec4(playerModel.rotation * World::Forward, FlashLightRadius);
+			// Leave the constants alone
+			volumes.push_back(greeblies);
+		}
 		management.Update();
 
 		auto tmep = bobert.GetPoints(management.GetRawPositions());
@@ -1304,8 +1323,6 @@ void gameTick()
 		drawingVolumes.Swap(volumes);
 		drawingVolumes2.Swap(volumer);
 		
-		playfield.Update(boardState);
-		const Model playerModel = playfield.GetModel();
 		if (Level::NumExplosion() > 0)
 		{
 			for (glm::vec3 copy : Level::GetExplosion())
@@ -1920,6 +1937,7 @@ void init()
 	Shader::IncludeInShaderFilesystem("frustums", "frustums.incl");
 	Shader::IncludeInShaderFilesystem("forward_buffers", "forward_buffers.incl");
 	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
+	Shader::IncludeInShaderFilesystem("cone", "cone.incl");
 	ExternalShaders::Setup();
 
 	ShaderBank::Get("basic").CompileSimple("basic");

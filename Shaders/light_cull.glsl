@@ -3,6 +3,7 @@
 #include "frustums"
 #include "camera"
 #include "forward_buffers"
+#include "cone"
 
 
 // GET BACK TO THIS
@@ -10,7 +11,9 @@
 #define BLOCK_SIZE 16
 #endif
 
+#ifndef MAX_LIGHTS
 #define MAX_LIGHTS 100
+#endif
 
 shared uint numLights;
 shared uint groupLights[MAX_LIGHTS];
@@ -21,6 +24,39 @@ shared uint minDepth;
 shared float clipNear;
 
 uniform sampler2D DepthBuffer;
+
+void AddLight(uint currentIndex)
+{
+	uint index = atomicAdd(numLights, 1);
+	if (index < MAX_LIGHTS)
+	{
+		groupLights[index] = currentIndex;
+	}
+}
+
+
+void PointLightCull(uint index, float zNear, float zFar)
+{
+	LightInfoBig current = lights[index];
+	if (current.position.z + current.position.w < zNear || current.position.z - current.position.w > zFar)
+	{
+		
+	}
+	else if (FrustumSphere(groupFrustum, current.position))
+	{
+		AddLight(index);
+	}
+}
+
+void ConeLightCull(uint index, float zNear, float zFar)
+{
+	LightInfoBig current = lights[index];
+	Cone local = LightToCone(current);
+	if (FrustumCone(groupFrustum, local, zNear, zFar))
+	{
+		AddLight(index);
+	}
+}
 
 layout(local_size_x = BLOCK_SIZE, local_size_y = BLOCK_SIZE, local_size_z = 1) in;
 void main()
@@ -66,23 +102,22 @@ void main()
 	for (; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		LightInfoBig current = lights[i];
+		float type = lights[i].position.w;
 		
-		// Check if light is too near/far, being lenient
-		// Could also simplify this by making zNear and skipping the nearPlane culling
-		if (current.position.z + current.position.w < zNear || current.position.z - current.position.w > zFar)
+		// Sphereical Point light
+		if (type > 0)
 		{
-			
+			PointLightCull(i, zNear, zFar);
 		}
-		else if (FrustumSphere(groupFrustum, current.position))
+		// Directed point light(cone)
+		else if (type < 0)
 		{
-			//if (!SphereBehindPlane(nearPlane, current.position))
-			{
-				uint index = atomicAdd(numLights, 1);
-				if (index < MAX_LIGHTS)
-				{
-					groupLights[index] = i;
-				}
-			}
+			ConeLightCull(i, zNear, zFar);
+		}
+		// Type 0, directed light
+		else
+		{
+			//AddLight(i);
 		}
 	}
 	barrier();

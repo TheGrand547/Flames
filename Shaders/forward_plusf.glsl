@@ -2,6 +2,8 @@
 #include "lighting"
 #include "camera"
 #include "forward_buffers"
+#include "frustums"
+#include "cone"
 #include "forward_plus"
 
 layout(location = 0) in vec3 fPos;

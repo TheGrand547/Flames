@@ -88,18 +88,12 @@ void main()
 		// Since View[3] is negated, the double negative becomes a position(maybe)
 		vec3 delta = currentDust - cameraPos;
 		float alignment = dot(cameraForward, normalize(delta));
+		float distance = length(delta);
 		//if ((alignment < -cosineValue && length(delta) > zFar *0.8) || length(delta) > 2 * zFar)
-		if (length(delta) > 0.25 * zFar)
+		if (distance > 0.25 * zFar)
 		{
 			// Regenerate
 			vec3 position = hash3D(currentDust) * 2.f - 1.f;
-			
-			// Scale the adjustment in the plane of camera forward to be 20% of what it was
-			vec3 adjustment = dot(position, cameraForward) * 0.8 * cameraForward;
-			//position -= adjustment;
-			
-			// Position is now far in front of 
-			//position = (normalize(cameraVelocity) * zFar * 0.6f) + position * (zFar / 4.f) + cameraPos;
 			position = position * zFar / 4.f + cameraPos + cameraVelocity;
 			currentDust = position;
 			elements[globalIndex].position.w = max(hash1D(position) / 2.f, 0.2);

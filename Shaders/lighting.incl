@@ -9,6 +9,7 @@ struct LightInfoBig
 	vec4 position;
 	vec4 color;
 	vec4 constants;
+	vec4 direction;
 };
 
 

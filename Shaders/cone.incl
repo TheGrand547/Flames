@@ -1,0 +1,9 @@
+Cone LightToCone(LightInfoBig light)
+{
+	Cone local;
+	local.position =  light.position.xyz;
+	local.height   = -light.position.w;
+	local.forward  =  light.direction.xyz;
+	local.radius   =  light.direction.w;
+	return local;
+}

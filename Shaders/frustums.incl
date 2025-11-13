@@ -15,6 +15,11 @@ float getDistance(Plane plane, vec3 point)
 	return dot(point, plane.normal) - plane.distance;
 }
 
+bool TouchesPlane(Plane plane, vec3 point)
+{
+	return getDistance(plane, point) < 0;
+}
+
 Plane MakePlane(vec3 a, vec3 b, vec3 c)
 {
 	Plane dummy;
@@ -44,7 +49,6 @@ bool SphereTouchesPlane(Plane plane, vec4 sphere)
 bool FrustumSphere(Frustum frustum, vec4 sphere)
 {
 	bool result = true;
-	// TODO: Far/near culling
 	for (uint i = 0; i < 4 && result; i++)
 	{
 		if (SphereBehindPlane(frustum.planes[i], sphere))
@@ -54,6 +58,42 @@ bool FrustumSphere(Frustum frustum, vec4 sphere)
 	}
 	return result;
 }
+
+struct Cone
+{
+	vec3 position;
+	float height;
+	vec3 forward;
+	float radius;
+};
+
+bool ConePlane(Cone cone, Plane plane)
+{
+	vec3 parallel = cross(cross(plane.normal, cone.forward), cone.forward);
+	vec3 closest  = cone.position + cone.forward * cone.height - parallel * cone.radius;
+	return TouchesPlane(plane, cone.position) && TouchesPlane(plane, closest);
+}
+
+bool FrustumCone(Frustum frustum, Cone cone, float zNear, float zFar)
+{
+	bool shouldInclude = true;
+	Plane near = {vec3(0, 0, -1), zNear};
+	Plane far = {vec3(0,  0,  1), zFar};
+	if (ConePlane(cone, near) || ConePlane(cone, far))
+	{
+		shouldInclude = false;
+	}
+	
+	for (uint i = 0; i < 4 && shouldInclude; i++)
+	{
+		if (ConePlane(cone, frustum.planes[i]))
+		{
+			shouldInclude = false;
+		}
+	}
+	return shouldInclude;
+}
+
 
 layout(std430, binding = 5) volatile buffer Frustums
 {
