@@ -151,7 +151,7 @@ public:
 
 	static void IncludeInShaderFilesystem(const std::string& virtualName, const std::string& fileName);
 	static void SetBasePath(const std::string& basePath);
-	static void SetRecompilationFlag(bool flag);
+	static void ForceRecompile(bool flag);
 
 	// Adds some define to all further shader compliations
 	static void Define(const std::string_view& define);

@@ -241,7 +241,7 @@ const float BulletDecalScale = 4.f;
 UniformBuffer globalLighting;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
-BufferSync<std::vector<LightVolume>> drawingVolumes, drawingVolumes2;
+BufferSync<std::vector<LightVolume>> drawingVolumes;
 std::vector<LightVolume> constantLights;
 
 glm::vec3 GetCameraFocus(const Model& playerModel, const glm::vec3& velocity)
@@ -289,6 +289,8 @@ std::mutex bulletMutex;
 
 constexpr std::size_t dustDimension = 20;
 constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
+
+const glm::vec3 flashLightColor = glm::vec3(148.f, 252.f, 255.f) / 255.f;
 
 void BindDrawFramebuffer()
 {
@@ -374,24 +376,21 @@ void display()
 		EnableDepthBufferWrite();
 	}
 	drawingVolumes.ExclusiveOperation(
-		[&](auto& data)
+		[&](std::vector<LightVolume>& data)
 		{
 			// The players 'torch'
+			// Has to be like this so it isn't duplicated
+			LightVolume greeblies;
+			// 100 is the length of the cone
+			constexpr float FlashLightHeight = 100.f;
+			constexpr float FlashLightRadius = 50.f;
+			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
+			greeblies.color = glm::vec4(flashLightColor, 1.f);
+			greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
+			greeblies.direction = glm::vec4(axes[0], FlashLightRadius);
+			data.push_back(greeblies);
 			
-				LightVolume greeblies;
-				// 100 is the length of the cone
-				constexpr float FlashLightHeight = 100.f;
-				constexpr float FlashLightRadius = 50.f;
-				greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
-				greeblies.color = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
-				greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
-				greeblies.direction = glm::vec4(axes[0], FlashLightRadius);
-				data.push_back(greeblies);
-				//data.push_back(greeblies);
-				//data.pop_back();
-			
-			auto& buffer2 = ShaderStorage::Retrieve("LightBlockOriginal");
-			buffer2.BufferData(data);
+			ShaderStorage::Retrieve("LightBlockOriginal").BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
 			auto& buffer = ShaderStorage::Retrieve("LightBlock");
 			std::vector<LightVolume> grouper;
@@ -409,6 +408,8 @@ void display()
 			buffer.BufferData(grouper);
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
+
+			data.pop_back();
 		}
 	);
 	// Compute Shaders
@@ -1199,19 +1200,6 @@ void gameTick()
 		std::vector<glm::mat4> inactive, blarg;
 
 		std::vector<LightVolume> volumes{ constantLights };
-		// The players 'torch'
-		{
-			LightVolume greeblies;
-			// 100 is the length of the cone
-			constexpr float FlashLightHeight = 100.f;
-			constexpr float FlashLightRadius = 50.f;
-			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
-			greeblies.color = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
-			greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
-			greeblies.direction = glm::vec4(playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), FlashLightRadius);
-			// Leave the constants alone
-			//volumes.push_back(greeblies);
-		}
 		management.Update();
 
 		auto tmep = bobert.GetPoints(management.GetRawPositions());
@@ -1335,7 +1323,6 @@ void gameTick()
 		std::vector<LightVolume> volumer{ };
 		std::ranges::copy(volumes | std::ranges::views::all, std::back_inserter(volumer));
 		drawingVolumes.Swap(volumes);
-		drawingVolumes2.Swap(volumer);
 		
 		if (Level::NumExplosion() > 0)
 		{
@@ -1983,11 +1970,11 @@ void init()
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
 	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
 
-	Shader::SetRecompilationFlag(true);
+	Shader::ForceRecompile(true);
 	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
 	ShaderBank::Get("dust").CompileSimple("dust");
-	Shader::SetRecompilationFlag(false);
+	Shader::ForceRecompile(false);
 
 	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");

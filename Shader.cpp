@@ -29,7 +29,7 @@ void Shader::SetBasePath(const std::string& basePath)
 	shaderBasePath = basePath + FILEPATH_SLASH;
 }
 
-void Shader::SetRecompilationFlag(bool flag)
+void Shader::ForceRecompile(bool flag)
 {
 	Recompile = flag;
 }
