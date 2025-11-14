@@ -23,9 +23,6 @@ float CameraToDepth(float depth)
 	return temp.x / temp.y;
 }
 
-uniform vec3 lightForward;
-uniform vec3 lightPosition;
-
 void main()
 {
 	// From https://github.com/paroj/gltut/blob/master/Tut%2013%20Impostors/data/GeomImpostor.frag
@@ -47,12 +44,15 @@ void main()
 	
 	vec3 cameraPos = ray * intersectT;
 	gl_FragDepth = CameraToDepth(cameraPos.z);
-	vec3 cameraNormal = normalize(cameraPos - fPos);
 	
-	const vec3 FlashLightColor = vec3(148, 252, 255) / 255;
-	
-	vec3 viewDirection = normalize(View[3].xyz - fPos);	
-	vec3 lightOut = ForwardPlusLightingViewSpace(cameraPos, cameraNormal, -normalize(cameraPos));
-	//lightOut += DirectedPointLight(lightPosition, lightForward, FlashLightColor, cameraNormal, cameraPos, -normalize(cameraPos));
+	// Every example has this the other way around, but it seems to be correct in only this orientation, for some reason
+	vec3 cameraNormal = normalize(fPos - cameraPos);
+
+	FragData data;
+	data.position = cameraPos;
+	data.normal = cameraNormal;
+	data.viewDirection = normalize(cameraPos);
+		
+	vec3 lightOut = ForwardPlusLightingViewSpace(data);
 	fragmentColor = vec4(shapeColor * lightOut, 1);
 }

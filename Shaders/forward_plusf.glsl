@@ -25,9 +25,12 @@ void main()
 	
 	
 	vec3 viewDirection = normalize(CameraPos - fPos);
-		
+	FragData data;
+	data.position = fPos;
+	data.normal = normal;
+	data.viewDirection = viewDirection;
 	
-	vec3 lightOut = ForwardPlusLighting(fPos, normal, viewDirection);
+	vec3 lightOut = ForwardPlusLighting(data);
 	
 	// For textured stuff
 	//vec4 sampled = texture(textureColor, fTex);
@@ -40,7 +43,5 @@ void main()
 		sampled.xyz *= mult;
 	}
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
-	//fragmentColor = vec4(norm, 1.f);
 	//fragmentColor = vec4(LightTesting(), 1.f);
-	//fragmentColor = vec4(index / tileDimension, 0, 1);
 }

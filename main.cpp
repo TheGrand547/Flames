@@ -373,10 +373,23 @@ void display()
 		//DisableGLFeatures<StencilTesting>();
 		EnableDepthBufferWrite();
 	}
-
 	drawingVolumes.ExclusiveOperation(
 		[&](auto& data)
 		{
+			// The players 'torch'
+			
+				LightVolume greeblies;
+				// 100 is the length of the cone
+				constexpr float FlashLightHeight = 100.f;
+				constexpr float FlashLightRadius = 50.f;
+				greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
+				greeblies.color = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
+				greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
+				greeblies.direction = glm::vec4(axes[0], FlashLightRadius);
+				data.push_back(greeblies);
+				//data.push_back(greeblies);
+				//data.pop_back();
+			
 			auto& buffer2 = ShaderStorage::Retrieve("LightBlockOriginal");
 			buffer2.BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
@@ -400,6 +413,7 @@ void display()
 	);
 	// Compute Shaders
 	{
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		Shader& cullLights = ShaderBank::Retrieve("lightCulling");
 		cullLights.SetActiveShader();
 		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
@@ -468,8 +482,6 @@ void display()
 		vao.Bind();
 		vao.BindArrayBuffer(BufferBank::Retrieve("DrawDebris"), 0);
 		local.SetVec3("shapeColor", glm::vec3(0.9f));
-		local.SetVec3("lightPosition", view * glm::vec4(playerModel.translation, 1.f));
-		local.SetVec3("lightForward", -(view * glm::vec4((playerModel.rotation * glm::vec3(1.f, 0.f, 0.f)), 0.f)));
 		local.DrawArrayIndirect<DrawType::TriangleStrip>(Bank<DrawIndirectBuffer>::Retrieve("DebrisIndirect"));
 	}
 
@@ -1192,13 +1204,13 @@ void gameTick()
 			LightVolume greeblies;
 			// 100 is the length of the cone
 			constexpr float FlashLightHeight = 100.f;
-			constexpr float FlashLightRadius = 50.f; 
+			constexpr float FlashLightRadius = 50.f;
 			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
-			greeblies.color    = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
-			greeblies.constants = glm::vec4(1.f, 1.f/20.f, 1.f/2000.f, 1.f);
+			greeblies.color = glm::vec4(148.f, 252.f, 255.f, 255.f) / 255.f;
+			greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
 			greeblies.direction = glm::vec4(playerModel.rotation * glm::vec3(1.f, 0.f, 0.f), FlashLightRadius);
 			// Leave the constants alone
-			volumes.push_back(greeblies);
+			//volumes.push_back(greeblies);
 		}
 		management.Update();
 
@@ -1969,8 +1981,6 @@ void init()
 	ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
 
 	ShaderBank::Get("dither").CompileSimple("light_text_dither");
-	ShaderBank::Get("lightVolume").CompileSimple("light_volume");
-	ShaderBank::Get("new_mesh").CompileSimple("new_mesh");
 	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
 
 	Shader::SetRecompilationFlag(true);
@@ -1985,7 +1995,7 @@ void init()
 	ShaderBank::Get("Shielding").CompileSimple("shield");
 	ShaderBank::Get("ship").CompileSimple("mesh_final");
 
-	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "lightVolume", "engine",
+	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "engine",
 		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic", "vision",
 		"trail", "uniform", "pathNodeView", "stencilTest", "debrisCompute"}),
 		[](auto& element)
