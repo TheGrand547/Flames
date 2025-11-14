@@ -275,6 +275,7 @@ bool Shader::CompileSimple(const std::string& name)
 #ifdef RELEASE
 	#pragma message("Compile Simple should not be used in release mode! Please embed the shaders.")
 #endif // RELEASE
+	Log("Compiling Shader '{}'", name);
 	{
 		std::chrono::system_clock::rep timer = 0;
 		int mask = 0;
@@ -412,9 +413,14 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	}
 
 	this->name = combined;
-	if (TryLoadCompiled(combined, std::max(std::filesystem::last_write_time(vertexPath).time_since_epoch().count(), 
-		std::filesystem::last_write_time(fragmentPath).time_since_epoch().count())))
+
+	auto newestWrite = std::max(std::filesystem::last_write_time(vertexPath).time_since_epoch().count(),
+		std::filesystem::last_write_time(fragmentPath).time_since_epoch().count());
+
+	if (TryLoadCompiled(combined, newestWrite))
+	{
 		return true;
+	}
 	
 	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);

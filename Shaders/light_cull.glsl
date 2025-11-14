@@ -23,7 +23,10 @@ shared uint maxDepth;
 shared uint minDepth;
 shared float clipNear;
 
+shared uint lightBitmask;
+
 uniform sampler2D DepthBuffer;
+uniform uint featureToggle;
 
 void AddLight(uint currentIndex)
 {
@@ -34,15 +37,32 @@ void AddLight(uint currentIndex)
 	}
 }
 
-
+// Bitmask idea from https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
 void PointLightCull(uint index, float zNear, float zFar)
 {
 	LightInfoBig current = lights[index];
-	if (current.position.z + current.position.w < zNear || current.position.z - current.position.w > zFar)
+	
+	float pointNear = current.position.z + current.position.w;
+	float pointFar  = current.position.z - current.position.w;
+		
+	float depthIntervals = 32.f / (zFar - zNear);
+	uint lowIndex  = uint(max(0, min(32, floor((pointNear - zNear) * depthIntervals))));
+	uint highIndex = uint(max(0, min(32, floor((pointFar - zNear) * depthIntervals))));
+	uint mask = 0xFFFFFFFF;
+	mask >>= 31 - (lowIndex - highIndex);
+	mask <<= highIndex;
+	bool fallThrough = true;
+	bool bitmaskCheck = (mask & lightBitmask) == 0;
+	if (featureToggle > 0)
+	{
+		fallThrough = (mask & lightBitmask) != 0;
+	}
+	
+	if (!fallThrough || pointNear < zNear || pointFar > zFar)
 	{
 		
 	}
-	else if (FrustumSphere(groupFrustum, current.position))
+	else if (fallThrough && FrustumSphere(groupFrustum, current.position))
 	{
 		AddLight(index);
 	}
@@ -82,7 +102,10 @@ void main()
 		globalOffset = 0;
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
+		lightBitmask = 0;
 	}
+	
+	float measuredZ = TransformFast(sampledDepth);
 	barrier();
 	atomicMax(minDepth, ordered);
 	atomicMin(maxDepth, ordered);
@@ -90,8 +113,6 @@ void main()
 	
 	float zNear = TransformFast(uintBitsToFloat(maxDepth));
 	float zFar  = TransformFast(uintBitsToFloat(minDepth));
-
-	Plane nearPlane = {vec3(0, 0, -1), -zNear};
 	
 	uint i = threadIndex;
 	// This feels backwards, but I can't prove it.
@@ -99,6 +120,15 @@ void main()
 	{
 		i = lightCount + 1;
 	}
+	
+	
+	// Now this range is divided into pieces
+	// Flipped because of reverse Z
+	float depthIntervals = 32.f / (zFar - zNear);
+	uint terrainBit = uint(max(0, min(32, floor((measuredZ - zNear) * depthIntervals)))); 
+	atomicOr(lightBitmask, 1 << terrainBit);
+	barrier();
+	
 	for (; i < lightCount; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
 		LightInfoBig current = lights[i];
@@ -112,7 +142,7 @@ void main()
 		// Directed point light(cone)
 		else if (type < 0)
 		{
-			ConeLightCull(i, zNear, zFar);
+			//ConeLightCull(i, zNear, zFar);
 			//AddLight(i);
 		}
 		// Type 0, directed light

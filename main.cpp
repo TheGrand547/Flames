@@ -375,8 +375,18 @@ void display()
 		//DisableGLFeatures<StencilTesting>();
 		EnableDepthBufferWrite();
 	}
+	std::array<LightVolume, 1> data;
+	//for (int i = 1; i < 5; i++)
+	{
+		LightVolume greeblies;
+		greeblies.position = glm::vec4(playerModel.translation + cameraForward * 30.f, 10);
+		greeblies.color = glm::vec4(flashLightColor, 1.f);
+		greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
+		greeblies.direction = glm::vec4(axes[0], 5);
+		data[0] = greeblies;
+	}
 	drawingVolumes.ExclusiveOperation(
-		[&](std::vector<LightVolume>& data)
+		[&](std::vector<LightVolume>& data2)
 		{
 			// The players 'torch'
 			// Has to be like this so it isn't duplicated
@@ -388,7 +398,7 @@ void display()
 			greeblies.color = glm::vec4(flashLightColor, 1.f);
 			greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
 			greeblies.direction = glm::vec4(axes[0], FlashLightRadius);
-			data.push_back(greeblies);
+			//data.push_back(greeblies);
 			
 			ShaderStorage::Retrieve("LightBlockOriginal").BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
@@ -409,7 +419,7 @@ void display()
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 
-			data.pop_back();
+			//data.pop_back();
 		}
 	);
 	// Compute Shaders
@@ -418,6 +428,7 @@ void display()
 		Shader& cullLights = ShaderBank::Retrieve("lightCulling");
 		cullLights.SetActiveShader();
 		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
+		cullLights.SetUnsignedInt("featureToggle", featureToggle);
 		cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
 		Shader& computation = ShaderBank::Retrieve("debrisCompute");
 		auto& rawDebris = ShaderStorage::Retrieve("RawDebris");
@@ -547,13 +558,12 @@ void display()
 	uniform.SetMat4("Model", target.GetModelMatrix());
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
-	const glm::mat3 axes22 = glm::mat3_cast(playerModel.rotation);
 	uniform.SetActiveShader();
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
 	uniform.SetVec3("color", glm::vec3(0.f, 0.f, 1.f));
 	glLineWidth(1.f);
-	glm::vec3 bulletPath = glm::normalize(axes22[0] * 100.f + playfield.GetVelocity());
+	glm::vec3 bulletPath = glm::normalize(axes[0] * 100.f + playfield.GetVelocity());
 	glm::vec3 position = playerModel.translation + bulletPath * 10.f;
 	Model model{ position, playerModel.rotation };
 	model.scale = glm::vec3(0.25f);
@@ -561,7 +571,8 @@ void display()
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	for (int i = 0; i < 5; i++)
 	{
-		model.translation += 10.f * bulletPath;
+		//model.translation += 10.f * bulletPath;
+		model.translation += 10.f * cameraForward;
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
@@ -805,6 +816,7 @@ void display()
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
 		glDepthFunc(GL_GEQUAL);
 	}
+
 	{
 		// TODO: move this elsewhere
 		FeatureFlagPush<Blending> _blend;
@@ -828,7 +840,7 @@ void display()
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
 		foolish.SetInt("FeatureToggle", featureToggle);
 		//foolish.DrawElements(sphereIndicies);
-		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
+		//foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 		EnableDepthBufferWrite();
 	}
 
@@ -1773,9 +1785,9 @@ void init();
 
 int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
+	InitLog();
 	int error = 0;
 	debugFlags.fill(false);
-	InitLog();
 	// Briefly test audio thingy
 	if (false)
 	{

@@ -77,8 +77,8 @@ bool ConePlane(Cone cone, Plane plane)
 bool FrustumCone(Frustum frustum, Cone cone, float zNear, float zFar)
 {
 	bool shouldInclude = true;
-	Plane near = {vec3(0, 0, -1), zNear};
-	Plane far = {vec3(0,  0,  1), zFar};
+	Plane near = {vec3(0, 0, -1), zFar};
+	Plane far = {vec3(0,  0,  1), zNear};
 	if (ConePlane(cone, near) || ConePlane(cone, far))
 	{
 		shouldInclude = false;

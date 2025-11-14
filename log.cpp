@@ -15,6 +15,9 @@ void InitLog()
 #ifndef _DEBUG
 	// TODO Better stuff
 	logOut.open("err.log");
+#else
+	// Don't have it flush every time a new line is written
+	std::ios_base::sync_with_stdio(false);
 #endif // _DEBUG
 }
 
@@ -27,6 +30,10 @@ void CloseLog()
 
 void OutputText(const std::string_view& stringer)
 {
+	// Add time signature to the log file
+#ifndef _DEBUG
+	
+#endif
 	OutputStream << stringer << '\n';
 }
 
@@ -77,6 +84,5 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, [[may
 	default:_severity = "UNKNOWN"; break;
 	}
 
-	printf("%d: %s of %s severity, raised from %s: %s\n",
-		id, _type, _severity, _source, message);
+	OutputText(std::format("{}: {} of {} severity, raised from {}: {}", id, _type, _severity, _source, message));
 }
