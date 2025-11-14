@@ -1,6 +1,7 @@
 #include "DemoGuy.h"
 #include <glm/ext/matrix_transform.hpp>
 #include <glm/gtc/random.hpp>
+#include "glmHelp.h"
 #include "Pathfinding.h"
 #include "Level.h"
 
@@ -110,7 +111,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 		this->PathFollower::physics.ApplyForces(-glm::normalize(this->PathFollower::physics.velocity));
 		if (glm::length(this->transform.velocity) < EPSILON)
 		{
-			Log("Slowdown Frames: " << this->stateCounter);
+			Log("Slowdown Frames: {}", this->stateCounter);
 			nextState = (rand() % 2 == 0) ? States::Stare : States::Stare;
 		}
 		break;
@@ -126,7 +127,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 
 	if (nextState != States::Error)
 	{
-		LogF("Heading from '%s' to '%s'\n", GetPrintable(this->currentState).c_str(), GetPrintable(nextState).c_str());
+		Log("Heading from '{}' to '{}'\n", GetPrintable(this->currentState), GetPrintable(nextState));
 		switch (nextState)
 		{
 		case States::Track:
@@ -187,7 +188,7 @@ void DemoGuy::Update(glm::vec3 position) noexcept
 			// Wait between .5 and 1.5 seconds
 			this->stateCounter = 64 + rand() % 128;
 			this->lastFacing = circleRand(1.f);
-			Log("New direction: " << this->lastFacing);
+			Log("New direction: {}", glm::to_string(this->lastFacing));
 			break;
 		}
 		case States::Error:

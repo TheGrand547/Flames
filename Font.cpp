@@ -118,7 +118,7 @@ glm::vec2 ASCIIFont::GetTextTris(ArrayBuffer& buffer, float x, float y, const st
 		}
 		else
 		{
-			LogF("Couldn't find character with hex code '%x' in dictionary\n", static_cast<int>(letter));
+			Log("Couldn't find character with hex code '{}' in dictionary", static_cast<int>(letter));
 		}
 	}
 	buffer.BufferData(results, StaticDraw);
@@ -208,7 +208,7 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 	std::filesystem::path fontFile(Font::basePath + "/" + filename);
 	if (!std::filesystem::exists(fontFile))
 	{
-		LogF("Unable to load font file '%s'\n", fontFile.string().c_str());
+		Log("Unable to load font file '{}'", fontFile.string());
 		return false;
 	}
 	font.characters.fill({});

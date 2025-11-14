@@ -1,13 +1,42 @@
 #include "log.h"
 #include <glew.h>
 #include <iostream>
+#include <fstream>
+
+#ifdef _DEBUG
+#define OutputStream std::cout
+#else
+static std::ofstream logOut;
+#define OutputStream logOut
+#endif // _DEBUG
+
+void InitLog()
+{
+#ifndef _DEBUG
+	// TODO Better stuff
+	logOut.open("err.log");
+#endif // _DEBUG
+}
+
+void CloseLog()
+{
+#ifndef _DEBUG
+	logOut.close();
+#endif // _DEBUG
+}
+
+void OutputText(const std::string_view& stringer)
+{
+	OutputStream << stringer << '\n';
+}
+
 
 void CheckError(const std::source_location location)
 {
 	GLenum e;
 	while ((e = glGetError()))
 	{
-		printf("%s OpenGL Error: %s\n", LocationFormat(location).c_str(), reinterpret_cast<const char*>(gluErrorString(e)));
+		Log("{} OpenGL Error: {}", LocationFormat(location), reinterpret_cast<const char*>(gluErrorString(e)));
 	}
 }
 

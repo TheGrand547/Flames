@@ -423,7 +423,7 @@ public:
 			small += currentNode == element->second.pointer;
 			if (total % 10000 == 0)
 			{
-				Log(std::format("Ratio of partial to full insertions: {} : {}", small, total));
+				Log("Ratio of partial to full insertions: {} : {}", small, total);
 			}
 #endif // DEBUG
 		}

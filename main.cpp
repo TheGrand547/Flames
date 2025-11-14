@@ -1775,7 +1775,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 {
 	int error = 0;
 	debugFlags.fill(false);
-
+	InitLog();
 	// Briefly test audio thingy
 	if (false)
 	{
@@ -1796,7 +1796,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	windowPointer = nullptr;
 	if (!glfwInit())
 	{
-		LogF("Failed to initialized GLFW.n\n");
+		Log("Failed to initialized GLFW");
 		return -1;
 	}
 	glfwWindowHint(GLFW_DOUBLEBUFFER, GLFW_TRUE);
@@ -1877,6 +1877,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 
 	Input::Teardown();
 	// TODO: cleanup
+	CloseLog();
 	return 0;
 }
 
@@ -2276,8 +2277,6 @@ void init()
 		Bank<OBB>::Get("NoGoZone") = OBB(AABB(glm::vec3(30.f)));
 		//levelGeometry.rawIndirect[0].vertexCount = levelGeometry.index.GetElementCount();
 		//levelGeometry.indirect.BufferData(levelGeometry.rawIndirect[0]);
-		std::cout << levelGeometry.index.GetElementCount() << '\n';
-		std::cout << levelGeometry.vertex.GetElementCount() << '\n';
 	}
 	Bank<ArrayBuffer>::Get("dummyInstance").BufferData(std::to_array<MeshMatrix>({ {glm::mat4(1.f), glm::mat4(1.f)} }));
 
@@ -2355,7 +2354,7 @@ void init()
 					}
 					else
 					{
-						Log(std::boolalpha << box.FastIntersect(liota) << ":" << box.Intersect(start, direction));
+						Log("{}:{}", box.FastIntersect(liota), box.Intersect(start, direction));
 						fails++;
 					}
 
@@ -2363,10 +2362,9 @@ void init()
 				return false; 
 			}
 		);
-		Log(std::format("Pass {} : Fail {}", succeed, fails));
+		Log("Pass {} : Fail {}", succeed, fails);
 	}
 
-	std::cout << "Big Node Size: " << Level::AllNodes().size() << '\n';
 	{
 		QUICKTIMER("KdTree Generation");
 		Level::Tree = kdTree<PathNodePtr>::Generate(Level::AllNodes());

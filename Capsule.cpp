@@ -59,7 +59,7 @@ void Capsule::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies, float rad
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
+		Log("Invalid Latitude({}) or Longitude({}) slice count", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<MeshVertex> points;

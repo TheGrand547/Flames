@@ -25,7 +25,7 @@ void Sphere::GenerateNormals(ArrayBuffer& verts, ElementArray& indicies,
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
+		Log("Invalid Latitude({}) or Longitude({}) slice count", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<NormalVertex> points;
@@ -88,7 +88,7 @@ void Sphere::GenerateMesh(ArrayBuffer& verts, ElementArray& indicies,
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
+		Log("Invalid Latitude({}) or Longitude({}) slice count", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<MeshVertex> points;
@@ -165,7 +165,7 @@ void Sphere::Generate(ArrayBuffer& verts, ElementArray& indicies,
 {
 	if (latitudeSlices == 0 || longitudeSlices == 0)
 	{
-		LogF("Invalid Latitude(%uhh) or Longitude(%uhh) slice count\n", latitudeSlices, longitudeSlices);
+		Log("Invalid Latitude({}) or Longitude({}) slice count", latitudeSlices, longitudeSlices);
 		return;
 	}
 	std::vector<Vertex> points;

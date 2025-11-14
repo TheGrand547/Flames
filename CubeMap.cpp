@@ -75,7 +75,7 @@ void CubeMap::Generate(const std::array<std::string, 6> files)
 		}
 		else
 		{
-			LogF("Failed to load file '%s' for cubemap\n", files[i].c_str());
+			Log("Failed to load file '{}' for cubemap\n", files[i]);
 		}
 		stbi_image_free(data);
 	}

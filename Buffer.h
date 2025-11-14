@@ -377,7 +377,7 @@ template<BufferType Type> template<class T> inline void Buffer<Type>::BufferSubD
 		std::size_t total = static_cast<std::size_t>(offset) + sizeof(T) * data.size();
 		if (total > this->length)
 		{
-			LogF("Attemptign to write up to memory %zu, but buffer is only %zu long.\n", total, this->length);
+			Log("Attemptign to write up to memory {}, but buffer is only {} long.", total, this->length);
 			return;
 		}
 		glBindBuffer(static_cast<GLenum>(Type), this->buffer);

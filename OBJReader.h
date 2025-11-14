@@ -215,15 +215,14 @@ struct OBJReader
 		if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
 		{
 			// Loading failed
-			Log(std::format("Loading of model file '{}' failed", filename));
+			Log("Loading of model file '{}' failed", filename);
 			return {};
 		}
 		MeshData result;
 		aiNode* root = scene->mRootNode;
 		std::vector<T> vertex;
 		std::vector<unsigned int> index;
-		std::cout << filename << ":" << scene->mName.C_Str() << ":" << scene->mNumMeshes << 
-			":" << root->mNumChildren << ":" << root->mNumMeshes << "\n";
+		Log("{}:{}:{}:{}:{}", filename, scene->mName.C_Str(), scene->mNumMeshes, root->mNumChildren, root->mNumMeshes);
 
 		// Since this is "pure" model loading this might be moved to iterating through scene->mMeshes
 		// Sounds like it would work, but it doesn't, unless there are no translations locally. Animations are a huge mess

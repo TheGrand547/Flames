@@ -201,7 +201,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 			input.open(compiledPath, std::ios::binary);
 			if (input.is_open())
 			{
-				Log(std::format("Loaded shader from file '{}'", compiledPath.string()));
+				Log("Loaded shader from file '{}'", compiledPath.string());
 				GLint length = 0;
 				GLenum format = 0;
 				input.read(reinterpret_cast<char*>(&length), sizeof(GLint));
@@ -227,7 +227,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
 				logMsg[length] = '\0';
 				glGetProgramInfoLog(this->program, logSize, NULL, logMsg.get());
-				Log("Error reading compiled shader from file '" << name << ".csp'" << logMsg.get() << std::endl);
+				Log("Error reading compiled shader from file '{}.csp' \n{}", name, logMsg.get());
 				input.close();
 				this->program = 0;
 			}
@@ -347,7 +347,7 @@ bool Shader::CompileSimple(const std::string& name)
 			default:
 				if ((mask >> 2) != 0)
 				{
-					Log("Missing one of the tesselation shader stages for '" << name << "'");
+					Log("Missing one of the tesselation shader stages for '{}'", name);
 				}
 				this->CompileEmbedded(vertex, fragment);
 				break;
@@ -406,7 +406,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 
 	if (!(std::filesystem::exists(vertexPath) && std::filesystem::exists(fragmentPath)))
 	{
-		Log("One or more of the shader files missing for '" << combined << "'\n");
+		Log("One or more of the shader files missing for '{}'", combined);
 		EXIT;
 		return false;
 	}
@@ -420,7 +420,7 @@ bool Shader::Compile(const std::string& vert, const std::string& frag)
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
 	if (vertexFile.is_open() && fragmentFile.is_open())
 	{
-		Log("Compiling Shader from " << vertexPath << " and " << fragmentPath << "\n");
+		Log("Compiling Shader from {} and {}", vertexPath.string(), fragmentPath.string());
 		std::string vertex(std::istreambuf_iterator<char>{vertexFile}, {});
 		std::string fragment(std::istreambuf_iterator<char>{fragmentFile}, {});
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, vertex.c_str());
@@ -570,7 +570,7 @@ void Shader::ExportCompiled() const
 {
 	if (!this->compiled || this->precompiled || !this->program || this->name == "")
 		return;
-	Log(std::format("Exporting Shader '{}'", this->name));
+	Log("Exporting Shader '{}'", this->name);
 	std::ofstream output(shaderBasePath + this->name + ".csp", std::ios::binary);
 	if (output.is_open())
 	{
@@ -587,7 +587,7 @@ void Shader::ExportCompiled() const
 	else
 	{
 #ifndef RELEASE
-		Log(std::format("Failed to save Shader '{}' to precompiled binary\n", this->name));
+		Log("Failed to save Shader '{}' to precompiled binary\n", this->name);
 #endif
 	}
 	output.close();
@@ -599,18 +599,18 @@ void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std
 {
 	if (shaderIncludeMapping.find(virtualName) != shaderIncludeMapping.end())
 	{
-		LogF("Already created a mapping with the name '%s'.\n", virtualName.c_str());
+		Log("Already created a mapping with the name '{}'.", virtualName);
 		return;
 	}
 	std::ifstream included(shaderBasePath + fileName, std::ifstream::in);
 	if (included.is_open())
 	{
-		//LogF("Including file '%s' in the virtual shader filesystem.\n", fileName.c_str());
+		//Log("Including file '{}' in the virtual shader filesystem.\n", fileName);
 		std::string text(std::istreambuf_iterator<char>{included}, {});
 		shaderIncludeMapping[virtualName] = text;
 	}
 	else
 	{
-		LogF("Filename '%s' could not be found.\n", fileName.c_str());
+		Log("Filename '{}' could not be found.", fileName);
 	}
 }

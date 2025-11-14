@@ -50,7 +50,7 @@ glm::vec3 Plane::GetPoint() const noexcept
 	}
 	else
 	{
-		LogF("Plane created with invalid normal\n");
+		Log("Plane created with invalid normal");
 		return glm::vec3(NAN);
 	}
 	assert(glm::abs(this->Facing(point)) < EPSILON);

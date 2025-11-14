@@ -30,7 +30,7 @@ public:
 			}
 			else
 			{
-				Log(std::format("'{}' is not a pre-existing element in this ResourceBank", element));
+				Log("'{}' is not a pre-existing element in this ResourceBank", element);
 			}
 		}
 	}

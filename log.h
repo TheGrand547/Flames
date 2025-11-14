@@ -5,6 +5,7 @@
 #include <glew.h>
 #include <source_location>
 #include <string>
+#include <format>
 
 #ifdef _WIN64
 constexpr auto FILEPATH_SLASH = '\\';
@@ -76,23 +77,11 @@ constexpr std::string LocationFormat(const std::source_location location)
 void CheckError(const std::source_location location = std::source_location::current());
 void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
-#ifdef _DEBUG
+void OutputText(const std::string_view& stringer);
+void InitLog();
+void CloseLog();
 
-#define LogF(...) {printf("%s", LocationFormat().c_str()); printf(__VA_ARGS__);}
-#define LogSourceF(x, ...) {printf("%s", LocationFormat(x).c_str()); printf(__VA_ARGS__);}
-#define Log(...) {std::cout << LocationFormat() << __VA_ARGS__ << '\n';}
-#define LogSource(x, ...) {std::cout << LocationFormat(x) << __VA_ARGS__ << '\n';}
+#define Log(...) {OutputText(LocationFormat() + std::format(__VA_ARGS__));}
+#define LogSource(x, ...) {OutputText(LocationFormat(x) + std::format(__VA_ARGS__));}
 
-#define Before(...) std::cout << "Before: " << __VA_ARGS__ << '\n';
-#define After(...) std::cout << "After: " << __VA_ARGS__ << '\n';
-#else // _DEBUG
-
-#define Log(...) CheckError()
-#define LogSource(...) CheckError()
-#define LogF(...) CheckError()
-#define LogSourceF(...) CheckError()
-#define Before(...)
-#define After(...)
-
-#endif // _DEBUG
 #endif // FLAMES_LOG_H

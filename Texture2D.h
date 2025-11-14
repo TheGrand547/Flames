@@ -241,7 +241,7 @@ template<class T, std::size_t L> inline void Texture2D::Load(const std::array<T,
 		width = height = static_cast<std::size_t>(sqrt(L));
 		if (width * height != L)
 		{
-			LogF("Width(%zu) and Height(%zu) do not equal the proper size(%zu)\n", width, height, L);
+			Log("Width({}) and Height({}) do not equal the proper size(%zu)\n", width, height, L);
 			return;
 		}
 	}

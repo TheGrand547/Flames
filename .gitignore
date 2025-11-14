@@ -60,3 +60,4 @@ imgui.ini
 *.csp
 uniform.csp
 failed_shader.txt
+*.log

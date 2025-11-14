@@ -73,8 +73,8 @@ void NavMesh::Generate(std::span<const glm::vec3> points, std::function<bool(con
 			average += right.connections.size();
 		}
 	}
-	Log(std::format("Connections Made: {}", connectionCount));
-	Log(std::format("Average Neighbor Count: {}", average / this->nodes.size()));
+	Log("Connections Made: {}", connectionCount);
+	Log("Average Neighbor Count: {}", average / this->nodes.size());
 }
 
 void NavMesh::Clear() noexcept
@@ -100,7 +100,7 @@ bool NavMesh::Load() noexcept
 		input.read(buffer, 3);
 		if (!strcmp(buffer, Validation.c_str()))
 		{
-			Log(std::format("'{}' is an invalid NavMesh file", this->name));
+			Log("'{}' is an invalid NavMesh file", this->name);
 			return false;
 		}
 		IndexType count = 0;
@@ -128,7 +128,7 @@ bool NavMesh::Load() noexcept
 	}
 	else
 	{
-		Log(std::format("'{}' does not exist as a NavMesh file", this->name));
+		Log("'{}' does not exist as a NavMesh file", this->name);
 		return false;
 	}
 }
@@ -140,7 +140,7 @@ void NavMesh::Export() noexcept
 	output.open(target, std::ios::binary);
 	if (!output.is_open())
 	{
-		Log(std::format("Failed to export structure to file '{}'", this->name + extension));
+		Log("Failed to export structure to file '{}'", this->name + extension);
 		return;
 	}
 	QUICKTIMER("Exporting");
@@ -170,7 +170,7 @@ void NavMesh::Export() noexcept
 	{
 		return { this->nodes[start].position, this->nodes[target].position };
 	}
-	Log(std::format("Distance: {}", this->nodes[start].distance(this->nodes[target])));
+	Log("Distance: {}", this->nodes[start].distance(this->nodes[target]));
 	struct Scoring { float score = std::numeric_limits<float>::infinity(); };
 	using SmartSearchNode = IndexType;
 	using NodeMap = std::unordered_map<SmartSearchNode, SmartSearchNode>;
@@ -273,6 +273,6 @@ void NavMesh::Export() noexcept
 		//);
 		closedSet.insert(current);
 	}
-	Log(std::format("Nodes Explored: {}\tNeighbors Tested: {}\tReadjustments: {}\tPath Length: {}", closedSet.size(), analyzed, inner, finalPath.size()));
+	Log("Nodes Explored: {}\tNeighbors Tested: {}\tReadjustments: {}\tPath Length: {}", closedSet.size(), analyzed, inner, finalPath.size());
 	return finalPath;
 }
