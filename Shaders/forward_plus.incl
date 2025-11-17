@@ -2,12 +2,12 @@ layout(origin_upper_left) in vec4 gl_FragCoord;
 
 float ConeRatio(Cone cone, vec3 forward)
 {
-	const float wranger = cos(radians(25));
 	float angle = dot(cone.forward, -forward);
 	// Flipping this does really neat things, if you transpose the normal and position in the cone light functions
-	//return (wranger < angle) ? 1.f : 0.f;
-	float maxi = mix(wranger, 1.f, 0.5f);
-	return smoothstep(wranger, maxi, angle);
+	//return (cone.angle < angle) ? 1.f : 0.f;
+	
+	float temp = mix(cone.angle, 1.f, 0.5f);
+	return smoothstep(cone.angle, temp, angle);
 }
 
 vec3 ConeLight(LightInfoBig light, FragData fragData)
@@ -21,11 +21,16 @@ vec3 ConeLight(LightInfoBig light, FragData fragData)
 	float distance = length(cone.position - fragPosition);
 	
 	// Do the attenuation thing
-	float diffuse = max(dot(lightDirection, fragNormal), 0);
-	float specular = 0;
+	float diffuse = applyDiffuse(fragData, lightDirection);
+	float specular = applySpecular(fragData, lightDirection);
 	
-	vec3 lightConstants = light.constants.xyz;
-	float fallOff = 1.f / (lightConstants.x + lightConstants.y * distance + lightConstants.z * distance * distance);
+	float fallOff = attenuate(light.constants.xyz, distance);
+	
+	if (length(dot((cone.position - fragPosition), -cone.forward)) > cone.height)
+	{
+		fallOff = 0.f;
+	}
+	
 	return light.color.xyz * (diffuse + specular) * ConeRatio(cone, lightDirection) * fallOff;
 }
 

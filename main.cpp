@@ -298,6 +298,16 @@ void BindDrawFramebuffer()
 	Window::Viewport();
 }
 
+void ConeLightingInfor(LightVolume& in, float height, float fieldOfView)
+{
+	// This is A/H
+	float cosine = glm::cos(glm::radians(fieldOfView / 2.f));
+	float coneRadius = height * glm::tan(glm::radians(fieldOfView / 2.f));
+	in.position.w = -height;
+	in.constants.w = coneRadius;
+	in.direction.w = cosine;
+}
+
 void display()
 {
 	GLuint currentRenderQuery = 0;
@@ -350,55 +360,22 @@ void display()
 	glDepthFunc(GL_GEQUAL);
 	glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 	Shader& uniform = ShaderBank::Retrieve("uniform");
-	if (debugFlags[DEBUG_PATH])
-	{
-		EnableGLFeatures<Blending>();
-		//DisableDepthBufferWrite();
-		Shader& pathNodeView = ShaderBank::Retrieve("pathNodeView");
-		pathNodeView.SetActiveShader();
-		pathNodeVAO.Bind();
-		pathNodeVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
-		pathNodeVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("nodePositions"), 1);
-		pathNodeView.SetFloat("Scale", (glm::cos(idleFrameCounter / 200.f) * 0.05f) + 0.3f);
-		pathNodeView.SetVec4("Color", glm::vec4(0, 0, 1, 0.75f));
-		
-		pathNodeView.DrawElementsInstanced<DrawType::Triangle>(solidCubeIndex, Bank<ArrayBuffer>::Get("nodeLinePositions"));
-
-		uniform.SetActiveShader();
-		uniform.SetMat4("Model", glm::mat4(1.f));
-		plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("nodeLinePositions"));
-		glLineWidth(10.f);
-		uniform.DrawArray<DrawType::Lines>(Bank<ArrayBuffer>::Get("nodeLinePositions"));
-		uniform.DrawArray<DrawType::LineStrip>(Bank<ArrayBuffer>::Get("nodeLinePositions"));
-		//plainVAO.BindArrayBuffer(pathNodePositions);
-		//uniform.DrawArray<DrawType::LineStrip>(pathNodePositions);
-		//DisableGLFeatures<StencilTesting>();
-		EnableDepthBufferWrite();
-	}
-	std::array<LightVolume, 1> data;
-	//for (int i = 1; i < 5; i++)
-	{
-		LightVolume greeblies;
-		greeblies.position = glm::vec4(playerModel.translation + cameraForward * 30.f, 10);
-		greeblies.color = glm::vec4(flashLightColor, 1.f);
-		greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
-		greeblies.direction = glm::vec4(axes[0], 5);
-		data[0] = greeblies;
-	}
 	drawingVolumes.ExclusiveOperation(
-		[&](std::vector<LightVolume>& data2)
+		[&](std::vector<LightVolume>& data)
 		{
 			// The players 'torch'
 			// Has to be like this so it isn't duplicated
 			LightVolume greeblies;
 			// 100 is the length of the cone
-			constexpr float FlashLightHeight = 100.f;
-			constexpr float FlashLightRadius = 50.f;
-			greeblies.position = glm::vec4(playerModel.translation, -FlashLightHeight);
+			constexpr float FlashLightHeight = 200.f;
+			// The half angle
+			constexpr float FlashLightAngle = 50.f;
+			greeblies.position = glm::vec4(playerModel.translation, 1.f);
 			greeblies.color = glm::vec4(flashLightColor, 1.f);
-			greeblies.constants = glm::vec4(1.f, 1.f / 20.f, 1.f / 2000.f, 1.f);
-			greeblies.direction = glm::vec4(axes[0], FlashLightRadius);
-			//data.push_back(greeblies);
+			greeblies.constants = glm::vec4(1.f, 1.f / 200.f, 1.f / 2000.f, 1.f);
+			greeblies.direction = glm::vec4(axes[0], 1.f);
+			ConeLightingInfor(greeblies, FlashLightHeight, FlashLightAngle);
+			data.push_back(greeblies);
 			
 			ShaderStorage::Retrieve("LightBlockOriginal").BufferData(data);
 			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
@@ -419,7 +396,7 @@ void display()
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
 			ShaderStorage::Retrieve("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
 
-			//data.pop_back();
+			data.pop_back();
 		}
 	);
 	// Compute Shaders
@@ -562,7 +539,6 @@ void display()
 	plainVAO.Bind();
 	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
 	uniform.SetVec3("color", glm::vec3(0.f, 0.f, 1.f));
-	glLineWidth(1.f);
 	glm::vec3 bulletPath = glm::normalize(axes[0] * 100.f + playfield.GetVelocity());
 	glm::vec3 position = playerModel.translation + bulletPath * 10.f;
 	Model model{ position, playerModel.rotation };
@@ -624,7 +600,6 @@ void display()
 	//meshVAO.BindArrayBuffer(guyBuffer2);
 
 	trashMan.Draw(ShaderBank::Retrieve("debris"));
-	glLineWidth(1.f);
 
 	ShaderBank::Get("basic").SetActiveShader();
 	meshVAO.Bind();
@@ -663,7 +638,6 @@ void display()
 	plainVAO.BindArrayBuffer(rayBuffer);
 	Model bland;
 	uniform.SetMat4("Model", bland.GetModelMatrix());
-	glLineWidth(15.f);
 	//uniform.DrawArray<DrawType::Lines>(rayBuffer);
 
 	{
@@ -714,7 +688,6 @@ void display()
 			vaoRef.BindArrayBuffer(bulletMats, 1);
 			shaderRef.SetMat4("Model2", glm::mat4(1.f));
 			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
-			glLineWidth(1.f);
 			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("bulletImpacts"), 1);
 			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, Bank<ArrayBuffer>::Get("bulletImpacts"));
 			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
@@ -907,7 +880,6 @@ void display()
 	glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
 	BindDefaultFrameBuffer();
 
-	glLineWidth(1.f);
 	DisableGLFeatures<DepthTesting>();
 	ShaderBank::Retrieve("widget").SetActiveShader();
 	ShaderBank::Retrieve("widget").DrawArray<DrawType::Lines>(6);
@@ -1815,14 +1787,22 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	glfwWindowHint(GLFW_OPENGL_API, GLFW_TRUE);
 	glfwWindowHint(GLFW_STEREO, GLFW_FALSE);
 
+	glfwWindowHint(GLFW_REFRESH_RATE, GLFW_DONT_CARE);
 	glfwWindowHint(GLFW_CLIENT_API, GLFW_OPENGL_API);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
 	glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 6);
 	glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+	glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GLFW_TRUE);
+	glfwWindowHint(GLFW_CONTEXT_RELEASE_BEHAVIOR, GLFW_ANY_RELEASE_BEHAVIOR);
+	glfwWindowHint(GLFW_CONTEXT_ROBUSTNESS, GLFW_LOSE_CONTEXT_ON_RESET);
 
-
+#ifdef _DEBUG
 	glfwWindowHint(GLFW_CONTEXT_NO_ERROR, GLFW_FALSE);
 	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_TRUE);
+#else
+	glfwWindowHint(GLFW_OPENGL_DEBUG_CONTEXT, GLFW_FALSE);
+#endif // _DEBUG
+
 	windowPointer = glfwCreateWindow(Window::Width, Window::Height, "Wowie a window", nullptr, nullptr);
 	if (!windowPointer)
 	{
@@ -1835,6 +1815,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	int left, top, right, bottom;
 	glfwGetWindowFrameSize(windowPointer, &left, &top, &right, &bottom);
 
+	// TODO: glfwShowWindow
 	// Adjust the window so it is completely on screen
 	glfwSetWindowPos(windowPointer, 0, top);
 
@@ -1924,19 +1905,23 @@ void init()
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	DisableGLFeatures<MultiSampling>();
 
-	//glDepthFunc(GL_LEQUAL);
+#ifdef _DEBUG
+	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	glEnable(GL_DEBUG_OUTPUT);
+	glDebugMessageCallback(DebugCallback, nullptr);
+	GLuint toDisable = 7;
+	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
+	toDisable = 1; // Disable Shader Recompiled due to state change(when you apply a line draw function to something that is expected for tris)
+	//glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, )
+#else
+	glDisable(GL_DEBUG_OUTPUT);
+#endif // _DEBUG
+
 	glDepthFunc(GL_GEQUAL);
 
 	glClearColor(0, 0, 0, 1);
 	glClipControl(GL_LOWER_LEFT, GL_ZERO_TO_ONE);
 	glFrontFace(GL_CCW);
-	// OpenGL debuggin
-	glDebugMessageCallback(DebugCallback, nullptr);
-	// Get rid of Line_width_deprecated messages
-	GLuint toDisable = 7;
-	glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR, GL_DONT_CARE, 1, &toDisable, GL_FALSE);
-	toDisable = 1; // Disable Shader Recompiled due to state change(when you apply a line draw function to something that is expected for tris)
-	//glDebugMessageControl(GL_DEBUG_SOURCE_API, GL_DEBUG_TYPE_PERFORMANCE, )
 
 	Level::Geometry.Resize(glm::vec3(20));
 
@@ -2107,7 +2092,6 @@ void init()
 	stickBuffer.BufferData(Dummy::stick);
 	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
 
-	glLineWidth(100.f);
 	Bank<ArrayBuffer>::Get("plainCube").BufferData(Cube::GetPoints());
 
 	Bank<Texture2D>::Get("blankTexture").CreateEmpty(1, 1, InternalRGBA8, glm::vec4(1.f));
@@ -2533,7 +2517,6 @@ void init()
 	}
 	CheckError();
 	DisableGLFeatures<Blending>();
-	glLineWidth(100);
 
 	help.SetMessages("Work", "UnWork", fonter);
 	glBindBuffer(GL_UNIFORM_BUFFER, 0);

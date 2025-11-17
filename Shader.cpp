@@ -11,7 +11,7 @@
 #define EXIT
 #else // RELEASE
 //#define EXIT exit(-1)
-#define EXIT system("pause")
+#define EXIT {system("pause"); exit(-1);}
 #endif // RELEASE
 
 static std::map<std::string, std::string> shaderIncludeMapping;

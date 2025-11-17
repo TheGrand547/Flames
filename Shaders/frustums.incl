@@ -64,12 +64,15 @@ struct Cone
 	vec3 position;
 	float height;
 	vec3 forward;
+	// The cosine of the angle, because that's always what's needed
+	float angle;
 	float radius;
 };
 
 bool ConePlane(Cone cone, Plane plane)
 {
 	vec3 parallel = cross(cross(plane.normal, cone.forward), cone.forward);
+	
 	vec3 closest  = cone.position + cone.forward * cone.height - parallel * cone.radius;
 	return TouchesPlane(plane, cone.position) && TouchesPlane(plane, closest);
 }

@@ -7,8 +7,9 @@
 #include <iostream>
 #include <fstream>
 #include <filesystem>
+#include "log.h"
 
 void TestFunc()
 {
-	
+
 }

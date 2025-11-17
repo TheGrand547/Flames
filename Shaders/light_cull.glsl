@@ -5,7 +5,6 @@
 #include "forward_buffers"
 #include "cone"
 
-
 // GET BACK TO THIS
 #ifndef BLOCK_SIZE
 #define BLOCK_SIZE 16
@@ -38,31 +37,56 @@ void AddLight(uint currentIndex)
 }
 
 // Bitmask idea from https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
-void PointLightCull(uint index, float zNear, float zFar)
-{
-	LightInfoBig current = lights[index];
-	
-	float pointNear = current.position.z + current.position.w;
-	float pointFar  = current.position.z - current.position.w;
-		
+// True  -> no bitmask overlap, light should not be included
+// False -> bitmask overlap, more testing needed
+bool SphereBitmaskTest(vec2 bounds, float zNear, float zFar)
+{	
 	float depthIntervals = 32.f / (zFar - zNear);
-	uint lowIndex  = uint(max(0, min(32, floor((pointNear - zNear) * depthIntervals))));
-	uint highIndex = uint(max(0, min(32, floor((pointFar - zNear) * depthIntervals))));
+	uint lowIndex  = uint(max(0, min(32, floor((bounds.x - zNear) * depthIntervals))));
+	uint highIndex = uint(max(0, min(32, floor((bounds.y - zNear) * depthIntervals))));
 	uint mask = 0xFFFFFFFF;
 	mask >>= 31 - (lowIndex - highIndex);
 	mask <<= highIndex;
-	bool fallThrough = true;
-	bool bitmaskCheck = (mask & lightBitmask) == 0;
-	if (featureToggle > 0)
-	{
-		fallThrough = (mask & lightBitmask) != 0;
-	}
 	
-	if (!fallThrough || pointNear < zNear || pointFar > zFar)
+	return (mask & lightBitmask) == 0;
+}
+
+// True  -> Intersects the current frustum, in some way that matters
+// False -> Doesn't intersect the current frustum in a way that matters
+bool SphereTest(vec4 sphere, float zNear, float zFar)
+{
+	float pointNear = sphere.z + sphere.w;
+	float pointFar  = sphere.z - sphere.w;
+	
+	if (SphereBitmaskTest(vec2(pointNear, pointFar), zNear, zFar) || pointNear < zNear || pointFar > zFar)
 	{
-		
+		return false;
 	}
-	else if (fallThrough && FrustumSphere(groupFrustum, current.position))
+	else if (FrustumSphere(groupFrustum, sphere))
+	{
+		return true;
+	}
+	return false;
+}
+
+
+// True  -> Can't rule out that the cone intersects this tile, by assuming it acts as a sphere
+// False -> This cone definitely should not be included
+bool CoarseConeTest(Cone cone, float zNear, float zFar)
+{
+	// If this is unbounded, this should be skipped,  but I haven't determined how I am going to do that
+	
+	// Generate sphere
+	float radius = cone.height * 0.5f / (cone.angle * cone.angle);
+	
+	vec4 sphere = vec4(cone.position + cone.forward * radius, radius);
+	return SphereTest(sphere, zNear, zFar);
+}
+
+void PointLightCull(uint index, float zNear, float zFar)
+{
+	LightInfoBig current = lights[index];
+	if (SphereTest(current.position, zNear, zFar))
 	{
 		AddLight(index);
 	}
@@ -72,7 +96,7 @@ void ConeLightCull(uint index, float zNear, float zFar)
 {
 	LightInfoBig current = lights[index];
 	Cone local = LightToCone(current);
-	if (FrustumCone(groupFrustum, local, zNear, zFar))
+	if (CoarseConeTest(local, zNear, zFar) && FrustumCone(groupFrustum, local, zNear, zFar))
 	{
 		AddLight(index);
 	}
@@ -142,7 +166,7 @@ void main()
 		// Directed point light(cone)
 		else if (type < 0)
 		{
-			//ConeLightCull(i, zNear, zFar);
+			ConeLightCull(i, zNear, zFar);
 			//AddLight(i);
 		}
 		// Type 0, directed light

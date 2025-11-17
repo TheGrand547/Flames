@@ -93,10 +93,10 @@ void main()
 		if (distance > 0.25 * zFar)
 		{
 			// Regenerate
-			vec3 position = hash3D(currentDust) * 2.f - 1.f;
+			vec3 position = hash3D(currentDust + current.velocity.xyz + vec3(alignment)) * 2.f - 1.f;
 			position = position * zFar / 4.f + cameraPos + cameraVelocity;
 			currentDust = position;
-			elements[globalIndex].position.w = max(hash1D(position) / 2.f, 0.2);
+			elements[globalIndex].position.w = max(hash1D(position) / 2.f, 0.15);
 		}
 		
 		
