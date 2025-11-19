@@ -19,6 +19,7 @@
 #include <mutex>
 #include <queue>
 #include <random>
+#include <functional>
 #include <sys/utime.h>
 #include <time.h>
 #include <unordered_map>
@@ -187,6 +188,16 @@ struct LightVolume
 	glm::vec4 direction{0.f};
 };
 
+struct BigLightVolume
+{
+	glm::vec4 position{ -66.6f };
+	glm::vec4 positionViewSpace{ -66.6f };
+	glm::vec4 color{ -66.6f };
+	glm::vec4 constants{ -66.6f };
+	glm::vec4 direction{ -66.6f };
+	glm::vec4 directionViewSpace{ -66.6f };
+};
+
 // TODO: Semaphore version of buffersync
 BufferSync<std::vector<TextureVertex>> decalVertex;
 
@@ -301,7 +312,7 @@ constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
 const glm::vec3 flashLightColor = glm::vec3(148.f, 252.f, 255.f) / 255.f;
 
 
-constexpr std::uint32_t MaxLights = 16 * 32;
+constexpr std::uint32_t MaxLights = 100;
 // Get the number of buckets per tile, Adding an additional bucket for misc data
 constexpr std::uint32_t BucketsPerTile = MaxLights / 32 + (MaxLights % 32 != 0) + 1;
 
@@ -319,6 +330,21 @@ void ConeLightingInfo(LightVolume& in, float height, float fieldOfView)
 	in.position.w = -height;
 	in.constants.w = coneRadius;
 	in.direction.w = cosine;
+}
+
+BigLightVolume MakeBig(const LightVolume& smallLight, glm::mat4 transformer)
+{
+	BigLightVolume bigLight;
+	bigLight.position  = smallLight.position;
+	bigLight.color     = smallLight.color;
+	bigLight.constants = smallLight.constants;
+	bigLight.direction = smallLight.direction;
+
+	glm::vec3 tempA = transformer * glm::vec4(glm::xyz(smallLight.position), 1.f);
+	glm::vec3 tempB = transformer * glm::vec4(glm::xyz(smallLight.direction), 0.f);
+	bigLight.positionViewSpace  = glm::vec4(tempA, smallLight.position.w);
+	bigLight.directionViewSpace = glm::vec4(tempB, smallLight.direction.w);
+	return bigLight;
 }
 
 void display()
@@ -388,25 +414,18 @@ void display()
 			greeblies.constants = glm::vec4(1.f, 1.f / 200.f, 1.f / 2000.f, 1.f);
 			greeblies.direction = glm::vec4(axes[0], 1.f);
 			ConeLightingInfo(greeblies, FlashLightHeight, FlashLightAngle);
-			data.push_back(greeblies);
 			
-			ShaderStorage::Retrieve("LightBlockOriginal").BufferData(data);
-			// TODO: Work around this hacky thing, I don't like having to use double the memory for lights
-			auto& buffer = ShaderStorage::Retrieve("LightBlock");
-			std::vector<LightVolume> grouper;
-			std::ranges::copy(
-				data | std::views::transform(
-					[&](const LightVolume& v)
-					{
-						glm::vec3 transformed = view * glm::vec4(glm::xyz(v.position), 1.f);
-						glm::vec3 transformed2 = view * glm::vec4(glm::xyz(v.direction), 0.f);
-						return LightVolume{ glm::vec4(transformed, v.position.w),
-								v.color, v.constants, glm::vec4(transformed2, v.direction.w)};
-					}
-				), std::back_inserter(grouper));
-
-			buffer.BufferData(grouper);
-			data.pop_back();
+			std::vector<BigLightVolume> biggest;
+			biggest.reserve(data.size() + 1);
+			biggest.push_back(MakeBig(greeblies, view));
+			std::ranges::copy(data | std::views::transform(
+				[&](const LightVolume& v)
+				{
+					return MakeBig(v, view);
+				}
+			),
+				std::back_inserter(biggest));
+			ShaderStorage::Retrieve("LightBlock").BufferData(biggest);
 		}
 	);
 	// Compute Shaders
@@ -414,7 +433,7 @@ void display()
 		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
 		Shader& cullLights = ShaderBank::Retrieve("lightCulling");
 		cullLights.SetActiveShader();
-		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 1);
+		cullLights.SetTextureUnit("DepthBuffer", earlyDepth.GetDepth(), 0);
 		cullLights.SetUnsignedInt("featureToggle", featureToggle);
 		cullLights.DispatchCompute(tileDimension.x, tileDimension.y);
 		Shader& computation = ShaderBank::Retrieve("debrisCompute");
@@ -1370,8 +1389,6 @@ void gameTick()
 		{
 			bulletImpacts.Swap(blarg);
 		}
-		std::vector<LightVolume> volumer{ };
-		std::ranges::copy(volumes | std::ranges::views::all, std::back_inserter(volumer));
 		drawingVolumes.Swap(volumes);
 		
 		if (Level::NumExplosion() > 0)
@@ -1773,10 +1790,6 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 
 		// Moving past the sample
 		shader.SetActiveShader();
-
-		// ???? <- Oh it's about reserving sizes of things, grumble grumble
-		struct A{glm::vec3 c;float b;};
-		struct B{A ar[4];};
 		// Frustum space calculations
 		auto amount = nextMult(Window::GetSizeF(), gridResolution) / gridResolution;
 		numTiles = static_cast<decltype(numTiles)>(amount.x * amount.y);
@@ -1785,15 +1798,11 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		ShaderStorage::Get("LightMasks").Reserve(sizeof(std::uint32_t) * numTiles * BucketsPerTile);
 		ShaderStorage::Get("LightMasks").BindBufferBase(8);
 		// Frustums
-		//ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
 		ShaderStorage::Get("Frustums").Reserve(sizeof(glm::mat4) * numTiles);
 		ShaderStorage::Get("Frustums").BindBufferBase(7);
-		// Light Block is dynamically generated, but dummy data will suffice
-		ShaderStorage::Get("LightBlock").BufferData<std::uint32_t>(0);
-		ShaderStorage::Get("LightBlock").BindBufferBase(9);
-		// Must be reset every frame before usage
-		ShaderStorage::Get("LightBlockOriginal").BufferData(std::to_array({ 0u, 0u }));
-		ShaderStorage::Retrieve("LightBlockOriginal").BindBufferBase(10);
+
+		ShaderStorage::Get("LightBlock").BufferData(std::to_array({ 0u, 0u }));
+		ShaderStorage::Retrieve("LightBlock").BindBufferBase(9);
 		{
 			UniformBuffer& uniformed = Bank<UniformBuffer>::Get("ForwardPlusConstants");
 			//uniformed.Generate(StaticDraw, sizeof(glm::mat2) + sizeof(glm::uvec2) + sizeof(glm::vec2) + sizeof(int));
@@ -2354,7 +2363,7 @@ void init()
 		{
 			Triangle parent = nodeTri[rand() % nodeTri.size()];
 			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::max(glm::gaussRand(25.f, 5.f), 5.f), 
-				glm::min(glm::gaussRand(25.f, 10.f), 40.f));
+				(glm::min(glm::gaussRand(25.f, 10.f), 40.f)));
 			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
 			
 			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';

@@ -72,7 +72,9 @@ vec3 ForwardPlusLighting(FragData fragData)
 		{
 			uint currentBit = findLSB(currentMask);
 			currentMask ^= 1 << currentBit;
-			lightOut += ApplyLight(lightsOriginal[32 * i + currentBit], fragData);		
+			
+			LightInfoFull current = largestLights[32 * i + currentBit];
+			lightOut += ApplyLight(GetWorldSpaceLighting(current), fragData);		
 		}
 	}
 	return lightOut;
@@ -116,7 +118,9 @@ vec3 ForwardPlusLightingViewSpace(FragData fragData)
 		{
 			uint currentBit = findLSB(currentMask);
 			currentMask ^= 1 << currentBit;
-			lightOut += ApplyLight(lights[32 * i + currentBit], fragData);		
+			
+			LightInfoFull current = largestLights[32 * i + currentBit];
+			lightOut += ApplyLight(GetViewSpaceLighting(current), fragData);
 		}
 	}
 	return lightOut;

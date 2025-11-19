@@ -17,14 +17,18 @@
 #define MASKS_PER_TILE 17
 #endif // MASKS_PER_TILE
 
+#ifndef MAX_LIGHTS
+#define MAX_LIGHTS ((MASKS_PER_TILE - 1) * 32)
+#endif // MAX_LIGHTS
+
+layout(location = 0) uniform sampler2D DepthBuffer;
+
+
 shared Frustum groupFrustum;
 shared uint maxDepth;
 shared uint minDepth;
 shared float clipNear;
 shared uint lightBitmask;
-
-uniform sampler2D DepthBuffer;
-uniform uint featureToggle;
 
 shared uint localTileMask[MASKS_PER_TILE];
 
@@ -66,7 +70,7 @@ void main()
 	float zNear = TransformFast(uintBitsToFloat(maxDepth));
 	float zFar  = TransformFast(uintBitsToFloat(minDepth));
 	
-	const uint lightCount = lights.length();
+	const uint lightCount = min(largestLights.length(), MAX_LIGHTS);
 	
 	uint i = threadIndex;
 	// This feels backwards, but I can't prove it.
@@ -85,9 +89,7 @@ void main()
 	
 	for (; i < lightCount; i += TILE_SIZE * TILE_SIZE)
 	{
-		LightInfoBig current = lights[i];
-		float type = lights[i].position.w;
-		
+		float type = largestLights[i].position.w;
 		// Sphereical Point light
 		if (type > 0)
 		{
@@ -174,7 +176,7 @@ bool CoarseConeTest(Cone cone, float zNear, float zFar)
 
 void PointLightCull(uint index, float zNear, float zFar)
 {
-	LightInfoBig current = lights[index];
+	LightInfoBig current = GetViewSpaceLighting(largestLights[index]);
 	if (SphereTest(current.position, zNear, zFar))
 	{
 		AddLight(index);
@@ -183,7 +185,7 @@ void PointLightCull(uint index, float zNear, float zFar)
 
 void ConeLightCull(uint index, float zNear, float zFar)
 {
-	LightInfoBig current = lights[index];
+	LightInfoBig current = GetViewSpaceLighting(largestLights[index]);;
 	Cone local = LightToCone(current);
 	if (CoarseConeTest(local, zNear, zFar) && FrustumCone(groupFrustum, local, zNear, zFar))
 	{
