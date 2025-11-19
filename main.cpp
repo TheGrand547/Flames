@@ -272,6 +272,14 @@ Frustum GetFrustum(const Model& playerModel)
 	return Frustum(cameraPair.first, ForwardDir(cameraPair.second, playerModel.rotation * glm::vec3(0.f, 1.f, 0.f)), glm::vec2(zNear, zFar));
 }
 
+struct quickLight
+{
+	glm::vec3 start, end;
+	std::uint16_t lifeTime;
+};
+BufferSync<std::vector<glm::vec3>> quickLightPairs;
+std::vector<quickLight> zoopers;
+
 ShieldGenerator bobert;
 ColorFrameBuffer buffet;
 Framebuffer renderTarget;
@@ -292,13 +300,18 @@ constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
 
 const glm::vec3 flashLightColor = glm::vec3(148.f, 252.f, 255.f) / 255.f;
 
+
+constexpr std::uint32_t MaxLights = 16 * 32;
+// Get the number of buckets per tile, Adding an additional bucket for misc data
+constexpr std::uint32_t BucketsPerTile = MaxLights / 32 + (MaxLights % 32 != 0) + 1;
+
 void BindDrawFramebuffer()
 {
 	renderTarget.BindDraw();
 	Window::Viewport();
 }
 
-void ConeLightingInfor(LightVolume& in, float height, float fieldOfView)
+void ConeLightingInfo(LightVolume& in, float height, float fieldOfView)
 {
 	// This is A/H
 	float cosine = glm::cos(glm::radians(fieldOfView / 2.f));
@@ -374,7 +387,7 @@ void display()
 			greeblies.color = glm::vec4(flashLightColor, 1.f);
 			greeblies.constants = glm::vec4(1.f, 1.f / 200.f, 1.f / 2000.f, 1.f);
 			greeblies.direction = glm::vec4(axes[0], 1.f);
-			ConeLightingInfor(greeblies, FlashLightHeight, FlashLightAngle);
+			ConeLightingInfo(greeblies, FlashLightHeight, FlashLightAngle);
 			data.push_back(greeblies);
 			
 			ShaderStorage::Retrieve("LightBlockOriginal").BufferData(data);
@@ -651,6 +664,26 @@ void display()
 		trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
 		colorVAO.BindArrayBuffer(rightBuffer);
 		trails.DrawArray<DrawType::TriangleStrip>(rightBuffer);
+	}
+
+	// Drawin quicklights
+	if (quickLightPairs.ExclusiveOperation(
+		[](auto& data) 
+		{
+			BufferBank::Get("Quicker").BufferData(data); 
+			return data.size(); 
+		}
+	) > 0)
+	{
+		Shader& shader = ShaderBank::Retrieve("basic");
+		shader.SetActiveShader();
+		shader.SetMat4("Model", glm::mat4(1.f));
+		shader.SetVec4("Color", glm::vec4(flashLightColor, 0.85f));
+		VAO& vao = VAOBank::Get("uniform");
+		ArrayBuffer& buffer = BufferBank::Get("Quicker");
+		vao.Bind();
+		vao.BindArrayBuffer(buffer);
+		shader.DrawArray<DrawType::Lines>(buffer);
 	}
 
 	//tickTockMan.Draw(guyMeshData, VAOBank::Get("new_mesh"), ShaderBank::Get("new_mesh"));
@@ -1126,6 +1159,7 @@ void idle()
 	buffered << "\n" << playfield.GetModel().translation;
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle << "\nFull Calculations: " << debugFlags[FULL_CALCULATIONS];
 	buffered << '\n' << glm::dot(glm::normalize(playfield.GetVelocity()), playfield.GetModel().rotation * World::Forward);
+	buffered << '\n' << zoopers.size();
 	Level::SetInterest(management.GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay: {}us\n-Concurrent: {}us\
@@ -1179,6 +1213,44 @@ void gameTick()
 		playfield.Update(boardState);
 		const Model playerModel = playfield.GetModel();
 		const Frustum localFrust = GetFrustum(playerModel);
+		std::erase_if(zoopers, [](quickLight& zoop) {return zoop.lifeTime-- == 0; });
+		std::vector<glm::vec3> quicklime;
+		for (const auto& z : zoopers)
+		{
+			quicklime.push_back(z.start);
+			quicklime.push_back(z.end);
+		}
+		quickLightPairs.Swap(quicklime);
+		// Add one every every frame, why not
+		if (boardState.popcornFire && Level::GetCurrentTick() % 2 == 0)
+		{
+			Ray liota(playerModel.translation, playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
+			constexpr float maxLength = 1000.f;
+			float currentDepth = maxLength;
+			glm::vec3 currentHit{};
+			for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
+			{
+				RayCollision k{};
+				if (tri->RayCast(liota, k) && k.depth < currentDepth)
+				{
+					currentDepth = k.depth;
+					currentHit = k.point;
+				}
+			}
+			if (currentDepth > 2.f)
+			{
+				float A = glm::linearRand(0.f, currentDepth);
+				float B = glm::linearRand(0.f, currentDepth);
+				if (A > B)
+				{
+					std::swap(A, B);
+				}
+				float duration = 1000.f / glm::length(A - B);
+				glm::vec3 pointA = liota.PointA() + liota.dir * A;
+				glm::vec3 pointB = liota.PointA() + liota.dir * B;
+				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
+			}
+		}
 
 		// Bullet stuff;
 		std::vector<glm::mat4> inactive, blarg;
@@ -1691,9 +1763,7 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 	{
 		// TODO: Put the constants and stuff in here so it doesn't have to be recompiled all the time
 		QUICKTIMER("Foolhardy");
-		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
-		Shader& shader = ShaderBank::Get("computation");
-		shader.CompileCompute("compute_frustums");
+		Shader& shader = ShaderBank::Retrieve("computation");
 		shader.UniformBlockBinding("Camera", 0);
 
 		auto nextMult = [](auto a, auto b) {return glm::ceil(a / b) * b; };
@@ -1713,6 +1783,9 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		//ShaderStorage::Get("LightGrid");     // 7
 		//ShaderStorage::Get("LightBlock");    // 8
 		//ShaderStorage::Get("LightGrid2");    // 9
+		// The actual storage of the lights in bitmask form
+		ShaderStorage::Get("LightMasks").Reserve(sizeof(std::uint32_t) * numTiles * BucketsPerTile);
+		ShaderStorage::Get("LightMasks").BindBufferBase(4);
 		// Frustums
 		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
 		ShaderStorage::Get("Frustums").BindBufferBase(5);
@@ -1742,7 +1815,7 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 			uniformed.BufferSubData(Window::GetSizeF(), sizeof(glm::mat4x2));
 			uniformed.BufferSubData(tileDimension, sizeof(glm::mat4x2) + sizeof(glm::vec2));
 			uniformed.BufferSubData(static_cast<int>(gridResolution), sizeof(glm::mat4x2) + sizeof(glm::vec2) + sizeof(glm::uvec2));
-			uniformed.BufferSubData(glm::uvec3(666, 1337, 547), 52);
+			uniformed.BufferSubData(glm::uvec3(BucketsPerTile, 1337, 547), 52);
 			uniformed.SetBindingPoint(2);
 			uniformed.BindUniform();
 		}
@@ -1957,6 +2030,9 @@ void init()
 	ShaderBank::Get("uniform").CompileSimple("uniform");
 	ShaderBank::Get("vision").CompileSimple("vision");
 	ShaderBank::Get("widget").CompileSimple("widget");
+
+	ShaderBank::Get("lightCulling").CompileCompute("light_cull");
+	ShaderBank::Get("computation").CompileCompute("compute_frustums");
 
 	ShaderBank::Get("ShieldTexture").Compile(
 		"framebuffer", "shield_texture"

@@ -58,14 +58,35 @@ vec3 ForwardPlusLighting(FragData fragData)
 
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);
-	uvec2 lightData = grid[gridIndex];
 	
+	const uint numLightsThisTile = tileMasks[gridIndex * MasksPerTile];
+	uint processedLights = 0;
+	
+	// Possibly something with the bitCount() function to escape early if the number of lights remaining is zero
+	uint firstMask = gridIndex * MasksPerTile + 1;
+	for (uint i = 0; i + 1 < MasksPerTile && processedLights < numLightsThisTile; i++)
+	{
+		uint currentMask = tileMasks[i + firstMask];
+		processedLights += bitCount(currentMask);
+		while (currentMask != 0)
+		{
+			uint currentBit = findLSB(currentMask);
+			currentMask ^= 1 << currentBit;
+			lightOut += ApplyLight(lightsOriginal[32 * i + currentBit], fragData);		
+		}
+	}
+	
+	
+	/*
+	uvec2 lightData = grid[gridIndex];
 	for (uint i = 0; i < lightData.y; i++)
 	{
 		uint index = indicies[i + lightData.x];
 		// This applies lighting in world space
 		lightOut += ApplyLight(lightsOriginal[index], fragData);
+
 	}
+	*/
 	return lightOut;
 }
 
@@ -76,13 +97,14 @@ vec3 LightTesting()
 
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);
-	uvec2 lightData = grid[gridIndex];
+
+	uint numLightsThisTile = tileMasks[gridIndex * MasksPerTile];
 	
-	if (lightData.y > 10)
+	if (numLightsThisTile > 10)
 	{
 		return ambient + vec3(0, 1.f, 0);
 	}
-	return ambient + vec3(lightData.y / 10.f);
+	return ambient + vec3(numLightsThisTile / 10.f);
 };
 
 vec3 ForwardPlusLightingViewSpace(FragData fragData)
@@ -94,11 +116,21 @@ vec3 ForwardPlusLightingViewSpace(FragData fragData)
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);
 	uvec2 lightData = grid[gridIndex];
 	
-	for (uint i = 0; i < lightData.y; i++)
+	const uint numLightsThisTile = tileMasks[gridIndex * MasksPerTile];
+	uint processedLights = 0;
+	
+	// Possibly something with the bitCount() function to escape early if the number of lights remaining is zero
+	uint firstMask = gridIndex * MasksPerTile + 1;
+	for (uint i = 0; i + 1 < MasksPerTile && processedLights < numLightsThisTile; i++)
 	{
-		uint index = indicies[i + lightData.x];
-		// This applies lighting in view space
-		lightOut += ApplyLight(lights[index], fragData);
+		uint currentMask = tileMasks[i + firstMask];
+		processedLights += bitCount(currentMask);
+		while (currentMask != 0)
+		{
+			uint currentBit = findLSB(currentMask);
+			currentMask ^= 1 << currentBit;
+			lightOut += ApplyLight(lights[32 * i + currentBit], fragData);		
+		}
 	}
 	return lightOut;
 }

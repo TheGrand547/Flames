@@ -16,6 +16,41 @@ struct LightInfoBig
 	vec4 direction;
 };
 
+struct LightInfoFull
+{
+	// position.w determines whether it's a point light(>0), cone light(<0), or a directed light(else)
+	vec4 position;
+	vec4 positionViewSpace;
+	vec4 color;
+	// constants.w holds the bottom radius of the cone
+	vec4 constants;
+	// direction.w holds the cosine of cones half angle
+	vec4 direction;
+	vec4 directionViewSpace;
+};
+
+
+LightInfoBig GetWorldSpaceLighting(LightInfoFull info)
+{
+	LightInfoBig result;
+	result.position = info.position;
+	result.color = info.color;
+	result.constants = info.constants;
+	result.direction = info.direction;
+	return result;
+}
+
+LightInfoBig GetViewSpaceLighting(LightInfoFull info)
+{
+	LightInfoBig result;
+	result.position = info.positionViewSpace;
+	result.color = info.color;
+	result.constants = info.constants;
+	result.direction = info.directionViewSpace;
+	return result;
+}
+
+
 struct FragData
 {
 	vec3 position;

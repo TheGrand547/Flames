@@ -21,19 +21,31 @@ shared uint globalOffset;
 shared uint maxDepth;
 shared uint minDepth;
 shared float clipNear;
-
 shared uint lightBitmask;
 
 uniform sampler2D DepthBuffer;
 uniform uint featureToggle;
 
+#ifndef MASKS_PER_TILE
+//#define MASKS_PER_TILE 16 + 1
+#define MASKS_PER_TILE 17
+#endif
+
+shared uint localTileMask[MASKS_PER_TILE];
+
 void AddLight(uint currentIndex)
 {
+	/*
 	uint index = atomicAdd(numLights, 1);
 	if (index < MAX_LIGHTS)
 	{
 		groupLights[index] = currentIndex;
 	}
+	*/
+	uint bucketOffset = currentIndex / 32;
+	uint intraOffset  = currentIndex % 32;
+	atomicOr(localTileMask[bucketOffset + 1], 1 << intraOffset);
+	//atomicAdd(numLights, 1);
 }
 
 // Bitmask idea from https://wickedengine.net/2018/01/optimizing-tile-based-light-culling/
@@ -127,6 +139,10 @@ void main()
 		grid[groupIndex] = uvec2(0, 0);
 		groupFrustum = frustums[groupIndex];
 		lightBitmask = 0;
+		for (uint i = 0; i < MASKS_PER_TILE; i++)
+		{
+			localTileMask[i] = 0;
+		}
 	}
 	
 	float measuredZ = TransformFast(sampledDepth);
@@ -167,7 +183,6 @@ void main()
 		else if (type < 0)
 		{
 			ConeLightCull(i, zNear, zFar);
-			//AddLight(i);
 		}
 		// Type 0, directed light
 		else
@@ -179,17 +194,29 @@ void main()
 	// Actually save them here
 	if (threadIndex == 0)
 	{
-		globalOffset = atomicAdd(globalLightIndex, numLights);
-		grid[groupIndex] = uvec2(globalOffset, numLights);
+		//globalOffset = atomicAdd(globalLightIndex, numLights);
+		//grid[groupIndex] = uvec2(globalOffset, numLights);
 		//for (uint i = 0; i < numLights; i += 1)
 		{
 			//indicies[globalOffset + i] = groupLights[i];
 		}
+		// Tells us directly how many lights are in this tile
+		//tileMasks[groupIndex * MASKS_PER_TILE] = numLights;
+		uint totalLights = 0;
+		for (uint i = 1; i < MASKS_PER_TILE; i++)
+		{
+			tileMasks[groupIndex * MASKS_PER_TILE + i] = localTileMask[i];
+			totalLights += bitCount(localTileMask[i]);
+		}
+		tileMasks[groupIndex * MASKS_PER_TILE] = totalLights;
 	}
+	
 	// TODO: Possibly return to this
 	barrier();
-	for (uint i = threadIndex; i < numLights; i += BLOCK_SIZE * BLOCK_SIZE)
+	const uint baseOffset = groupIndex * MASKS_PER_TILE + 1;
+	for (uint i = threadIndex + 1; i < MASKS_PER_TILE; i += BLOCK_SIZE * BLOCK_SIZE)
 	{
-		indicies[globalOffset + i] = groupLights[i];
+		//indicies[globalOffset + i] = groupLights[i];
+		//tileMasks[i] = localTileMask[i];
 	}
 }

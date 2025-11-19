@@ -15,14 +15,15 @@ void main()
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);
-	uvec2 lightData = grid[gridIndex];
-	if (lightData.y > maxLight)
+	
+	uint numLightsThisTile = tileMasks[gridIndex * MasksPerTile];
+	
+	if (numLightsThisTile > maxLight)
 	{
 		fColor = vec4(0, 0, 1, 1);
 	}
 	else
 	{
-		fColor = vec4(float(lightData.y) / maxLight, 0, 0, 1);
+		fColor = vec4(float(numLightsThisTile) / maxLight, 0, 0, 1);
 	}
-	//fColor = vec4(index / tileDimension, 0, 1);
 }
