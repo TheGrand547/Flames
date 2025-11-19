@@ -21,8 +21,8 @@ static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.gl
 static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
 	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 
-static std::vector<std::string_view> shaderDefines;
-static std::vector<std::string_view> shaderTempDefines;
+static std::vector<std::string> shaderDefines;
+static std::vector<std::string> shaderTempDefines;
 
 void Shader::SetBasePath(const std::string& basePath)
 {
@@ -34,12 +34,12 @@ void Shader::ForceRecompile(bool flag)
 	Recompile = flag;
 }
 
-void Shader::Define(const std::string_view& define)
+void Shader::Define(const std::string& define)
 {
 	shaderDefines.push_back(define);
 }
 
-void Shader::DefineTemp(const std::string_view& define)
+void Shader::DefineTemp(const std::string& define)
 {
 	shaderTempDefines.push_back(define);
 }
@@ -248,20 +248,19 @@ bool Shader::ProgramStatus()
 		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(trueLogSize);
 		logMsg[trueLogSize] = '\0';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
-		std::cerr << "Linking of shader failed: " << logMsg.get() << std::endl;
-		EXIT;
+		Log("Linking of shader failed: \n{}", logMsg.get());
 		this->program = 0;
+		EXIT;
 	}
 	GLint logSize;
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
 	if (logSize)
 	{
-		std::cout << std::bit_cast<unsigned int>(logSize) << std::endl;
 		std::size_t trueLogSize = static_cast<std::size_t>(logSize) + 1;
 		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(trueLogSize);
 		logMsg[trueLogSize] = '\n';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
-		std::cout << "Program Log: " << logMsg.get() << std::endl;
+		Log("Program Log: \n{}", logMsg.get());
 		EXIT;
 	}
 	this->compiled = result;

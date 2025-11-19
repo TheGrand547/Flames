@@ -84,7 +84,11 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, [[may
 	default:_severity = "UNKNOWN"; break;
 	}
 
-	OutputText(std::format("{}: {} of {} severity, raised from {}: {}", id, _type, _severity, _source, message));
+	if (source != GL_DEBUG_SOURCE_SHADER_COMPILER)
+	{
+		OutputText(std::format("{}: {} of {} severity, raised from {}: {}", id, _type, _severity,
+			_source, message));
+	}
 	if (severity == GL_DEBUG_SEVERITY_HIGH)
 	{
 

@@ -75,18 +75,6 @@ vec3 ForwardPlusLighting(FragData fragData)
 			lightOut += ApplyLight(lightsOriginal[32 * i + currentBit], fragData);		
 		}
 	}
-	
-	
-	/*
-	uvec2 lightData = grid[gridIndex];
-	for (uint i = 0; i < lightData.y; i++)
-	{
-		uint index = indicies[i + lightData.x];
-		// This applies lighting in world space
-		lightOut += ApplyLight(lightsOriginal[index], fragData);
-
-	}
-	*/
 	return lightOut;
 }
 
@@ -114,7 +102,6 @@ vec3 ForwardPlusLightingViewSpace(FragData fragData)
 
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);
-	uvec2 lightData = grid[gridIndex];
 	
 	const uint numLightsThisTile = tileMasks[gridIndex * MasksPerTile];
 	uint processedLights = 0;

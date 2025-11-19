@@ -154,10 +154,10 @@ public:
 	static void ForceRecompile(bool flag);
 
 	// Adds some define to all further shader compliations
-	static void Define(const std::string_view& define);
+	static void Define(const std::string& define);
 
 	// Adds a define to only the very next shader compliation
-	static void DefineTemp(const std::string_view& define);
+	static void DefineTemp(const std::string& define);
 };
 
 constexpr bool Shader::Compiled() const

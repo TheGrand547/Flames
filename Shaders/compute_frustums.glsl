@@ -6,8 +6,13 @@
 #include "lighting"
 #include "forward_buffers"
 
-// Screen is broken up into 16x16 TILES
-// A 8x8 arrangement of TILES is called to used by this shader to compute the frustums for the TILES
+#ifndef SCREEN_SIZE
+#define SCREEN_SIZE vec2(1000)
+#endif // SCREEN_SIZE
+
+#ifndef TILE_SIZE
+#define TILE_SIZE (16)
+#endif // TILE_SIZE
 
 uniform mat4 InverseProjection;
 
@@ -31,11 +36,13 @@ vec4 TransformToView4(vec4 ins)
 	return temp;
 };
 
+
+
 void main()
 {
-	vec2 size = vec2(TileSize, 0);
+	vec2 size = vec2(TILE_SIZE, 0);
 	vec2 position = size.xx * gl_WorkGroupID.xy;
-	if (position.x > ScreenSize.x || position.y > ScreenSize.y)
+	if (position.x > SCREEN_SIZE.x || position.y > SCREEN_SIZE.y)
 	{
 		return;
 	}
@@ -46,7 +53,7 @@ void main()
 	vec3 points2[4];
 	for (int i = 0; i < 4; i++)
 	{
-		points2[i] = TransformToView(min(points[i], ScreenSize)).xyz;
+		points2[i] = TransformToView(min(points[i], SCREEN_SIZE)).xyz;
 	}
 	const vec3 eye = vec3(0, 0, 1.f);
 	

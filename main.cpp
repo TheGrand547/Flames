@@ -406,9 +406,6 @@ void display()
 				), std::back_inserter(grouper));
 
 			buffer.BufferData(grouper);
-			ShaderStorage::Retrieve("LightGrid2").BufferSubData(static_cast<std::uint32_t>(data.size()), 0);
-			ShaderStorage::Retrieve("LightGrid2").BufferSubData<std::uint32_t>(0, sizeof(std::uint32_t));
-
 			data.pop_back();
 		}
 	);
@@ -456,10 +453,7 @@ void display()
 	interzone.SetVec3("CameraPos", localCamera);
 	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Retrieve("dummyInstance"), 1);
 
-	ShaderStorage::Retrieve("LightIndicies").BindBufferBase(6);
 	// Only need one per tile
-	//ShaderStorage::Get("LightGrid").BindBufferBase(7);
-	//ShaderStorage::Get("LightBlock").BindBufferBase(8);
 	interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 
@@ -1763,6 +1757,15 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 	{
 		// TODO: Put the constants and stuff in here so it doesn't have to be recompiled all the time
 		QUICKTIMER("Foolhardy");
+		Shader::ForceRecompile(true);
+		Shader::Define(std::format("#define SCREEN_SIZE vec2({},{})", width, height));
+		Shader::Define(std::format("#define TILE_SIZE {}", static_cast<std::uint32_t>(gridResolution)));
+		// Add one to account for the record keeping one
+		Shader::Define(std::format("#define MASKS_PER_TILE {}", BucketsPerTile));
+		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
+		ShaderBank::Get("computation").CompileCompute("compute_frustums");
+		Shader::ForceRecompile(false);
+
 		Shader& shader = ShaderBank::Retrieve("computation");
 		shader.UniformBlockBinding("Camera", 0);
 
@@ -1778,29 +1781,17 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		auto amount = nextMult(Window::GetSizeF(), gridResolution) / gridResolution;
 		numTiles = static_cast<decltype(numTiles)>(amount.x * amount.y);
 		tileDimension = amount;
-		//ShaderStorage::Get("Frustums");      // 5
-		//ShaderStorage::Get("LightIndicies"); // 6
-		//ShaderStorage::Get("LightGrid");     // 7
-		//ShaderStorage::Get("LightBlock");    // 8
-		//ShaderStorage::Get("LightGrid2");    // 9
 		// The actual storage of the lights in bitmask form
 		ShaderStorage::Get("LightMasks").Reserve(sizeof(std::uint32_t) * numTiles * BucketsPerTile);
-		ShaderStorage::Get("LightMasks").BindBufferBase(4);
+		ShaderStorage::Get("LightMasks").BindBufferBase(8);
 		// Frustums
-		ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
-		ShaderStorage::Get("Frustums").BindBufferBase(5);
-		// Say 100 light max per tile
-		ShaderStorage::Get("LightIndicies").Reserve(sizeof(std::uint32_t) * 100 * numTiles);
-		ShaderStorage::Get("LightIndicies").BindBufferBase(6);
-		// Only need one per tile
-		ShaderStorage::Get("LightGrid").BufferData(StaticVector<glm::uvec2>(numTiles));
-		ShaderStorage::Get("LightGrid").BindBufferBase(7);
+		//ShaderStorage::Get("Frustums").BufferData(StaticVector<B>(numTiles));
+		ShaderStorage::Get("Frustums").Reserve(sizeof(glm::mat4) * numTiles);
+		ShaderStorage::Get("Frustums").BindBufferBase(7);
 		// Light Block is dynamically generated, but dummy data will suffice
 		ShaderStorage::Get("LightBlock").BufferData<std::uint32_t>(0);
-		ShaderStorage::Get("LightBlock").BindBufferBase(8);
+		ShaderStorage::Get("LightBlock").BindBufferBase(9);
 		// Must be reset every frame before usage
-		ShaderStorage::Get("LightGrid2").BufferData(std::to_array({0u, 0u}));
-		ShaderStorage::Get("LightGrid2").BindBufferBase(9);
 		ShaderStorage::Get("LightBlockOriginal").BufferData(std::to_array({ 0u, 0u }));
 		ShaderStorage::Retrieve("LightBlockOriginal").BindBufferBase(10);
 		{
@@ -2030,9 +2021,6 @@ void init()
 	ShaderBank::Get("uniform").CompileSimple("uniform");
 	ShaderBank::Get("vision").CompileSimple("vision");
 	ShaderBank::Get("widget").CompileSimple("widget");
-
-	ShaderBank::Get("lightCulling").CompileCompute("light_cull");
-	ShaderBank::Get("computation").CompileCompute("compute_frustums");
 
 	ShaderBank::Get("ShieldTexture").Compile(
 		"framebuffer", "shield_texture"

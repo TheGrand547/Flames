@@ -1,20 +1,9 @@
-layout(std430, binding = 4) volatile buffer LightMasks
+layout(std430, binding = 8) volatile buffer LightMasks
 {
 	uint tileMasks[];
 };
 
-layout(std430, binding = 6) volatile buffer LightIndices
-{
-	uint indicies[];
-};
-
-layout(std430, binding = 7) volatile buffer LightGrid
-{
-	uvec2 grid[];
-};
-
-
-layout(std430, binding = 8) readonly buffer LightBlock
+layout(std430, binding = 9) readonly buffer LightBlock
 {
 	// These will be already transformed into view space, for convenience
 	LightInfoBig lights[];
@@ -23,12 +12,6 @@ layout(std430, binding = 10) readonly buffer LightBlockOriginal
 {
 	// These will be already transformed into view space, for convenience
 	LightInfoBig lightsOriginal[];
-};
-
-layout(std430, binding = 9) volatile buffer LightGrid2
-{
-	uint lightCount;
-	uint globalLightIndex;
 };
 
 layout(std140, binding = 2) uniform ForwardPlusConstants
