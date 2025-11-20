@@ -33,6 +33,7 @@ public:
 	inline void BufferBindingPointDivisor(GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 
 	inline void BindArrayBuffer(const ArrayBuffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
+	inline void DoubleBindArrayBuffer(const ArrayBuffer& buffer, GLuint bindingPoint = 0, GLintptr offset = 0);
 
 	template<class V> inline void ArrayFormat(GLuint bindingPoint = 0, GLuint bindingDivisor = 0);
 	template<class V> inline void ArrayFormatM(Shader& shader, GLuint bindingPoint = 0, GLuint bindingDivisor = 0, std::string name = "Model");
@@ -73,6 +74,12 @@ inline void VertexArray::BufferBindingPointDivisor(GLuint bindingPoint, GLuint b
 inline void VertexArray::BindArrayBuffer(const ArrayBuffer& buffer, GLuint bindingPoint, GLintptr offset)
 {
 	glBindVertexBuffer(bindingPoint, buffer.GetBuffer(), offset, this->strides[bindingPoint]);
+}
+
+inline void VertexArray::DoubleBindArrayBuffer(const ArrayBuffer& buffer, GLuint bindingPoint, GLintptr offset)
+{
+	this->Bind();
+	this->BindArrayBuffer(buffer, bindingPoint, offset);
 }
 
 // NOTE TO FUTURE READERS, IF ONE OF THESE IS THROWING AN ERROR, SOME VERTEX ATTRIBUTE WAS OPTIMIZED OUT

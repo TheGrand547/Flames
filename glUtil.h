@@ -133,6 +133,17 @@ inline void EnableDepthBufferWrite()
     glDepthMask(GL_TRUE);
 }
 
+inline void DefaultDepthTest()
+{
+    glDepthFunc(GL_GEQUAL);
+}
+
+inline void InverseDepthTest()
+{
+    glDepthFunc(GL_LEQUAL);
+}
+
+
 template<GLFeatureFlags flags, bool enable = true> struct FeatureFlagPush
 {
     inline FeatureFlagPush() noexcept
@@ -160,9 +171,27 @@ template<GLFeatureFlags flags, bool enable = true> struct FeatureFlagPush
     }
 };
 
+template<bool status = false> struct DepthWritePush
+{
+    inline DepthWritePush() noexcept
+    {
+        glDepthMask(status);
+    }
+
+    inline ~DepthWritePush() noexcept
+    {
+        glDepthMask(!status);
+    }
+};
+
 #define __GL_FLAG_PUSH(x, y, z) FeatureFlagPush<x, z> __##y##{}
 #define __GL_FLAG_PUSH2(x, y, z) __GL_FLAG_PUSH(x, y, z)
 #define EnablePushFlags(x) __GL_FLAG_PUSH2(x, __LINE__, true)
 #define DisablePushFlags(x) __GL_FLAG_PUSH2(x, __LINE__, false)
+
+#define __GL_DEPTH_WRITE_PUSH(y, z) DepthWritePush<z> __##y##{}
+#define __GL_DEPTH_WRITE_PUSH2(y, z) __GL_DEPTH_WRITE_PUSH(y, z)
+#define EnableDepthWritePush __GL_DEPTH_WRITE_PUSH2(__LINE__, true)
+#define DisableDepthWritePush __GL_DEPTH_WRITE_PUSH2(__LINE__, false)
 
 #endif // GL_UTIL_H
