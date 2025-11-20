@@ -91,6 +91,8 @@
 #include "misc/ExternalShaders.h"
 #include <semaphore>
 #include "Test.h"
+#include "entities/Lights.h"
+#include "entities/DecayLight.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: EASTL
@@ -147,27 +149,6 @@ Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << ":" 
 
 static bool featureToggle = false;
 static std::chrono::nanoseconds idleTime, displayTime;
-
-struct LightVolume
-{
-	// Position position.w means point light, being the radius
-	// Negative position.w means cone, with the absolute value of it being the height
-	// 0 position.w means directed light
-	glm::vec4 position{ glm::vec3(0.f), 10.f };
-	glm::vec4 color{ 1.f };
-	glm::vec4 constants{1.f, 0.025f, 0.f, 0.f};
-	glm::vec4 direction{0.f};
-};
-
-struct BigLightVolume
-{
-	glm::vec4 position{ -66.6f };
-	glm::vec4 positionViewSpace{ -66.6f };
-	glm::vec4 color{ -66.6f };
-	glm::vec4 constants{ -66.6f };
-	glm::vec4 direction{ -66.6f };
-	glm::vec4 directionViewSpace{ -66.6f };
-};
 
 // TODO: Semaphore version of buffersync
 BufferSync<std::vector<TextureVertex>> decalVertex;
@@ -270,6 +251,7 @@ constexpr std::size_t dustCount = dustDimension * dustDimension * dustDimension;
 
 const glm::vec3 flashLightColor = glm::vec3(148.f, 252.f, 255.f) / 255.f;
 
+std::vector<DecayLight> decaymen;
 
 constexpr std::uint32_t MaxLights = 100;
 // Get the number of buckets per tile, Adding an additional bucket for misc data
@@ -279,31 +261,6 @@ void BindDrawFramebuffer()
 {
 	renderTarget.BindDraw();
 	Window::Viewport();
-}
-
-void ConeLightingInfo(LightVolume& in, float height, float fieldOfView)
-{
-	// This is A/H
-	float cosine = glm::cos(glm::radians(fieldOfView / 2.f));
-	float coneRadius = height * glm::tan(glm::radians(fieldOfView / 2.f));
-	in.position.w = -height;
-	in.constants.w = coneRadius;
-	in.direction.w = cosine;
-}
-
-BigLightVolume MakeBig(const LightVolume& smallLight, glm::mat4 transformer)
-{
-	BigLightVolume bigLight;
-	bigLight.position  = smallLight.position;
-	bigLight.color     = smallLight.color;
-	bigLight.constants = smallLight.constants;
-	bigLight.direction = smallLight.direction;
-
-	glm::vec3 tempA = transformer * glm::vec4(glm::xyz(smallLight.position), 1.f);
-	glm::vec3 tempB = transformer * glm::vec4(glm::xyz(smallLight.direction), 0.f);
-	bigLight.positionViewSpace  = glm::vec4(tempA, smallLight.position.w);
-	bigLight.directionViewSpace = glm::vec4(tempB, smallLight.direction.w);
-	return bigLight;
 }
 
 void display()
@@ -997,9 +954,11 @@ void gameTick()
 					std::swap(A, B);
 				}
 				float duration = glm::linearRand(10.f, Tick::PerSecond / 4.f);
-				glm::vec3 pointA = liota.PointA() + liota.dir * A;
-				glm::vec3 pointB = liota.PointA() + liota.dir * B;
+				glm::vec3 pointA = liota.point + liota.dir * A;
+				glm::vec3 pointB = liota.point + liota.dir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
+				decaymen.push_back(currentHit - liota.dir * 1.f);
+				decaymen.push_back(currentHit + liota.dir * 1.f);
 			}
 		}
 
@@ -1007,6 +966,11 @@ void gameTick()
 		std::vector<glm::mat4> inactive, blarg;
 
 		std::vector<LightVolume> volumes{ constantLights };
+		std::erase_if(decaymen, [](const auto& decaying) {return decaying.timeLeft == 0; });
+		for (auto& decay : decaymen)
+		{
+			volumes.push_back(decay.Tick());
+		}
 		management.Update();
 
 		auto tmep = bobert.GetPoints(management.GetRawPositions());
