@@ -108,7 +108,7 @@
 ASCIIFont fonter;
 
 // Buffers
-ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, rayBuffer, sphereBuffer, stickBuffer;
+ArrayBuffer albertBuffer, textBuffer, capsuleBuffer, sphereBuffer, stickBuffer;
 ArrayBuffer decals;
 ArrayBuffer exhaustBuffer;
 ArrayBuffer leftBuffer, rightBuffer;
@@ -248,8 +248,6 @@ static GLFWwindow* windowPointer = nullptr;
 ArrayBuffer levelOutline;
 
 const float BulletDecalScale = 4.f;
-
-UniformBuffer globalLighting;
 
 glm::vec4 testCameraPos(-30.f, 15.f, 0.f, 60.f);
 BufferSync<std::vector<LightVolume>> drawingVolumes;
@@ -653,19 +651,6 @@ void display()
 		//dither.DrawArray<DrawType::Patches>(albertBuffer);
 	}
 
-
-	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
-	uniform.SetActiveShader();
-	uniform.SetMat4("Model", dumbBox.GetModelMatrix());
-	//uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-
-	// Drawing of the rays
-	plainVAO.BindArrayBuffer(rayBuffer);
-	Model bland;
-	uniform.SetMat4("Model", bland.GetModelMatrix());
-	//uniform.DrawArray<DrawType::Lines>(rayBuffer);
-
 	{
 		DisablePushFlags(FaceCulling);
 		EnablePushFlags(Blending);
@@ -688,10 +673,10 @@ void display()
 		}
 	) > 0)
 	{
-		Shader& shader = ShaderBank::Retrieve("basic");
+		EnablePushFlags(Blending);
+		Shader& shader = ShaderBank::Retrieve("laser");
 		shader.SetActiveShader();
-		shader.SetMat4("Model", glm::mat4(1.f));
-		shader.SetVec4("Color", glm::vec4(flashLightColor, 0.85f));
+		shader.SetVec4("Color", glm::vec4(1.f, 1.f, 0.f, 1.f));
 		VAO& vao = VAOBank::Get("uniform");
 		ArrayBuffer& buffer = BufferBank::Get("Quicker");
 		vao.Bind();
@@ -862,16 +847,6 @@ void display()
 		//foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 		EnableDepthBufferWrite();
 	}
-
-	ShaderBank::Get("basic").SetActiveShader();
-	glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-
-	plainVAO.Bind();
-	plainVAO.BindArrayBuffer(rayBuffer);
-	ShaderBank::Get("basic").SetMat4("Model", glm::mat4(1.f));
-	ShaderBank::Get("basic").SetVec4("Color", glm::vec4(1.f));
-	ShaderBank::Get("basic").DrawArray(rayBuffer);
-	glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 
 	if (false)
 	{
@@ -1237,9 +1212,17 @@ void gameTick()
 		// Add one every every frame, why not
 		if (boardState.popcornFire && Level::GetCurrentTick() % 2 == 0)
 		{
-			Ray liota(playerModel.translation, playerModel.rotation * glm::vec3(1.f, 0.f, 0.f));
-			constexpr float maxLength = 1000.f;
-			float currentDepth = maxLength;
+			constexpr float FireMaxLength = 250.f;
+			constexpr float FireStandardDeviation = 0.1f;
+
+			glm::mat3 playerDir(playerModel.rotation);
+
+			float yDeviation = glm::gaussRand(0.f, FireStandardDeviation);
+			float zDeviation = glm::gaussRand(0.f, FireStandardDeviation);
+
+			glm::vec3 rayDir = glm::normalize(playerDir * glm::vec3(2.f, yDeviation, zDeviation));
+			Ray liota(playerModel.translation, rayDir);
+			float currentDepth = FireMaxLength;
 			glm::vec3 currentHit{};
 			for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
 			{
@@ -1252,13 +1235,13 @@ void gameTick()
 			}
 			if (currentDepth > 2.f)
 			{
-				float A = glm::linearRand(0.f, currentDepth);
-				float B = glm::linearRand(0.f, currentDepth);
+				float A = glm::linearRand(2.f, currentDepth);
+				float B = glm::linearRand(2.f, currentDepth);
 				if (A > B)
 				{
 					std::swap(A, B);
 				}
-				float duration = 1000.f / glm::length(A - B);
+				float duration = glm::linearRand(10.f, Tick::PerSecond / 4.f);
 				glm::vec3 pointA = liota.PointA() + liota.dir * A;
 				glm::vec3 pointB = liota.PointA() + liota.dir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
@@ -2019,6 +2002,7 @@ void init()
 	ShaderBank::Get("decalShader").CompileSimple("decal");
 	
 	ShaderBank::Get("engine").CompileSimple("engine");
+	ShaderBank::Get("laser").CompileSimple("laser");
 	ShaderBank::Get("fontShader").CompileSimple("font");
 	ShaderBank::Get("nineSlicer").CompileSimple("ui_nine");
 	ShaderBank::Get("pathNodeView").CompileSimple("path_node");
@@ -2172,12 +2156,6 @@ void init()
 
 	//std::array<glm::vec3, 5> funnys = { {glm::vec3(0.25), glm::vec3(0.5), glm::vec3(2.5, 5, 3), glm::vec3(5, 2, 0), glm::vec3(-5, 0, -3) } };
 	//pathNodePositions.BufferData(funnys);
-
-
-	// RAY SETUP
-	std::array<glm::vec3, 20> rays = {};
-	rays.fill(glm::vec3(0));
-	rayBuffer.BufferData(rays);
 
 	// This sucks
 	// TODO: Put this in Geometry, or something, I don't know
@@ -2358,24 +2336,14 @@ void init()
 	}
 
 	{
-		std::array<glm::vec4, 20 * 2> lightingArray{ glm::vec4(0.f) };
-		for (std::size_t i = 0; i < lightingArray.size(); i += 2)
+		for (std::size_t i = 0; i < MaxLights / 2; i++)
 		{
-			Triangle parent = nodeTri[rand() % nodeTri.size()];
-			lightingArray[i] = glm::vec4(parent.GetCenter() + parent.GetNormal() * glm::max(glm::gaussRand(25.f, 5.f), 5.f), 
-				(glm::min(glm::gaussRand(25.f, 10.f), 40.f)));
-			lightingArray[i + 1] = glm::vec4(glm::abs(glm::ballRand(1.f)), 0.f);
-			
-			//std::cout << lightingArray[i] << ":" << lightingArray[i + 1] << '\n';
-			constantLights.push_back({ lightingArray[i], lightingArray[i + 1], glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
-			if (!bp.TestPoint(glm::vec3(lightingArray[i])))
-			{
-				std::cout << "Invalid Point" << '\n';
-			}
+			glm::vec3 position = glm::ballRand(zFar / 3.f);
+			glm::vec3 color = glm::abs(glm::ballRand(1.f));
+			float radius = glm::abs(glm::gaussRand(30.f, 10.f));
+			constantLights.push_back({ glm::vec4(position, radius),
+				glm::vec4(color, 1.f), glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
 		}
-		globalLighting.BufferData(lightingArray);
-		globalLighting.SetBindingPoint(4);
-		globalLighting.BindUniform();
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 		Bank<ArrayBuffer>::Get("dummy2").BufferData(std::array<glm::vec3, 10>());
 	}
