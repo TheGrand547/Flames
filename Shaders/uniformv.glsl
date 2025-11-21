@@ -1,16 +1,12 @@
 #version 440 core
 
+#include "camera"
+
 layout(location = 0) in vec3 vPos;
 
 layout(location = 0) out vec4 fColor;
 
 uniform mat4 Model;
-
-layout(std140, binding = 0) uniform Camera
-{
-	mat4 View;
-	mat4 Projection;
-};
 
 vec4 colors[] = {
 	vec4(1.f, 0.f, 0.f, 1.f), 

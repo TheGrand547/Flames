@@ -10,6 +10,8 @@ const static auto colorPhases = std::to_array(
 	}
 );
 
+static constexpr float MaxRadius = 3.5f;
+
 DecayLight::DecayLight(const glm::vec3& position, std::uint16_t lifetime) : position(position), lifetime(lifetime), 
 						timeLeft(lifetime)
 {
@@ -50,7 +52,7 @@ LightVolume DecayLight::Tick() noexcept
 
 	float progress = bouncy(left / total);
 
-	result.position  = glm::vec4(this->position, 10.f * progress);
+	result.position  = glm::vec4(this->position, MaxRadius * progress);
 	result.direction = glm::vec4(1.f);
 	result.color     = glm::vec4(colorPhases[index % colorPhases.size()], 1.f);
 	result.constants = glm::vec4(1.f, 0.2f, 0.0f, 1.f);

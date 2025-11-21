@@ -123,6 +123,7 @@ static unsigned int idleFrameCounter = 0;
 constexpr auto FREEZE_GAMEPLAY = 1;
 constexpr auto TIGHT_BOXES = 2;
 constexpr auto CHECK_LIGHT_TILES = 3;
+constexpr auto CHECK_LIGHT_VOLUMES = 4;
 constexpr auto DYNAMIC_TREE = 5;
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
@@ -337,6 +338,17 @@ void display()
 			),
 				std::back_inserter(biggest));
 			ShaderStorage::Retrieve("LightBlock").BufferData(biggest);
+			std::vector<glm::mat4> sloppyCode;
+			std::ranges::copy(data | std::views::transform(
+				[&](const LightVolume& v)
+				{
+					Model career(v.position);
+					career.scale = glm::vec3(v.position.w);
+					return career.GetModelMatrix();
+				}
+			),
+				std::back_inserter(sloppyCode));
+			BufferBank::Get("uniformInstanceSphere").BufferData(sloppyCode);
 		}
 	);
 	// Compute Shaders
@@ -457,6 +469,19 @@ void display()
 			uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 		}
 	}
+	if (debugFlags[CHECK_LIGHT_VOLUMES])
+	{
+		Shader& shaderRef = ShaderBank::Get("uniformInstance");
+		VAO& vaoRef = VAOBank::Get("uniformInstanceSphere");
+		shaderRef.SetActiveShader();
+		vaoRef.Bind();
+		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+		vaoRef.BindArrayBuffer(sphereBuffer, 0);
+		vaoRef.BindArrayBuffer(BufferBank::Get("uniformInstanceSphere"), 1);
+		shaderRef.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, BufferBank::Get("uniformInstanceSphere"));
+		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+	}
+
 
 	uniform.SetActiveShader();
 	VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
@@ -545,7 +570,6 @@ void display()
 			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
 			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 			vaoRef.BindArrayBuffer(bulletMats, 1);
-			shaderRef.SetMat4("Model2", glm::mat4(1.f));
 			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
 			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("bulletImpacts"), 1);
 			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, Bank<ArrayBuffer>::Get("bulletImpacts"));
@@ -913,6 +937,7 @@ void gameTick()
 		playfield.Update(boardState);
 		const Model playerModel = playfield.GetModel();
 		const Frustum localFrust = GetFrustum(playerModel);
+
 		std::erase_if(zoopers, [](quickLight& zoop) {return zoop.lifeTime-- == 0; });
 		std::vector<glm::vec3> quicklime;
 		for (const auto& z : zoopers)
@@ -935,13 +960,14 @@ void gameTick()
 			glm::vec3 rayDir = glm::normalize(playerDir * glm::vec3(2.f, yDeviation, zDeviation));
 			Ray liota(playerModel.translation, rayDir);
 			float currentDepth = FireMaxLength;
-			glm::vec3 currentHit{};
+			glm::vec3 currentHit{}, currentNorm{};
 			for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
 			{
 				RayCollision k{};
 				if (tri->RayCast(liota, k) && k.depth < currentDepth)
 				{
 					currentDepth = k.depth;
+					currentNorm = k.normal;
 					currentHit = k.point;
 				}
 			}
@@ -953,12 +979,12 @@ void gameTick()
 				{
 					std::swap(A, B);
 				}
-				float duration = glm::linearRand(10.f, Tick::PerSecond / 4.f);
+				float duration = glm::linearRand(20.f, Tick::PerSecond / 4.f);
 				glm::vec3 pointA = liota.point + liota.dir * A;
 				glm::vec3 pointB = liota.point + liota.dir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
-				decaymen.push_back(currentHit - liota.dir * 1.f);
-				decaymen.push_back(currentHit + liota.dir * 1.f);
+				//decaymen.push_back(currentHit - liota.dir * 1.f);
+				decaymen.push_back(currentHit + currentNorm);
 			}
 		}
 
@@ -1713,6 +1739,11 @@ void init()
 		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
 	}
 	{
+		VAO& ref = VAOBank::Get("uniformInstanceSphere");
+		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(MeshVertex));
+		ref.ArrayFormatM<glm::mat4>(ShaderBank::Get("uniformInstance"), 1, 1, "Model");
+	}
+	{
 		VAO& ref = VAOBank::Get("forwardPlusMulti");
 		ref.ArrayFormatOverride<glm::vec3>(0, 0, 0, 0, sizeof(NormalMeshVertex));
 		ref.ArrayFormatOverride<glm::vec3>(1, 0, 0, offsetof(NormalMeshVertex, normal), sizeof(NormalMeshVertex));
@@ -1847,10 +1878,14 @@ void init()
 		for (std::size_t i = 0; i < MaxLights / 2; i++)
 		{
 			glm::vec3 position = glm::ballRand(zFar / 3.f);
-			glm::vec3 color = glm::abs(glm::ballRand(1.f));
-			float radius = glm::abs(glm::gaussRand(30.f, 10.f));
+			glm::vec3 color = glm::abs(glm::sphericalRand(1.f));
+			float radius = glm::abs(glm::gaussRand(20.f, 5.f));
+
+			// Alledgedly this is close to what unity used at one point, but  I don't know
+			float quadratic = 5.f / (radius * radius);
+			// TODO: Something about these lights, the constants should change based on the radius but I'm not sure how
 			constantLights.push_back({ glm::vec4(position, radius),
-				glm::vec4(color, 1.f), glm::vec4(1.f, 1.f / 30.f, 0.002f, 1.f) });
+				glm::vec4(color, 1.f), glm::vec4(1.f, 0.0f, quadratic, 1.f) });
 		}
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 	}
@@ -1881,7 +1916,7 @@ void init()
 	// =============================================================
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
-		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 100, 100);
+		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 50, 50);
 	}
 
 	Font::SetFontDirectory("Fonts");
