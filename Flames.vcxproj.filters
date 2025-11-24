@@ -231,6 +231,9 @@
     <ClCompile Include="entities\DecayLight.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="entities\Laser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Shader.h">
@@ -513,6 +516,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="entities\Lights.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="entities\Laser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

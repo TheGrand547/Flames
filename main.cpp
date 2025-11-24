@@ -93,6 +93,7 @@
 #include "Test.h"
 #include "entities/Lights.h"
 #include "entities/DecayLight.h"
+#include "entities/Laser.h"
 
 // TODO: https://github.com/zeux/meshoptimizer once you use meshes
 // TODO: EASTL
@@ -495,8 +496,8 @@ void display()
 	for (int i = 0; i < 5; i++)
 	{
 		// This should really be instanced...
-		//model.translation += 10.f * bulletPath;
-		model.translation += 10.f * cameraForward;
+		model.translation += 10.f * bulletPath;
+		//model.translation += 10.f * cameraForward;
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
@@ -957,22 +958,12 @@ void gameTick()
 			float yDeviation = glm::gaussRand(0.f, FireStandardDeviation);
 			float zDeviation = glm::gaussRand(0.f, FireStandardDeviation);
 
-			glm::vec3 rayDir = glm::normalize(playerDir * glm::vec3(2.f, yDeviation, zDeviation));
-			Ray liota(playerModel.translation, rayDir);
-			float currentDepth = FireMaxLength;
-			glm::vec3 currentHit{}, currentNorm{};
-			for (const auto& tri : Level::GetTriangleTree().RayCast(liota))
+			const glm::vec3 rayDir   = glm::normalize(playerDir * glm::vec3(2.f, yDeviation, zDeviation));
+			const glm::vec3 rayStart = playerModel.translation;
+
+			Laser::Result out = Laser::FireLaserPlayer(Ray(rayStart, rayDir), FireMaxLength);
 			{
-				RayCollision k{};
-				if (tri->RayCast(liota, k) && k.depth < currentDepth)
-				{
-					currentDepth = k.depth;
-					currentNorm = k.normal;
-					currentHit = k.point;
-				}
-			}
-			if (currentDepth > 2.f)
-			{
+				float currentDepth = glm::length(out.start - out.end);
 				float A = glm::linearRand(2.f, currentDepth);
 				float B = glm::linearRand(2.f, currentDepth);
 				if (A > B)
@@ -980,11 +971,20 @@ void gameTick()
 					std::swap(A, B);
 				}
 				float duration = glm::linearRand(20.f, Tick::PerSecond / 4.f);
-				glm::vec3 pointA = liota.point + liota.dir * A;
-				glm::vec3 pointB = liota.point + liota.dir * B;
+				glm::vec3 pointA = rayStart + rayDir * A;
+				glm::vec3 pointB = rayStart + rayDir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
-				//decaymen.push_back(currentHit - liota.dir * 1.f);
-				decaymen.push_back(currentHit + currentNorm);
+				if (out.type == Laser::HitType::Terrain)
+				{
+					RayCollision result = out.hit.value();
+					decaymen.push_back(result.point + result.normal);
+				}
+				if (out.type == Laser::HitType::Shield)
+				{
+					RayCollision result = out.hit.value();
+					decaymen.push_back(result.point);
+					//Level::SetExplosion(result.point);
+				}
 			}
 		}
 
@@ -1000,7 +1000,11 @@ void gameTick()
 		management.Update();
 
 		auto tmep = bobert.GetPoints(management.GetRawPositions());
-		std::vector<glm::vec3> shieldPoses;
+		std::vector<glm::vec3> shieldPoses; 
+		
+		auto& screaming = Bank<std::vector<glm::vec3>>::Get("Spheres");
+		screaming.clear();
+		std::copy(tmep.begin(), tmep.end(), std::back_inserter(screaming));
 		// This is bad and should be moved to the shield generator class
 		for (glm::vec3 point : tmep)
 		{
@@ -1831,6 +1835,7 @@ void init()
 			}
 		);
 		ClockBrain::Collision = OBB::MakeOBB(badBoxes);
+		Bank<float>::Get("TickTockBrain") = glm::compMax(ClockBrain::Collision.GetScale());
 		playerMesh = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Player.glb", {}, 
 			[&](auto& c) -> void
 			{
@@ -1882,7 +1887,7 @@ void init()
 			float radius = glm::abs(glm::gaussRand(20.f, 5.f));
 
 			// Alledgedly this is close to what unity used at one point, but  I don't know
-			float quadratic = 5.f / (radius * radius);
+			float quadratic = 4.f / (radius * radius);
 			// TODO: Something about these lights, the constants should change based on the radius but I'm not sure how
 			constantLights.push_back({ glm::vec4(position, radius),
 				glm::vec4(color, 1.f), glm::vec4(1.f, 0.0f, quadratic, 1.f) });

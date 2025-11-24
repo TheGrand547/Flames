@@ -4,6 +4,7 @@
 #include <glm/glm.hpp>
 #include <iostream>
 #include "glmHelp.h"
+#include "util.h"
 
 /*
  * For a function A.Overlaps(B) or A.Intersection(B): A will be treated a static entity, B will be a moveable one
@@ -30,12 +31,12 @@ struct Collision
 		float distance, depth;
 	};
 
-	Collision() = default;
-	inline consteval Collision(const glm::vec3& point, const glm::vec3& normal, const float& distance) noexcept 
+	inline Collision(const glm::vec3& point = World::Zero, const glm::vec3& normal = World::Zero, 
+		const float& distance = INFINITY) noexcept
 		: point(point), normal(normal), distance(distance) {}
 	~Collision() noexcept = default;
-	consteval bool operator==(const Collision& other) const noexcept = default;
-	consteval bool operator!=(const Collision& other) const noexcept = default;
+	bool operator==(const Collision& other) const noexcept = default;
+	bool operator!=(const Collision& other) const noexcept = default;
 	
 	inline void Clear() noexcept
 	{
@@ -44,7 +45,10 @@ struct Collision
 		this->distance = 0;
 	}
 
-	Collision& operator=(const Collision& other) = default;
+	Collision(const Collision& other) noexcept = default;
+	Collision(Collision&& other) noexcept = default;
+	Collision& operator=(const Collision& other) noexcept = default;
+	Collision& operator=(Collision&& other) noexcept  = default;
 };
 
 struct RotationCollision : public Collision {};
