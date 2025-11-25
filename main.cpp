@@ -188,7 +188,6 @@ MeshData bulletMesh;
 BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletImpacts;
 
 MeshData levelGeometry;
-ShipManager management;
 
 static GLFWwindow* windowPointer = nullptr;
 
@@ -399,7 +398,7 @@ void display()
 	// Only need one per tile
 	interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
-	management.Draw(guyMeshData, outerzone, interzone);
+	Level::GetShips().Draw(guyMeshData, outerzone, interzone);
 	//bobert.Draw();
 	
 	auto& buf = BufferBank::Get("player");
@@ -501,7 +500,7 @@ void display()
 		uniform.SetMat4("Model", model.GetModelMatrix());
 		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 	}
-	uniform.SetMat4("Model", management.GetOBB().GetModelMatrix());
+	uniform.SetMat4("Model", Level::GetShips().GetOBB().GetModelMatrix());
 	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	{
@@ -869,7 +868,7 @@ void idle()
 				Bank<ArrayBuffer>::Get("bulletImpacts").BufferData(mats);
 			}
 		);
-		management.UpdateMeshes();
+		Level::GetShips().UpdateMeshes();
 		shieldPos.ExclusiveOperation([&](std::vector<glm::vec3>& bufs)
 			{
 				Bank<ArrayBuffer>::Get("shieldPos").BufferData(bufs);
@@ -885,7 +884,7 @@ void idle()
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle;
 	buffered << '\n' << glm::dot(glm::normalize(playfield.GetVelocity()), playfield.GetModel().rotation * World::Forward);
 	buffered << '\n' << zoopers.size();
-	Level::SetInterest(management.GetPos());
+	Level::SetInterest(Level::GetShips().GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay: {}us\n-Concurrent: {}us\
 		\n-GPU Block Time: {}us\nAverage Tick Length:{}us\nMax Tick Length:{:4.2f}ms\nTicks/Second: {:7.2f}\n{}";
@@ -974,7 +973,7 @@ void gameTick()
 				glm::vec3 pointA = rayStart + rayDir * A;
 				glm::vec3 pointB = rayStart + rayDir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
-				if (out.type == Laser::HitType::Terrain)
+				if (out.type == Laser::HitType::Terrain || out.type == Laser::HitType::Entity)
 				{
 					RayCollision result = out.hit.value();
 					decaymen.push_back(result.point + result.normal);
@@ -997,14 +996,15 @@ void gameTick()
 		{
 			volumes.push_back(decay.Tick());
 		}
-		management.Update();
+		Level::GetShips().Update();
 
-		auto tmep = bobert.GetPoints(management.GetRawPositions());
+		auto tmep = bobert.GetPoints(Level::GetShips().GetRawPositions());
 		std::vector<glm::vec3> shieldPoses; 
 		
 		auto& screaming = Bank<std::vector<glm::vec3>>::Get("Spheres");
 		screaming.clear();
 		std::copy(tmep.begin(), tmep.end(), std::back_inserter(screaming));
+		
 		// This is bad and should be moved to the shield generator class
 		for (glm::vec3 point : tmep)
 		{
@@ -1015,7 +1015,7 @@ void gameTick()
 			}
 			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
 		}
-		shieldPos.Swap(tmep);
+		//shieldPos.Swap(tmep);
 
 		// TODO: I combined these but it's sloooooow
 		std::lock_guard opinion(bulletMutex);
@@ -1914,9 +1914,11 @@ void init()
 
 	for (int i = 0; i < 10; i++)
 	{
-		auto& foo = management.Make();
+		auto& foo = Level::GetShips().Make();
 		foo.Init(i > 5 ? glm::vec3(0.f, 60.f, 0.f) : glm::vec3(0.f, -60.f, 0.f));
 	}
+	auto& foo = Level::GetShips().Make();
+	foo.Init(glm::vec3(-200.f, 60.f, 0.f));
 
 	// =============================================================
 	{

@@ -6,6 +6,7 @@
 #include "Buffer.h"
 #include "async/BufferSync.h"
 #include "Level.h"
+#include "entities/Laser.h"
 
 class ShipManager
 {
@@ -70,6 +71,11 @@ public:
 			}
 		);
 	}
+
+	// Calling this assumes that everything that could've been hit before has been checked
+	// This is the end of the line, if something is even closer than one of these ships, 
+	// well they'll both get hit
+	void LaserCast(Laser::Result& out, Ray ray);
 };
 
 #endif // SHIP_MANAGER_H

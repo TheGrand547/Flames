@@ -1,13 +1,22 @@
 #include "Level.h"
 #include <mutex>
 #include <atomic>
+#include "ShipManager.h"
 
 namespace Level
 {
-	std::vector<PathNodePtr> AllTheNodes;
+	static std::vector<PathNodePtr> AllTheNodes;
+
 	std::vector<PathNodePtr>& AllNodes()
 	{
 		return AllTheNodes;
+	}
+
+	static ShipManager enemyShips;
+
+	ShipManager& GetShips()
+	{
+		return enemyShips;
 	}
 
 	void Clear() noexcept

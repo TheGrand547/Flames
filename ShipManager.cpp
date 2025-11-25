@@ -33,12 +33,14 @@ void ShipManager::Update() noexcept
 				meshes[i] = (element.GetPair());
 				sleeper[i] = to_bundle(element.GetID(), element.GetPos());
 
+#ifdef _DEBUG
 				// Keeping this in just in case the issue returns, despite the performance penalty
 				auto& p = meshes[i];
 				if (glm::any(glm::greaterThanEqual(glm::abs(p.model[0]), glm::vec4(10.f))))
 				{
 					Log("Big Trouble");
 				}
+#endif // _DEBUG
 			}
 		);
 		std::ranges::copy(meshes, std::back_inserter(this->inactive));
@@ -69,12 +71,14 @@ void ShipManager::Update() noexcept
 				{
 					Log("Oh shit we got one");
 					bullet->transform.position = glm::vec3(NAN);
-					if (--bloke.health == 0)
-					{
-						Level::SetExplosion(bloke.GetPos());
-						return true;
-					}
+					bloke.health--;
+					break;
 				}
+			}
+			if (bloke.health == 0)
+			{
+				Level::SetExplosion(bloke.GetPos());
+				return true;
 			}
 			return false;
 		}
@@ -123,4 +127,38 @@ void ShipManager::UpdateMeshes() noexcept
 			this->smooth.BufferData<glm::vec3>(p | BundleData, DynamicDraw);
 		}
 	);
+}
+
+void ShipManager::LaserCast(Laser::Result& out, Ray ray)
+{
+	RayCollision currentHit;
+	if (out.hit.has_value())
+	{
+		currentHit = out.hit.value();
+	}
+	else
+	{
+		currentHit.point = out.end;
+		currentHit.distance = glm::distance(out.end, out.start);
+	}
+	ClockBrain* current = nullptr;
+	// Probably a way to parallelize this but eh we'll see
+	for (auto& smiley : this->brainDrain)
+	{
+		OBB box = smiley.GetOBB();
+		RayCollision genus{};
+		if (box.Intersect(ray.point, ray.dir, genus) && genus.depth < currentHit.depth)
+		{
+			currentHit = genus;
+			current = &smiley;
+			out.type = Laser::HitType::Entity;
+		}
+	}
+
+	if (out.type == Laser::HitType::Entity && current != nullptr)
+	{
+		out.end = currentHit.point;
+		out.hit = std::make_optional(currentHit);
+		current->health--;
+	}
 }

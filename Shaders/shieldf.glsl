@@ -14,5 +14,5 @@ void main()
 {
 	const vec4 ShieldColor = vec4(120,204,226, 255) / 255;
 	colorOut = ShieldColor * texture(textureIn, NormToUVCubemap(fNorm.xyz)).r;
-	colorOut.w = pow(colorOut.w, 2.5);
+	colorOut.w = pow(colorOut.w, 3);
 }

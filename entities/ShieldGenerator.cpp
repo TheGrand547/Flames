@@ -20,6 +20,8 @@ void ShieldGenerator::Update() noexcept
 	// Check which, if any, of the objects this is currently shielding have left the area, if they have, boot 'em out
 }
 
+static decltype(Level::ShieldMapping) mapping;
+
 std::vector<glm::vec3> ShieldGenerator::GetPoints(std::vector<Bundle<glm::vec3>> ins) noexcept
 {
 	// Pretend this->transform is the operand
@@ -28,9 +30,9 @@ std::vector<glm::vec3> ShieldGenerator::GetPoints(std::vector<Bundle<glm::vec3>>
 		| std::views::filter(
 			[&](const auto& in)
 			{
-				std::uint32_t value = Level::ShieldMapping[in.id] + ((glm::distance(in.data, glm::vec3(0.f, 50.f, 0.f)) < 30.f) ? 1 : -1);
+				std::int32_t value = mapping[in.id] + ((glm::distance(in.data, glm::vec3(0.f, 50.f, 0.f)) < 30.f) ? 1 : -1);
 				value = std::clamp(value, static_cast<decltype(value)>(0), static_cast<decltype(value)>(Tick::PerSecond * 5));
-				Level::ShieldMapping[in.id] = value;
+				mapping[in.id] = value;
 				return value > 50;
 			}
 		)

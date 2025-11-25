@@ -2,6 +2,7 @@
 
 #include "../Level.h"
 #include "../ResourceBank.h"
+#include "../ShipManager.h"
 
 namespace Laser
 {
@@ -28,6 +29,30 @@ namespace Laser
 			out.end = currentHit.point;
 			out.hit = std::make_optional(currentHit);
 		}
+	}
+
+	void FireLaserBlokes(Result& out, Ray ray)
+	{
+		Level::GetShips().LaserCast(out, ray);
+		/*
+		RayCollision currentHit;
+		if (out.hit.has_value())
+		{
+			currentHit = out.hit.value();
+		}
+		else
+		{
+			currentHit.point = out.end;
+			currentHit.distance = glm::distance(out.end, out.start);
+		}
+
+		Level::GetShips();
+
+		if (out.type == HitType::Entity)
+		{
+			out.end = currentHit.point;
+			out.hit = std::make_optional(currentHit);
+		}*/
 	}
 	
 	void FireLaserShields(Result& out, Ray ray)
@@ -67,6 +92,7 @@ namespace Laser
 		ZeroDefault(procedulal, ray, maxLength);
 		FireLaserTerrain(procedulal, ray);
 		FireLaserShields(procedulal, ray);
+		FireLaserBlokes(procedulal, ray);
 		return procedulal;
 	} 
 

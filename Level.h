@@ -9,6 +9,8 @@
 #include "NavMesh.h"
 #include "entities/EntityBundle.h"
 
+class ShipManager;
+
 namespace Level
 {
 	static StaticOctTree<OBB> Geometry;
@@ -29,6 +31,8 @@ namespace Level
 
 	DynamicOctTree<Bullet>& GetBulletTree();
 	std::vector<PathNodePtr>& AllNodes();
+
+	ShipManager& GetShips();
 
 	// Points of Interest
 	std::vector<glm::vec3>& GetPOI();
@@ -55,7 +59,7 @@ namespace Level
 
 	IDType GetID() noexcept;
 
-	static inline std::unordered_map<IDType, std::uint32_t> ShieldMapping;
+	static inline std::unordered_map<IDType, std::int32_t> ShieldMapping;
 }
 
 
