@@ -1,5 +1,6 @@
 #include "DecayLight.h"
 #include <array>
+#include "../util.h"
 
 const static auto colorPhases = std::to_array(
 	{
@@ -52,7 +53,7 @@ LightVolume DecayLight::Tick() noexcept
 
 	float progress = bouncy(left / total);
 
-	result.position  = glm::vec4(this->position, MaxRadius * progress);
+	result.position  = glm::vec4(this->position, glm::max(MaxRadius * progress, EPSILON));
 	result.direction = glm::vec4(1.f);
 	result.color     = glm::vec4(colorPhases[index % colorPhases.size()], 1.f);
 	result.constants = glm::vec4(1.f, 0.2f, 0.0f, 1.f);

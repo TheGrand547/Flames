@@ -35,7 +35,7 @@ void main()
 	// For textured stuff
 	//vec4 sampled = texture(textureColor, fTex);
 	vec4 sampled = vec4(1);
-	if (checkUVs == 1)
+	if (false && checkUVs == 1)
 	{
 		/*
 		vec2 big = floor(fTex * 10);
@@ -43,8 +43,11 @@ void main()
 		float mult = (flip) ? 1.f : 0.5f;
 		sampled.xyz *= mult;
 		*/
+		
+		// A rim lighting attempt not what I'm going for currently
+		float alignment = 1.f - abs(dot(normal, viewDirection));
+		lightOut += vec3(1.f, 0.f, 0.f) * pow(alignment, 8);
 	}
 	
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
-	//fragmentColor = vec4(LightTesting(), 1.f);
 }

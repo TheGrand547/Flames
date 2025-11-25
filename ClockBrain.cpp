@@ -195,8 +195,8 @@ void ClockBrain::Update(const kdTree<Transform>& transforms)
 		}
 		if (glm::length(this->target) > 200.f)
 		{
-			std::cout << this->target << '\n';
-			std::cout << this->home << ":" << glm::vec3(this->home) << '\n';
+			Log("Theres some vectors I don't want to deal with atm");
+			//Log("{}\n{}:{}", this->target, this->home, glm::vec3(this->home));
 			this->target = glm::vec3(0.f);
 		}
 	}

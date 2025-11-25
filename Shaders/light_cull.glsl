@@ -103,7 +103,7 @@ void main()
 		// Type 0, directed light
 		else
 		{
-			//AddLight(i);
+			AddLight(i);
 		}
 	}
 	barrier();

@@ -21,7 +21,7 @@ vec3 ConeLight(LightInfoBig light, FragData fragData)
 	float distance = length(cone.position - fragPosition);
 	
 	// Do the attenuation thing
-	float diffuse = applyDiffuse(fragData, lightDirection);
+	float diffuse  = applyDiffuse(fragData, lightDirection);
 	float specular = applySpecular(fragData, lightDirection);
 	
 	float fallOff = attenuate(light.constants.xyz, distance);
@@ -34,6 +34,14 @@ vec3 ConeLight(LightInfoBig light, FragData fragData)
 	return light.color.xyz * (diffuse + specular) * ConeRatio(cone, lightDirection) * fallOff;
 }
 
+vec3 DirectedLight(LightInfoBig light, FragData fragData)
+{
+	vec3 lightDirection = -light.direction.xyz;
+	float diffuse  = applyDiffuse(fragData, lightDirection);
+	float specular = applySpecular(fragData, lightDirection);
+	return light.color.xyz * (diffuse + specular);
+}
+
 vec3 ApplyLight(LightInfoBig current, FragData fragData)
 {
 	vec3 lightOut = vec3(0);
@@ -41,12 +49,16 @@ vec3 ApplyLight(LightInfoBig current, FragData fragData)
 	// Point light
 	if (type > 0)
 	{
-		lightOut = PointLightStruct(current, fragData);
+		lightOut += PointLightStruct(current, fragData);
 	}
 	// Light cone
 	else if (type < 0)
 	{
-		lightOut = ConeLight(current, fragData);
+		lightOut += ConeLight(current, fragData);
+	}
+	else // Directed light
+	{
+		lightOut += DirectedLight(current, fragData);
 	}
 	return lightOut;
 } 

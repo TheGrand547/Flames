@@ -1185,7 +1185,6 @@ void gameTick()
 		maxTickTime = std::max(tickDelta, maxTickTime);
 		averageTickTime = gameTickTime.Update(tickDelta / 1000);
 
-		//std::cout << std::chrono::duration<long double, std::chrono::milliseconds::period>(balb - tickStart) << std::endl;
 		TimePoint desired{ tickStart.time_since_epoch() + std::chrono::duration_cast<std::chrono::steady_clock::duration>(tickInterval) };
 		while (std::chrono::steady_clock::now() < desired) 
 		{
@@ -1836,6 +1835,7 @@ void init()
 			}
 		);
 		ClockBrain::Collision = OBB::MakeOBB(badBoxes);
+		ClockBrain::Collision.Scale(2.f);
 		Bank<float>::Get("TickTockBrain") = glm::compMax(ClockBrain::Collision.GetScale());
 		playerMesh = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Player.glb", {}, 
 			[&](auto& c) -> void
@@ -1893,6 +1893,12 @@ void init()
 			constantLights.push_back({ glm::vec4(position, radius),
 				glm::vec4(color, 1.f), glm::vec4(1.f, 0.0f, quadratic, 1.f) });
 		}
+		LightVolume adequate{};
+		adequate.position = glm::vec4(0.f);
+		adequate.color = glm::vec4(0.5f, 0.f, 0.5f, 4.f) * 0.05f;
+		adequate.direction = glm::vec4(glm::normalize(glm::vec3(0.25f, -2.f, 0.36f)), 0.f);
+		adequate.constants = glm::vec4(0.f);
+		constantLights.push_back(adequate);
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 	}
 	
