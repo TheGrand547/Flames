@@ -37,11 +37,14 @@ void main()
 	vec4 sampled = vec4(1);
 	if (checkUVs == 1)
 	{
+		/*
 		vec2 big = floor(fTex * 10);
 		bool flip = (int(big.x) % 2 == 0) ^^ (int(big.y) % 2 == 0);
 		float mult = (flip) ? 1.f : 0.5f;
 		sampled.xyz *= mult;
+		*/
 	}
+	
 	fragmentColor = vec4(shapeColor * sampled.xyz * lightOut, 1);
 	//fragmentColor = vec4(LightTesting(), 1.f);
 }

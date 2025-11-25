@@ -15,7 +15,6 @@ layout(location = 7) in mat4 normalMat;
 
 layout(location = 0) out vec4 fPos;
 layout(location = 1) out vec4 fNorm;
-layout(location = 2) out vec2 fTex;
 
 uniform mat4 modelMat;
 uniform mat4 normalMat;
@@ -26,9 +25,10 @@ layout(location = 0) uniform sampler2D textureIn;
 void main()
 {
 	fNorm = normalMat * vec4(vNorm, 0);
-	// This isn't quite right
-	fPos = modelMat * vec4(vPos + Position, 1.0);
 	vec3 offset = vNorm * (texture(textureIn, NormToUVCubemap(vNorm)).r - 0.1f) * 0.05f;
-	gl_Position = Projection * View * ((modelMat * vec4(vPos + offset, 1.0)) + vec4(Position, 0));
-	fTex = vTex;
+	
+	// This isn't quite right
+	fPos = modelMat * vec4(vPos + offset, 1.0) + vec4(Position, 0);
+	
+	gl_Position = Projection * View * fPos;
 }

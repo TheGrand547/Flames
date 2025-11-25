@@ -628,10 +628,11 @@ void display()
 		sphereIndicies.BindBuffer();
 		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
 		Model maudlin;
-		maudlin.scale = glm::vec3(4.f * glm::compMax(ClockBrain::Collision.GetScale()));
+		maudlin.scale = glm::vec3(10.f * glm::compMax(ClockBrain::Collision.GetScale()));
 		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
-		foolish.SetInt("FeatureToggle", featureToggle);
+		foolish.SetVec3("CameraPos", localCamera);
+		foolish.SetUnsignedInt("FeatureToggle", featureToggle);
 		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 	}
 
@@ -1015,7 +1016,7 @@ void gameTick()
 			}
 			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
 		}
-		//shieldPos.Swap(tmep);
+		shieldPos.Swap(tmep);
 
 		// TODO: I combined these but it's sloooooow
 		std::lock_guard opinion(bulletMutex);

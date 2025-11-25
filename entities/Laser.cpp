@@ -71,7 +71,7 @@ namespace Laser
 		for (glm::vec3 point : shieldPoints)
 		{
 			RayCollision hit{};
-			Sphere bogus{ point, 4.f * Bank<float>::Get("TickTockBrain")};
+			Sphere bogus{ point, 10.f * Bank<float>::Get("TickTockBrain")};
 			if (bogus.RayCast(ray, hit) && hit.depth < intermidate.depth)
 			{
 				intermidate = hit;
