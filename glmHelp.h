@@ -9,6 +9,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <limits>
+#include <format>
 
 /*
 #define RotateX(matrix, radians) glm::rotate(matrix, radians, glm::vec3(1.f, 0.f, 0.f))
@@ -43,4 +44,30 @@ inline glm::quat ForwardDir(const glm::vec3& forward, glm::vec3 up = glm::vec3(0
 	return glm::quat(SetForward(forward, up));
 }
 
+template<glm::length_t N, typename T, glm::qualifier Q>
+struct std::formatter<glm::vec<N, T, Q>> : std::formatter<std::string>
+{
+	auto format(const glm::vec<N, T, Q>& element, format_context& context) const noexcept
+	{
+		std::string formated{};
+		if constexpr (N == 1)
+		{
+			formated = std::format("[{}]", element[0]);
+		}
+		if constexpr (N == 2)
+		{
+			formated = std::format("[{}, {}]", element[0], element[1]);
+		}
+		if constexpr (N == 3)
+		{
+			formated = std::format("[{}, {}, {}]", element[0], element[1], element[2]);
+		}
+		if constexpr (N == 4)
+		{
+			formated = std::format("[{}, {}, {}, {}]", element[0], element[1], element[2], element[3]);
+		}
+		return formatter<std::string>::format(formated, context);
+	}
+
+};
 #endif // GLM_HELP_H
