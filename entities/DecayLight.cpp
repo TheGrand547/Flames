@@ -22,20 +22,26 @@ DecayLight::DecayLight(const glm::vec3& position, std::uint16_t lifetime) : posi
 // From: https://easings.net/#easeOutBounce
 static float bouncy(float t)
 {
-	const float n1 = 7.5625;
-	const float d1 = 2.75;
+	constexpr float n1 = 7.5625f;
+	constexpr float d1 = 2.75f;
 
-	if (t < (1 / d1)) {
+	constexpr float d1inv = 1.f / d1;
+
+	if (t < d1inv) {
 		return n1 * t * t;
 	}
-	else if (t < (2 / d1)) {
-		return n1 * (t -= 1.5 / d1) * t + 0.75;
+	else if (t < 2.f * d1inv) {
+		t -= 1.5f * d1inv;
+		return n1 * t * t + 0.75f;
 	}
-	else if (t < (2.5 / d1)) {
-		return n1 * (t -= 2.25 / d1) * t + 0.9375;
+	else if (t < 2.5f * d1inv) {
+		t -= 2.25f * d1inv;
+		return n1 * t * t + 0.9375f;
 	}
-	else {
-		return n1 * (t -= 2.625 / d1) * t + 0.984375;
+	else 
+	{
+		t -= 2.625f * d1inv;
+		return n1 * t * t + 0.984375f;
 	}
 }
 
@@ -49,7 +55,7 @@ LightVolume DecayLight::Tick() noexcept
 	}
 	float left  = static_cast<float>(this->timeLeft);
 	float total = static_cast<float>(this->lifetime);
-	auto index = static_cast<unsigned int>(glm::ceil(left / total * colorPhases.size()));
+	auto index  = static_cast<unsigned int>(glm::ceil(left / total * colorPhases.size()));
 
 	float progress = bouncy(left / total);
 

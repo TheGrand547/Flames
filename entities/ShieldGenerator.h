@@ -19,7 +19,7 @@ struct ShieldGenerator
 	Transform transform;
 	std::unordered_map<IDType, std::int16_t> tracking;
 
-	void Draw() const noexcept;
+	void Draw(Shader& shader, VAO& vao) const noexcept;
 	void Update() noexcept;
 
 	std::vector<glm::vec3> GetPoints(std::vector<Bundle<glm::vec3>> ins) noexcept;

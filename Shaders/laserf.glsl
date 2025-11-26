@@ -8,5 +8,5 @@ layout(location = 0) uniform vec4 Color;
 void main()
 {
 	colorOut = Color;
-	colorOut.w *= max(distance, 0.25);
+	colorOut.w *= max(distance, 0.5);
 }

@@ -3,15 +3,12 @@
 #include <ranges>
 
 
-void ShieldGenerator::Draw() const noexcept
+void ShieldGenerator::Draw(Shader& shader, VAO& vao) const noexcept
 {
-	Shader& shader = ShaderBank::Get("defer");
-	shader.SetActiveShader();
 	shader.SetVec3("shapeColor", glm::vec3(0.8f));
-	VAO& truth = VAOBank::Get("new_mesh");
 
-	ShieldGenerator::models.Bind(truth);
-	truth.BindArrayBuffer(Bank<ArrayBuffer>::Get("Shields"), 1);
+	ShieldGenerator::models.Bind(vao);
+	vao.BindArrayBuffer(Bank<ArrayBuffer>::Get("Shields"), 1);
 	shader.MultiDrawElements(ShieldGenerator::models.indirect);
 }
 
@@ -45,8 +42,10 @@ std::vector<glm::vec3> ShieldGenerator::GetPoints(std::vector<Bundle<glm::vec3>>
 void ShieldGenerator::Setup()
 {
 	ShieldGenerator::models = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Shield.glb");
+	Bank<float>::Get("ShieldSize") = 10.f;
+
 	ArrayBuffer& ref = Bank<ArrayBuffer>::Get("Shields");
 	std::array<MeshMatrix, 1> paired{};
-	paired[0].model = glm::scale(glm::translate(glm::vec3(0.f, 50.f, 0.f)), glm::vec3{ 10.f });
+	paired[0].model = glm::scale(glm::translate(glm::vec3(-50.f, 50.f, 0.f)), glm::vec3{ 10.f });
 	ref.BufferData(paired);
 }

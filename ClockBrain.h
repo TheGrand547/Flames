@@ -44,15 +44,19 @@ public:
 		return this->GetOBB().GetAABB();
 	}
 
+	static constexpr float GetScale() noexcept
+	{
+		return 5.f;
+	}
+
 	inline Model GetModel() const noexcept
 	{
-		return Model{ this->transform, glm::vec3(2.f) };
+		return Model{ this->transform, glm::vec3(ClockBrain::GetScale()) };
 	}
 
 	inline OBB GetOBB() const noexcept
 	{
 		Model temp = ClockBrain::Collision.GetModel().ApplyParent(this->GetModel());
-		//Model temp = this->GetModel().ApplyParent(ClockBrain::Collision.GetModel());
 		return OBB(temp);
 	}
 

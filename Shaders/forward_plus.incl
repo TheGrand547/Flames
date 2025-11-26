@@ -36,6 +36,7 @@ vec3 ConeLight(LightInfoBig light, FragData fragData)
 
 vec3 DirectedLight(LightInfoBig light, FragData fragData)
 {
+	// This feels like an admission of defeat
 	vec3 lightDirection = -light.direction.xyz;
 	float diffuse  = applyDiffuse(fragData, lightDirection);
 	float specular = applySpecular(fragData, lightDirection);

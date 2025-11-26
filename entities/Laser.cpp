@@ -68,10 +68,11 @@ namespace Laser
 			intermidate.distance = glm::distance(out.end, out.start);
 		}
 		const std::vector<glm::vec3>& shieldPoints = Bank<std::vector<glm::vec3>>::Get("Spheres");
+		const float shieldRadius = Bank<float>::Get("ShieldSize");
 		for (glm::vec3 point : shieldPoints)
 		{
 			RayCollision hit{};
-			Sphere bogus{ point, 10.f * Bank<float>::Get("TickTockBrain")};
+			Sphere bogus{ point, shieldRadius + Bank<float>::Get("TickTockBrain")};
 			if (bogus.RayCast(ray, hit) && hit.depth < intermidate.depth)
 			{
 				intermidate = hit;

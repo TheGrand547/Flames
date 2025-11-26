@@ -264,6 +264,8 @@ void BindDrawFramebuffer()
 	Window::Viewport();
 }
 
+static BufferSync<std::vector<glm::mat4>> bigCringe;
+
 void display()
 {
 	GLuint currentRenderQuery = 0;
@@ -399,7 +401,7 @@ void display()
 	interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 	Level::GetShips().Draw(guyMeshData, outerzone, interzone);
-	//bobert.Draw();
+	bobert.Draw(interzone, outerzone);
 	
 	auto& buf = BufferBank::Get("player");
 	auto meshs2 = playerModel;
@@ -423,6 +425,7 @@ void display()
 
 	if (debugFlags[CHECK_LIGHT_TILES])
 	{
+		DisablePushFlags(DepthTesting | FaceCulling);
 		Shader& sahder = ShaderBank::Get("visualize");
 		sahder.SetActiveShader();
 		static int thresholdAmount = 10;
@@ -430,7 +433,6 @@ void display()
 		ImGui::SliderInt("Threshold", &thresholdAmount, 0, 100);
 		ImGui::End();
 		sahder.SetInt("maxLight", thresholdAmount);
-		DisablePushFlags(DepthTesting | FaceCulling);
 		sahder.DrawArray<DrawType::TriangleStrip>(4);
 	}
 
@@ -482,6 +484,17 @@ void display()
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
+	if (debugFlags[TIGHT_BOXES])
+	{
+		Shader& shader = ShaderBank::Get("uniformInstance");
+		VAO& vao = VAOBank::Retrieve("uniformInstance");
+		ArrayBuffer& instances = BufferBank::Get("tightBoxes");
+		shader.SetActiveShader();
+		vao.Bind();
+		vao.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
+		vao.BindArrayBuffer(instances, 1);
+		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, instances);
+	}
 
 	uniform.SetActiveShader();
 	VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
@@ -628,7 +641,7 @@ void display()
 		sphereIndicies.BindBuffer();
 		foolish.SetTextureUnit("textureIn", buffet.GetColor(), 0);
 		Model maudlin;
-		maudlin.scale = glm::vec3(10.f * glm::compMax(ClockBrain::Collision.GetScale()));
+		maudlin.scale = glm::vec3(Bank<float>::Get("ShieldSize") + Bank<float>::Get("TickTockBrain"));
 		foolish.SetMat4("modelMat", maudlin.GetModelMatrix());
 		foolish.SetMat4("normalMat", glm::mat4(1.f));
 		foolish.SetVec3("CameraPos", localCamera);
@@ -877,6 +890,12 @@ void idle()
 		);
 	}
 
+	bigCringe.ExclusiveOperation([](const auto& ins)
+		{
+			BufferBank::Get("tightBoxes").BufferData(ins);
+		}
+	);
+
 	Parallel::SetStatus(!keyState['P']);
 
 	std::stringstream buffered;
@@ -998,6 +1017,7 @@ void gameTick()
 			volumes.push_back(decay.Tick());
 		}
 		Level::GetShips().Update();
+		bigCringe.Swap(Level::GetShips().GetOBBS());
 
 		auto tmep = bobert.GetPoints(Level::GetShips().GetRawPositions());
 		std::vector<glm::vec3> shieldPoses; 
@@ -1009,7 +1029,7 @@ void gameTick()
 		// This is bad and should be moved to the shield generator class
 		for (glm::vec3 point : tmep)
 		{
-			Sphere spoke(point, 10.f);
+			Sphere spoke(point, Bank<float>::Get("ShieldSize"));
 			if (Level::GetBulletTree().QuickTest(spoke.GetAABB()))
 			{
 				shieldPoses.push_back(point);
@@ -1055,7 +1075,7 @@ void gameTick()
 						LineSegment segmentation{ local.transform.position - forward, local.transform.position + forward };
 						Capsule flipper(segmentation, 0.1f);
 						Collision hit{};
-						Sphere bogus{ point, 4.f * glm::compMax(ClockBrain::Collision.GetScale()) };
+						Sphere bogus{ point, Bank<float>::Get("ShieldSize") * glm::compMax(ClockBrain::Collision.GetScale()) };
 						if (flipper.Intersect(bogus, hit))
 						{
 							if (!(bogus.SignedDistance(segmentation.A) < 0 && bogus.SignedDistance(segmentation.B) < 0))
@@ -1835,8 +1855,7 @@ void init()
 			}
 		);
 		ClockBrain::Collision = OBB::MakeOBB(badBoxes);
-		ClockBrain::Collision.Scale(2.f);
-		Bank<float>::Get("TickTockBrain") = glm::compMax(ClockBrain::Collision.GetScale());
+		Bank<float>::Get("TickTockBrain") = glm::compMax(ClockBrain::Collision.GetScale()) * ClockBrain::GetScale();
 		playerMesh = OBJReader::MeshThingy<NormalMeshVertex>("Models\\Player.glb", {}, 
 			[&](auto& c) -> void
 			{

@@ -7,6 +7,7 @@
 #include "async/BufferSync.h"
 #include "Level.h"
 #include "entities/Laser.h"
+#include <ranges>
 
 class ShipManager
 {
@@ -70,6 +71,16 @@ public:
 				return out;
 			}
 		);
+	}
+
+	inline std::vector<glm::mat4> GetOBBS() noexcept
+	{
+		std::vector<glm::mat4> outs;
+		std::ranges::copy(this->brainDrain | 
+			std::views::transform([](const auto& a) {return a.GetOBB().GetModelMatrix(); }),
+			std::back_inserter(outs)
+		);
+		return outs;
 	}
 
 	// Calling this assumes that everything that could've been hit before has been checked
