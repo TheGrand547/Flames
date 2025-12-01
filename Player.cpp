@@ -353,25 +353,37 @@ void Player::Update(Input::Keyboard input) noexcept
 	{
 		this->velocity = glm::vec3(0.f);
 	}
+	if (input.popcornFire)
+	{
+		this->firingFrames++;
+	}
 }
 
 void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model localModel) const noexcept
 {
-	shader.SetActiveShader();
-	vertex.Bind();
 	vertex.BindArrayBuffer(renderData.vertex);
 	renderData.index.BindBuffer();
 	// Render the static(non-animation bound) things
 	localModel.scale = glm::vec3(PlayerScale);
 	const glm::mat4 stored = localModel.GetModelMatrix();
-	shader.SetMat4("modelMat", stored);
-	shader.SetMat4("normalMat", localModel.GetNormalMatrix());
-	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 0, 3);
+	//shader.SetMat4("modelMat", stored);
+	//shader.SetMat4("normalMat", localModel.GetNormalMatrix());
+	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 0, 1);
+	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 2, 1);
 
 	Model temp(gunAPos);
-	shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
+	//shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
 	shader.DrawElements<DrawType::Triangle>(renderData.indirect, 3);
 	temp.translation = gunBPos;
-	shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
+	//shader.SetMat4("modelMat", stored * temp.GetModelMatrix());
 	shader.DrawElements<DrawType::Triangle>(renderData.indirect, 4);
+
+	auto& silly = BufferBank::Get("spin");
+	Model scremingEagles = localModel;
+	float angle = glm::radians(this->firingFrames * 4.f);
+	scremingEagles.rotation = glm::angleAxis(angle,
+		localModel.rotation * World::Forward) * scremingEagles.rotation;
+	silly.BufferData(scremingEagles.GetMatrixPair());
+	vertex.BindArrayBuffer(silly, 1);
+	shader.DrawElements(renderData.indirect, 1);
 }

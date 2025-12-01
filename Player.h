@@ -17,7 +17,7 @@ protected:
 	Transform transform;
 	glm::vec3 velocity;
 	IntervalType fireDelay, fireCountdown;
-
+	std::uint32_t firingFrames;
 	void SelectTarget() noexcept;
 
 public:

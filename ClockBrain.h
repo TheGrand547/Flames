@@ -23,7 +23,7 @@ protected:
 	void GenerateHash() noexcept;
 
 public:
-	std::uint8_t health;
+	std::uint16_t health;
 	inline ClockBrain() { this->Init(); }
 	// Everything about this is a horrific hack
 	void Init(glm::vec3 init = glm::vec3(0.f));

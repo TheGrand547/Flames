@@ -11,7 +11,7 @@ const static auto colorPhases = std::to_array(
 	}
 );
 
-static constexpr float MaxRadius = 3.5f;
+static constexpr float MaxRadius = 1.5f;
 
 DecayLight::DecayLight(const glm::vec3& position, std::uint16_t lifetime) : position(position), lifetime(lifetime), 
 						timeLeft(lifetime)

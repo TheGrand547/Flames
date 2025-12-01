@@ -213,7 +213,10 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 	const glm::vec3 modelForward = playerModel.rotation * glm::vec3(1.f, 0.f, 0.f);
 	localCamera -= velocity / 20.f;
 
+	//localCamera = playerModel.translation;
+
 	const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
+	//const glm::vec3 cameraFocus = localCamera + modelForward;
 	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
 	return { localCamera, cameraForward };
 }
@@ -406,8 +409,7 @@ void display()
 	auto& buf = BufferBank::Get("player");
 	auto meshs2 = playerModel;
 	meshs2.scale *= 0.5f;
-	auto meshs = meshs2.GetMatrixPair();
-	buf.BufferData(std::to_array({ meshs.model, meshs.normal }));
+	buf.BufferData(meshs2.GetMatrixPair());
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh, playerModel);
 	
@@ -958,7 +960,10 @@ void gameTick()
 		const Model playerModel = playfield.GetModel();
 		const Frustum localFrust = GetFrustum(playerModel);
 
-		std::erase_if(zoopers, [](quickLight& zoop) {return zoop.lifeTime-- == 0; });
+		if (!debugFlags[FREEZE_GAMEPLAY])
+		{
+			std::erase_if(zoopers, [](quickLight& zoop) {return zoop.lifeTime-- == 0; });
+		}
 		std::vector<glm::vec3> quicklime;
 		for (const auto& z : zoopers)
 		{
@@ -990,7 +995,7 @@ void gameTick()
 					std::swap(A, B);
 				}
 				float duration = glm::linearRand(20.f, Tick::PerSecond / 4.f);
-				glm::vec3 pointA = rayStart + rayDir * A;
+				glm::vec3 pointA = rayStart + rayDir * A + glm::ballRand(0.25f);
 				glm::vec3 pointB = rayStart + rayDir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
 				if (out.type == Laser::HitType::Terrain || out.type == Laser::HitType::Entity)
