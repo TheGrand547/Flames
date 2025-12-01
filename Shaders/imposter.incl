@@ -1,0 +1,44 @@
+
+float CameraToDepth(float depth)
+{
+	mat2 bottom = mat2(vec2(Projection[2][2], Projection[2][3]),
+					vec2(Projection[3][2], Projection[3][3]));
+	vec2 temp = bottom * vec2(depth, 1.f);
+	return temp.x / temp.y;
+}
+
+vec3 ImposterCalculate(vec3 position, vec2 coordinates, float radius)
+{
+	// From https://github.com/paroj/gltut/blob/master/Tut%2013%20Impostors/data/GeomImpostor.frag
+	vec3 adjusted = vec3(coordinates, 0.0) + position;
+	vec3 ray = normalize(adjusted);
+	
+	float B = 2.0 * dot(ray, -position);
+	float C = dot(position, position) - (radius * radius);
+	
+	float det = (B * B) - (4 * C);
+	if(det < 0.0)
+		discard;
+		
+	float sqrtDet = sqrt(det);
+	float posT = (-B + sqrtDet) / 2;
+	float negT = (-B - sqrtDet) / 2;
+	
+#ifdef IMPOSTER_FAR_HITS
+	float T = max(posT, negT);
+#else
+	float T = min(posT, negT);
+#endif // IMPOSTER_FAR_HITS
+	return ray * T;
+}
+
+vec3 ImposterNormal(vec3 imposterPosition, vec3 screenPosition)
+{
+	// Every example has this the other way around, but it seems to be correct in only this orientation, for some reason
+	return normalize(imposterPosition - screenPosition);
+}
+
+float ImposterDepth(vec3 position)
+{
+	return CameraToDepth(position.z);
+}

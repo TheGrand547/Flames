@@ -1680,6 +1680,7 @@ void init()
 	Shader::IncludeInShaderFilesystem("forward_buffers", "forward_buffers.incl");
 	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
 	Shader::IncludeInShaderFilesystem("cone", "cone.incl");
+	Shader::IncludeInShaderFilesystem("imposter", "imposter.incl");
 	ExternalShaders::Setup();
 
 	ShaderBank::Get("basic").CompileSimple("basic");
