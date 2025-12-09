@@ -1,25 +1,30 @@
 #version 440 core
 
 #include "camera"
-#include "hash"
 
-struct Oblong
+// TODO: Maybe some compression via using halfs and stuff like that, I don't know
+// velocity.w will decrease by normal.w until velocity.w < 0, at which point it'll be removed
+struct Particle
 {
-	vec4 position, velocity;
+	vec4 position, velocity, normal, color;
 };
 
-layout(std430, binding = 0) volatile buffer RawDebris
+struct DrawParticle
 {
-	//vec4 elements[];
-	Oblong elements[];
+	vec4 position, color;
 };
 
-layout(std430, binding = 1) volatile buffer DrawDebris
+layout(std430, binding = 0) volatile buffer RawParticles
 {
-	vec4 drawElements[];
+	Particle elements[];
 };
 
-layout(std430, binding = 2) volatile buffer DebrisIndirect
+layout(std430, binding = 1) volatile buffer DrawParticles
+{
+	DrawParticle drawElements[];
+};
+
+layout(std430, binding = 2) volatile buffer IndirectParticles
 {
 	uint count;
 	uint primCount;
@@ -27,20 +32,26 @@ layout(std430, binding = 2) volatile buffer DebrisIndirect
 	uint baseInstance;
 };
 
-#ifndef DEBRIS_COUNT
-#define DEBRIS_COUNT 1024
-#endif
+/*
+layout(std430, binding = 3) readonly buffer NewParticles
+{
+	Particle newParticles[];
+};
+
+
+// Persistant data about the particles
+layout(std430, binding = 4) volatile buffer MiscParticles
+{
+	uint poolHead, poolTail;
+};
+*/
 
 #define COPY_LENGTH 10
+
 shared uint CopiedElements[COPY_LENGTH];
 
 shared uint drawIndex;
 shared uint drawCount;
-
-layout(location = 0) uniform vec3 cameraForward;
-layout(location = 1) uniform vec3 cameraPos;
-layout(location = 2) uniform vec3 cameraVelocity;
-layout(location = 3) uniform float zFar;
 
 layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
 void main()
@@ -62,6 +73,15 @@ void main()
 		baseInstance = 0;
 		primCount = 0;
 	}
+	/*
+	// No existing or current particles, get out of here after setting the indirect draw command up
+	//if (poolHead == poolTail && newParticles.length() == 0)
+	{
+		//return;
+	}
+	*/
+	
+	
 	if (workGroupIndex == 0)
 	{
 		drawIndex = 0;
@@ -70,38 +90,11 @@ void main()
 	barrier();
 	if (globalIndex < elements.length())
 	{
-		Oblong current = elements[globalIndex];
-		vec3 currentDust = current.position.xyz;
-		// Move dust
-		
-		// A constant motion to imply that the 'big ship' is moving, albiet slowly
-		const vec3 dustDirection = pow(2.f, -7.f) * 0.4f * normalize(vec3(1.f, -0.25f, 0.325f));
-		
-		
-		const float angleDeviation = 50;
-		const float cosineValue = cos(radians(angleDeviation));
-		
-		currentDust += dustDirection + current.velocity.xyz;
-		// Since View[3] is negated, the double negative becomes a position(maybe)
-		vec3 delta = currentDust - cameraPos;
-		float alignment = dot(cameraForward, normalize(delta));
-		float distance = length(delta);
-		//if ((alignment < -cosineValue && length(delta) > zFar *0.8) || length(delta) > 2 * zFar)
-		if (distance > 0.25 * zFar)
-		{
-			// Regenerate
-			vec3 position = hash3D(currentDust + current.velocity.xyz + vec3(alignment)) * 2.f - 1.f;
-			position = position * zFar / 4.f + cameraPos + cameraVelocity;
-			currentDust = position;
-			elements[globalIndex].position.w = max(hash1D(position) / 2.f, 0.15);
-		}
-		
-		
-		// Transform dust to camera
-		elements[globalIndex].position.xyz = currentDust;
-		
-		// Only pass particles in front of the camera to the shader
-		if (alignment > 0)
+		Particle current = elements[globalIndex];
+		current.velocity -= current.normal;
+		current.position += vec4(current.velocity.xyz, 0);
+		// Do the dust calculations
+		//if (current.velocity.w >= 0)
 		{
 			uint myIndex = atomicAdd(drawCount, 1);
 			if (myIndex < COPY_LENGTH)
@@ -109,6 +102,7 @@ void main()
 				CopiedElements[myIndex] = globalIndex;
 			}
 		}
+		elements[globalIndex] = current;
 	}
 	barrier();
 	if (workGroupIndex == 0 && drawCount > 0)
@@ -116,7 +110,10 @@ void main()
 		drawIndex = atomicAdd(primCount, drawCount);
 		for (int i =0 ; i < drawCount; i++)
 		{
-			drawElements[drawIndex + i] = elements[CopiedElements[i]].position;
+			DrawParticle temp;
+			temp.position = elements[CopiedElements[i]].position;
+			temp.color = elements[CopiedElements[i]].color;
+			drawElements[drawIndex + i] = temp;
 		}
 	}
 	

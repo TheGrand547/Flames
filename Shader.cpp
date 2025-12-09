@@ -171,6 +171,7 @@ Shader::~Shader()
 {
 	// TODO: Return to this
 	//this->ExportCompiled();
+	//Log("{} is dyin", this->name);
 	this->CleanUp();
 }
 
@@ -364,14 +365,17 @@ bool Shader::CompileCompute(const std::string& name)
 	std::filesystem::path path(shaderBasePath + name + ".glsl");
 	if (!std::filesystem::exists(path))
 	{
+		Log("Failed to load shader '{}'", name);
 		return false;
 	}
 	std::ifstream inputs(path.string(), std::ifstream::in);
 	if (inputs.is_open())
 	{
-		std::string vertex(std::istreambuf_iterator<char>{inputs}, {});
+		Log("Compiling Shader '{}'", name);
+		std::string compute(std::istreambuf_iterator<char>{inputs}, {});
+		this->name = name;
 		inputs.close();
-		return this->CompileComputeEmbedded(vertex);
+		return this->CompileComputeEmbedded(compute);
 	}
 	return false;
 }
@@ -385,9 +389,10 @@ bool Shader::CompileComputeEmbedded(const std::string& source)
 	{
 		glAttachShader(this->program, compute);
 		glLinkProgram(this->program);
+		this->ProgramStatus();
 		glDeleteShader(compute);
 	}
-	return false;
+	return this->compiled;
 }
 
 void Shader::DispatchCompute(std::uint32_t x, std::uint32_t y, std::uint32_t z) const noexcept
@@ -543,6 +548,58 @@ bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::st
 	}
 	return this->compiled;
 }
+
+bool Shader::CompileSingleFile(const std::string& filename)
+{
+	this->CleanUp();
+	std::filesystem::path compiledPath(shaderBasePath + filename + ".csp");
+	std::filesystem::path inputPath(shaderBasePath + filename + ".glsl");
+
+	if (!std::filesystem::exists(inputPath))
+	{
+		Log("File is missing '{}'", inputPath.string());
+		EXIT;
+		return false;
+	}
+
+	this->name = filename;
+
+	auto newestWrite = std::filesystem::last_write_time(inputPath).time_since_epoch().count();
+
+	if (TryLoadCompiled(filename, newestWrite))
+	{
+		return true;
+	}
+
+	std::ifstream inputFile(inputPath.string(), std::ifstream::in);
+	if (inputFile.is_open())
+	{
+		Log("Compiling Shader from '{}'", filename);
+		std::string inputA(std::istreambuf_iterator<char>{inputFile}, {});
+		Shader::DefineTemp("#define VERTEX");
+		GLuint vShader = CompileShader(GL_VERTEX_SHADER, inputA.c_str());
+		Shader::DefineTemp("#define FRAGMENT");
+		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, inputA.c_str());
+		if (vShader && fShader && (this->program = glCreateProgram()))
+		{
+			glAttachShader(this->program, vShader);
+			glAttachShader(this->program, fShader);
+			glLinkProgram(this->program);
+			this->ProgramStatus();
+			glDeleteShader(vShader);
+			glDeleteShader(fShader);
+			this->ExportCompiled();
+		}
+		inputFile.close();
+		return this->compiled;
+	}
+	else
+	{
+		Log("Some kind of error opening file '{}'", inputPath.string());
+	}
+	return false;
+}
+
 
 GLuint Shader::Index(const std::string& name)  const
 {
