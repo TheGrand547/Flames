@@ -1,7 +1,6 @@
 #version 440 core
 #include "camera"
 
-
 #ifdef VERTEX
 
 layout(location = 0) in vec4 vPos;

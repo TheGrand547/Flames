@@ -42,12 +42,12 @@ layout(std430, binding = 3) readonly buffer NewParticles
 // Persistant data about the particles
 layout(std430, binding = 4) volatile buffer MiscParticles
 {
-	uint nextIndex;
+	uint circularBufferIndex;
 	uint newParticleCount;
 };
 
 #ifndef POOL_SIZE
-#define POOL_SIZE 64;
+#define POOL_SIZE 64
 #endif // POOL_SIZE
 
 #ifndef MAX_PARTICLES
@@ -80,58 +80,6 @@ void main()
 		first = 0; // First 'index' in the array of 'indices'
 		baseInstance = 0;
 		primCount = 0;
-		
-		// This should *probably* be distributed over multiple threads but that's for when it actually works
-		uint index = nextIndex;
-		if (newParticleCount > 0)
-		{
-			for (uint i = 0; i < newParticleCount; i++)
-			{
-				Particle current = newParticles[i];
-				const float timeDelta = 1.f / 128.f;
-				current.velocity.xyz *= timeDelta;
-				current.normal *= timeDelta;
-				
-				elements[index] = current;
-				index = (index + 1) % MAX_PARTICLES;
-			
-			}
-			nextIndex = index % MAX_PARTICLES;
-			newParticleCount = 0;
-			/*
-			if (index + newParticleCount >= maxParticle)
-			{
-				index = 0;
-			}
-			{
-				// Simple version
-				for (uint i = 0; i < newParticleCount; i++)
-				{
-					
-				
-					elements[index++] = newParticles[i];
-				}
-				nextIndex = index;
-			}
-			
-			// Complicated
-			else
-			{
-				uint difference = maxParticle - nextIndex;
-				for (uint i = 0; i < difference; i++)
-				{
-					elements[index++] = newParticles[i];
-				}
-				for (uint i = 0; i < newParticleCount - difference; i++)
-				{
-					elements[i] = newParticles[i + difference];
-				}
-				nextIndex = newParticleCount - difference;
-			}
-			
-			newParticleCount = 0;
-			*/
-		}
 	}
 	
 	if (workGroupIndex == 0)
@@ -139,24 +87,44 @@ void main()
 		drawIndex = 0;
 		drawCount = 0;
 	}
+	if (groupIndex == 0 && newParticleCount > 0)
+	{
+		uint baseIndex = circularBufferIndex + globalIndex;
+		for (uint i = 0; i < newParticleCount; i += POOL_SIZE)
+		{
+			uint outIndex = (baseIndex + i) % MAX_PARTICLES;
+			Particle current = newParticles[i];
+			const float timeDelta = 1.f / 128.f;
+			current.velocity.xyz *= timeDelta;
+			current.normal *= timeDelta;
+			elements[outIndex] = current;
+		}
+	}
+	
 	barrier();
+	if (globalIndex == 0 && newParticleCount > 0)
+	{
+		circularBufferIndex = (circularBufferIndex + newParticleCount) % MAX_PARTICLES;
+		newParticleCount = 0;
+	
+	}
 	if (globalIndex < elements.length())
 	{
 		Particle current = elements[globalIndex];
-		if (pauseMotion == 0)
-		{
-		current.velocity -= current.normal;
-		current.position += vec4(current.velocity.xyz, 0);
-		}
 		if (current.velocity.w > 0)
 		{
+			if (pauseMotion == 0)
+			{
+				current.velocity -= current.normal;
+				current.position.xyz += current.velocity.xyz;
+				elements[globalIndex] = current;
+			}
 			uint myIndex = atomicAdd(drawCount, 1);
-			if (myIndex < COPY_LENGTH)
+			if (myIndex < POOL_SIZE)
 			{
 				CopiedElements[myIndex] = globalIndex;
 			}
 		}
-		elements[globalIndex] = current;
 	}
 	barrier();
 	// This is stupidly inefficient

@@ -126,6 +126,7 @@ constexpr auto TIGHT_BOXES = 2;
 constexpr auto CHECK_LIGHT_TILES = 3;
 constexpr auto CHECK_LIGHT_VOLUMES = 4;
 constexpr auto DYNAMIC_TREE = 5;
+constexpr auto PRIMITIVE_COUNTING = 6;
 // One for each number key
 std::array<bool, '9' - '0' + 1> debugFlags{};
 
@@ -247,7 +248,9 @@ static glm::uvec2 tileDimension;
 static Framebuffer<1, Depth> earlyDepth;
 static constexpr float EarlyDepthRatio = 1;
 
-static std::vector<GLuint> glQueries;
+static std::vector<GLuint> glFrameTimeQueries;
+static GLuint particleCountQuery = 0;
+static GLuint VertexCountQuery = 0;
 std::mutex bulletMutex;
 
 constexpr std::size_t dustDimension = 20;
@@ -260,6 +263,8 @@ std::vector<DecayLight> decaymen;
 constexpr std::uint32_t MaxLights = 100;
 // Get the number of buckets per tile, Adding an additional bucket for misc data
 constexpr std::uint32_t BucketsPerTile = MaxLights / 32 + (MaxLights % 32 != 0) + 1;
+
+static const glm::vec3 ShieldColor = glm::vec3(120.f, 204.f, 226.f) / 255.f;
 
 void BindDrawFramebuffer()
 {
@@ -279,6 +284,8 @@ void display()
 	GLuint currentRenderQuery = 0;
 	glGenQueries(1, &currentRenderQuery);
 	glBeginQuery(GL_TIME_ELAPSED, currentRenderQuery);
+	if (debugFlags[PRIMITIVE_COUNTING])
+		glBeginQuery(GL_PRIMITIVES_GENERATED, VertexCountQuery);
 
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 
@@ -690,17 +697,6 @@ void display()
 		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 	}
 
-	{
-		Shader& shader = ShaderBank::Get("particle_soup");
-		VAO& vao = VAOBank::Get("particle_soup");
-		auto& drawOutParts = BufferBank::Retrieve("DrawParticles");
-		auto& indirectOutParts = Bank<DrawIndirectBuffer>::Retrieve("IndirectParticles");
-		shader.SetActiveShader();
-		vao.Bind();
-		vao.BindArrayBuffer(drawOutParts);
-		shader.DrawArrayIndirect<DrawType::TriangleStrip>(indirectOutParts);
-	}
-
 	// Debug Info Display
 	{
 		DisablePushFlags(DepthTesting);
@@ -712,6 +708,30 @@ void display()
 	}
 	ShaderBank::Retrieve("widget").SetActiveShader();
 	ShaderBank::Retrieve("widget").DrawArray<DrawType::Lines>(6);
+	if (debugFlags[PRIMITIVE_COUNTING])
+	{
+		glEndQuery(GL_PRIMITIVES_GENERATED);
+	}
+
+	{
+		if (debugFlags[PRIMITIVE_COUNTING])
+		{
+			glBeginQuery(GL_PRIMITIVES_GENERATED, particleCountQuery);
+		}
+		//glBeginQueryIndexed(GL_PRIMITIVES_GENERATED, 1, particleCountQuery);
+		Shader& shader = ShaderBank::Get("particle_soup");
+		VAO& vao = VAOBank::Get("particle_soup");
+		auto& drawOutParts = BufferBank::Retrieve("DrawParticles");
+		auto& indirectOutParts = Bank<DrawIndirectBuffer>::Retrieve("IndirectParticles");
+		shader.SetActiveShader();
+		vao.Bind();
+		vao.BindArrayBuffer(drawOutParts);
+		shader.DrawArrayIndirect<DrawType::TriangleStrip>(indirectOutParts);
+		if (debugFlags[PRIMITIVE_COUNTING])
+		{
+			glEndQuery(GL_PRIMITIVES_GENERATED);
+		}
+	}
 
 	// Framebuffer stuff
 	glBindFramebuffer(GL_READ_FRAMEBUFFER, renderTarget.GetFrameBuffer());
@@ -730,7 +750,7 @@ void display()
 	displayStartTime = end;
 
 	glEndQuery(GL_TIME_ELAPSED);
-	glQueries.push_back(currentRenderQuery);
+	glFrameTimeQueries.push_back(currentRenderQuery);
 }
 
 static long long maxTickTime;
@@ -775,7 +795,7 @@ void idle()
 		ImGui::SameLine(); ImGui::Text(std::format("(ms): {:2.3}", 1000.f / averageFps).c_str());
 		ImGui::End();
 	}
-	std::erase_if(glQueries,
+	std::erase_if(glFrameTimeQueries,
 		[&](GLuint query)
 		{
 			GLuint64 out = 0;
@@ -789,6 +809,22 @@ void idle()
 			return false;
 		}
 	);
+	static GLuint64 particleCount = 0;
+	static GLuint64 vertexCount = 0;
+	if (particleCountQuery == 0)
+	{
+		glGenQueries(1, &particleCountQuery);
+		glGenQueries(1, &VertexCountQuery);
+	}
+	else
+	{
+		if (debugFlags[PRIMITIVE_COUNTING])
+		{
+			glGetQueryObjectui64v(particleCountQuery, GL_QUERY_RESULT, &particleCount);
+			particleCount /= 4;
+			glGetQueryObjectui64v(VertexCountQuery, GL_QUERY_RESULT, &vertexCount);
+		}
+	}
 
 	// "Proper" input handling
 	// These functions should be moved to the gametick loop, don't want to over-poll the input device and get weird
@@ -955,7 +991,12 @@ void idle()
 	buffered << "\n" << playfield.GetModel().translation;
 	buffered << "\nFeatureToggle: " << std::boolalpha << featureToggle;
 	buffered << '\n' << glm::dot(glm::normalize(playfield.GetVelocity()), playfield.GetModel().rotation * World::Forward);
-	buffered << '\n' << zoopers.size();
+	if (debugFlags[PRIMITIVE_COUNTING])
+	{
+		buffered << "\n\n Extreme Performance Penalty \n\n";
+		buffered << "\nActive Particles: " << particleCount;
+		buffered << "\nVertex Shader Invocations : " << vertexCount;
+	}
 	Level::SetInterest(Level::GetShips().GetPos());
 	
 	constexpr auto formatString = "FPS:{:7.2f}\nTime:{:4.2f}ms\nIdle:{}ns\nDisplay: {}us\n-Concurrent: {}us\
@@ -1064,15 +1105,15 @@ void gameTick()
 					for (int i = 0; i < 10; i++)
 					{
 						infinite_pain bonk{};
-						bonk.position = glm::vec4(placement + glm::sphericalRand(0.1f), 0.125f);
+						float lifetime = glm::abs(glm::gaussRand(0.35f, 0.125f));
+						float size = glm::linearRand(0.08f, 0.125f);
+						bonk.position = glm::vec4(placement + glm::sphericalRand(0.1f), size);
 
 						glm::vec3 simp = glm::normalize(glm::sphericalRand(1.f) + smartNorm * 1.5f);
-						glm::vec3 up = simp
-							* glm::abs(glm::gaussRand(10.f, 2.5f));
-
-						bonk.velocity = glm::vec4(up * 0.6f, 0.25f);
+						glm::vec3 up = simp * glm::abs(glm::gaussRand(10.f, 2.5f));
+						bonk.velocity = glm::vec4(up * 0.6f, lifetime);
 						bonk.normal = glm::vec4(glm::normalize(smartNorm) * 0.125f, 1.f);
-						glm::vec3 color = glm::mix(glm::vec3(1.f, 1.f, 0.f), glm::vec3(120.f, 204.f, 226.f) / 255.f, 0.5f);
+						glm::vec3 color = glm::mix(glm::vec3(1.f, 1.f, 0.f), ShieldColor, 1.f);
 						bonk.color = glm::vec4(color, 1.f);
 						painterlys.push_back(bonk);
 					}
@@ -1109,7 +1150,7 @@ void gameTick()
 			{
 				shieldPoses.push_back(point);
 			}
-			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(120.f,204.f,226.f, 1.f) / 255.f, glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
+			volumes.push_back({ glm::vec4(point, 20.f), glm::vec4(ShieldColor, 1.f), glm::vec4(1.f, 0.5f, 0.05f, 1.f) });
 		}
 		shieldPos.Swap(tmep);
 
