@@ -90,7 +90,7 @@ void main()
 	if (groupIndex == 0 && newParticleCount > 0)
 	{
 		uint baseIndex = circularBufferIndex + globalIndex;
-		for (uint i = 0; i < newParticleCount; i += POOL_SIZE)
+		for (uint i = 0; i < newParticleCount; i += WorkGroupSize)
 		{
 			uint outIndex = (baseIndex + i) % MAX_PARTICLES;
 			Particle current = newParticles[i];

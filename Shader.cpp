@@ -21,7 +21,7 @@ static const std::array<std::string, 5> extensions = { "v.glsl", "f.glsl", "g.gl
 static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGMENT_SHADER, GL_GEOMETRY_SHADER,
 	GL_TESS_CONTROL_SHADER, GL_TESS_EVALUATION_SHADER };
 
-static std::vector<std::string> shaderDefines;
+static std::vector<std::vector<std::string>> shaderDefines = { std::vector<std::string>{} };
 static std::vector<std::string> shaderTempDefines;
 
 void Shader::SetBasePath(const std::string& basePath)
@@ -36,7 +36,7 @@ void Shader::ForceRecompile(bool flag)
 
 void Shader::Define(const std::string& define)
 {
-	shaderDefines.push_back(define);
+	shaderDefines.back().push_back(define);
 }
 
 void Shader::DefineTemp(const std::string& define)
@@ -44,6 +44,18 @@ void Shader::DefineTemp(const std::string& define)
 	shaderTempDefines.push_back(define);
 }
 
+void Shader::PushContext()
+{
+	shaderDefines.push_back({});
+}
+
+void Shader::PopContext()
+{
+	if (shaderDefines.size() > 0)
+	{
+		shaderDefines.pop_back();
+	}
+}
 
 static void ApplyShaderIncludes(std::string& data)
 {
@@ -51,9 +63,12 @@ static void ApplyShaderIncludes(std::string& data)
 	{
 		std::stringstream newDefines;
 		newDefines << '\n';
-		for (const auto& define : shaderDefines)
+		for (const auto& defineContext : shaderDefines)
 		{
-			newDefines << define << '\n';
+			for (const auto& define : defineContext)
+			{
+				newDefines << define << '\n';
+			}
 		}
 		for (const auto& define : shaderTempDefines)
 		{

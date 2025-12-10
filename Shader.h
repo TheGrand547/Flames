@@ -160,6 +160,9 @@ public:
 
 	// Adds a define to only the very next shader compliation
 	static void DefineTemp(const std::string& define);
+
+	static void PushContext();
+	static void PopContext();
 };
 
 constexpr bool Shader::Compiled() const

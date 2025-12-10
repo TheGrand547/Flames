@@ -9,6 +9,7 @@
 #include <glm/gtx/string_cast.hpp>
 #include <iostream>
 #include <limits>
+#include <glm/gtc/random.hpp>
 #include <format>
 
 /*
@@ -42,6 +43,12 @@ inline glm::quat QuatIdentity() noexcept
 inline glm::quat ForwardDir(const glm::vec3& forward, glm::vec3 up = glm::vec3(0.f, 1.f, 0.f))
 {
 	return glm::quat(SetForward(forward, up));
+}
+
+template<std::size_t T = 3>
+inline float ConstrainedGaussRand(float mean, float deviation)
+{
+	return glm::clamp(glm::gaussRand(mean, deviation), mean - deviation * T, mean + deviation * T);
 }
 
 template<glm::length_t N, typename T, glm::qualifier Q>

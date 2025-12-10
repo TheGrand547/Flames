@@ -1106,7 +1106,7 @@ void gameTick()
 					{
 						infinite_pain bonk{};
 						float lifetime = glm::abs(glm::gaussRand(0.35f, 0.125f));
-						float size = glm::linearRand(0.08f, 0.125f);
+						float size = glm::linearRand(0.1f, 0.125f);
 						bonk.position = glm::vec4(placement + glm::sphericalRand(0.1f), size);
 
 						glm::vec3 simp = glm::normalize(glm::sphericalRand(1.f) + smartNorm * 1.5f);
@@ -1118,7 +1118,6 @@ void gameTick()
 						painterlys.push_back(bonk);
 					}
 					particlesNew.Swap(painterlys);
-					//Level::SetExplosion(result.point);
 				}
 			}
 		}
@@ -1586,12 +1585,14 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 		// TODO: Put the constants and stuff in here so it doesn't have to be recompiled all the time
 		QUICKTIMER("Foolhardy");
 		Shader::ForceRecompile(true);
+		Shader::PushContext();
 		Shader::Define(std::format("#define SCREEN_SIZE vec2({},{})", width, height));
 		Shader::Define(std::format("#define TILE_SIZE {}", static_cast<std::uint32_t>(gridResolution)));
 		// Add one to account for the record keeping one
 		Shader::Define(std::format("#define MASKS_PER_TILE {}", BucketsPerTile));
 		ShaderBank::Get("lightCulling").CompileCompute("light_cull");
 		ShaderBank::Get("computation").CompileCompute("compute_frustums");
+		Shader::PopContext();
 		Shader::ForceRecompile(false);
 
 		Shader& shader = ShaderBank::Retrieve("computation");
