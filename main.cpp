@@ -270,7 +270,7 @@ struct infinite_pain
 {
 	glm::vec4 position, velocity, normal, color;
 };
-
+constexpr std::size_t Max_Partilces = 1024;
 static BufferSync<std::vector<infinite_pain>> particlesNew;
 static BufferSync<std::vector<glm::mat4>> bigCringe;
 
@@ -397,7 +397,20 @@ void display()
 		rawParts.BindBufferBase(0);
 		drawParts.BindBufferBase(1);
 		indirectParts.BindBufferBase(2);
-		lowester.DispatchCompute(32);
+		particlesNew.ExclusiveOperation([](auto& in)
+			{
+				ShaderStorage::Retrieve("MiscParticles").BufferSubData(static_cast<unsigned int>(in.size()), sizeof(unsigned int));
+				if (in.size() > 0)
+				{
+					ShaderStorage::Retrieve("NewParticles").BufferData(in);
+					in.clear();
+				}
+			});
+		glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+		ShaderStorage::Retrieve("NewParticles").BindBufferBase(3);
+		ShaderStorage::Retrieve("MiscParticles").BindBufferBase(4);
+		lowester.SetUnsignedInt("pauseMotion", debugFlags[FREEZE_GAMEPLAY]);
+		lowester.DispatchCompute(Max_Partilces / 64);
 
 		auto& drawOutParts = BufferBank::Retrieve("DrawParticles");
 		auto& indirectOutParts = Bank<DrawIndirectBuffer>::Retrieve("IndirectParticles");
@@ -928,16 +941,6 @@ void idle()
 			}
 		);
 	}
-	particlesNew.ExclusiveOperation([](auto& in)
-		{
-			if (in.size() > 0)
-			{
-				ShaderStorage::Get("RawParticles").BufferData(in);
-				ShaderStorage::Get("DrawParticles").Reserve(sizeof(glm::vec4) * 2 * in.size());
-				BufferBank::Get("DrawParticles").Reserve(sizeof(glm::vec4) * 2 * in.size());
-				in.clear();
-			}
-		});
 
 	bigCringe.ExclusiveOperation([](const auto& ins)
 		{
@@ -1057,19 +1060,20 @@ void gameTick()
 
 					std::vector<infinite_pain> painterlys;
 					glm::vec3 placement = result.point;
-					glm::vec3 smartNorm = glm::reflect(rayDir, result.normal);
-					for (int i = 0; i < 20; i++)
+					glm::vec3 smartNorm = result.normal;
+					for (int i = 0; i < 10; i++)
 					{
-						infinite_pain bonk;
+						infinite_pain bonk{};
 						bonk.position = glm::vec4(placement + glm::sphericalRand(0.1f), 0.125f);
 
-						glm::vec3 simp = glm::normalize(glm::sphericalRand(1.f) + smartNorm * 3.f);
+						glm::vec3 simp = glm::normalize(glm::sphericalRand(1.f) + smartNorm * 1.5f);
 						glm::vec3 up = simp
 							* glm::abs(glm::gaussRand(10.f, 2.5f));
 
-						bonk.velocity = glm::vec4(up * 0.25f, 10.f / Tick::TimeDelta) * Tick::TimeDelta;
-						bonk.normal = glm::vec4(glm::normalize(smartNorm) * 0.125f, 1.f) * Tick::TimeDelta;
-						bonk.color = glm::vec4(glm::vec3(120.f, 204.f, 226.f) / 255.f, 1.f);
+						bonk.velocity = glm::vec4(up * 0.6f, 0.25f);
+						bonk.normal = glm::vec4(glm::normalize(smartNorm) * 0.125f, 1.f);
+						glm::vec3 color = glm::mix(glm::vec3(1.f, 1.f, 0.f), glm::vec3(120.f, 204.f, 226.f) / 255.f, 0.5f);
+						bonk.color = glm::vec4(color, 1.f);
 						painterlys.push_back(bonk);
 					}
 					particlesNew.Swap(painterlys);
@@ -2024,23 +2028,14 @@ void init()
 	}
 	auto& foo = Level::GetShips().Make();
 	foo.Init(glm::vec3(-200.f, 60.f, 0.f));
-
-	std::vector<infinite_pain> painterlys;
-	glm::vec3 placement = playfield.GetModel().translation + World::Forward * 25.f;
-	for (int i = 0; i < 20; i++)
-	{
-		infinite_pain bonk;
-		bonk.position = glm::vec4(placement, 0.5f);
-		bonk.velocity = glm::vec4(glm::sphericalRand(1.f) * 20.f, 1.f / Tick::TimeDelta) * Tick::TimeDelta;
-		bonk.normal = glm::vec4(World::Up * 0.125f, 1.f) * Tick::TimeDelta;
-		bonk.color = glm::vec4(glm::abs(glm::ballRand(1.f)), 1.f);
-		painterlys.push_back(bonk);
-	}
-	ShaderStorage::Get("RawParticles").BufferData(painterlys);
-	ShaderStorage::Get("DrawParticles").Reserve(sizeof(glm::vec4)* 2* painterlys.size());
-	BufferBank::Get("DrawParticles").Reserve(sizeof(glm::vec4) * 2 * painterlys.size());
+	
+	ShaderStorage::Get("RawParticles").Reserve(Max_Partilces * sizeof(infinite_pain));
+	ShaderStorage::Get("DrawParticles").Reserve(sizeof(glm::vec4) * 2* Max_Partilces);
+	BufferBank::Get("DrawParticles").Reserve(sizeof(glm::vec4) * 2 * Max_Partilces);
 	ShaderStorage::Get("IndirectParticles").Reserve(sizeof(DrawIndirect));
 	Bank<DrawIndirectBuffer>::Get("IndirectParticles").Reserve(sizeof(DrawIndirect));
+	ShaderStorage::Get("MiscParticles").BufferData(std::array<unsigned int, 2>{0});
+	ShaderStorage::Get("NewParticles").Reserve(0);
 
 	// =============================================================
 	{

@@ -32,7 +32,7 @@ layout(std430, binding = 2) volatile buffer IndirectParticles
 	uint baseInstance;
 };
 
-/*
+
 layout(std430, binding = 3) readonly buffer NewParticles
 {
 	Particle newParticles[];
@@ -42,18 +42,26 @@ layout(std430, binding = 3) readonly buffer NewParticles
 // Persistant data about the particles
 layout(std430, binding = 4) volatile buffer MiscParticles
 {
-	uint poolHead, poolTail;
+	uint nextIndex;
+	uint newParticleCount;
 };
-*/
 
-#define COPY_LENGTH 10
+#ifndef POOL_SIZE
+#define POOL_SIZE 64;
+#endif // POOL_SIZE
 
-shared uint CopiedElements[COPY_LENGTH];
+#ifndef MAX_PARTICLES
+#define MAX_PARTICLES 1024
+#endif // MAX_PARTICLES
+
+shared uint CopiedElements[POOL_SIZE];
 
 shared uint drawIndex;
 shared uint drawCount;
 
-layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(location = 0) uniform uint pauseMotion;
+
+layout(local_size_x = POOL_SIZE, local_size_y = 1, local_size_z = 1) in;
 void main()
 {
 	const uint WorkGroupSize = gl_WorkGroupSize.x * gl_WorkGroupSize.y * gl_WorkGroupSize.z;	
@@ -72,15 +80,59 @@ void main()
 		first = 0; // First 'index' in the array of 'indices'
 		baseInstance = 0;
 		primCount = 0;
+		
+		// This should *probably* be distributed over multiple threads but that's for when it actually works
+		uint index = nextIndex;
+		if (newParticleCount > 0)
+		{
+			for (uint i = 0; i < newParticleCount; i++)
+			{
+				Particle current = newParticles[i];
+				const float timeDelta = 1.f / 128.f;
+				current.velocity.xyz *= timeDelta;
+				current.normal *= timeDelta;
+				
+				elements[index] = current;
+				index = (index + 1) % MAX_PARTICLES;
+			
+			}
+			nextIndex = index % MAX_PARTICLES;
+			newParticleCount = 0;
+			/*
+			if (index + newParticleCount >= maxParticle)
+			{
+				index = 0;
+			}
+			{
+				// Simple version
+				for (uint i = 0; i < newParticleCount; i++)
+				{
+					
+				
+					elements[index++] = newParticles[i];
+				}
+				nextIndex = index;
+			}
+			
+			// Complicated
+			else
+			{
+				uint difference = maxParticle - nextIndex;
+				for (uint i = 0; i < difference; i++)
+				{
+					elements[index++] = newParticles[i];
+				}
+				for (uint i = 0; i < newParticleCount - difference; i++)
+				{
+					elements[i] = newParticles[i + difference];
+				}
+				nextIndex = newParticleCount - difference;
+			}
+			
+			newParticleCount = 0;
+			*/
+		}
 	}
-	/*
-	// No existing or current particles, get out of here after setting the indirect draw command up
-	//if (poolHead == poolTail && newParticles.length() == 0)
-	{
-		//return;
-	}
-	*/
-	
 	
 	if (workGroupIndex == 0)
 	{
@@ -91,10 +143,12 @@ void main()
 	if (globalIndex < elements.length())
 	{
 		Particle current = elements[globalIndex];
+		if (pauseMotion == 0)
+		{
 		current.velocity -= current.normal;
 		current.position += vec4(current.velocity.xyz, 0);
-		// Do the dust calculations
-		//if (current.velocity.w >= 0)
+		}
+		if (current.velocity.w > 0)
 		{
 			uint myIndex = atomicAdd(drawCount, 1);
 			if (myIndex < COPY_LENGTH)
@@ -105,6 +159,7 @@ void main()
 		elements[globalIndex] = current;
 	}
 	barrier();
+	// This is stupidly inefficient
 	if (workGroupIndex == 0 && drawCount > 0)
 	{
 		drawIndex = atomicAdd(primCount, drawCount);
@@ -116,5 +171,4 @@ void main()
 			drawElements[drawIndex + i] = temp;
 		}
 	}
-	
 }
