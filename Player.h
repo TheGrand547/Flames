@@ -15,7 +15,7 @@ class Player
 {
 protected:
 	Transform transform;
-	glm::vec3 velocity;
+	glm::vec3 velocity, lastAcceleration;
 	IntervalType fireDelay, fireCountdown;
 	std::uint32_t firingFrames;
 	void SelectTarget() noexcept;
@@ -24,7 +24,8 @@ public:
 	Satelite* sat = nullptr; // AHHHHH
 
 	inline Player(const glm::vec3& position = glm::vec3(0), const glm::vec3& velocity = glm::vec3(0)) noexcept 
-		: transform(position, QuatIdentity()), velocity(velocity), fireDelay(0), fireCountdown(0) {}
+		: transform(position, QuatIdentity()), velocity(velocity), lastAcceleration(0.f), 
+		fireDelay(0), fireCountdown(0), firingFrames(0) {}
 
 	// TODO: Encapsulate drawing functions
 
@@ -38,6 +39,11 @@ public:
 	inline glm::vec3 GetVelocity() const noexcept
 	{
 		return this->velocity;
+	}
+
+	inline glm::vec3 GetAcceleration() const noexcept
+	{
+		return this->lastAcceleration;
 	}
 
 	static OBB Box;

@@ -212,12 +212,31 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 	localCamera += playerModel.translation;
 
 	const glm::vec3 modelForward = playerModel.rotation * glm::vec3(1.f, 0.f, 0.f);
-	localCamera -= velocity / 20.f;
 
+	const glm::vec3 jerk = playfield.GetAcceleration();
+
+	static glm::vec3 previousAccleration{ 0.f };
+
+	float speed = glm::length(velocity);
+
+	if (speed > EPSILON)
+	{
+		glm::vec3 foolish = (previousAccleration * 0.9f + jerk * 0.1f);
+		float ln = glm::clamp(glm::length(foolish), 0.f, 1.f);
+		if (ln > EPSILON)
+		{
+			//localCamera -= glm::normalize(foolish) * ln;
+		}
+		previousAccleration = foolish;
+		float adjustedOffset = glm::mix(0.f, 1.5f, speed / 60.f);
+		adjustedOffset = std::clamp(speed / 20.f, 0.f, 2.f);
+		localCamera -= glm::normalize(velocity) * adjustedOffset;
+		//localCamera -= velocity / 20.f;
+	}
 	//localCamera = playerModel.translation;
 
-	const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
-	//const glm::vec3 cameraFocus = localCamera + modelForward;
+	//const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
+	const glm::vec3 cameraFocus = localCamera + modelForward * (10.f + Rectify(glm::length(velocity)));
 	const glm::vec3 cameraForward = glm::normalize(cameraFocus - localCamera);
 	return { localCamera, cameraForward };
 }
@@ -446,7 +465,6 @@ void display()
 	interzone.SetVec3("CameraPos", localCamera);
 	outerzone.BindArrayBuffer(Bank<ArrayBuffer>::Retrieve("dummyInstance"), 1);
 
-	// Only need one per tile
 	interzone.DrawElements<DrawType::Triangle>(levelGeometry.indirect);
 
 	Level::GetShips().Draw(guyMeshData, outerzone, interzone);
@@ -1089,31 +1107,40 @@ void gameTick()
 				glm::vec3 pointA = rayStart + rayDir * A + glm::ballRand(0.25f);
 				glm::vec3 pointB = rayStart + rayDir * B;
 				zoopers.emplace_back(pointA, pointB, static_cast<std::uint32_t>(duration));
+
+				glm::vec3 color;
 				if (out.type == Laser::HitType::Terrain || out.type == Laser::HitType::Entity)
 				{
 					RayCollision result = out.hit.value();
-					decaymen.push_back(result.point + result.normal);
+					//decaymen.push_back(result.point + result.normal);
+					float deviation = 0.15f;
+					float basis = 1.f - deviation;
+					color = glm::vec3(1.f, basis, 0.f);
+					color += glm::vec3(glm::diskRand(deviation), 0.f);
 				}
 				if (out.type == Laser::HitType::Shield)
 				{
 					RayCollision result = out.hit.value();
-					decaymen.push_back(result.point);
-
-					std::vector<infinite_pain> painterlys;
+					//decaymen.push_back(result.point);
+					color = ShieldColor;
+				}
+				if (out.hit.has_value())
+				{
+					RayCollision result = out.hit.value();
 					glm::vec3 placement = result.point;
 					glm::vec3 smartNorm = result.normal;
+					std::vector<infinite_pain> painterlys;
 					for (int i = 0; i < 10; i++)
 					{
 						infinite_pain bonk{};
-						float lifetime = glm::abs(glm::gaussRand(0.35f, 0.125f));
+						float lifetime = glm::abs(glm::gaussRand(0.35f, 0.125f)) * 2.f;
 						float size = glm::linearRand(0.1f, 0.125f);
 						bonk.position = glm::vec4(placement + glm::sphericalRand(0.1f), size);
 
 						glm::vec3 simp = glm::normalize(glm::sphericalRand(1.f) + smartNorm * 1.5f);
 						glm::vec3 up = simp * glm::abs(glm::gaussRand(10.f, 2.5f));
-						bonk.velocity = glm::vec4(up * 0.6f, lifetime);
+						bonk.velocity = glm::vec4(up * 0.5f, lifetime);
 						bonk.normal = glm::vec4(glm::normalize(smartNorm) * 0.125f, 1.f);
-						glm::vec3 color = glm::mix(glm::vec3(1.f, 1.f, 0.f), ShieldColor, 1.f);
 						bonk.color = glm::vec4(color, 1.f);
 						painterlys.push_back(bonk);
 					}

@@ -311,7 +311,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	forces += signFlags.x * localAxes[0] * input.heading.x * EngineThrust * 5.f;
 	forces += signFlags.y * localAxes[1] * input.heading.x * EngineThrust * 5.f;
 	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
-
+	this->lastAcceleration = forces;
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	if (!input.zoomZoom && glm::length(this->velocity) > MaxSpeed)
 	{
