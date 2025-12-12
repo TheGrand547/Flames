@@ -18,6 +18,7 @@ layout(location = 0) flat out vec4 color;
 
 void main()
 {
+
 	vec2 topLeft = rectangle.xy;
 	vec2 delta = rectangle.zw;
 	
@@ -33,7 +34,7 @@ void main()
 		pos += vec2(delta.x, 0);
 	}
 	// 1 is right on top of the camera
-	gl_Position = Projection * vec4(pos.xy, 1, 1);
+	gl_Position = Projection * vec4(pos.xy, 0, 1);
 #ifdef INSTANCED
 	color = rectColor;
 #endif // INSTANCED

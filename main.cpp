@@ -706,19 +706,20 @@ void display()
 		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
 	}
 	// Healthbar
-	if (false)
 	{
-		DisablePushFlags(DepthTesting);
+		DisablePushFlags(DepthTesting | FaceCulling);
 		ScreenRect angus = ScreenRect::CenteredAt(glm::vec2(500.f, 800.f), glm::vec2(200.f, 50.f)),
 			bogus = ScreenRect::CenteredAt(glm::vec2(500.f, 800.f), glm::vec2(190.f, 40.f));
 		bogus.z *= glm::length(velocity) / 60.f;
 		glm::vec4 angusColor = glm::vec4(1.f, 0.f, 0.f, 1.f);
 		glm::vec4 bogusColor = glm::vec4(1.f, 1.f, 0.f, 1.f);
 
-		if (featureToggle)
+		//if (featureToggle)
 		{
 			Shader& shader = ShaderBank::Retrieve("uiRect");
+			VAO& vao = VAOBank::Retrieve("particle_soup");
 			shader.SetActiveShader();
+			vao.Bind();
 			shader.SetVec4("color", angusColor);
 			shader.SetVec4("rectangle", angus);
 			shader.DrawArray<DrawType::TriangleStrip>(4);
@@ -727,16 +728,22 @@ void display()
 			shader.SetVec4("rectangle", bogus);
 			shader.DrawArray<DrawType::TriangleStrip>(4);
 		}
-		else
+		//else
 		{
+			angus.y -= 150;
+			bogus.y -= 150;
+
 			ArrayBuffer& plegm = BufferBank::Get("plegm");
 			struct beta { glm::vec4 a, b; };
-			std::array<beta, 2> sleepyHead{ {{angus, angusColor}, {bogus, bogusColor}} };
+			std::array<beta, 2> sleepyHead{ {{angus, bogusColor}, {bogus, angusColor}} };
 			plegm.BufferData(sleepyHead);
-			Shader & shader= ShaderBank::Retrieve("uiRect2");
-			VAO& vao = VAOBank::Get("particle_soup");
-			vao.BindArrayBuffer(plegm, 0);
+			Shader & shader = ShaderBank::Retrieve("uiRect2");
 			shader.SetActiveShader();
+			VAO& vao = VAOBank::Retrieve("particle_soup");
+			vao.Bind();
+			vao.BindArrayBuffer(plegm, 0);
+			screenSpaceBuffer.SetBindingPoint(1);
+			screenSpaceBuffer.BindUniform();
 			shader.DrawArrayInstanced<DrawType::TriangleStrip>(BufferBank::Get("dummy"), plegm);
 			
 		}
@@ -1858,7 +1865,7 @@ void init()
 	
 	ShaderBank::Get("engine").CompileSimple("engine");
 	ShaderBank::Get("laser").CompileSimple("laser");
-	ShaderBank::Get("fontShader").CompileSimple("font");
+	ShaderBank::Get("fontShader").CompileSingleFile("fontv");
 	ShaderBank::Get("nineSlicer").CompileSimple("ui_nine");
 	ShaderBank::Get("pathNodeView").CompileSimple("path_node");
 	ShaderBank::Get("stencilTest").CompileSimple("stencil_");
@@ -1917,7 +1924,7 @@ void init()
 		}
 	);
 
-	ShaderBank::for_each(std::to_array({ "fontShader", "uiRect", "uiRectTexture", "nineSlicer"}),
+	ShaderBank::for_each(std::to_array({ "fontShader", "uiRect", "uiRect2", "uiRectTexture", "nineSlicer"}),
 		[](auto& element)
 		{
 			element.UniformBlockBinding("ScreenSpace", 1);

@@ -582,10 +582,11 @@ bool Shader::CompileSingleFile(const std::string& filename)
 
 	auto newestWrite = std::filesystem::last_write_time(inputPath).time_since_epoch().count();
 
+	/* TODO: Need to have some kind of flag thing that separates the precompiled versions from each other
 	if (TryLoadCompiled(filename, newestWrite))
 	{
 		return true;
-	}
+	}*/
 
 	std::ifstream inputFile(inputPath.string(), std::ifstream::in);
 	if (inputFile.is_open())
