@@ -254,7 +254,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 
 bool Shader::ProgramStatus()
 {
-	int result;
+	int result = 0;
 	glGetProgramiv(this->program, GL_LINK_STATUS, &result);
 	if (!result)
 	{
@@ -262,22 +262,23 @@ bool Shader::ProgramStatus()
 		glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
 		std::size_t trueLogSize = static_cast<std::size_t>(logSize) + 1;
 		std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(trueLogSize);
-		logMsg[trueLogSize] = '\0';
+		logMsg[trueLogSize - 1] = '\0';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		Log("Linking of shader failed: \n{}", logMsg.get());
 		this->program = 0;
-		EXIT;
+		//EXIT;
 	}
-	GLint logSize;
+	GLint logSize = 0;
 	glGetProgramiv(program, GL_INFO_LOG_LENGTH, &logSize);
 	if (logSize)
 	{
 		std::size_t trueLogSize = static_cast<std::size_t>(logSize) + 1;
 		std::unique_ptr<GLchar[]> logMsg = std::make_unique<GLchar[]>(trueLogSize);
-		logMsg[trueLogSize] = '\n';
+		logMsg[trueLogSize - 1] = '\n';
 		glGetProgramInfoLog(program, logSize, NULL, logMsg.get());
 		Log("Program Log: \n{}", logMsg.get());
-		EXIT;
+		this->program = 0;
+		//EXIT;
 	}
 	this->compiled = result;
 	return result;
@@ -600,7 +601,13 @@ bool Shader::CompileSingleFile(const std::string& filename)
 			glAttachShader(this->program, vShader);
 			glAttachShader(this->program, fShader);
 			glLinkProgram(this->program);
-			this->ProgramStatus();
+			if (!this->ProgramStatus())
+			{
+				std::string outrun = inputA.c_str();
+				ApplyShaderIncludes(outrun);
+				Log("\n\n{}\n\n", outrun);
+				EXIT;
+			}
 			glDeleteShader(vShader);
 			glDeleteShader(fShader);
 			this->ExportCompiled();
@@ -684,7 +691,7 @@ void Shader::IncludeInShaderFilesystem(const std::string& virtualName, const std
 	{
 		//Log("Including file '{}' in the virtual shader filesystem.\n", fileName);
 		std::string text(std::istreambuf_iterator<char>{included}, {});
-		shaderIncludeMapping[virtualName] = text;
+		shaderIncludeMapping[virtualName] = text + '\n';
 	}
 	else
 	{

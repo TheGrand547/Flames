@@ -19,6 +19,8 @@ struct ScreenRect : public glm::vec4
 	inline bool Contains(const glm::vec2& point) const noexcept;
 	inline bool Contains(float x, float y) const noexcept;
 	inline bool Overlaps(const ScreenRect& other) const noexcept;
+
+	inline static ScreenRect CenteredAt(const glm::vec2& center, const glm::vec2& dimension);
 };
 
 typedef ScreenRect Rect;
@@ -58,6 +60,11 @@ inline bool ScreenRect::Overlaps(const ScreenRect& other) const noexcept
 {
 	return this->x < other.x + other.z && this->x + this->z > other.x &&
 		this->y < other.y + other.w && this->y + this->w > other.y;
+}
+
+inline ScreenRect ScreenRect::CenteredAt(const glm::vec2& center, const glm::vec2& dimension)
+{
+	return ScreenRect(glm::vec4(center - dimension / 2.f, dimension));
 }
 
 #endif // SCREEN_RECT_H

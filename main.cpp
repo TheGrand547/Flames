@@ -213,27 +213,16 @@ std::pair<glm::vec3, glm::vec3> CalculateCameraPositionDir(const Model& playerMo
 
 	const glm::vec3 modelForward = playerModel.rotation * glm::vec3(1.f, 0.f, 0.f);
 
-	const glm::vec3 jerk = playfield.GetAcceleration();
-
-	static glm::vec3 previousAccleration{ 0.f };
-
 	float speed = glm::length(velocity);
 
 	if (speed > EPSILON)
 	{
-		glm::vec3 foolish = (previousAccleration * 0.9f + jerk * 0.1f);
-		float ln = glm::clamp(glm::length(foolish), 0.f, 1.f);
-		if (ln > EPSILON)
-		{
-			//localCamera -= glm::normalize(foolish) * ln;
-		}
-		previousAccleration = foolish;
+		// TODO: Max Speed
 		float adjustedOffset = glm::mix(0.f, 1.5f, speed / 60.f);
-		adjustedOffset = std::clamp(speed / 20.f, 0.f, 2.f);
+		adjustedOffset = std::clamp(speed / 20.f, 0.f, 1.5f);
 		localCamera -= glm::normalize(velocity) * adjustedOffset;
 		//localCamera -= velocity / 20.f;
 	}
-	//localCamera = playerModel.translation;
 
 	//const glm::vec3 cameraFocus = GetCameraFocus(playerModel, velocity);
 	const glm::vec3 cameraFocus = localCamera + modelForward * (10.f + Rectify(glm::length(velocity)));
@@ -476,7 +465,6 @@ void display()
 	buf.BufferData(meshs2.GetMatrixPair());
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh, playerModel);
-	
 	{
 		// *Needs* to have the copying between the buffers completed by this point
 		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
@@ -661,13 +649,13 @@ void display()
 	{
 		DisablePushFlags(FaceCulling);
 		DisableDepthWritePush;
-		InverseDepthTest();
+		//InverseDepthTest();
 		Shader& skyBox = ShaderBank::Retrieve("skyBox");
 		skyBox.SetActiveShader();
 		VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 		skyBox.SetTextureUnit("skyBox", sky);
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
-		DefaultDepthTest();
+		//DefaultDepthTest();
 	}
 
 
@@ -675,7 +663,10 @@ void display()
 	if (quickLightPairs.ExclusiveOperation(
 		[](auto& data)
 		{
-			BufferBank::Get("Quicker").BufferData(data);
+			if (data.size() > 0)
+			{
+				BufferBank::Get("Quicker").BufferData(data);
+			}
 			return data.size();
 		}
 	) > 0)
@@ -713,6 +704,42 @@ void display()
 		foolish.SetVec3("CameraPos", localCamera);
 		foolish.SetUnsignedInt("FeatureToggle", featureToggle);
 		foolish.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, buffer);
+	}
+	// Healthbar
+	if (false)
+	{
+		DisablePushFlags(DepthTesting);
+		ScreenRect angus = ScreenRect::CenteredAt(glm::vec2(500.f, 800.f), glm::vec2(200.f, 50.f)),
+			bogus = ScreenRect::CenteredAt(glm::vec2(500.f, 800.f), glm::vec2(190.f, 40.f));
+		bogus.z *= glm::length(velocity) / 60.f;
+		glm::vec4 angusColor = glm::vec4(1.f, 0.f, 0.f, 1.f);
+		glm::vec4 bogusColor = glm::vec4(1.f, 1.f, 0.f, 1.f);
+
+		if (featureToggle)
+		{
+			Shader& shader = ShaderBank::Retrieve("uiRect");
+			shader.SetActiveShader();
+			shader.SetVec4("color", angusColor);
+			shader.SetVec4("rectangle", angus);
+			shader.DrawArray<DrawType::TriangleStrip>(4);
+
+			shader.SetVec4("color", bogusColor);
+			shader.SetVec4("rectangle", bogus);
+			shader.DrawArray<DrawType::TriangleStrip>(4);
+		}
+		else
+		{
+			ArrayBuffer& plegm = BufferBank::Get("plegm");
+			struct beta { glm::vec4 a, b; };
+			std::array<beta, 2> sleepyHead{ {{angus, angusColor}, {bogus, bogusColor}} };
+			plegm.BufferData(sleepyHead);
+			Shader & shader= ShaderBank::Retrieve("uiRect2");
+			VAO& vao = VAOBank::Get("particle_soup");
+			vao.BindArrayBuffer(plegm, 0);
+			shader.SetActiveShader();
+			shader.DrawArrayInstanced<DrawType::TriangleStrip>(BufferBank::Get("dummy"), plegm);
+			
+		}
 	}
 
 	// Debug Info Display
@@ -1815,6 +1842,7 @@ void init()
 	Shader::SetBasePath("Shaders");
 	Shader::IncludeInShaderFilesystem("lighting", "lighting.incl");
 	Shader::IncludeInShaderFilesystem("camera", "camera.incl");
+	Shader::IncludeInShaderFilesystem("ScreenSpace", "ScreenSpace.incl");
 	Shader::IncludeInShaderFilesystem("frustums", "frustums.incl");
 	Shader::IncludeInShaderFilesystem("forward_buffers", "forward_buffers.incl");
 	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
@@ -1825,7 +1853,7 @@ void init()
 	ShaderBank::Get("basic").CompileSimple("basic");
 	ShaderBank::Get("bulletShader").Compile("color_final", "mesh_final");
 	ShaderBank::Get("debris").Compile("mesh_final_instance", "mesh_final");
-	ShaderBank::Get("skyBox").CompileSimple("sky");
+	ShaderBank::Get("skyBox").CompileSingleFile("sky");
 	ShaderBank::Get("decalShader").CompileSimple("decal");
 	
 	ShaderBank::Get("engine").CompileSimple("engine");
@@ -1835,7 +1863,14 @@ void init()
 	ShaderBank::Get("pathNodeView").CompileSimple("path_node");
 	ShaderBank::Get("stencilTest").CompileSimple("stencil_");
 	ShaderBank::Get("trail").CompileSimple("trail");
-	ShaderBank::Get("uiRect").CompileSimple("ui_rect");
+	ShaderBank::Get("uiRect").CompileSingleFile("ui_rect");
+
+	// More shaders will be here
+	Shader::PushContext();
+	Shader::Define("#define INSTANCED");
+	ShaderBank::Get("uiRect2").CompileSingleFile("ui_rect");
+	Shader::PopContext();
+
 	ShaderBank::Get("uiRectTexture").CompileSimple("ui_rect_texture");
 	ShaderBank::Get("uniform").CompileSimple("uniform");
 	ShaderBank::Get("uniform").CompileSimple("uniform");
