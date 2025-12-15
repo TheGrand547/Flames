@@ -202,7 +202,15 @@ template<> inline void VertexArray::ArrayFormatM<glm::mat4>(Shader& shader, GLui
 template<class V> inline void VertexArray::ArrayFormatOverride(const std::string& name, Shader& shader, 
 	GLuint bindingPoint, GLuint bindingDivisor, GLuint relativeOffset, GLsizei stride)
 {
-	this->ArrayFormatOverride<V>(shader.Index(name), bindingPoint, bindingDivisor, relativeOffset, stride);
+	GLuint index = shader.Index(name);
+	if (index != -1)
+	{
+		this->ArrayFormatOverride<V>(index, bindingPoint, bindingDivisor, relativeOffset, stride);
+	}
+	else
+	{
+		Log("'{}' has either been optimized out, or does not exist in shader '{}'", name, shader.GetName());
+	}
 }
 
 template<class V>

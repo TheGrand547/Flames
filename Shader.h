@@ -77,7 +77,11 @@ public:
 	bool CompileComputeEmbedded(const std::string& source);
 	void DispatchCompute(std::uint32_t x, std::uint32_t y = 1, std::uint32_t z = 1) const noexcept;
 	
-	bool Compile(const std::string& vertex, const std::string& frag);
+	bool Compile(const std::string& vertex, const std::string& frag, bool instanced = false);
+	inline bool CompileInstanced(const std::string& vertex, const std::string& frag)
+	{
+		return this->Compile(vertex, frag, true);
+	}
 
 	// These all work on shader code as a string, not read in from a file
 	bool CompileEmbedded(const std::string& vertex, const std::string& fragment);
@@ -90,6 +94,11 @@ public:
 	inline bool CompileSingleFileInstanced(const std::string& filename)
 	{
 		return this->CompileSingleFile(filename, true);
+	}
+
+	inline std::string GetName() const noexcept
+	{
+		return this->name;
 	}
 
 	constexpr bool Compiled() const;

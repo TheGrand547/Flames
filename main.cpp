@@ -1848,7 +1848,7 @@ void init()
 	EnableGLFeatures<DepthTesting | FaceCulling>();
 	glEnable(GL_TEXTURE_CUBE_MAP_SEAMLESS);
 	DisableGLFeatures<MultiSampling>();
-	
+
 	DefaultDepthTest();
 
 	glClearColor(0, 0, 0, 1);
@@ -1868,58 +1868,38 @@ void init()
 	Shader::IncludeInShaderFilesystem("empty", "empty.incl");
 	ExternalShaders::Setup();
 
-	ShaderBank::Get("basic").CompileSingleFile("basic");
-	ShaderBank::Get("bulletShader").CompileSingleFileInstanced("vertex_color");
-
-	ShaderBank::Get("debris").CompileSingleFileInstanced("performant_mesh");
-	ShaderBank::Get("skyBox").CompileSingleFile("sky");
-	ShaderBank::Get("decalShader").CompileSingleFile("decal");
-	
-	ShaderBank::Get("engine").CompileSingleFile("engine");
-	ShaderBank::Get("laser").CompileSingleFile("laser");
-	ShaderBank::Get("fontShader").CompileSingleFile("font");
-
-	ShaderBank::Get("nineSlicer").CompileSingleFile("ui_nine");
-	ShaderBank::Get("trail").CompileSingleFile("trail");
-	ShaderBank::Get("Shielding").CompileSingleFile("shield");
-
-
-	ShaderBank::Get("ship").CompileSimple("mesh_final");
-
-	ShaderBank::Get("uiRect").CompileSingleFile("ui_rect");
-
-	// More shaders will be here
-	ShaderBank::Get("uiRect2").CompileSingleFileInstanced("ui_rect");
-
-	ShaderBank::Get("uiRectTexture").CompileSingleFile("ui_rect_texture");
-	ShaderBank::Get("uniform").CompileSingleFile("uniform");
-	ShaderBank::Get("widget").CompileSingleFile("widget");
-
-	ShaderBank::Get("ShieldTexture").Compile(
-		"framebuffer", "shield_texture"
-	);
-	Shader::DefineTemp("#define DEBRIS_COUNT 666");
-	ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
-
-	ShaderBank::Get("particleCompute").CompileCompute("particle_compute");
-
-	ShaderBank::Get("depthOnly").CompileSingleFile("new_mesh_simp");
-
-
-	ShaderBank::Get("forwardPlus").Compile("new_mesh", "forward_plus");
-
-	Shader::DefineTemp("#define INSTANCED");
-	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
-
-
-	ShaderBank::Get("dust").CompileSingleFile("dust");
-
-	ShaderBank::Get("uniformInstance").CompileSingleFileInstanced("uniform");
-	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
-	ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
-	
-	ShaderBank::Get("particle_soup").CompileSingleFile("particle_soup");
-
+	{
+		QUICKTIMER("Shaders");
+		ShaderBank::Get("basic").CompileSingleFile("basic");
+		ShaderBank::Get("bulletShader").CompileSingleFileInstanced("vertex_color");
+		ShaderBank::Get("debris").CompileSingleFileInstanced("performant_mesh");
+		ShaderBank::Get("skyBox").CompileSingleFile("sky");
+		ShaderBank::Get("decalShader").CompileSingleFile("decal");
+		ShaderBank::Get("engine").CompileSingleFile("engine");
+		ShaderBank::Get("laser").CompileSingleFile("laser");
+		ShaderBank::Get("fontShader").CompileSingleFile("font");
+		ShaderBank::Get("nineSlicer").CompileSingleFile("ui_nine");
+		ShaderBank::Get("trail").CompileSingleFile("trail");
+		ShaderBank::Get("Shielding").CompileSingleFile("shield");
+		ShaderBank::Get("ship").CompileSingleFile("performant_mesh");
+		ShaderBank::Get("uiRect").CompileSingleFile("ui_rect");
+		ShaderBank::Get("uiRect2").CompileSingleFileInstanced("ui_rect");
+		ShaderBank::Get("uiRectTexture").CompileSingleFile("ui_rect_texture");
+		ShaderBank::Get("uniform").CompileSingleFile("uniform");
+		ShaderBank::Get("widget").CompileSingleFile("widget");
+		ShaderBank::Get("ShieldTexture").Compile(
+			"framebuffer", "shield_texture"
+		);
+		ShaderBank::Get("debrisCompute").CompileCompute("debris_compute");
+		ShaderBank::Get("particleCompute").CompileCompute("particle_compute");
+		ShaderBank::Get("depthOnly").CompileSingleFile("new_mesh_simp");
+		ShaderBank::Get("forwardPlus").Compile("new_mesh", "forward_plus");
+		ShaderBank::Get("forwardPlusMulti").CompileInstanced("new_mesh", "forward_plus");
+		ShaderBank::Get("dust").CompileSingleFile("dust");
+		ShaderBank::Get("uniformInstance").CompileSingleFileInstanced("uniform");
+		ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
+		ShaderBank::Get("particle_soup").CompileSingleFile("particle_soup");
+	}
 	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "engine",
 		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic",
 		"trail", "uniform", "debrisCompute"}),

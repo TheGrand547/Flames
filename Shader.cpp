@@ -318,7 +318,7 @@ bool Shader::CompileSimple(const std::string& name)
 			fragmentFile.close();
 			switch ((mask >> 2))
 			{
-			// Only Geometry is present
+				// Only Geometry is present
 			case 1:
 			{
 				std::filesystem::path geometryPath(shaderBasePath + name + extensions[2]);
@@ -371,6 +371,11 @@ bool Shader::CompileSimple(const std::string& name)
 			}
 
 		}
+		else
+		{
+			Log("Something went wrong compiling '{}'", this->name);
+			EXIT;
+		}
 		//return false;
 	}
 	if (this->compiled)
@@ -421,10 +426,15 @@ void Shader::DispatchCompute(std::uint32_t x, std::uint32_t y, std::uint32_t z) 
 	glDispatchCompute(x, y, z);
 }
 
-bool Shader::Compile(const std::string& vert, const std::string& frag)
+bool Shader::Compile(const std::string& vert, const std::string& frag, bool instanced)
 {
 	this->CleanUp();
 	std::string combined = (vert == frag) ? vert : vert + frag;
+	if (instanced)
+	{
+		combined += "_instanced";
+		Shader::DefineTemp("#define INSTANCED");
+	}
 	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
 	std::filesystem::path vertexPath(shaderBasePath + vert + extensions[0]);
 	std::filesystem::path fragmentPath(shaderBasePath + frag + extensions[1]);
@@ -583,9 +593,7 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 	std::string compiled_name = filename;
 	if (instanced)
 	{
-		compiled_name += "instanced";
-		Shader::PushContext();
-		Shader::Define("#define INSTANCED");
+		compiled_name += "_instanced";
 	}
 	std::filesystem::path compiledPath(shaderBasePath + compiled_name + ".csp");
 
@@ -604,6 +612,12 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 	{
 		Log("Compiling Shader from '{}'", filename);
 		std::string inputA(std::istreambuf_iterator<char>{inputFile}, {});
+		if (instanced)
+		{
+			Shader::DefineTemp("#define INSTANCED");
+		}
+		ApplyShaderIncludes(inputA);
+
 		Shader::DefineTemp("#define VERTEX");
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, inputA.c_str());
 		Shader::DefineTemp("#define FRAGMENT");
@@ -629,10 +643,6 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 	else
 	{
 		Log("Some kind of error opening file '{}'", inputPath.string());
-	}
-	if (instanced)
-	{
-		Shader::PopContext();
 	}
 	return this->compiled;
 }
