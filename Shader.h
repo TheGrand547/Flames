@@ -86,7 +86,11 @@ public:
 		const std::string& tessControl, const std::string& tessEval);
 	bool CompileEmbeddedTesselation(const std::string& vertex, const std::string& fragment, const std::string& tessControl, const std::string& tessEval);
 
-	bool CompileSingleFile(const std::string& filename);
+	bool CompileSingleFile(const std::string& filename, bool instanced = false);
+	inline bool CompileSingleFileInstanced(const std::string& filename)
+	{
+		return this->CompileSingleFile(filename, true);
+	}
 
 	constexpr bool Compiled() const;
 

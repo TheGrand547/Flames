@@ -89,8 +89,8 @@ void DebugCallback(GLenum source, GLenum type, GLuint id, GLenum severity, [[may
 		OutputText(std::format("{}: {} of {} severity, raised from {}: {}", id, _type, _severity,
 			_source, message));
 	}
-	if (severity == GL_DEBUG_SEVERITY_HIGH)
+	if (severity == GL_DEBUG_SEVERITY_HIGH && source != GL_DEBUG_SOURCE_SHADER_COMPILER)
 	{
-
+		OutputText("!");
 	}
 }

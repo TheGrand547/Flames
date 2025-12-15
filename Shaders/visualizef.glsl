@@ -11,7 +11,6 @@ layout(origin_upper_left) in vec4 gl_FragCoord;
 
 void main()
 {
-	//vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	vec2 index = floor((gl_FragCoord.xy) / TileSize);
 	
 	uint gridIndex = uint(index.x + index.y * tileDimension.x);

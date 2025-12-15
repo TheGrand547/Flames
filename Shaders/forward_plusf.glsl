@@ -12,10 +12,10 @@ layout(location = 2) in mat3 TBNmat;
 
 layout(location = 0) out vec4 fragmentColor;
 
+layout(location = 0) uniform sampler2D color;
 layout(location = 1) uniform vec3 shapeColor;
 layout(location = 2) uniform int checkUVs;
 layout(location = 3) uniform vec3 CameraPos;
-layout(location = 0) uniform sampler2D color;
 
 void main()
 {

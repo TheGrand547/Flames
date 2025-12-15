@@ -287,13 +287,19 @@ constexpr std::size_t Max_Partilces = 1024;
 static BufferSync<std::vector<infinite_pain>> particlesNew;
 static BufferSync<std::vector<glm::mat4>> bigCringe;
 
+static bool timeCurrentQuery = false;
+
 void display()
 {
+	bool vertexQueryEnable = debugFlags[PRIMITIVE_COUNTING];
+
 	GLuint currentRenderQuery = 0;
 	glGenQueries(1, &currentRenderQuery);
 	glBeginQuery(GL_TIME_ELAPSED, currentRenderQuery);
-	if (debugFlags[PRIMITIVE_COUNTING])
+	if (vertexQueryEnable)
+	{
 		glBeginQuery(GL_PRIMITIVES_GENERATED, VertexCountQuery);
+	}
 
 	auto displayStartTime = std::chrono::high_resolution_clock::now();
 
@@ -465,6 +471,7 @@ void display()
 	buf.BufferData(meshs2.GetMatrixPair());
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh, playerModel);
+	// Dust particles
 	{
 		// *Needs* to have the copying between the buffers completed by this point
 		glMemoryBarrier(GL_BUFFER_UPDATE_BARRIER_BIT);
@@ -479,7 +486,8 @@ void display()
 
 	if (debugFlags[CHECK_LIGHT_TILES])
 	{
-		DisablePushFlags(DepthTesting | FaceCulling);
+		DisablePushFlags(DepthTesting | FaceCulling | Blending);
+		DisableDepthWritePush;
 		Shader& sahder = ShaderBank::Get("visualize");
 		sahder.SetActiveShader();
 		static int thresholdAmount = 10;
@@ -646,6 +654,7 @@ void display()
 	}
 
 	// Everything potentially transparent has to be drawn *after* the skybox
+	if (!debugFlags[CHECK_LIGHT_TILES])
 	{
 		DisablePushFlags(FaceCulling);
 		DisableDepthWritePush;
@@ -760,13 +769,13 @@ void display()
 	}
 	ShaderBank::Retrieve("widget").SetActiveShader();
 	ShaderBank::Retrieve("widget").DrawArray<DrawType::Lines>(6);
-	if (debugFlags[PRIMITIVE_COUNTING])
+	if (vertexQueryEnable)
 	{
 		glEndQuery(GL_PRIMITIVES_GENERATED);
 	}
 
 	{
-		if (debugFlags[PRIMITIVE_COUNTING])
+		if (vertexQueryEnable)
 		{
 			glBeginQuery(GL_PRIMITIVES_GENERATED, particleCountQuery);
 		}
@@ -779,7 +788,7 @@ void display()
 		vao.Bind();
 		vao.BindArrayBuffer(drawOutParts);
 		shader.DrawArrayIndirect<DrawType::TriangleStrip>(indirectOutParts);
-		if (debugFlags[PRIMITIVE_COUNTING])
+		if (vertexQueryEnable)
 		{
 			glEndQuery(GL_PRIMITIVES_GENERATED);
 		}
@@ -800,9 +809,9 @@ void display()
 	auto end = std::chrono::high_resolution_clock::now();
 	displayTime = end - displayStartTime;
 	displayStartTime = end;
-
 	glEndQuery(GL_TIME_ELAPSED);
 	glFrameTimeQueries.push_back(currentRenderQuery);
+	timeCurrentQuery = vertexQueryEnable;
 }
 
 static long long maxTickTime;
@@ -870,11 +879,12 @@ void idle()
 	}
 	else
 	{
-		if (debugFlags[PRIMITIVE_COUNTING])
+		if (timeCurrentQuery)
 		{
 			glGetQueryObjectui64v(particleCountQuery, GL_QUERY_RESULT, &particleCount);
 			particleCount /= 4;
 			glGetQueryObjectui64v(VertexCountQuery, GL_QUERY_RESULT, &vertexCount);
+			timeCurrentQuery = false;
 		}
 	}
 
@@ -1855,34 +1865,35 @@ void init()
 	Shader::IncludeInShaderFilesystem("forward_plus", "forward_plus.incl");
 	Shader::IncludeInShaderFilesystem("cone", "cone.incl");
 	Shader::IncludeInShaderFilesystem("imposter", "imposter.incl");
+	Shader::IncludeInShaderFilesystem("empty", "empty.incl");
 	ExternalShaders::Setup();
 
-	ShaderBank::Get("basic").CompileSimple("basic");
-	ShaderBank::Get("bulletShader").Compile("color_final", "mesh_final");
-	ShaderBank::Get("debris").Compile("mesh_final_instance", "mesh_final");
+	ShaderBank::Get("basic").CompileSingleFile("basic");
+	ShaderBank::Get("bulletShader").CompileSingleFileInstanced("vertex_color");
+
+	ShaderBank::Get("debris").CompileSingleFileInstanced("performant_mesh");
 	ShaderBank::Get("skyBox").CompileSingleFile("sky");
-	ShaderBank::Get("decalShader").CompileSimple("decal");
+	ShaderBank::Get("decalShader").CompileSingleFile("decal");
 	
-	ShaderBank::Get("engine").CompileSimple("engine");
-	ShaderBank::Get("laser").CompileSimple("laser");
-	ShaderBank::Get("fontShader").CompileSingleFile("fontv");
-	ShaderBank::Get("nineSlicer").CompileSimple("ui_nine");
-	ShaderBank::Get("pathNodeView").CompileSimple("path_node");
-	ShaderBank::Get("stencilTest").CompileSimple("stencil_");
-	ShaderBank::Get("trail").CompileSimple("trail");
+	ShaderBank::Get("engine").CompileSingleFile("engine");
+	ShaderBank::Get("laser").CompileSingleFile("laser");
+	ShaderBank::Get("fontShader").CompileSingleFile("font");
+
+	ShaderBank::Get("nineSlicer").CompileSingleFile("ui_nine");
+	ShaderBank::Get("trail").CompileSingleFile("trail");
+	ShaderBank::Get("Shielding").CompileSingleFile("shield");
+
+
+	ShaderBank::Get("ship").CompileSimple("mesh_final");
+
 	ShaderBank::Get("uiRect").CompileSingleFile("ui_rect");
 
 	// More shaders will be here
-	Shader::PushContext();
-	Shader::Define("#define INSTANCED");
-	ShaderBank::Get("uiRect2").CompileSingleFile("ui_rect");
-	Shader::PopContext();
+	ShaderBank::Get("uiRect2").CompileSingleFileInstanced("ui_rect");
 
-	ShaderBank::Get("uiRectTexture").CompileSimple("ui_rect_texture");
-	ShaderBank::Get("uniform").CompileSimple("uniform");
-	ShaderBank::Get("uniform").CompileSimple("uniform");
-	ShaderBank::Get("vision").CompileSimple("vision");
-	ShaderBank::Get("widget").CompileSimple("widget");
+	ShaderBank::Get("uiRectTexture").CompileSingleFile("ui_rect_texture");
+	ShaderBank::Get("uniform").CompileSingleFile("uniform");
+	ShaderBank::Get("widget").CompileSingleFile("widget");
 
 	ShaderBank::Get("ShieldTexture").Compile(
 		"framebuffer", "shield_texture"
@@ -1892,25 +1903,26 @@ void init()
 
 	ShaderBank::Get("particleCompute").CompileCompute("particle_compute");
 
-	ShaderBank::Get("dither").CompileSimple("light_text_dither");
-	ShaderBank::Get("depthOnly").Compile("new_mesh_simp", "empty");
+	ShaderBank::Get("depthOnly").CompileSingleFile("new_mesh_simp");
 
-	Shader::ForceRecompile(true);
-	ShaderBank::Get("forwardPlus").Compile("new_mesh_single", "forward_plus");
+
+	ShaderBank::Get("forwardPlus").Compile("new_mesh", "forward_plus");
+
+	Shader::DefineTemp("#define INSTANCED");
 	ShaderBank::Get("forwardPlusMulti").Compile("new_mesh", "forward_plus");
-	ShaderBank::Get("dust").CompileSimple("dust");
-	Shader::ForceRecompile(false);
 
-	ShaderBank::Get("uniformInstance").Compile("uniform_instance", "uniform");
+
+	ShaderBank::Get("dust").CompileSingleFile("dust");
+
+	ShaderBank::Get("uniformInstance").CompileSingleFileInstanced("uniform");
 	ShaderBank::Get("combinePass").Compile("framebuffer", "combine_pass");
 	ShaderBank::Get("visualize").Compile("framebuffer", "visualize");
-	ShaderBank::Get("Shielding").CompileSimple("shield");
-	ShaderBank::Get("ship").CompileSimple("mesh_final");
+	
 	ShaderBank::Get("particle_soup").CompileSingleFile("particle_soup");
 
 	ShaderBank::for_each(std::to_array({ "depthOnly", "dust", "forwardPlus", "forwardPlusMulti", "engine",
-		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic", "vision",
-		"trail", "uniform", "pathNodeView", "stencilTest", "debrisCompute"}),
+		"uniformInstance", "Shielding", "debris", "bulletShader", "skyBox", "ship", "decalShader", "basic",
+		"trail", "uniform", "debrisCompute"}),
 		[](auto& element)
 		{
 			element.UniformBlockBinding("Camera", 0);
@@ -2111,6 +2123,8 @@ void init()
 		adequate.color = glm::vec4(0.5f, 0.f, 0.5f, 4.f) * 0.05f;
 		adequate.direction = glm::vec4(glm::normalize(glm::vec3(0.25f, -2.f, 0.36f)), 0.f);
 		adequate.constants = glm::vec4(0.f);
+		constantLights.push_back(adequate);
+		adequate.direction *= -1.f;
 		constantLights.push_back(adequate);
 		Bank<ArrayBuffer>::Get("dummy").BufferData(std::array<glm::vec3, 4>());
 	}

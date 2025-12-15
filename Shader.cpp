@@ -373,6 +373,10 @@ bool Shader::CompileSimple(const std::string& name)
 		}
 		//return false;
 	}
+	if (this->compiled)
+	{
+		this->ExportCompiled();
+	}
 	return this->compiled;
 }
 
@@ -565,10 +569,9 @@ bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::st
 	return this->compiled;
 }
 
-bool Shader::CompileSingleFile(const std::string& filename)
+bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 {
 	this->CleanUp();
-	std::filesystem::path compiledPath(shaderBasePath + filename + ".csp");
 	std::filesystem::path inputPath(shaderBasePath + filename + ".glsl");
 
 	if (!std::filesystem::exists(inputPath))
@@ -577,16 +580,24 @@ bool Shader::CompileSingleFile(const std::string& filename)
 		EXIT;
 		return false;
 	}
+	std::string compiled_name = filename;
+	if (instanced)
+	{
+		compiled_name += "instanced";
+		Shader::PushContext();
+		Shader::Define("#define INSTANCED");
+	}
+	std::filesystem::path compiledPath(shaderBasePath + compiled_name + ".csp");
 
-	this->name = filename;
+	this->name = compiled_name;
 
 	auto newestWrite = std::filesystem::last_write_time(inputPath).time_since_epoch().count();
 
-	/* TODO: Need to have some kind of flag thing that separates the precompiled versions from each other
-	if (TryLoadCompiled(filename, newestWrite))
+	// TODO: Need to have some kind of flag thing that separates the precompiled versions from each other
+	if (TryLoadCompiled(this->name, newestWrite))
 	{
 		return true;
-	}*/
+	}
 
 	std::ifstream inputFile(inputPath.string(), std::ifstream::in);
 	if (inputFile.is_open())
@@ -614,13 +625,16 @@ bool Shader::CompileSingleFile(const std::string& filename)
 			this->ExportCompiled();
 		}
 		inputFile.close();
-		return this->compiled;
 	}
 	else
 	{
 		Log("Some kind of error opening file '{}'", inputPath.string());
 	}
-	return false;
+	if (instanced)
+	{
+		Shader::PopContext();
+	}
+	return this->compiled;
 }
 
 
