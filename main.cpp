@@ -163,6 +163,7 @@ std::vector<AABB> dynamicTreeBoxes;
 using namespace Input;
 
 static bool windowShouldClose = false;
+static bool gameTickDone = false;
 
 using TimePoint = std::chrono::steady_clock::time_point;
 using TimeDelta = std::chrono::nanoseconds;
@@ -666,8 +667,6 @@ void display()
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
 		//DefaultDepthTest();
 	}
-
-
 	// Drawin quicklights
 	if (quickLightPairs.ExclusiveOperation(
 		[](auto& data)
@@ -1411,6 +1410,7 @@ void gameTick()
 		}
 		Level::SetPlayerVel(playfield.GetVelocity());
 	} while (!windowShouldClose);
+	gameTickDone = true;
 }
 
 void window_focus_callback([[maybe_unused]] GLFWwindow* window, int focused)
@@ -1421,7 +1421,7 @@ void window_focus_callback([[maybe_unused]] GLFWwindow* window, int focused)
 	}
 }
 
-void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
+void key_callback([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]] int scancode, int action, int mods)
 {
 	bool state = (action == GLFW_PRESS);
 	if (state)
@@ -1483,7 +1483,7 @@ void key_callback(GLFWwindow* window, int key, [[maybe_unused]] int scancode, in
 		if (key == GLFW_KEY_ESCAPE) 
 		{
 			windowShouldClose = true;
-			glfwSetWindowShouldClose(window, GLFW_TRUE);
+			//glfwSetWindowShouldClose(window, GLFW_TRUE);
 		}
 		if (key == GLFW_KEY_B) featureToggle = !featureToggle;
 		if (key == GLFW_KEY_ENTER) reRenderText = true;
@@ -1810,7 +1810,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	std::thread ticking{ gameTick };
 	ticking.detach();
 	glfwSetTime(0);
-	while (!glfwWindowShouldClose(windowPointer))
+	while (!windowShouldClose && !glfwWindowShouldClose(windowPointer))
 	{
 		ImGui_ImplOpenGL3_NewFrame();
 		ImGui_ImplGlfw_NewFrame();
@@ -1820,10 +1820,15 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 		glfwSwapBuffers(windowPointer);
 		glfwPollEvents();
 	}
+	windowShouldClose = true;
+	while (!gameTickDone)
+	{
+		std::this_thread::yield();
+	}
+	glfwSetWindowShouldClose(windowPointer, GLFW_TRUE);
 	ImGui_ImplOpenGL3_Shutdown();
 	ImGui_ImplGlfw_Shutdown();
 	ImGui::DestroyContext();
-
 	Input::Teardown();
 	// TODO: cleanup
 	CloseLog();

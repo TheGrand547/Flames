@@ -622,10 +622,22 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 		GLuint vShader = CompileShader(GL_VERTEX_SHADER, inputA.c_str());
 		Shader::DefineTemp("#define FRAGMENT");
 		GLuint fShader = CompileShader(GL_FRAGMENT_SHADER, inputA.c_str());
+
+		std::optional<GLuint> geometryShader = std::nullopt;
+		if (inputA.find("GEOMETRY") != std::string::npos)
+		{
+			Shader::DefineTemp("#define GEOMETRY");
+			geometryShader = std::make_optional(CompileShader(GL_GEOMETRY_SHADER, inputA.c_str()));
+		}
+
 		if (vShader && fShader && (this->program = glCreateProgram()))
 		{
 			glAttachShader(this->program, vShader);
 			glAttachShader(this->program, fShader);
+			if (geometryShader.has_value())
+			{
+				glAttachShader(this->program, geometryShader.value());
+			}
 			glLinkProgram(this->program);
 			if (!this->ProgramStatus())
 			{
@@ -636,6 +648,10 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 			}
 			glDeleteShader(vShader);
 			glDeleteShader(fShader);
+			if (geometryShader.has_value())
+			{
+				glDeleteShader(geometryShader.value());
+			}
 			this->ExportCompiled();
 		}
 		inputFile.close();
