@@ -393,6 +393,13 @@ bool Shader::CompileCompute(const std::string& name)
 		Log("Failed to load shader '{}'", name);
 		return false;
 	}
+	auto newestWrite = std::filesystem::last_write_time(path).time_since_epoch().count();
+	this->name = name;
+	if (this->TryLoadCompiled(this->name, newestWrite))
+	{
+		return true;
+	}
+
 	std::ifstream inputs(path.string(), std::ifstream::in);
 	if (inputs.is_open())
 	{
@@ -415,6 +422,7 @@ bool Shader::CompileComputeEmbedded(const std::string& source)
 		glAttachShader(this->program, compute);
 		glLinkProgram(this->program);
 		this->ProgramStatus();
+		this->ExportCompiled();
 		glDeleteShader(compute);
 	}
 	return this->compiled;

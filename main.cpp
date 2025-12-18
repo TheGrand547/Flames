@@ -559,25 +559,29 @@ void display()
 		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, instances);
 	}
 
-	uniform.SetActiveShader();
-	VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
-	uniform.SetVec3("color", glm::vec3(0.f, 0.f, 1.f));
-	glm::vec3 bulletPath = glm::normalize(axes[0] * 100.f + playfield.GetVelocity());
-	glm::vec3 position = playerModel.translation + bulletPath * 10.f;
-	Model model{ position, playerModel.rotation };
-	model.scale = glm::vec3(0.25f);
-	uniform.SetMat4("Model", model.GetModelMatrix());
-	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
-	for (int i = 0; i < 5; i++)
 	{
-		// This should really be instanced...
-		model.translation += 10.f * bulletPath;
-		//model.translation += 10.f * cameraForward;
-		uniform.SetMat4("Model", model.GetModelMatrix());
-		uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
+		Shader& shader = ShaderBank::Get("laserBatch");
+		VAO& vao = VAOBank::Retrieve("uniformInstance");
+		shader.SetActiveShader();
+		vao.Bind();
+		vao.BindArrayBuffer(Bank<ArrayBuffer>::Get("aiming"), 0);
+		glm::vec3 bulletPath = axes[0];
+		glm::vec3 position = playerModel.translation + bulletPath * 10.f;
+		Model model{ position, playerModel.rotation };
+		model.scale = glm::vec3(0.5f);
+		std::array<glm::mat4, 6> prospectiveBoxes{};
+
+		for (int i = 0; i < prospectiveBoxes.size(); i++)
+		{
+			prospectiveBoxes[i] = model.GetModelMatrix();
+			model.translation += 15.f * bulletPath;
+		}
+		ArrayBuffer& instances = BufferBank::Get("sleepyBoxes");
+		instances.BufferData(prospectiveBoxes);
+		vao.BindArrayBuffer(instances, 1);
+		shader.SetVec4("Color", glm::vec4(1.f, 0.25f, 0.1f, 1.f));
+		shader.DrawArrayInstanced<DrawType::Lines>(Bank<ArrayBuffer>::Get("aiming"), instances);
 	}
-	uniform.SetMat4("Model", Level::GetShips().GetOBB().GetModelMatrix());
-	uniform.DrawElements<DrawType::Lines>(cubeOutlineIndex);
 
 	{
 		Model defaults(playerModel);
@@ -659,13 +663,11 @@ void display()
 	{
 		DisablePushFlags(FaceCulling);
 		DisableDepthWritePush;
-		//InverseDepthTest();
 		Shader& skyBox = ShaderBank::Retrieve("skyBox");
 		skyBox.SetActiveShader();
 		VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 		skyBox.SetTextureUnit("skyBox", sky);
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
-		//DefaultDepthTest();
 	}
 	// Drawin quicklights
 	if (quickLightPairs.ExclusiveOperation(
@@ -1430,6 +1432,11 @@ void key_callback([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]]
 	}
 	shiftHeld = mods & GLFW_MOD_SHIFT;
 
+	if (key < 0)
+	{
+		return;
+	}
+
 	unsigned char letter = static_cast<unsigned char>(key & 0xFF);
 
 	if (action != GLFW_RELEASE && key < 0xFF)
@@ -1438,9 +1445,13 @@ void key_callback([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]]
 		if (std::isalnum(copied))
 		{
 			if (!(mods & GLFW_MOD_CAPS_LOCK) && mods & GLFW_MOD_SHIFT)
+			{
 				copied = static_cast<unsigned char>(std::tolower(copied));
+			}
 			else if (!(mods & GLFW_MOD_SHIFT)) 
+			{
 				copied = static_cast<unsigned char>(std::tolower(copied));
+			}
 		}
 		letters << copied;
 	}
@@ -1882,6 +1893,7 @@ void init()
 		ShaderBank::Get("decalShader").CompileSingleFile("decal");
 		ShaderBank::Get("engine").CompileSingleFile("engine");
 		ShaderBank::Get("laser").CompileSingleFile("laser");
+		ShaderBank::Get("laserBatch").CompileSingleFileInstanced("laser");
 		ShaderBank::Get("fontShader").CompileSingleFile("font");
 		ShaderBank::Get("nineSlicer").CompileSingleFile("ui_nine");
 		ShaderBank::Get("trail").CompileSingleFile("trail");
@@ -2151,6 +2163,25 @@ void init()
 	{
 		QuickTimer _tim{ "Sphere/Capsule Generation" };
 		Sphere::GenerateMesh(sphereBuffer, sphereIndicies, 50, 50);
+	}
+
+	{
+		// Targetting thing
+		const float ratio = 1.f / std::sqrt(2.f);
+		auto gems = std::to_array(
+			{
+				glm::vec3(0, -ratio, -ratio),
+				glm::vec3(0, 0.f, -1.f),
+				glm::vec3(0, 0.f, -1.f),
+				glm::vec3(0, ratio, -ratio),
+
+				glm::vec3(0, -ratio, ratio),
+				glm::vec3(0, 0.f, 1.f),
+				glm::vec3(0, 0.f, 1.f),
+				glm::vec3(0, ratio, ratio),
+			}
+			);
+		Bank<ArrayBuffer>::Get("aiming").BufferData(gems);
 	}
 
 	Font::SetFontDirectory("Fonts");

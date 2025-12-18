@@ -5,9 +5,17 @@
 
 layout(location = 0) in vec3 vPos;
 
+#ifdef INSTANCED
+layout(location = 1) in mat4 Model;
+#endif // INSTANCED
+
 void main()
 {
+#ifdef INSTANCED
+	gl_Position = Projection * View * Model * vec4(vPos, 1.f);
+#else
 	gl_Position = Projection * View  * vec4(vPos, 1.0);
+#endif // INSTANCED
 }
 
 #endif // VERTEX
@@ -75,7 +83,10 @@ layout(location = 0) uniform vec4 Color;
 void main()
 {
 	colorOut = Color;
+	
+#ifndef INSTANCED
 	colorOut.w *= max(distance, 0.5);
+#endif // INSTANCED
 }
 
 #endif // FRAGMENT
