@@ -289,6 +289,8 @@ static BufferSync<std::vector<infinite_pain>> particlesNew;
 static BufferSync<std::vector<glm::mat4>> bigCringe;
 
 static bool timeCurrentQuery = false;
+static std::atomic_flag tickHappend = ATOMIC_FLAG_INIT;
+
 
 void display()
 {
@@ -607,7 +609,7 @@ void display()
 	}
 	
 	trashMan.Draw(ShaderBank::Retrieve("debris"));
-
+	if (featureToggle)
 	{
 		DisablePushFlags(FaceCulling);
 		EnablePushFlags(Blending);
@@ -990,36 +992,32 @@ void idle()
 		dynamicTreeBoxes = Level::GetBulletTree().GetBoxes();
 	}
 
-	const Model playerModel = playfield.GetModel();
-	static bool flippyFlop = false;
-	if (idleFrameCounter % 10 == 0)
+	// Should only activate once per game tick
+	if (tickHappend.test())
 	{
-		glm::mat3 playerLocal = static_cast<glm::mat3>(playerModel.rotation);
-		glm::vec3 forward = playerLocal[0];
-		glm::vec3 left = playerLocal[2];
-		left *= 0.5f;
-		glm::vec3 local = playerModel.translation;
-		local -= forward * 0.55f;
-		glm::vec3 upSet = playerLocal[1] * 0.05f;
-		if (flippyFlop)
+		tickHappend.clear();
+		static std::size_t idleTickCount = 0;
+		idleTickCount++;
+		const Model playerModel = playfield.GetModel();
 		{
+			glm::mat3 playerLocal = static_cast<glm::mat3>(playerModel.rotation);
+			glm::vec3 forward = playerLocal[0];
+			glm::vec3 left = playerLocal[2];
+			left *= 0.5f;
+			glm::vec3 local = playerModel.translation;
+			local -= forward * 0.55f;
+			glm::vec3 upSet = playerLocal[1] * 0.05f;
 
+			leftCircle.Push(ColoredVertex{ local - left,  upSet + left * 0.2f });
+			leftCircle.Push(ColoredVertex{ local - left, -upSet - left * 0.2f });
+			rightCircle.Push(ColoredVertex{ local + left,  upSet - left * 0.2f });
+			rightCircle.Push(ColoredVertex{ local + left, -upSet + left * 0.2f });
+
+			leftBuffer.BufferData(leftCircle.GetLinear());
+			rightBuffer.BufferData(rightCircle.GetLinear());
 		}
-		flippyFlop = !flippyFlop;
-		leftCircle.Push(ColoredVertex{  local - left,  upSet + left * 0.2f});
-		leftCircle.Push(ColoredVertex{  local - left, -upSet - left * 0.2f});
-		rightCircle.Push(ColoredVertex{ local + left,  upSet - left * 0.2f });
-		rightCircle.Push(ColoredVertex{ local + left, -upSet + left * 0.2f });
-
-		leftBuffer.BufferData(leftCircle.GetLinear());
-		rightBuffer.BufferData(rightCircle.GetLinear());
-	}
-
-	// TODO: have an explicit "only activate once per game tick" zone
-	
-	// Better bullet drawing
-	{
-		bulletMatricies.ExclusiveOperation([&](std::vector<glm::mat4>& mats) 
+		// Better bullet drawing
+		bulletMatricies.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
 			{
 				bulletMesh.rawIndirect[0].instanceCount = 0;
 				bulletMesh.rawIndirect[1].instanceCount = static_cast<GLuint>(mats.size());
@@ -1039,14 +1037,13 @@ void idle()
 				Bank<ArrayBuffer>::Get("shieldPos").BufferData(bufs);
 			}
 		);
+
+		bigCringe.ExclusiveOperation([](const auto& ins)
+			{
+				BufferBank::Get("tightBoxes").BufferData(ins);
+			}
+		);
 	}
-
-	bigCringe.ExclusiveOperation([](const auto& ins)
-		{
-			BufferBank::Get("tightBoxes").BufferData(ins);
-		}
-	);
-
 	Parallel::SetStatus(!keyState['P']);
 
 	std::stringstream buffered;
@@ -1385,7 +1382,8 @@ void gameTick()
 
 		managedProcess.Update();
 
-		// End of Tick timekeeping
+		// End of Tick housekeeping
+		tickHappend.test_and_set();
 		auto tickEnd = std::chrono::steady_clock::now();
 		long long tickDelta = (tickEnd - tickStart).count();
 
