@@ -102,9 +102,7 @@ ASCIIFont fonter;
 
 // Buffers
 ArrayBuffer textBuffer, sphereBuffer, stickBuffer;
-ArrayBuffer decals;
 ArrayBuffer exhaustBuffer;
-ArrayBuffer leftBuffer, rightBuffer;
 
 MeshData guyMeshData;
 
@@ -146,17 +144,12 @@ constexpr float ANGLE_DELTA = 4;
 
 float zNear = 0.1f, zFar = 1000.f;
 
-bool buttonToggle = false;
-ScreenRect buttonRect{ 540, 200, 100, 100 }, userPortion(0, 800, 1000, 200);
-Button help(buttonRect, [](std::size_t i) {std::cout << idleFrameCounter << ":" << i << std::endl; });
-
 static bool featureToggle = false;
 static std::chrono::nanoseconds idleTime, displayTime;
 
 // TODO: Semaphore version of buffersync
 BufferSync<std::vector<TextureVertex>> decalVertex;
 
-std::array<ScreenRect, 9> ui_tester;
 ArrayBuffer ui_tester_buffer;
 
 std::vector<AABB> dynamicTreeBoxes;
@@ -187,7 +180,7 @@ DebrisManager trashMan;
 MeshData playerMesh;
 MeshData bulletMesh;
 
-BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletImpacts;
+BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletBoxes;
 
 MeshData levelGeometry;
 
@@ -469,9 +462,9 @@ void display()
 	bobert.Draw(interzone, outerzone);
 	
 	auto& buf = BufferBank::Get("player");
-	auto meshs2 = playerModel;
-	meshs2.scale *= 0.5f;
-	buf.BufferData(meshs2.GetMatrixPair());
+	Model playerDrawModel = playerModel;
+	playerDrawModel.scale *= 0.5f;
+	buf.BufferData(playerDrawModel.GetMatrixPair());
 	outerzone.BindArrayBuffer(buf, 1);
 	playfield.Draw(interzone, outerzone, playerMesh, playerModel);
 	// Dust particles
@@ -524,9 +517,10 @@ void display()
 
 	if (debugFlags[DYNAMIC_TREE])
 	{
+		// This *could* be done more nicely with uniformInstance, But in this case it'd be more hassle than it's worth
 		uniform.SetActiveShader();
 		glm::vec3 blue(0, 0, 1);
-		VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"));
+		VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Retrieve("plainCube"));
 		uniform.SetVec3("color", glm::vec3(1, 0.65, 0));
 		for (auto& box : dynamicTreeBoxes)
 		{
@@ -538,14 +532,14 @@ void display()
 	}
 	if (debugFlags[CHECK_LIGHT_VOLUMES])
 	{
-		Shader& shaderRef = ShaderBank::Get("uniformInstance");
-		VAO& vaoRef = VAOBank::Get("uniformInstanceSphere");
-		shaderRef.SetActiveShader();
-		vaoRef.Bind();
+		Shader& shader = ShaderBank::Get("uniformInstance");
+		VAO& vao = VAOBank::Get("uniformInstanceSphere");
+		shader.SetActiveShader();
+		vao.Bind();
 		glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-		vaoRef.BindArrayBuffer(sphereBuffer, 0);
-		vaoRef.BindArrayBuffer(BufferBank::Get("uniformInstanceSphere"), 1);
-		shaderRef.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, BufferBank::Get("uniformInstanceSphere"));
+		vao.BindArrayBuffer(sphereBuffer, 0);
+		vao.BindArrayBuffer(BufferBank::Get("uniformInstanceSphere"), 1);
+		shader.DrawElementsInstanced<DrawType::Triangle>(sphereIndicies, BufferBank::Get("uniformInstanceSphere"));
 		glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
 	}
 
@@ -559,6 +553,10 @@ void display()
 		vao.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 		vao.BindArrayBuffer(instances, 1);
 		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, instances);
+
+		ArrayBuffer& bulletBoxes = Bank<ArrayBuffer>::Retrieve("bulletBoxes");
+		vao.BindArrayBuffer(bulletBoxes, 1);
+		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletBoxes);
 	}
 
 	{
@@ -602,10 +600,12 @@ void display()
 		DisableDepthWritePush;
 		EnablePushFlags(Blending);
 		// TODO: Maybe look into this https://www.opengl.org/archives/resources/code/samples/sig99/advanced99/notes/node20.html
-		ShaderBank::Get("decalShader").SetActiveShader();
+		ArrayBuffer& decals = BufferBank::Retrieve("decals");
+		Shader& shader = ShaderBank::Retrieve("decalShader");
+		shader.SetActiveShader();
 		VAOBank::Retrieve("texturedVAO").DoubleBindArrayBuffer(decals);
-		ShaderBank::Get("decalShader").SetTextureUnit("textureIn", texture, 0);
-		ShaderBank::Get("decalShader").DrawArray<DrawType::Triangle>(decals);
+		shader.SetTextureUnit("textureIn", texture, 0);
+		shader.DrawArray<DrawType::Triangle>(decals);
 	}
 	
 	trashMan.Draw(ShaderBank::Retrieve("debris"));
@@ -619,6 +619,7 @@ void display()
 
 		colorVAO.Bind();
 		trails.SetVec3("Color", glm::vec3(2.f, 204.f, 254.f) / 255.f);
+		ArrayBuffer& leftBuffer = BufferBank::Retrieve("leftBuffer"), & rightBuffer = BufferBank::Retrieve("rightBuffer");
 		colorVAO.BindArrayBuffer(leftBuffer);
 		trails.DrawArray<DrawType::TriangleStrip>(leftBuffer);
 		colorVAO.BindArrayBuffer(rightBuffer);
@@ -637,27 +638,11 @@ void display()
 	if (bulletMesh.rawIndirect[1].instanceCount > 0)
 	{
 		Shader& bulletShader = ShaderBank::Get("bulletShader");
+		VAO& vao = VAOBank::Retrieve("bulletVAO");
 		bulletShader.SetActiveShader();
-		bulletMesh.Bind(VAOBank::Retrieve("bulletVAO"));
-		ArrayBuffer& bulletMats = BufferBank::Retrieve("bulletMats");
-
-		VAOBank::Retrieve("bulletVAO").BindArrayBuffer(bulletMats, 1);
+		bulletMesh.Bind(vao);
+		vao.BindArrayBuffer(BufferBank::Retrieve("bulletMats"), 1);
 		bulletShader.MultiDrawElements(bulletMesh.indirect);
-		{
-			
-			Shader& shaderRef = ShaderBank::Get("uniformInstance");
-			VAO& vaoRef = VAOBank::Get("uniformInstance");
-			shaderRef.SetActiveShader();
-			vaoRef.Bind();
-			glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
-			vaoRef.BindArrayBuffer(bulletMats, 1);
-			//shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletMats2);
-			vaoRef.BindArrayBuffer(Bank<ArrayBuffer>::Get("bulletImpacts"), 1);
-			shaderRef.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, Bank<ArrayBuffer>::Get("bulletImpacts"));
-			glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
-			
-		}
 	}
 
 	// Everything potentially transparent has to be drawn *after* the skybox
@@ -897,18 +882,23 @@ void idle()
 	Mouse::UpdateEdges();
 	boardState = Input::UpdateStatus();
 
-	help.MouseUpdate();
 	Input::UIStuff();
 	Input::DisplayInput();
 	if (!Input::ControllerActive())
 	{
 		float tilt = 0.f;
-		if (keyState['Q'] && !keyState['E']) tilt = 1.f;
-		if (keyState['E'] && !keyState['Q']) tilt = -1.f;
+		if (keyState['Q']) 
+		{
+			tilt += 1.f;
+		}
+		if (keyState['E']) 
+		{
+			tilt += -1.f;
+		}
 		targetAngles.z = tilt * 0.5f;
 		glm::vec3 adjustment = (shiftHeld) ? glm::vec3(0.5f) : glm::vec3(1.f);
 		boardState.heading = glm::vec4(playerSpeedControl, targetAngles * adjustment);
-		boardState.fireButton = keyState['T'];
+		boardState.fireButton = Mouse::CheckButton(Mouse::ButtonRight);
 		boardState.cruiseControl = keyState['Y'];
 		boardState.popcornFire = Mouse::CheckButton(Mouse::ButtonLeft);
 
@@ -1013,8 +1003,8 @@ void idle()
 			rightCircle.Push(ColoredVertex{ local + left,  upSet - left * 0.2f });
 			rightCircle.Push(ColoredVertex{ local + left, -upSet + left * 0.2f });
 
-			leftBuffer.BufferData(leftCircle.GetLinear());
-			rightBuffer.BufferData(rightCircle.GetLinear());
+			BufferBank::Retrieve("leftBuffer").BufferData(leftCircle.GetLinear());
+			BufferBank::Retrieve("rightBuffer").BufferData(rightCircle.GetLinear());
 		}
 		// Better bullet drawing
 		bulletMatricies.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
@@ -1026,9 +1016,9 @@ void idle()
 			}
 		);
 
-		bulletImpacts.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
+		bulletBoxes.ExclusiveOperation([&](std::vector<glm::mat4>& mats)
 			{
-				Bank<ArrayBuffer>::Get("bulletImpacts").BufferData(mats);
+				Bank<ArrayBuffer>::Get("bulletBoxes").BufferData(mats);
 			}
 		);
 		Level::GetShips().UpdateMeshes();
@@ -1082,7 +1072,7 @@ void idle()
 
 	decalVertex.ExclusiveOperation([&](auto& ref)
 		{
-			decals.BufferData(ref, StaticDraw);
+			BufferBank::Retrieve("decals").BufferData(ref, StaticDraw);
 		}
 	);
 	managedProcess.FillBuffer(exhaustBuffer);
@@ -1192,7 +1182,7 @@ void gameTick()
 		}
 
 		// Bullet stuff;
-		std::vector<glm::mat4> inactive, blarg;
+		std::vector<glm::mat4> inactive, bulletDebugBoxes;
 
 		std::vector<LightVolume> volumes{ constantLights };
 		std::erase_if(decaymen, [](const auto& decaying) {return decaying.timeLeft == 0; });
@@ -1241,7 +1231,7 @@ void gameTick()
 				if (!localFrust.Overlaps(Sphere(endState.GetCenter(), glm::compMax(endState.Deviation()))))
 				{
 					inactive.push_back(local.GetModel().GetModelMatrix());
-					blarg.push_back(transformedBox.GetModelMatrix());
+					bulletDebugBoxes.push_back(transformedBox.GetModelMatrix());
 					if (local.lifeTime > 10)
 					{
 						volumes.push_back({ glm::vec4(local.transform.position, 15.f), glm::vec4(1.f, 1.f, 0.f, 1.f), glm::vec4(1.f, 0.f, 0.05f, 1.f) });
@@ -1264,7 +1254,6 @@ void gameTick()
 						{
 							if (!(bogus.SignedDistance(segmentation.A) < 0 && bogus.SignedDistance(segmentation.B) < 0))
 							{
-								//Log("Blown'd up");
 								return REMOVE;
 							}
 						}
@@ -1293,7 +1282,7 @@ void gameTick()
 								OBB sigma(Model(newCenter, ForwardDir(-currentTri->GetNormal(),
 									local.transform.rotation * glm::vec3(0.f, 1.f, 0.f)),
 									Bullet::Collision.GetScale() * glm::vec3(1.5f, BulletDecalScale, BulletDecalScale)));
-								blarg.push_back(sigma.GetModelMatrix());
+								bulletDebugBoxes.push_back(sigma.GetModelMatrix());
 								if (Decal::GetDecal(sigma, Level::GetTriangleTree(), ref).size() == 0)
 								{
 									// Possibly helps things, but I'm not completely sure
@@ -1322,9 +1311,9 @@ void gameTick()
 		);
 		// Maybe this is a "better" method of syncing stuff than the weird hack of whatever I had before
 		bulletMatricies.Swap(inactive);
-		if (blarg.size() > 0)
+		if (bulletDebugBoxes.size() > 0)
 		{
-			bulletImpacts.Swap(blarg);
+			bulletBoxes.Swap(bulletDebugBoxes);
 		}
 		drawingVolumes.Swap(volumes);
 		
@@ -1588,12 +1577,10 @@ void mouseCursorFunc([[maybe_unused]] GLFWwindow* window, double xPos, double yP
 	glm::ivec2 deviation = glm::ceil(glm::abs(Window::GetHalfF() - oldPos));
 
 
-	ui_tester = NineSliceGenerate(Window::GetHalfF(), deviation);
-	ui_tester_buffer.BufferData(ui_tester, StaticDraw);
+	ui_tester_buffer.BufferData(NineSliceGenerate(Window::GetHalfF(), deviation), StaticDraw);
 	Mouse::SetPosition(x, y);
 	targetAngles = glm::vec3(0.f);
 
-	if (Mouse::CheckButton(Mouse::ButtonRight))
 	{
 		float xDif = x - oldPos.x;
 		float yDif = y - oldPos.y;
@@ -1626,10 +1613,6 @@ void mouseCursorFunc([[maybe_unused]] GLFWwindow* window, double xPos, double yP
 			targetAngles.x = clamped.x;
 			targetAngles.y = clamped.y;
 		}
-	}
-	else
-	{
-		buttonToggle = buttonRect.Contains(x, y);
 	}
 }
 
@@ -2025,7 +2008,7 @@ void init()
 
 	Bank<ArrayBuffer>::Get("dummyEngine").BufferData(std::array<unsigned int, 36>{});
 
-	decals.Generate();
+	BufferBank::Get("decals").Generate();
 	stickBuffer.BufferData(Dummy::stick);
 	solidCubeIndex.BufferData(Cube::GetTriangleIndex());
 
@@ -2194,12 +2177,15 @@ void init()
 		ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
 	}
 
-	// TODO: proper fill of the relevant offset so there's no weird banding
-	leftCircle.Fill({ playfield.GetModel().translation, glm::vec3(0.f) });
-	rightCircle.Fill({playfield.GetModel().translation, glm::vec3(0.f)});
-	leftBuffer.BufferData(leftCircle.Get());
-	rightBuffer.BufferData(rightCircle.Get());
-	stickIndicies.BufferData(Dummy::stickDex, StaticDraw);
+	{
+		ArrayBuffer& leftBuffer = BufferBank::Get("leftBuffer"), &rightBuffer = BufferBank::Get("rightBuffer");
+		// TODO: proper fill of the relevant offset so there's no weird banding
+		leftCircle.Fill({ playfield.GetModel().translation, glm::vec3(0.f) });
+		rightCircle.Fill({ playfield.GetModel().translation, glm::vec3(0.f) });
+		leftBuffer.BufferData(leftCircle.Get());
+		rightBuffer.BufferData(rightCircle.Get());
+		stickIndicies.BufferData(Dummy::stickDex, StaticDraw);
+	}
 
 	cubeOutlineIndex.BufferData(Cube::GetLineIndex());
 
@@ -2243,7 +2229,6 @@ void init()
 	}
 	DisableGLFeatures<Blending>();
 
-	help.SetMessages("Work", "UnWork", fonter);
 	playfield.sat = &groovy;
 	Input::Setup();
 	Log("End of Init");

@@ -87,6 +87,8 @@ void Player::Update(Input::Keyboard input) noexcept
 
 	const glm::mat3 localAxes(static_cast<glm::mat3>(this->transform.rotation));
 
+	const glm::vec3 localVelocityAlignment = unitVector * localAxes;
+
 	const float currentSpeed = glm::length(this->velocity);
 	const float velocitySquared = currentSpeed * currentSpeed;
 
@@ -108,7 +110,7 @@ void Player::Update(Input::Keyboard input) noexcept
 	const float speedDifference = Rectify(glm::abs((desiredSpeed - currentSpeed) / currentSpeed));
 
 	// Popcorn weapon firing
-	if (input.popcornFire && (gunA.IsFinished() || gunB.IsFinished()))
+	if (input.fireButton && (gunA.IsFinished() || gunB.IsFinished()))
 	{
 		// Popcorn fire
 		glm::vec3 facingVector = localAxes[0];
@@ -116,12 +118,14 @@ void Player::Update(Input::Keyboard input) noexcept
 		//bulletVelocity = glm::normalize(bulletVelocity + this->velocity) * PopcornSpeed;
 		if (gunA.IsFinished())
 		{
-			//Level::AddBulletTree(this->transform.position + localAxes * (PopcornOffset * PlayerScale), bulletVelocity, localAxes[1]);
+			glm::vec3 bulletPosition = this->transform.position + localAxes * (PopcornOffset * PlayerScale);
+			Level::AddBulletTree(bulletPosition, bulletVelocity, localAxes[1]);
 			popcornAnimation.Start(gunA);
 		}
 		if (gunB.IsFinished())
 		{
-			//Level::AddBulletTree(this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale), bulletVelocity, localAxes[1]);
+			glm::vec3 bulletPosition = this->transform.position + localAxes * (PopcornOffsetZ * PlayerScale);
+			Level::AddBulletTree(bulletPosition, bulletVelocity, localAxes[1]);
 			popcornAnimation.Start(gunB);
 		}
 	}
@@ -212,105 +216,79 @@ void Player::Update(Input::Keyboard input) noexcept
 			forces = unitVector * -EngineThrust * speedDifference;
 		}
 	}
-	else if (!this->fireCountdown)
-	{
-		glm::vec3 wrongDirection = glm::normalize(localAxes[0] - unitVector);
-		if (!glm::any(glm::isnan(wrongDirection)))
-		{
-			// Damping coeficient
-			forces += wrongDirection * input.heading.x * EngineThrust * 0.25f;
-		}
-	}
 	
 	// Do not allow for turning unless the ship is moving
-	if (!this->fireCountdown)
 	{
 		// Don't do extra quaternion math if we don't have to
 		if (input.heading.y != 0.f)
 		{
-			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, glm::normalize(localAxes[1])));
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.y, localAxes[1]));
 			this->transform.rotation = delta * this->transform.rotation;
-			//this->transform.rotation = glm::rotate(this->transform.rotation, angularVelocity * input.heading.y, localAxes[1]);
 			forces -= input.heading.y * localAxes[2] * rotationalThrust;
 		}
 		if (input.heading.z != 0.f)
 		{
-			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, glm::normalize(localAxes[2])));
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.z, localAxes[2]));
 			this->transform.rotation = delta * this->transform.rotation;
-			//this->transform.rotation = glm::rotate(this->transform.rotation, angularVelocity * input.heading.z, localAxes[2]);
 			forces += input.heading.z * localAxes[1] * rotationalThrust;
 		}
 		if (input.heading.w != 0.f)
 		{
-			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.w, glm::normalize(localAxes[0])));
+			glm::quat delta = glm::normalize(glm::angleAxis(angularVelocity * input.heading.w, localAxes[0]));
 			this->transform.rotation = delta * this->transform.rotation;
 		}
 	}
 
-	if (input.fireButton && this->fireDelay == 0 && this->fireCountdown == 0 && currentSpeed > MinFiringVelocity)
-	{
-		this->fireCountdown = FireDelay;
-		this->fireDelay = WaitingValue;
-	}
-	if (this->fireDelay != WaitingValue && this->fireDelay)
-	{
-		this->fireDelay--;
-	}
-
-	if (this->fireCountdown)
-	{
-		this->fireCountdown--;
-		forces = World::Zero;
-	}
-	// Time to fire
-	else if (this->fireDelay == WaitingValue)
-	{
-		this->fireDelay = FireInterval;
-		// TODO: See if kinetic energy "feels" better
-		
-		// TODO: There's a constant to factor out here
-		// KE = 1/2 * m * v^2
-
-		glm::vec3 facingVector = static_cast<glm::mat3>(this->transform.rotation)[0];
-		facingVector = unitVector;
-		float kineticEnergy = 0.5f * PlayerMass * currentSpeed * currentSpeed;
-		float bulletEnergy = glm::sqrt(kineticEnergy * 2.f * Bullet::InvMass);
-
-		//float momentum = currentSpeed * PlayerMass;
-		// Conserve momentum
-		
-		glm::vec3 bulletVelocity = bulletEnergy * facingVector;
-
-		//Level::AddBullet(this->transform.position, bulletVelocity);
-		this->velocity = -5.f * facingVector;
-	}
-	
-	//forces = glm::vec3(0.f);
-	//this->velocity = localAxes[0] * input.heading.x * MaxSpeed;
-
 	// Move towards 6DOF
 	forces = glm::vec3(0.f);
 	glm::vec3 signFlags{ input.movement };
+	
+#ifdef _DEBUG
+	if (glm::length(this->velocity) > EPSILON)
+	{
+		for (int i = 0; i < 3; i++)
+		{
+			float A = glm::dot(localAxes[i], unitVector);
+			float B = localVelocityAlignment[i];
+			if (A != B)
+			{
+				Log("{}:{}", A, B);
+			}
+		}
+	}
+#endif // _DEBUG
+
 	// If a direction is not held, counteract the current force in that direction
 	if (!glm::any(glm::isnan(unitVector)))
 	{
 		if (glm::abs(signFlags.x) < EPSILON)
 		{
-			signFlags.x = -1.f * (glm::dot(localAxes[0], unitVector)) * 0.25f;
+			signFlags.x = localVelocityAlignment[0] * -0.25f;
 		}
 		if (glm::abs(signFlags.y) < EPSILON)
 		{
-			signFlags.y = -1.f * (glm::dot(localAxes[1], unitVector)) * 0.25f;
+			signFlags.y = localVelocityAlignment[1] * -0.25f;
 		}
 		if (glm::abs(signFlags.z) < EPSILON)
 		{
-			signFlags.z = -1.f * (glm::dot(localAxes[2], unitVector)) * 0.25f;
+			signFlags.z = localVelocityAlignment[2] * -0.25f;
 		}
 	}
 	input.heading.x = 0.75f; // ?????
-	forces += signFlags.x * localAxes[0] * input.heading.x * EngineThrust * 5.f;
-	forces += signFlags.y * localAxes[1] * input.heading.x * EngineThrust * 5.f;
-	forces += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
+	forces += localAxes * signFlags * input.heading.x * EngineThrust * 5.f;
+#ifdef _DEBUG // Paranoia checks that optimizations work
+	glm::vec3 forbes = forces;
+	forbes += signFlags.x * localAxes[0] * input.heading.x * EngineThrust * 5.f;
+	forbes += signFlags.y * localAxes[1] * input.heading.x * EngineThrust * 5.f;
+	forbes += signFlags.z * localAxes[2] * input.heading.x * EngineThrust * 5.f;
+
+	forces += localAxes * signFlags * input.heading.x * EngineThrust * 5.f;
+	if (glm::any(glm::greaterThan(glm::abs(forbes - forces), glm::vec3(EPSILON))))
+	{
+		Log("{}:{}:{}", forbes, forces, forbes-forces);
+	}
+#endif // _DEBUG
+
 	this->lastAcceleration = forces;
 	BasicPhysics::Update(this->transform.position, this->velocity, forces, PlayerMass);
 	if (!input.zoomZoom && glm::length(this->velocity) > MaxSpeed)
@@ -366,8 +344,7 @@ void Player::Draw(Shader& shader, VAO& vertex, MeshData& renderData, Model local
 	// Render the static(non-animation bound) things
 	localModel.scale = glm::vec3(PlayerScale);
 	const glm::mat4 stored = localModel.GetModelMatrix();
-	//shader.SetMat4("modelMat", stored);
-	//shader.SetMat4("normalMat", localModel.GetNormalMatrix());
+	// Things are kind of a mess here, due to wanting the gun to spin, sigh
 	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 0, 1);
 	shader.MultiDrawElements<DrawType::Triangle>(renderData.indirect, 2, 1);
 

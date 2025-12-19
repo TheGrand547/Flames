@@ -194,69 +194,70 @@ inline void Shader::SetActiveShader() const noexcept
 
 inline void Shader::SetInt(const std::string& name, const int i) const noexcept
 {
-	glUniform1i(this->UniformIndex(name), i);
+	glProgramUniform1i(this->program, this->UniformIndex(name), i);
 }
 
 inline void Shader::SetUnsignedInt(const std::string& name, const unsigned int i) const noexcept
 {
-	glUniform1ui(this->UniformIndex(name), i);
+	glProgramUniform1ui(this->program, this->UniformIndex(name), i);
 }
 
 inline void Shader::SetFloat(const std::string& name, const float i) const noexcept
 {
-	glUniform1f(this->UniformIndex(name), i);
+	glProgramUniform1f(this->program, this->UniformIndex(name), i);
 }
 
 inline void Shader::SetVec2(const std::string& name, const glm::vec2& vec) const noexcept
 {
-	glUniform2fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+	glProgramUniform2fv(this->program, this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetUVec2(const std::string& name, const glm::uvec2& vec) const noexcept
 {
-	glUniform2uiv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+	glProgramUniform2uiv(this->program, this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetVec3(const std::string& name, const glm::vec3& vec) const noexcept
 {
-	glUniform3fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+	glProgramUniform3fv(this->program, this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetVec4(const std::string& name, const glm::vec4& vec) const noexcept
 {
-	glUniform4fv(this->UniformIndex(name), 1, glm::value_ptr(vec));
+	glProgramUniform4fv(this->program, this->UniformIndex(name), 1, glm::value_ptr(vec));
 }
 
 inline void Shader::SetMat2(const std::string& name, const glm::mat2& mat) const noexcept
 {
-	glUniformMatrix2fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glProgramUniformMatrix2fv(this->program, this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 inline void Shader::SetMat4(const std::string& name, const glm::mat4& mat) const noexcept
 {
-	glUniformMatrix4fv(this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
+	glProgramUniformMatrix4fv(this->program, this->UniformIndex(name), 1, GL_FALSE, glm::value_ptr(mat));
 }
 
 inline void Shader::SetMat4s(const std::string& name, const std::span<glm::mat4> mats) const noexcept
 {
-	glUniformMatrix4fv(this->UniformIndex(name), static_cast<GLsizei>(mats.size()), GL_FALSE, glm::value_ptr(*mats.data()));
+	glProgramUniformMatrix4fv(this->program, this->UniformIndex(name), 
+		static_cast<GLsizei>(mats.size()), GL_FALSE, glm::value_ptr(*mats.data()));
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const GLuint unit) const noexcept
 {
-	glUniform1i(this->UniformIndex(name), unit);
+	glProgramUniform1i(this->program, this->UniformIndex(name), unit);
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const Texture2D& texture, const GLuint unit) const noexcept
 {
 	texture.BindTexture(unit);
-	glUniform1i(this->UniformIndex(name), unit);
+	glProgramUniform1i(this->program, this->UniformIndex(name), unit);
 }
 
 inline void Shader::SetTextureUnit(const std::string& name, const CubeMap& texture, const GLuint unit) const noexcept
 {
 	texture.BindTexture(unit);
-	glUniform1i(this->UniformIndex(name), unit);
+	glProgramUniform1i(this->program, this->UniformIndex(name), unit);
 }
 
 inline void Shader::UniformBlockBinding(const std::string& name, GLuint bindingPoint) const noexcept
