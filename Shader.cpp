@@ -213,11 +213,15 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 		std::chrono::system_clock::rep compiledTime = std::filesystem::last_write_time(compiledPath).time_since_epoch().count();
 		if (compiledTime > threshold)
 		{
+			if (this->precompiled)
+			{
+				// Already done
+				return true;
+			}
 			std::ifstream input;
 			input.open(compiledPath, std::ios::binary);
 			if (input.is_open())
 			{
-				Log("Loaded shader from file '{}'", compiledPath.string());
 				GLint length = 0;
 				GLenum format = 0;
 				input.read(reinterpret_cast<char*>(&length), sizeof(GLint));
@@ -230,10 +234,11 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				glProgramBinary(this->program, format, reinterpret_cast<void*>(data.get()), length);
 				input.close();
 
-				int result;
+				int result = 0;
 				glGetProgramiv(this->program, GL_LINK_STATUS, &result);
 				if (result)
 				{
+					Log("Loaded shader from file '{}'", compiledPath.string());
 					this->compiled = true;
 					this->precompiled = true;
 					return true;
@@ -243,7 +248,7 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 				std::unique_ptr<char[]> logMsg = std::make_unique<char[]>(static_cast<size_t>(logSize) + 1);
 				logMsg[length] = '\0';
 				glGetProgramInfoLog(this->program, logSize, NULL, logMsg.get());
-				Log("Error reading compiled shader from file '{}.csp' \n{}", name, logMsg.get());
+				Log("Error reading compiled shader from file '{}' \n{}", compiledPath.string(), logMsg.get());
 				input.close();
 				this->program = 0;
 			}
@@ -436,14 +441,12 @@ void Shader::DispatchCompute(std::uint32_t x, std::uint32_t y, std::uint32_t z) 
 
 bool Shader::Compile(const std::string& vert, const std::string& frag, bool instanced)
 {
-	this->CleanUp();
 	std::string combined = (vert == frag) ? vert : vert + frag;
 	if (instanced)
 	{
 		combined += "_instanced";
 		Shader::DefineTemp("#define INSTANCED");
 	}
-	std::filesystem::path compiledPath(shaderBasePath + combined + ".csp");
 	std::filesystem::path vertexPath(shaderBasePath + vert + extensions[0]);
 	std::filesystem::path fragmentPath(shaderBasePath + frag + extensions[1]);
 
@@ -454,7 +457,6 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool inst
 		return false;
 	}
 
-	this->name = combined;
 
 	auto newestWrite = std::max(std::filesystem::last_write_time(vertexPath).time_since_epoch().count(),
 		std::filesystem::last_write_time(fragmentPath).time_since_epoch().count());
@@ -463,6 +465,8 @@ bool Shader::Compile(const std::string& vert, const std::string& frag, bool inst
 	{
 		return true;
 	}
+	this->name = combined;
+	this->CleanUp();
 	
 	std::ifstream vertexFile(vertexPath.string(), std::ifstream::in);
 	std::ifstream fragmentFile(fragmentPath.string(), std::ifstream::in);
@@ -589,7 +593,6 @@ bool Shader::CompileEmbeddedTesselation(const std::string& vertex, const std::st
 
 bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 {
-	this->CleanUp();
 	std::filesystem::path inputPath(shaderBasePath + filename + ".glsl");
 
 	if (!std::filesystem::exists(inputPath))
@@ -603,18 +606,15 @@ bool Shader::CompileSingleFile(const std::string& filename, bool instanced)
 	{
 		compiled_name += "_instanced";
 	}
-	std::filesystem::path compiledPath(shaderBasePath + compiled_name + ".csp");
-
-	this->name = compiled_name;
-
 	auto newestWrite = std::filesystem::last_write_time(inputPath).time_since_epoch().count();
 
 	// TODO: Need to have some kind of flag thing that separates the precompiled versions from each other
-	if (TryLoadCompiled(this->name, newestWrite))
+	if (TryLoadCompiled(compiled_name, newestWrite))
 	{
 		return true;
 	}
-
+	this->CleanUp();
+	this->name = compiled_name;
 	std::ifstream inputFile(inputPath.string(), std::ifstream::in);
 	if (inputFile.is_open())
 	{
