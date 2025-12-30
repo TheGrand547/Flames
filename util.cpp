@@ -14,3 +14,9 @@ glm::vec2 GetProjectionHalfs(glm::mat4& mat)
 	result.y = local.y;
 	return result;
 }
+
+// The boost implementation
+void CombineHash(std::size_t& seed, const std::size_t& input)
+{
+	seed ^= input + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+}

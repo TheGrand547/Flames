@@ -68,7 +68,12 @@ float attenuate(vec3 constants, float distance)
 
 float applyDiffuse(FragData fragData, vec3 lightDirection)
 {
-	return max(dot(fragData.normal, lightDirection), 0);
+	float nDotL = dot(fragData.normal, lightDirection);
+	//return max(nDotL, 0);
+	// Half lambert(Valve)
+	nDotL = (nDotL * 0.5) + 0.5;
+	nDotL *= nDotL;
+	return nDotL;
 }
 
 float applySpecular(FragData fragData, vec3 lightDirection)

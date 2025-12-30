@@ -44,4 +44,6 @@ inline glm::mat2 GetLower2x2(const glm::mat4& in)
 					glm::vec2(in[3][2], in[3][3]));
 }
 
+void CombineHash(std::size_t& seed, const std::size_t& input);
+
 #endif // UTIL_H

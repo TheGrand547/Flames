@@ -26,6 +26,9 @@ struct Model
 	~Model() = default;
 
 	Model(const Model& mode) noexcept = default;
+	Model(Model&& mode) noexcept = default;
+	Model& operator=(const Model& other) noexcept = default;
+	Model& operator=(Model&& other) noexcept = default;
 
 	void Translate(const glm::vec3& distance) noexcept;
 

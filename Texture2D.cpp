@@ -78,6 +78,7 @@ void Texture2D::MakeAliasOf(const Texture2D& other)
 void Texture2D::CopyFrom(Texture2D& other)
 {
 	Log("TODO");
+	(void)other;
 }
 
 void Texture2D::CopyFrom(Texture2D&& other)

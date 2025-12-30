@@ -114,7 +114,8 @@ void Player::Update(Input::Keyboard input) noexcept
 	{
 		// Popcorn fire
 		glm::vec3 facingVector = localAxes[0];
-		glm::vec3 bulletVelocity = facingVector * PopcornSpeed + this->velocity;
+		float claculatedSpeed = std::max(Rectify(glm::length(this->velocity)), PopcornSpeed);
+		glm::vec3 bulletVelocity = facingVector * claculatedSpeed;
 		//bulletVelocity = glm::normalize(bulletVelocity + this->velocity) * PopcornSpeed;
 		if (gunA.IsFinished())
 		{

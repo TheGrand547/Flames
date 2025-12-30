@@ -555,9 +555,9 @@ void display()
 		vao.BindArrayBuffer(instances, 1);
 		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, instances);
 
-		ArrayBuffer& bulletBoxes = Bank<ArrayBuffer>::Retrieve("bulletBoxes");
-		vao.BindArrayBuffer(bulletBoxes, 1);
-		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletBoxes);
+		ArrayBuffer& bulletBoxers = Bank<ArrayBuffer>::Retrieve("bulletBoxes");
+		vao.BindArrayBuffer(bulletBoxers, 1);
+		shader.DrawElementsInstanced<DrawType::Lines>(cubeOutlineIndex, bulletBoxers);
 	}
 
 	{
@@ -1495,7 +1495,7 @@ void key_callback([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]]
 		{
 			LoadShaders();
 		}
-		else if (key >= GLFW_KEY_F1 && key <= GLFW_KEY_F1 + debugFlags.size())
+		else if (key >= GLFW_KEY_F1 && key < GLFW_KEY_F1 + debugFlags.size())
 		{
 			std::size_t value = static_cast<std::size_t>(key - GLFW_KEY_F1 + 1);
 			debugFlags[value] = !debugFlags[value];
@@ -2065,6 +2065,7 @@ void init()
 		);
 		Player::Box = OBB::MakeOBB(painterly);
 		Player::Box.Scale(0.5f);
+		onlyFirst = 0;
 		bulletMesh = OBJReader::MeshThingy<ColoredVertex>("Models\\Projectiles.glb",
 			{},
 			[&](auto& c)
@@ -2072,6 +2073,7 @@ void init()
 				std::vector<glm::vec3> pain{ c.size() };
 				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
 				Bullet::Collision = OBB::MakeOBB(pain);
+				
 			}
 		);
 		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\mothership.glb",

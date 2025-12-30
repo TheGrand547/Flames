@@ -25,7 +25,7 @@ struct Bullet
 	
 	inline Model GetModel() const noexcept
 	{
-		return Model(this->transform);
+		return Model(this->transform, 3.f);
 	}
 
 	inline OBB GetOBB() const noexcept

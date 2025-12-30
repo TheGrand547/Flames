@@ -6,6 +6,7 @@
 #include <optional>
 #include <vector>
 #include "log.h"
+#include "util.h"
 
 #ifdef RELEASE
 #define EXIT
@@ -23,6 +24,7 @@ static constexpr std::array<GLenum, 5> shaderType = { GL_VERTEX_SHADER, GL_FRAGM
 
 static std::vector<std::vector<std::string>> shaderDefines = { std::vector<std::string>{} };
 static std::vector<std::string> shaderTempDefines;
+static std::vector<std::size_t> defineHashes;
 
 void Shader::SetBasePath(const std::string& basePath)
 {
@@ -37,6 +39,7 @@ void Shader::ForceRecompile(bool flag)
 void Shader::Define(const std::string& define)
 {
 	shaderDefines.back().push_back(define);
+	//CombineHash(defineHashes.back(), std::hash<std::string>{}(define));
 }
 
 void Shader::DefineTemp(const std::string& define)
@@ -47,6 +50,7 @@ void Shader::DefineTemp(const std::string& define)
 void Shader::PushContext()
 {
 	shaderDefines.push_back({});
+	//defineHashes.push_back({});
 }
 
 void Shader::PopContext()
@@ -54,6 +58,7 @@ void Shader::PopContext()
 	if (shaderDefines.size() > 0)
 	{
 		shaderDefines.pop_back();
+		//defineHashes.pop_back();
 	}
 }
 
@@ -224,6 +229,18 @@ bool Shader::TryLoadCompiled(const std::string& name, std::chrono::system_clock:
 			{
 				GLint length = 0;
 				GLenum format = 0;
+				//std::size_t hash = 0;
+				//input.read(reinterpret_cast<char*>(&hash), sizeof(std::size_t));
+				// TODO: Maybe revisit this hashing thing idfk
+				//if (false && this->precompiled && hash == defineHashes.back())
+				if (false)
+				{
+					Log("SKip maybe idk")
+					// Already done
+					return true;
+				}
+
+
 				input.read(reinterpret_cast<char*>(&length), sizeof(GLint));
 				input.read(reinterpret_cast<char*>(&format), sizeof(GLenum));
 
