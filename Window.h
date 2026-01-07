@@ -9,7 +9,7 @@ namespace Window
 {
 	static GLsizei Height = 1000, Width = 1000;
 	static float FOV = 70.f;
-	static float AspectRatio = 1.f;
+	static float AspectRatio = static_cast<float>(Width) / Height;
 
 	inline glm::ivec2 GetSize() noexcept
 	{
@@ -53,6 +53,11 @@ namespace Window
 	inline void Viewport() noexcept
 	{
 		glViewport(0, 0, Width, Height);
+	}
+
+	inline glm::vec4 GetRect() noexcept
+	{
+		return glm::vec4(glm::vec2(0.f), ::Window::GetSizeF());
 	}
 };
 

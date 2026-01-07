@@ -182,6 +182,8 @@ MeshData bulletMesh;
 
 BufferSync<std::vector<glm::mat4>> bulletMatricies, bulletBoxes;
 
+static ASCIIFont bigTextFont;
+
 MeshData levelGeometry;
 
 static GLFWwindow* windowPointer = nullptr;
@@ -240,7 +242,8 @@ std::vector<quickLight> zoopers;
 
 ShieldGenerator bobert;
 ColorFrameBuffer buffet;
-Framebuffer renderTarget;
+//Framebuffer renderTarget;
+Framebuffer<1, DepthAndStencil> renderTarget;
 BufferSync<std::vector<glm::vec3>> shieldPos;
 using ShaderStorage = Bank<ShaderStorageBuffer>;
 
@@ -284,6 +287,8 @@ static BufferSync<std::vector<glm::mat4>> bigCringe;
 static bool timeCurrentQuery = false;
 static std::atomic_flag tickHappend = ATOMIC_FLAG_INIT;
 
+static std::atomic<std::size_t> bigCountDown = 0;
+
 void LoadShaders();
 
 void display()
@@ -325,6 +330,48 @@ void display()
 	glClearDepth(0);
 	DefaultDepthTest();
 	ClearFramebuffer<ColorBuffer | DepthBuffer>();
+
+	const std::size_t currentValue = bigCountDown.load();
+
+	if (currentValue > 0)
+	{
+		ClearFramebuffer<StencilBuffer>();
+
+
+		{
+			Shader& setup2 = ShaderBank::Retrieve("uiRect");
+			setup2.SetActiveShader();
+			setup2.SetVec4("rectangle", Window::GetRect());
+			setup2.SetVec4("color", glm::vec4(0.25f, 0.5f, 0.75f, 1.f));
+			setup2.DrawArray<DrawType::TriangleStrip>(4);
+		}
+		{
+			Shader& setup = ShaderBank::Retrieve("uiRectTexture");
+			setup.SetActiveShader();
+			setup.SetVec4("rectangle", Window::GetRect());
+			setup.SetTextureUnit("image", buffet.GetColor());
+			setup.DrawArray<DrawType::TriangleStrip>(4);
+		}
+
+		EnableGLFeatures<StencilTesting>();
+		ArrayBuffer& bigBoy = BufferBank::Get("mask");
+		DisablePushFlags(DepthTesting);
+		glColorMask(GL_FALSE, GL_FALSE, GL_FALSE, GL_FALSE);
+		Shader& fontShader = ShaderBank::Retrieve("fontShader");
+		fontShader.SetActiveShader();
+		VAOBank::Retrieve("fontVAO").DoubleBindArrayBuffer(bigBoy);
+		fontShader.SetTextureUnit("fontTexture", bigTextFont.GetTexture(), 0);
+		glStencilFunc(GL_ALWAYS, 0, 0xFF);
+		glStencilOp(GL_INCR, GL_INCR, GL_INCR);
+		fontShader.DrawArray<DrawType::Triangle>(bigBoy);
+		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
+		glStencilOp(GL_KEEP, GL_KEEP, GL_KEEP);
+		glStencilFunc(GL_NOTEQUAL, 0, 0xFF);
+	}
+	else
+	{
+		DisableGLFeatures<StencilTesting>();
+	}
 
 	const Model playerModel(playfield.GetModel());
 
@@ -649,6 +696,10 @@ void display()
 	// Everything potentially transparent has to be drawn *after* the skybox
 	if (!debugFlags[CHECK_LIGHT_TILES])
 	{
+		if (currentValue > 0)
+		{
+			//DisableGLFeatures<StencilTesting>();
+		}
 		DisablePushFlags(FaceCulling);
 		DisableDepthWritePush;
 		Shader& skyBox = ShaderBank::Retrieve("skyBox");
@@ -656,6 +707,10 @@ void display()
 		VAOBank::Retrieve("uniform").DoubleBindArrayBuffer(Bank<ArrayBuffer>::Get("plainCube"), 0);
 		skyBox.SetTextureUnit("skyBox", sky);
 		skyBox.DrawElements<DrawType::Triangle>(solidCubeIndex);
+		if (currentValue > 0)
+		{
+			//EnableGLFeatures<StencilTesting>();
+		}
 	}
 	// Drawin quicklights
 	if (quickLightPairs.ExclusiveOperation(
@@ -745,6 +800,10 @@ void display()
 			shader.DrawArrayInstanced<DrawType::TriangleStrip>(BufferBank::Get("dummy"), plegm);
 			
 		}
+	}
+	if (currentValue > 0)
+	{
+		DisableGLFeatures<StencilTesting>();
 	}
 
 	// Debug Info Display
@@ -1097,6 +1156,11 @@ void gameTick()
 		const TimePoint tickStart = std::chrono::steady_clock::now();
 		const TimeDelta interval = tickStart - lastStart;
 		Capsule silly{ groovy.GetBounding() };
+
+		if (bigCountDown > 0)
+		{
+			bigCountDown--;
+		}
 
 		playfield.Update(boardState);
 		const Model playerModel = playfield.GetModel();
@@ -1474,6 +1538,8 @@ void key_callback([[maybe_unused]] GLFWwindow* window, int key, [[maybe_unused]]
 		{
 			std::vector<TextureVertex> points{};
 			decalVertex.Swap(points);
+			bigCountDown += 100;
+			Log("Countdown");
 		}
 		if (key == GLFW_KEY_G)
 		{
@@ -1646,6 +1712,7 @@ void window_size_callback([[maybe_unused]] GLFWwindow* window, int width, int he
 
 	renderTarget.GetColor().CreateEmpty(Window::GetSize(), InternalRGBA8);
 	renderTarget.GetDepth().CreateEmpty(Window::GetSize(), InternalDepthFloat32);
+	renderTarget.GetStencil().CreateEmpty(Window::GetSize(), InternalStencil);
 	renderTarget.Assemble();
 
 	// This is dependent on screen size so must be here.
@@ -1776,7 +1843,7 @@ int main([[maybe_unused]] int argc, [[maybe_unused]] char** argv)
 	// Glew
 	if ((error = glewInit()) != GLEW_OK)
 	{
-		printf("Error code %i from glewInit()", error);
+		Log("Error code {} from glewInit()", error);
 		return -1;
 	}
 
@@ -2073,7 +2140,6 @@ void init()
 				std::vector<glm::vec3> pain{ c.size() };
 				std::ranges::transform(c, std::back_inserter(pain), [](ColoredVertex b) -> glm::vec3 {return b.position; });
 				Bullet::Collision = OBB::MakeOBB(pain);
-				
 			}
 		);
 		levelGeometry = OBJReader::MeshThingy<NormalMeshVertex>("Models\\mothership.glb",
@@ -2192,6 +2258,15 @@ void init()
 	{
 		QUICKTIMER("Font Loading");
 		ASCIIFont::LoadFont(fonter, "CommitMono-400-Regular.ttf", 25.f, 2, 2);
+		if (!ASCIIFont::LoadFont(bigTextFont, "CommitMono-400-Regular.ttf", 100.f, 2, 2))
+		{
+			Log("Hell");
+		}
+	}
+
+	{
+		ArrayBuffer& bigBoy = BufferBank::Get("mask");
+		bigTextFont.GetTextTris(bigBoy, Window::GetHalfF() / 2.f, std::string("Awaken in Flames\nBurn in it"));
 	}
 
 	{

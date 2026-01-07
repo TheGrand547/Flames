@@ -234,17 +234,28 @@ bool ASCIIFont::LoadFont(ASCIIFont& font, const std::string& filename, float fon
 		stbtt_GetFontBoundingBox(&information, &x0, &y0, &x1, &y1);
 		//float boundingWidth = (x1 - x0) * font.scalingFactor * sampleX + 1;
 		//float boundingHeight = (y1 - y0) * font.scalingFactor * sampleY + 1;
-		
+		font.atlasWidth = (atlasWidth != 0) ? atlasWidth : Font::atlasWidth;
+		font.atlasHeight = (atlasHeight != 0) ? atlasHeight : Font::atlasHeight;
+		int value = 0;
 		std::vector<unsigned char> scratchSpace{}; // Has to be the same size as the buffer
-		scratchSpace.reserve(static_cast<std::size_t>(font.atlasWidth) * static_cast<std::size_t>(font.atlasHeight));
-		stbtt_pack_context contextual{};
-		// Why is this nullptr
-		stbtt_PackBegin(&contextual, scratchSpace.data(), font.atlasWidth, font.atlasHeight, Font::bufferStride, padding, nullptr);
-		stbtt_PackSetOversampling(&contextual, sampleX, sampleY);
-		stbtt_PackSetSkipMissingCodepoints(&contextual, true);
-		int value = stbtt_PackFontRange(&contextual, rawFontData.data(), Font::index0, STBTT_POINT_SIZE(fontSize),
-										Font::firstCharInAtlas, Font::charsInAtlas, font.characters.data());
-		stbtt_PackEnd(&contextual);
+		do {
+			scratchSpace.clear();
+			scratchSpace.reserve(static_cast<std::size_t>(font.atlasWidth) * static_cast<std::size_t>(font.atlasHeight));
+			stbtt_pack_context contextual{};
+			font.characters.fill({});
+			// Why is this nullptr
+			stbtt_PackBegin(&contextual, scratchSpace.data(), font.atlasWidth, font.atlasHeight, Font::bufferStride, padding, nullptr);
+			stbtt_PackSetOversampling(&contextual, sampleX, sampleY);
+			stbtt_PackSetSkipMissingCodepoints(&contextual, true);
+			value = stbtt_PackFontRange(&contextual, rawFontData.data(), Font::index0, STBTT_POINT_SIZE(fontSize),
+				Font::firstCharInAtlas, Font::charsInAtlas, font.characters.data());
+			stbtt_PackEnd(&contextual);
+			if (!value)
+			{
+				font.atlasWidth *= 2;
+			}
+		} while (!value);
+		Log("{}:{}", font.atlasHeight, font.atlasWidth);
 
 		font.texture.CleanUp();
 		GLuint texture;
